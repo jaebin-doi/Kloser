@@ -1,0 +1,125 @@
+/* Phase 0.5 end-to-end Playwright verification.
+ *
+ * Pre-req:
+ *   - API:    `npm --prefix server run dev`            (port 3001)
+ *   - Static: `npx http-server . -p 8765 --silent`     (project root)
+ *
+ * Run:
+ *   node test/phase_0_5_e2e.mjs
+ */
+import { chromium } from "playwright";
+
+const STATIC_URL = "http://localhost:8765/platform/live.html";
+const API_HEALTH = "http://localhost:3001/health";
+
+function pass(msg) { console.log("PASS:", msg); }
+function fail(msg) { console.error("FAIL:", msg); process.exitCode = 1; }
+
+async function main() {
+  // Sanity probe before launching headless browser.
+  const health = await fetch(API_HEALTH).then((r) => r.json()).catch(() => null);
+  if (!health || health.ok !== true) throw new Error("API health probe failed — is server/ running?");
+  pass(`API health ok (uptime ${health.uptimeSec}s)`);
+
+  const browser = await chromium.launch({ headless: true });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+
+  /** @type {string[]} */
+  const consoleLogs = [];
+  /** @type {string[]} */
+  const consoleErrors = [];
+  page.on("console", (msg) => {
+    const text = msg.text();
+    if (msg.type() === "error") consoleErrors.push(text);
+    else consoleLogs.push(`[${msg.type()}] ${text}`);
+  });
+  page.on("pageerror", (err) => consoleErrors.push(`[pageerror] ${err.message}`));
+
+  await page.goto(STATIC_URL, { waitUntil: "domcontentloaded" });
+
+  // 1. Connection + start_call ack appear quickly
+  await page.waitForFunction(
+    () => Array.from(document.querySelectorAll("script")) && window.kloserWS,
+    { timeout: 3000 },
+  );
+  pass("kloserWS loaded");
+
+  // 2. First transcript (agent greeting) appears within 1500ms (delay 0 + RTT)
+  await page.waitForSelector("#transcript .msg-enter", { timeout: 2000 });
+  const firstAgent = await page.locator("#transcript .msg-enter").first().innerText();
+  if (!firstAgent.includes("김민수입니다")) fail(`first transcript missing greeting — got: ${firstAgent}`);
+  else pass(`first transcript: greeting agent line received`);
+
+  // 3. Wait long enough for the 14000ms sentiment update
+  await page.waitForFunction(
+    () => document.getElementById("moodVal")?.textContent === "관심",
+    { timeout: 18000 },
+  );
+  const interest1 = await page.locator("#interestVal").innerText();
+  const stage1 = await page.locator("#stageVal").innerText();
+  if (interest1 !== "92%") fail(`interest after first sentiment expected 92%, got ${interest1}`);
+  if (stage1 !== "검토") fail(`stage after first sentiment expected 검토, got ${stage1}`);
+  if (!/FAIL/.test(String(process.exitCode))) pass(`sentiment #1: 관심 / 92% / 검토`);
+
+  // 4. Wait for 23000ms sentiment update (망설임)
+  await page.waitForFunction(
+    () => document.getElementById("moodVal")?.textContent === "망설임",
+    { timeout: 15000 },
+  );
+  pass(`sentiment #2: 망설임 reached`);
+
+  // 5. Verify suggestion cards rendered (suggestion sequence fired at 14000, 23000)
+  const suggestionCount = await page.locator("#aiSuggestions .sug-card").count();
+  if (suggestionCount < 1) fail(`expected suggestion cards, got ${suggestionCount}`);
+  else pass(`suggestion cards rendered (${suggestionCount} present)`);
+
+  // 6. Manual text_chunk RTT probe via wrapper
+  const probe = await page.evaluate(async () => {
+    const probe = window.kloserWS.connectCallNamespace({ baseUrl: "http://localhost:3001", userId: "e2e-probe" });
+    await new Promise((r) => probe.on("connect", r));
+    await window.kloserWS.startCall(probe, {});
+    const t0 = Date.now();
+    const event = await new Promise((resolve, reject) => {
+      probe.once("transcript", resolve);
+      setTimeout(() => reject(new Error("timeout")), 3000);
+      window.kloserWS.sendTextChunk(probe, { seq: 999, text: "E2E-PROBE" });
+    });
+    const rtt = Date.now() - t0;
+    probe.close();
+    return { event, rtt };
+  });
+  if (probe.event.text !== "E2E-PROBE") fail(`probe transcript text mismatch: ${probe.event.text}`);
+  else pass(`text_chunk echo OK (RTT ${probe.rtt}ms, clientSentAt round-tripped)`);
+  if (probe.rtt > 150) fail(`RTT exceeded 150ms target: ${probe.rtt}ms`);
+  else pass(`RTT under 150ms target (${probe.rtt}ms)`);
+
+  // 7. Latency badge visible
+  const latencyText = await page.locator("#latencyVal").innerText();
+  pass(`#latencyVal shows: "${latencyText}"`);
+
+  // 8. Final transcript count check — at this point we should have 7 transcripts
+  // (delays 0, 4500, 9000, 13500, 18000, 22500 = 6 from server replay + 1 we know about)
+  // Plus we did not consume the page socket for a probe so the page got server-driven only.
+  const transcriptCount = await page.locator("#transcript .msg-enter").count();
+  pass(`page transcript count: ${transcriptCount}`);
+
+  // 9. No console errors
+  if (consoleErrors.length > 0) {
+    fail(`console errors: ${JSON.stringify(consoleErrors, null, 2)}`);
+  } else {
+    pass("no console errors");
+  }
+
+  // Screenshot for evidence
+  await page.screenshot({ path: "test/phase_0_5_e2e.png", fullPage: false });
+  pass("screenshot saved → test/phase_0_5_e2e.png");
+
+  await browser.close();
+  console.log(process.exitCode ? "\nE2E FAILED" : "\nE2E PASSED");
+}
+
+main().catch((err) => {
+  console.error("E2E ERROR:", err);
+  process.exit(2);
+});

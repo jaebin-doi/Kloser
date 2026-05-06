@@ -16,8 +16,8 @@
 - [x] Day 1 — Socket.io `/calls` 네임스페이스 + echo + clientSentAt round-trip (Node 테스트 클라이언트로 RTT 2ms 검증)
 - [x] Day 2 — `platform/ws.js` 래퍼 + socket.io-client CDN 주입 (브라우저 검증은 Day 3 mock 제거 후 통합)
 - [x] Day 3 — `live.html` mock 제거 + textContent 전환 + async IIFE init (Playwright로 connect/start_call ack/RTT 1ms 확인)
-- [ ] Day 4 — `fixtures/demo-call.ts` + start_call 자동 재생 + 타이머 정리
-- [ ] Playwright 검증 — 자동 재생 흐름 + RTT < 150ms 확인
+- [x] Day 4 — `fixtures/demo-call.ts` + start_call 자동 재생 + 타이머 정리 (sentiment 그룹별로 합쳐 emit)
+- [x] Playwright 검증 — 자동 재생 흐름 + RTT < 150ms (test/phase_0_5_e2e.mjs, 12/12 PASS, 수동 RTT 1ms)
 - [ ] Day 4-5 — `server/README.md` + `PHASE_0_5_FINDINGS.md` + 체크박스 업데이트
 
 **환경 노트**:

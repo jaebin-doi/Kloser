@@ -1,5 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import { randomUUID } from "node:crypto";
+import { conversation, aiSequence } from "../fixtures/demo-call.js";
 
 interface StartCallPayload {
   customerId?: string;
@@ -13,9 +14,52 @@ interface TextChunkPayload {
 interface CallContext {
   callId: string;
   startedAt: number;
+  timers: NodeJS.Timeout[];
 }
 
 const calls = new WeakMap<Socket, CallContext>();
+
+function clearCall(socket: Socket): void {
+  const ctx = calls.get(socket);
+  if (!ctx) return;
+  for (const t of ctx.timers) clearTimeout(t);
+  ctx.timers.length = 0;
+  calls.delete(socket);
+}
+
+function scheduleDemoReplay(socket: Socket, ctx: CallContext): void {
+  // transcript pushes — server-driven, no clientSentAt (latency badge guards it)
+  for (let i = 0; i < conversation.length; i++) {
+    const line = conversation[i];
+    if (!line) continue;
+    const seq = i + 1;
+    ctx.timers.push(
+      setTimeout(() => {
+        socket.emit("transcript", {
+          seq,
+          who: line.who,
+          text: line.text,
+          serverSentAt: Date.now(),
+        });
+      }, line.delay),
+    );
+  }
+
+  // suggestion + (optional) sentiment pushes
+  for (const group of aiSequence) {
+    ctx.timers.push(
+      setTimeout(() => {
+        socket.emit("suggestion", {
+          at: group.at,
+          suggestions: group.suggestions,
+        });
+        if (group.sentiment) {
+          socket.emit("sentiment", group.sentiment);
+        }
+      }, group.at),
+    );
+  }
+}
 
 export function registerCallsNamespace(io: Server): void {
   const ns = io.of("/calls");
@@ -31,10 +75,16 @@ export function registerCallsNamespace(io: Server): void {
     socket.data.log("connection");
 
     socket.on("start_call", (payload: StartCallPayload | undefined, ack?: (resp: unknown) => void) => {
+      // Clear any prior call on the same socket (e.g., reconnect / repeat start_call)
+      clearCall(socket);
+
       const callId = randomUUID();
-      const ctx: CallContext = { callId, startedAt: Date.now() };
+      const ctx: CallContext = { callId, startedAt: Date.now(), timers: [] };
       calls.set(socket, ctx);
       socket.data.log("start_call", { callId, customerId: payload?.customerId });
+
+      scheduleDemoReplay(socket, ctx);
+
       if (typeof ack === "function") ack({ callId });
     });
 
@@ -56,13 +106,13 @@ export function registerCallsNamespace(io: Server): void {
     socket.on("end_call", (_payload: unknown, ack?: (resp: unknown) => void) => {
       const ctx = calls.get(socket);
       socket.data.log("end_call", { callId: ctx?.callId });
-      calls.delete(socket);
+      clearCall(socket);
       if (typeof ack === "function") ack({ ok: true });
     });
 
     socket.on("disconnect", (reason) => {
-      calls.delete(socket);
       socket.data.log("disconnect", { reason });
+      clearCall(socket);
     });
   });
 
