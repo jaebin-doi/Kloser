@@ -221,84 +221,7 @@
 
   <div class="flex h-screen">
 
-    <!-- ═══════ SIDEBAR ═══════ -->
-    <aside id="sidebar" class="sidebar-mobile w-[232px] h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
-      <!-- Logo -->
-      <div class="h-[60px] px-5 flex items-center border-b border-slate-100">
-        <a href="../index.html" class="flex items-center gap-2.5 no-underline">
-          <img src="../assets/logo.png" alt="Kloser" class="h-5 w-auto" />
-          <span class="px-1.5 py-0.5 rounded text-[.55rem] font-black text-blue-600 bg-blue-50 tracking-wider">DEMO</span>
-        </a>
-      </div>
-
-      <!-- Org switcher (top) -->
-      <div class="border-b border-slate-100">
-        <button class="w-full flex items-center gap-2.5 px-5 py-2.5">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[.65rem] font-black text-white shadow-sm shrink-0">K</div>
-          <div class="flex-1 text-left min-w-0">
-            <div class="text-[.78rem] font-bold text-slate-800 truncate">Kloser Inc.</div>
-            <div class="text-[.62rem] text-slate-400 truncate">Pro · 14명</div>
-          </div>
-        </button>
-      </div>
-
-      <!-- Nav -->
-      <nav class="flex-1 px-3 pt-3 pb-3 overflow-y-auto scroll-area">
-        <div class="text-[.6rem] font-black tracking-[.18em] uppercase text-slate-400 px-3 mt-1 mb-2">메인</div>
-        <a href="dashboard.html" class="nav-item">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-          대시보드
-        </a>
-        <a href="daily.html" class="nav-item">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          오늘의 일
-          <span class="ml-auto text-[.62rem] text-slate-400 tnum">17</span>
-        </a>
-        <a href="live.html" class="nav-item active">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          실시간 통화
-          <span class="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[.55rem] font-black">
-            <span class="w-1 h-1 rounded-full bg-emerald-500"></span>LIVE
-          </span>
-        </a>
-        <a href="calls.html" class="nav-item">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          통화 기록
-          <span class="ml-auto text-[.62rem] text-slate-400 tnum">1,243</span>
-        </a>
-        <a href="customers.html" class="nav-item">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          고객
-          <span class="ml-auto text-[.62rem] text-slate-400 tnum">2,486</span>
-        </a>
-        <a href="newsletter.html" class="nav-item">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
-          뉴스레터
-        </a>
-
-        <div class="text-[.6rem] font-black tracking-[.18em] uppercase text-slate-400 px-3 mt-5 mb-2">조직</div>
-        <a href="team.html" class="nav-item">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>
-          팀 & 계정
-        </a>
-        <a href="settings.html" class="nav-item">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          설정
-        </a>
-      </nav>
-
-      <!-- User -->
-      <div class="border-t border-slate-100 p-2">
-        <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg">
-          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[.78rem] font-black text-white shrink-0">김</div>
-          <div class="flex-1 text-left min-w-0">
-            <div class="text-[.85rem] font-bold text-slate-800 truncate">김민수</div>
-            <div class="text-[.65rem] text-slate-500 truncate">영업1팀 · 대리</div>
-          </div>
-        </button>
-      </div>
-    </aside>
-    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div id="sidebarSlot"></div>
 
     <!-- ═══════ MAIN ═══════ -->
     <div class="flex-1 flex flex-col min-w-0">
@@ -536,13 +459,7 @@
 
   <script src="_shared.js"></script>
   <script>
-    /* Sidebar toggle (overrides _shared.js with same impl) */
-    function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('open');
-      document.getElementById('sidebarOverlay').classList.toggle('show');
-    }
-    window.toggleSidebar = toggleSidebar;
-    // Wire up notification panel
+    renderSidebar('live');
     if (typeof renderNotification === 'function') renderNotification('notifBtn');
 
     /* ────────────────────────────────────────────────
