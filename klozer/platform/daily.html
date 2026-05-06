@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>오늘의 일 — Kloser</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="_shared.css" />
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'] } } } };
+  </script>
+  <!-- Document export libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>
+  <style>
+    body { overflow: hidden; }
+
+    /* Keyword chip */
+    .kw-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 9px 5px 11px;
+      border-radius: 999px;
+      background: rgb(239 246 255);
+      border: 1px solid rgb(191 219 254);
+      color: rgb(29 78 216);
+      font-size: .76rem; font-weight: 600;
+      transition: all .12s;
+    }
+    .kw-chip button {
+      width: 16px; height: 16px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgb(191 219 254); color: rgb(29 78 216);
+      transition: background .15s, color .15s;
+    }
+    .kw-chip button:hover { background: rgb(220 38 38); color: white; }
+
+    /* Trend item */
+    .trend-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      transition: background .12s, border-color .12s;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .trend-row:hover { background: rgb(248 250 252); border-color: rgb(226 232 240); }
+    .trend-spark {
+      width: 60px; height: 28px; flex-shrink: 0;
+      display: flex; align-items: end; gap: 2px;
+    }
+    .trend-spark > span {
+      flex: 1; border-radius: 1px;
+      background: rgb(96 165 250);
+      transition: background .15s;
+    }
+
+    /* Modal */
+    .modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-bg.show { display: flex; }
+    .modal-card { background: white; border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px -12px rgba(15,23,42,.25); }
+  </style>
+</head>
+
+<body class="bg-slate-50">
+
+  <div class="flex h-screen">
+    <div id="sidebarSlot"></div>
+
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <header class="h-[60px] px-4 lg:px-6 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <button onclick="toggleSidebar()" class="mobile-menu-btn w-9 h-9 rounded-lg hover:bg-slate-100 items-center justify-center text-slate-600" style="display:none">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 class="text-[1rem] font-black tracking-tight text-slate-800 truncate">오늘의 일</h1>
+          <span class="hidden sm:inline-flex items-center gap-1 text-[.65rem] font-bold text-slate-400">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5"/></svg>
+            매일 06:00 자동 갱신
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- Export dropdown -->
+          <div class="relative" id="dlWrap">
+            <button onclick="toggleDownloadMenu(event)" class="btn-secondary">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span class="hidden sm:inline">내보내기</span>
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="dlMenu" class="hidden absolute right-0 top-full mt-1 w-56 rounded-xl border border-slate-200 bg-white shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] py-1.5 z-30">
+              <div class="px-3 py-2 text-[.62rem] font-black tracking-wider uppercase text-slate-400">회의 자료로 내보내기</div>
+              <button onclick="dlHtml()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 text-left">
+                <span class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-black text-[.65rem] shrink-0">HTML</span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[.82rem] font-bold text-slate-800">웹 페이지</div>
+                  <div class="text-[.65rem] text-slate-500">.html · 그대로 공유</div>
+                </div>
+              </button>
+              <button onclick="dlPdf()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 text-left">
+                <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-black text-[.65rem] shrink-0">PDF</span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[.82rem] font-bold text-slate-800">PDF 문서</div>
+                  <div class="text-[.65rem] text-slate-500">.pdf · 인쇄용 보고서</div>
+                </div>
+              </button>
+              <button onclick="dlWord()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 text-left">
+                <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-black text-[.65rem] shrink-0">DOC</span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[.82rem] font-bold text-slate-800">Word</div>
+                  <div class="text-[.65rem] text-slate-500">.docx · 편집 가능 문서</div>
+                </div>
+              </button>
+              <button onclick="dlExcel()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 text-left">
+                <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-[.65rem] shrink-0">XLSX</span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[.82rem] font-bold text-slate-800">Excel</div>
+                  <div class="text-[.65rem] text-slate-500">.xlsx · 5개 시트로 분리</div>
+                </div>
+              </button>
+              <button onclick="dlPpt()" class="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 text-left">
+                <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-black text-[.65rem] shrink-0">PPT</span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[.82rem] font-bold text-slate-800">PowerPoint</div>
+                  <div class="text-[.65rem] text-slate-500">.pptx · 회의 슬라이드</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <button onclick="openSettings()" class="btn-secondary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span class="hidden sm:inline">관심사 설정</span>
+          </button>
+          <button class="btn-primary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9M3 4v5h5"/></svg>
+            지금 갱신
+          </button>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto scroll-area p-4 lg:p-6 space-y-5 lg:space-y-6">
+
+        <!-- Greeting + KPI -->
+        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div class="p-5 lg:p-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="text-[.7rem] text-slate-400 mb-1" id="todayDate"></div>
+              <h2 class="text-[1.3rem] lg:text-[1.5rem] font-black tracking-tight text-slate-800">
+                오늘은 <b class="g-text">5월 영업 데이</b>
+              </h2>
+              <p class="text-[.85rem] text-slate-500 mt-1">시장에서 새로 발견된 신호와 오늘 해야 할 일을 정리했어요.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-emerald">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                갱신 완료
+              </span>
+              <span class="text-[.7rem] text-slate-500 tnum">06:00</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-slate-100">
+            <div class="p-4 lg:p-5 border-r border-b sm:border-b-0 border-slate-100">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">신규 키워드</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-slate-800">128</div>
+              <div class="text-[.7rem] text-slate-500 mt-0.5 tnum">전일 대비 +12</div>
+            </div>
+            <div class="p-4 lg:p-5 border-b sm:border-b-0 sm:border-r border-slate-100">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">상승 트렌드</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-emerald-600">+23</div>
+              <div class="text-[.7rem] text-slate-500 mt-0.5 tnum">관심사 4개 중</div>
+            </div>
+            <div class="p-4 lg:p-5 border-r border-slate-100">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">추천 To-Do</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-blue-600">17</div>
+              <div class="text-[.7rem] text-slate-500 mt-0.5">완료 <b class="text-slate-700 tnum"><span id="todoDoneTop">0</span>/17</b></div>
+            </div>
+            <div class="p-4 lg:p-5">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">긴급 알림</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-rose-500">3</div>
+              <div class="text-[.7rem] text-slate-500 mt-0.5">경쟁사 동향 변화</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Watchlist (모니터링 키워드) -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 lg:p-6">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div>
+              <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">모니터링 관심사</h3>
+              <p class="text-[.7rem] text-slate-500 mt-0.5">매일 <b class="text-slate-700 tnum">06:00</b> 네이버 검색 API로 자동 수집 · <b id="kwCount" class="text-slate-700 tnum">7</b>개 등록</p>
+            </div>
+            <button onclick="openSettings()" class="text-[.78rem] font-bold text-blue-600 hover:underline">관심사 편집 →</button>
+          </div>
+          <div id="kwList" class="flex flex-wrap gap-2"></div>
+        </section>
+
+        <!-- 2-col: Trends + To-Do -->
+        <section class="grid lg:grid-cols-3 gap-4 lg:gap-6">
+
+          <!-- Trends (col-span-2) -->
+          <div class="lg:col-span-2 rounded-2xl border border-slate-200 bg-white">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">시장 트렌드 알림</h3>
+                <p class="text-[.7rem] text-slate-500 mt-0.5">검색량 + 신규 기사 변화율 (지난 7일)</p>
+              </div>
+              <div class="flex items-center gap-1 text-[.62rem]">
+                <button class="px-2 py-1 rounded bg-slate-100 text-slate-700 font-bold">전체</button>
+                <button class="px-2 py-1 rounded text-slate-500">상승</button>
+                <button class="px-2 py-1 rounded text-slate-500">하락</button>
+              </div>
+            </div>
+            <div id="trendsList" class="divide-y divide-slate-100"></div>
+          </div>
+
+          <!-- To-Do (col-span-1) -->
+          <div class="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-white">
+            <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between">
+              <div>
+                <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">오늘의 추천 To-Do</h3>
+                <p class="text-[.7rem] text-slate-500 mt-0.5">AI가 트렌드+통화기록 분석</p>
+              </div>
+              <span class="text-[.7rem] tnum"><b class="text-slate-700"><span id="todoDone">0</span></b><span class="text-slate-400"> / </span><span class="text-slate-500"><span id="todoTotal">8</span></span></span>
+            </div>
+            <ul id="todoList" class="px-3 py-3 space-y-1.5 max-h-[480px] overflow-y-auto scroll-area"></ul>
+            <div class="px-5 py-3 border-t border-blue-100 text-center">
+              <button class="text-[.72rem] font-bold text-blue-600 hover:underline">+ 직접 To-Do 추가</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 경쟁사 동향 -->
+        <section class="rounded-2xl border border-slate-200 bg-white">
+          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">경쟁사 동향</h3>
+              <p class="text-[.7rem] text-slate-500 mt-0.5">등록한 경쟁사의 최근 24시간 뉴스</p>
+            </div>
+            <button onclick="openSettings()" class="text-[.72rem] font-bold text-slate-500 hover:text-slate-800">경쟁사 관리</button>
+          </div>
+          <ul class="divide-y divide-slate-100">
+            <li class="px-5 py-4 flex items-start gap-3 hover:bg-slate-50 cursor-pointer">
+              <div class="w-9 h-9 rounded-lg bg-rose-500/15 text-rose-600 flex items-center justify-center font-black text-[.85rem] shrink-0">N</div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span class="text-[.85rem] font-bold text-slate-800">NexusAI</span>
+                  <span class="badge badge-rose">신규 기능 출시</span>
+                  <span class="text-[.65rem] text-slate-400">2시간 전</span>
+                </div>
+                <p class="text-[.78rem] text-slate-600 leading-relaxed">실시간 통화 분석에 감정 분석 기능 추가. 기존 고객 무료 업그레이드 발표.</p>
+              </div>
+            </li>
+            <li class="px-5 py-4 flex items-start gap-3 hover:bg-slate-50 cursor-pointer">
+              <div class="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center font-black text-[.85rem] shrink-0">O</div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span class="text-[.85rem] font-bold text-slate-800">OrbitSales</span>
+                  <span class="badge badge-amber">가격 인하</span>
+                  <span class="text-[.65rem] text-slate-400">5시간 전</span>
+                </div>
+                <p class="text-[.78rem] text-slate-600 leading-relaxed">Pro 플랜 월 89,000원 → 69,000원으로 인하. 초기 셋팅 비용 면제 행사.</p>
+              </div>
+            </li>
+            <li class="px-5 py-4 flex items-start gap-3 hover:bg-slate-50 cursor-pointer">
+              <div class="w-9 h-9 rounded-lg bg-violet-500/15 text-violet-600 flex items-center justify-center font-black text-[.85rem] shrink-0">T</div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span class="text-[.85rem] font-bold text-slate-800">TalkSphere</span>
+                  <span class="badge badge-blue">투자 유치</span>
+                  <span class="text-[.65rem] text-slate-400">어제</span>
+                </div>
+                <p class="text-[.78rem] text-slate-600 leading-relaxed">시리즈 B 200억 투자 유치. AI 통화 분석 시장 공격적 확장 예고.</p>
+              </div>
+            </li>
+            <li class="px-5 py-4 flex items-start gap-3 hover:bg-slate-50 cursor-pointer">
+              <div class="w-9 h-9 rounded-lg bg-cyan-500/15 text-cyan-600 flex items-center justify-center font-black text-[.85rem] shrink-0">G</div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span class="text-[.85rem] font-bold text-slate-800">GongChat</span>
+                  <span class="badge badge-slate">파트너십</span>
+                  <span class="text-[.65rem] text-slate-400">2일 전</span>
+                </div>
+                <p class="text-[.78rem] text-slate-600 leading-relaxed">HubSpot과 공식 파트너십 발표 — 기본 통합 제공 예정.</p>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- 어제 vs 오늘 비교 -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 lg:p-6">
+          <h3 class="text-[.95rem] font-black tracking-tight text-slate-800 mb-4">최근 7일 트렌드 변화</h3>
+          <div class="overflow-x-auto">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>키워드</th>
+                  <th class="text-right">월</th>
+                  <th class="text-right">화</th>
+                  <th class="text-right">수</th>
+                  <th class="text-right">목</th>
+                  <th class="text-right">금</th>
+                  <th class="text-right">토</th>
+                  <th class="text-right">일</th>
+                  <th class="text-right">변화율</th>
+                </tr>
+              </thead>
+              <tbody class="tnum">
+                <tr><td class="font-bold text-slate-800">B2B SaaS 도입</td><td class="text-right">8.2k</td><td class="text-right">9.1k</td><td class="text-right">9.8k</td><td class="text-right">10.5k</td><td class="text-right">11.2k</td><td class="text-right">11.8k</td><td class="text-right">12.4k</td><td class="text-right text-emerald-600 font-bold">↑ 42%</td></tr>
+                <tr><td class="font-bold text-slate-800">AI 콜센터</td><td class="text-right">6.4k</td><td class="text-right">6.9k</td><td class="text-right">7.2k</td><td class="text-right">7.8k</td><td class="text-right">8.1k</td><td class="text-right">8.5k</td><td class="text-right">8.9k</td><td class="text-right text-emerald-600 font-bold">↑ 28%</td></tr>
+                <tr><td class="font-bold text-slate-800">통화 분석</td><td class="text-right">3.8k</td><td class="text-right">4.1k</td><td class="text-right">4.0k</td><td class="text-right">4.3k</td><td class="text-right">4.5k</td><td class="text-right">4.4k</td><td class="text-right">4.5k</td><td class="text-right text-emerald-600 font-bold">↑ 15%</td></tr>
+                <tr><td class="font-bold text-slate-800">CRM 통합</td><td class="text-right">2.4k</td><td class="text-right">2.3k</td><td class="text-right">2.2k</td><td class="text-right">2.2k</td><td class="text-right">2.1k</td><td class="text-right">2.1k</td><td class="text-right">2.1k</td><td class="text-right text-rose-500 font-bold">↓ 6%</td></tr>
+                <tr><td class="font-bold text-slate-800">영업 자동화</td><td class="text-right">5.2k</td><td class="text-right">5.4k</td><td class="text-right">5.5k</td><td class="text-right">5.6k</td><td class="text-right">5.7k</td><td class="text-right">5.7k</td><td class="text-right">5.8k</td><td class="text-right text-emerald-600 font-bold">↑ 11%</td></tr>
+                <tr><td class="font-bold text-slate-800">HubSpot</td><td class="text-right">14.2k</td><td class="text-right">14.1k</td><td class="text-right">14.3k</td><td class="text-right">14.5k</td><td class="text-right">14.4k</td><td class="text-right">14.6k</td><td class="text-right">14.7k</td><td class="text-right text-emerald-600 font-bold">↑ 4%</td></tr>
+                <tr><td class="font-bold text-slate-800">Salesforce</td><td class="text-right">21.5k</td><td class="text-right">21.7k</td><td class="text-right">21.6k</td><td class="text-right">22.0k</td><td class="text-right">21.9k</td><td class="text-right">22.1k</td><td class="text-right">22.3k</td><td class="text-right text-emerald-600 font-bold">↑ 4%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settingsModal" class="modal-bg" onclick="if(event.target===this)closeSettings()">
+    <div class="modal-card">
+      <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h2 class="text-[1.05rem] font-black tracking-tight text-slate-800">관심사 설정</h2>
+          <p class="text-[.72rem] text-slate-500 mt-0.5">매일 자동 수집할 키워드와 경쟁사를 관리합니다.</p>
+        </div>
+        <button onclick="closeSettings()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-5">
+        <!-- 키워드 -->
+        <div>
+          <label class="text-[.78rem] font-bold text-slate-700 mb-2 block flex items-center justify-between">
+            <span>모니터링 키워드</span>
+            <span class="text-[.65rem] text-slate-400 font-normal"><span id="kwCount2" class="tnum">7</span>/30</span>
+          </label>
+          <div id="kwListModal" class="flex flex-wrap gap-2 mb-2 min-h-[36px] p-2 rounded-lg border border-slate-200 bg-slate-50/40"></div>
+          <div class="flex gap-2">
+            <input id="kwInput" type="text" placeholder="키워드 입력 후 Enter (예: 콜센터 자동화)"
+              class="flex-1 px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem]"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addKeyword()}" />
+            <button onclick="addKeyword()" class="btn-primary">추가</button>
+          </div>
+          <p class="text-[.7rem] text-slate-500 mt-1.5">관심사를 등록하면 AI가 매일 이 키워드 기반으로 시장 변화를 정리해 드려요.</p>
+        </div>
+
+        <!-- 경쟁사 -->
+        <div class="border-t border-slate-100 pt-5">
+          <label class="text-[.78rem] font-bold text-slate-700 mb-2 block flex items-center justify-between">
+            <span>경쟁사 (도메인)</span>
+            <span class="text-[.65rem] text-slate-400 font-normal"><span id="cpCount" class="tnum">4</span>/10</span>
+          </label>
+          <ul id="cpList" class="space-y-2 mb-2"></ul>
+          <div class="flex gap-2">
+            <input id="cpName" type="text" placeholder="회사명"
+              class="w-32 px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem]" />
+            <input id="cpDomain" type="text" placeholder="도메인 (예: example.com)"
+              class="flex-1 px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem]" />
+            <button onclick="addCompetitor()" class="btn-primary">추가</button>
+          </div>
+        </div>
+
+        <!-- 알림 시간 -->
+        <div class="border-t border-slate-100 pt-5 grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-[.78rem] font-bold text-slate-700 mb-2 block">매일 발송 시간</label>
+            <select class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] bg-white">
+              <option>05:00</option><option selected>06:00</option><option>07:00</option><option>08:00</option><option>09:00</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[.78rem] font-bold text-slate-700 mb-2 block">국가 / 언어</label>
+            <select class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] bg-white">
+              <option selected>한국어 (네이버 검색)</option>
+              <option>영어 (Google News)</option>
+              <option>혼합</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-slate-200 flex gap-2 justify-end">
+        <button onclick="closeSettings()" class="btn-secondary">취소</button>
+        <button onclick="saveSettings()" class="btn-primary">저장하고 다시 분석</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-3 rounded-xl bg-slate-900 text-white text-[.82rem] font-bold shadow-2xl opacity-0 pointer-events-none transition-all z-[200]"></div>
+
+  <script src="_shared.js"></script>
+  <script src="_daily.js?v=2"></script>
+</body>
+</html>

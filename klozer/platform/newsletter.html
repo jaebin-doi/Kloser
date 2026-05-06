@@ -1,0 +1,1819 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>뉴스레터 — Kloser</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="_shared.css" />
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'] } } } };
+  </script>
+  <style>
+    body { overflow: hidden; }
+    .ai-shimmer-static { box-shadow: 0 0 0 4px rgba(59,130,246,.08), 0 8px 24px -10px rgba(59,130,246,.18); }
+
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: .3; }
+      40% { transform: translateY(-4px); opacity: 1; }
+    }
+    .typing-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: rgb(96 165 250); margin-right: 3px;
+      animation: typingBounce 1.2s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: .15s; }
+    .typing-dot:nth-child(3) { animation-delay: .3s; }
+
+    /* Send modal */
+    .modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-bg.show { display: flex; }
+    .modal-card { background: white; border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px -12px rgba(15,23,42,.25); }
+
+    .recipient-opt input { display: none; }
+    .recipient-opt > div {
+      border: 1.5px solid rgb(226 232 240); border-radius: 10px;
+      padding: 10px 12px; cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .recipient-opt > div:hover { border-color: rgb(148 163 184); }
+    .recipient-opt input:checked + div {
+      border-color: rgb(37 99 235);
+      background: rgb(239 246 255);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+    }
+    .recipient-opt input:checked + div .check-dot { background: rgb(37 99 235); border-color: rgb(37 99 235); }
+    .recipient-opt input:checked + div .check-dot::after { opacity: 1; }
+    .check-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 1.5px solid rgb(203 213 225); flex-shrink: 0;
+      position: relative;
+    }
+    .check-dot::after {
+      content: ''; position: absolute; inset: 3px;
+      border-radius: 50%; background: white; opacity: 0; transition: opacity .15s;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin .9s linear infinite; }
+
+    @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+    .pop { animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
+
+    /* Toast */
+    #toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(80px);
+      background: rgb(15 23 42); color: white; padding: 12px 18px;
+      border-radius: 12px; box-shadow: 0 12px 28px -8px rgba(15,23,42,.4);
+      font-size: .82rem; font-weight: 600; z-index: 200;
+      opacity: 0; transition: all .35s cubic-bezier(.34,1.56,.64,1);
+      display: flex; align-items: center; gap: 10px;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* Template gallery */
+    .tpl-card {
+      text-align: left; padding: 14px; border-radius: 12px;
+      border: 1px solid rgb(226 232 240); background: white;
+      transition: all .15s; cursor: pointer;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .tpl-card:hover {
+      border-color: rgb(96 165 250);
+      box-shadow: 0 8px 20px -10px rgba(59,130,246,.25);
+      transform: translateY(-1px);
+    }
+    .tpl-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .tpl-tab {
+      font-size: .74rem; font-weight: 700;
+      padding: 5px 11px; border-radius: 999px;
+      color: rgb(71 85 105); background: transparent;
+      border: 1px solid transparent;
+      transition: all .15s; cursor: pointer; white-space: nowrap;
+    }
+    .tpl-tab:hover { background: rgb(241 245 249); }
+    .tpl-tab.active {
+      background: rgb(15 23 42); color: white;
+      border-color: rgb(15 23 42);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50">
+
+  <div class="flex h-screen">
+    <div id="sidebarSlot"></div>
+
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <!-- Topbar -->
+      <header class="h-[60px] px-4 lg:px-6 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <button onclick="toggleSidebar()" class="mobile-menu-btn w-9 h-9 rounded-lg hover:bg-slate-100 items-center justify-center text-slate-600" style="display:none">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 class="text-[1rem] font-black tracking-tight text-slate-800 truncate">뉴스레터</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openTemplateModal()" class="btn-secondary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            템플릿
+          </button>
+          <button onclick="openStyleModal()" class="btn-primary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+            스타일
+          </button>
+        </div>
+      </header>
+
+      <main class="flex-1 grid lg:grid-cols-[1fr_440px] gap-0 lg:overflow-hidden overflow-y-auto scroll-area">
+
+        <!-- Left: Campaigns + Stats -->
+        <section class="flex flex-col lg:overflow-hidden lg:border-r border-b lg:border-b-0 border-slate-200">
+
+          <!-- Stats -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 bg-white border-b border-slate-200 flex-shrink-0">
+            <div class="p-4 lg:p-5 border-r border-slate-200">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">발송 완료</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-slate-800">2,486</div>
+            </div>
+            <div class="p-4 lg:p-5 border-r border-slate-200">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">전달률</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-emerald-600">97.4%</div>
+            </div>
+            <div class="p-4 lg:p-5 sm:border-r border-slate-200">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">오픈율</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-blue-600">50.0%</div>
+            </div>
+            <div class="p-4 lg:p-5">
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">클릭률</div>
+              <div class="text-[1.4rem] font-black tnum tracking-tight text-violet-600">12.4%</div>
+            </div>
+          </div>
+
+          <!-- Campaign list -->
+          <div class="px-5 py-4 border-b border-slate-200 bg-white flex items-center justify-between flex-shrink-0">
+            <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">캠페인 목록</h3>
+            <span class="text-[.7rem] text-slate-400 tnum"><span id="campTotalLabel">0</span>개</span>
+          </div>
+
+          <div id="campaignList" class="flex-1 overflow-y-auto scroll-area divide-y divide-slate-100"></div>
+
+          <!-- Pagination -->
+          <div class="px-5 py-3 border-t border-slate-200 bg-white flex items-center justify-between flex-shrink-0 gap-3">
+            <div class="text-[.7rem] text-slate-500 tnum">
+              <span id="campRange">0-0</span> / <span id="campTotal">0</span>개
+            </div>
+            <div id="pagination" class="flex items-center gap-1"></div>
+          </div>
+        </section>
+
+        <!-- Right: AI compose -->
+        <aside class="bg-gradient-to-b from-blue-50/30 via-white to-white flex flex-col min-w-0 lg:overflow-hidden lg:min-h-0 min-h-[600px]">
+          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[.65rem] font-black text-white shadow-md">AI</div>
+              <div>
+                <h2 class="text-[.92rem] font-black tracking-tight text-slate-800">AI 이메일 작성</h2>
+                <p class="text-[.65rem] text-slate-500">대화로 메일을 즉시 생성합니다</p>
+              </div>
+            </div>
+            <button class="text-[.7rem] font-bold text-slate-500 hover:text-slate-800 transition-colors">새 대화</button>
+          </div>
+
+          <!-- Chat -->
+          <div id="chat" class="flex-1 overflow-y-auto scroll-area p-5 space-y-4">
+            <!-- AI greeting -->
+            <div class="flex gap-2.5">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[.6rem] font-black text-white shrink-0">AI</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[.72rem] font-bold text-blue-700 mb-1">Kloser AI</div>
+                <div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-[.85rem] text-slate-700 leading-relaxed">
+                  안녕하세요! 어떤 메일을 작성해 드릴까요?<br>
+                  <span class="text-slate-500 text-[.78rem]">예) "신규 가입 고객을 위한 환영 메일 작성해줘"</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Suggested prompts -->
+          <div class="px-5 pb-2 flex-shrink-0">
+            <div class="text-[.62rem] font-black tracking-wider uppercase text-slate-500 mb-2">빠른 시작</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="sendPrompt(this.textContent)" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[.72rem] text-slate-700 hover:border-blue-400 transition-colors">신규 가입 환영 메일</button>
+              <button onclick="sendPrompt(this.textContent)" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[.72rem] text-slate-700 hover:border-blue-400 transition-colors">월간 업데이트 안내</button>
+              <button onclick="sendPrompt(this.textContent)" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[.72rem] text-slate-700 hover:border-blue-400 transition-colors">웨비나 초대</button>
+              <button onclick="sendPrompt(this.textContent)" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[.72rem] text-slate-700 hover:border-blue-400 transition-colors">구독 갱신 알림</button>
+            </div>
+          </div>
+
+          <!-- Input -->
+          <div class="px-5 pb-5 pt-3 flex-shrink-0">
+            <form onsubmit="event.preventDefault(); sendMessage();" class="rounded-xl border border-slate-200 bg-white shadow-sm focus-within:border-blue-400 focus-within:shadow-[0_0_0_4px_rgba(59,130,246,.12)] transition-all">
+              <textarea id="userInput" rows="2" placeholder="메일 작성 요청을 입력하세요..."
+                class="w-full bg-transparent outline-none px-4 pt-3 pb-2 text-[.85rem] text-slate-800 placeholder:text-slate-400 resize-none"></textarea>
+              <div class="flex items-center justify-between px-3 pb-2.5">
+                <div class="flex items-center gap-1">
+                  <button type="button" class="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors" title="첨부">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l8.57-8.57a4 4 0 1 1 5.66 5.66l-8.58 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  </button>
+                  <button type="button" class="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors" title="고객 선택">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  </button>
+                </div>
+                <button type="submit" class="btn-primary py-1.5 px-3 text-[.78rem]">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                  보내기
+                </button>
+              </div>
+            </form>
+          </div>
+        </aside>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Send modal -->
+  <div id="sendModal" class="modal-bg" onclick="if(event.target===this)closeSendModal()">
+    <div class="modal-card">
+      <!-- Step 1: configure -->
+      <div id="sendStep1">
+        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-md">
+              <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </div>
+            <div>
+              <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">이메일 발송</h2>
+              <p class="text-[.7rem] text-slate-500">발송 전 수신자와 일정을 확인해 주세요</p>
+            </div>
+          </div>
+          <button onclick="closeSendModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-5">
+          <!-- preview -->
+          <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+            <div class="text-[.6rem] font-black tracking-wider uppercase text-slate-500 mb-1.5">미리보기</div>
+            <div id="sendPreviewSubject" class="text-[.88rem] font-bold text-slate-800 mb-1 truncate">제목</div>
+            <div id="sendPreviewBody" class="text-[.75rem] text-slate-600 leading-relaxed line-clamp-2">본문</div>
+          </div>
+
+          <!-- recipients -->
+          <div>
+            <label class="text-[.72rem] font-bold text-slate-700 mb-2 block">수신자 그룹</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="recipient-opt">
+                <input type="radio" name="recipient" value="2486" data-label="전체 고객" checked />
+                <div>
+                  <div class="check-dot"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[.78rem] font-bold text-slate-800">전체 고객</div>
+                    <div class="text-[.68rem] text-slate-500 tnum">2,486명</div>
+                  </div>
+                </div>
+              </label>
+              <label class="recipient-opt">
+                <input type="radio" name="recipient" value="487" data-label="VIP 고객" />
+                <div>
+                  <div class="check-dot"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[.78rem] font-bold text-slate-800">VIP 고객</div>
+                    <div class="text-[.68rem] text-slate-500 tnum">487명</div>
+                  </div>
+                </div>
+              </label>
+              <label class="recipient-opt">
+                <input type="radio" name="recipient" value="234" data-label="신규 가입자" />
+                <div>
+                  <div class="check-dot"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[.78rem] font-bold text-slate-800">신규 가입자</div>
+                    <div class="text-[.68rem] text-slate-500 tnum">234명</div>
+                  </div>
+                </div>
+              </label>
+              <label class="recipient-opt">
+                <input type="radio" name="recipient" value="1892" data-label="활성 고객" />
+                <div>
+                  <div class="check-dot"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[.78rem] font-bold text-slate-800">활성 고객</div>
+                    <div class="text-[.68rem] text-slate-500 tnum">1,892명</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- schedule -->
+          <div>
+            <label class="text-[.72rem] font-bold text-slate-700 mb-2 block">발송 시점</label>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-slate-300 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50">
+                <input type="radio" name="when" value="now" checked class="accent-blue-600" onchange="onWhenChange()" />
+                <div class="flex-1">
+                  <div class="text-[.82rem] font-bold text-slate-800">지금 발송</div>
+                  <div class="text-[.68rem] text-slate-500">버튼을 누르면 즉시 발송돼요</div>
+                </div>
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-emerald-500"><path d="M5 13l4 4L19 7"/></svg>
+              </label>
+              <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-slate-300 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50">
+                <input type="radio" name="when" value="scheduled" class="accent-blue-600" onchange="onWhenChange()" />
+                <div class="flex-1">
+                  <div class="text-[.82rem] font-bold text-slate-800">예약 발송</div>
+                  <div class="text-[.68rem] text-slate-500">원하는 시간에 자동 발송</div>
+                </div>
+                <input type="datetime-local" id="scheduleAt" disabled class="text-[.72rem] px-2 py-1 rounded border border-slate-200 outline-none focus:border-blue-400 disabled:bg-slate-50 disabled:text-slate-400" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
+          <div class="text-[.7rem] text-slate-500 flex items-center gap-1.5 min-w-0">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="shrink-0"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+            <span class="truncate">From: noreply@kloser.com</span>
+          </div>
+          <div class="flex gap-2 flex-shrink-0">
+            <button onclick="closeSendModal()" class="btn-secondary">취소</button>
+            <button onclick="confirmSend()" class="btn-primary">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              <span id="sendBtnLabel">2,486명에게 발송</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: sending -->
+      <div id="sendStep2" style="display:none">
+        <div class="px-6 py-12 text-center">
+          <div class="mx-auto w-16 h-16 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center mb-5">
+            <svg class="spin" width="28" height="28" fill="none" stroke="rgb(37 99 235)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56" stroke-linecap="round"/></svg>
+          </div>
+          <h3 class="text-[1.05rem] font-black tracking-tight text-slate-800 mb-1.5">발송 중입니다</h3>
+          <p class="text-[.78rem] text-slate-500 mb-5">
+            <span id="sendProgress" class="tnum font-bold text-slate-700">0</span>
+            <span class="text-slate-400 mx-1">/</span>
+            <span id="sendTotal" class="tnum font-bold text-slate-700">2,486</span>
+            <span class="text-slate-400">명</span>
+          </p>
+          <div class="h-2 rounded-full bg-slate-100 overflow-hidden max-w-[280px] mx-auto">
+            <div id="sendBar" class="h-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-[width] duration-200 ease-out" style="width:0%"></div>
+          </div>
+          <p class="text-[.68rem] text-slate-400 mt-5">잠시 후 결과가 표시됩니다</p>
+        </div>
+      </div>
+
+      <!-- Step 3: complete -->
+      <div id="sendStep3" style="display:none">
+        <div class="px-6 py-10 text-center">
+          <div class="mx-auto w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-5 pop">
+            <svg width="28" height="28" fill="none" stroke="rgb(16 185 129)" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <h3 class="text-[1.1rem] font-black tracking-tight text-slate-800 mb-1.5">발송 완료</h3>
+          <p class="text-[.82rem] text-slate-500 mb-6">
+            <span id="sentTotal" class="tnum font-bold text-slate-800">2,486</span>명에게 정상 발송되었습니다
+          </p>
+          <div class="grid grid-cols-3 gap-2 max-w-[340px] mx-auto">
+            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-3">
+              <div class="text-[.6rem] font-black uppercase tracking-wider text-slate-500 mb-1">전송</div>
+              <div id="statSent" class="text-[1.05rem] font-black tnum text-emerald-600">2,486</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-3">
+              <div class="text-[.6rem] font-black uppercase tracking-wider text-slate-500 mb-1">대기열</div>
+              <div class="text-[1.05rem] font-black tnum text-slate-700">0</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-3">
+              <div class="text-[.6rem] font-black uppercase tracking-wider text-slate-500 mb-1">실패</div>
+              <div class="text-[1.05rem] font-black tnum text-slate-700">0</div>
+            </div>
+          </div>
+          <div class="mt-6 flex gap-2 justify-center">
+            <button onclick="closeSendModal()" class="btn-secondary">닫기</button>
+            <button onclick="closeSendModal()" class="btn-primary">캠페인 보기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template gallery modal -->
+  <div id="templateModal" class="modal-bg" onclick="if(event.target===this)closeTemplateModal()">
+    <div class="modal-card" style="max-width: 760px;">
+
+      <!-- View 1: Gallery -->
+      <div id="tplGalleryView">
+        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center shadow-md">
+              <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </div>
+            <div>
+              <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">메일 템플릿</h2>
+              <p class="text-[.7rem] text-slate-500">자주 쓰는 메일 형식을 골라 빠르게 시작하세요</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="showCreateTemplateView()" class="btn-primary py-1.5 px-3 text-[.78rem]">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              새 템플릿
+            </button>
+            <button onclick="closeTemplateModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="px-6 pt-4 pb-2">
+          <div id="tplTabs" class="flex items-center gap-1 overflow-x-auto scroll-area pb-1">
+            <button class="tpl-tab active" data-cat="all">전체</button>
+            <button class="tpl-tab" data-cat="onboarding">온보딩</button>
+            <button class="tpl-tab" data-cat="news">뉴스/업데이트</button>
+            <button class="tpl-tab" data-cat="event">이벤트</button>
+            <button class="tpl-tab" data-cat="billing">결제/갱신</button>
+            <button class="tpl-tab" data-cat="content">콘텐츠</button>
+            <button class="tpl-tab" data-cat="reengage">재참여</button>
+          </div>
+        </div>
+
+        <div class="px-6 pb-2 max-h-[55vh] overflow-y-auto scroll-area">
+          <div id="templateGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 py-2"></div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
+          <div class="text-[.7rem] text-slate-500 flex items-center gap-1.5">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span>템플릿을 클릭하면 AI 채팅에 초안이 즉시 생성됩니다</span>
+          </div>
+          <button onclick="closeTemplateModal()" class="btn-secondary">닫기</button>
+        </div>
+      </div>
+
+      <!-- View 2: Create form -->
+      <div id="tplCreateView" style="display:none">
+        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <button onclick="showGalleryView()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" title="갤러리로">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center shadow-md">
+              <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+            <div>
+              <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">새 템플릿 만들기</h2>
+              <p class="text-[.7rem] text-slate-500">자주 쓰는 메일을 템플릿으로 등록하세요</p>
+            </div>
+          </div>
+          <button onclick="closeTemplateModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto scroll-area">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 block">템플릿 이름 <span class="text-rose-500">*</span></label>
+              <input id="tplName" type="text" maxlength="40" placeholder="예: VIP 분기 인사"
+                class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 outline-none text-[.85rem] font-bold text-slate-800 transition-all focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)]" />
+            </div>
+            <div>
+              <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 block">카테고리</label>
+              <select id="tplCategory" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none text-[.85rem] font-bold text-slate-800 bg-white transition-all focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)]">
+                <option value="onboarding">온보딩</option>
+                <option value="news">뉴스/업데이트</option>
+                <option value="event">이벤트</option>
+                <option value="billing">결제/갱신</option>
+                <option value="content">콘텐츠</option>
+                <option value="reengage">재참여</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 block">아이콘</label>
+            <div id="tplIconPicker" class="flex flex-wrap gap-1.5">
+              <!-- emoji buttons rendered by JS -->
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 block">간단 설명</label>
+            <input id="tplDesc" type="text" maxlength="60" placeholder="예: 분기마다 VIP 고객에게 보내는 인사 메일"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 outline-none text-[.82rem] text-slate-800 transition-all focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)]" />
+          </div>
+
+          <div>
+            <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 block">메일 제목 <span class="text-rose-500">*</span></label>
+            <input id="tplSubject" type="text" maxlength="120" placeholder="예: [고객명]님, 이번 분기도 함께해 주셔서 감사합니다"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 outline-none text-[.85rem] font-bold text-slate-800 transition-all focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)]" />
+          </div>
+
+          <div>
+            <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 block">메일 본문 <span class="text-rose-500">*</span></label>
+            <textarea id="tplBody" rows="8" placeholder="안녕하세요, [고객명]님.&#10;&#10;본문 내용을 입력하세요. [고객명], [회사명] 등의 변수를 사용하실 수 있어요.&#10;&#10;— Kloser 팀 드림"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 outline-none text-[.82rem] text-slate-800 leading-relaxed transition-all focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)] resize-none scroll-area"></textarea>
+          </div>
+
+          <div class="rounded-lg bg-blue-50/60 border border-blue-100 px-3 py-2 flex items-start gap-2">
+            <svg width="13" height="13" fill="none" stroke="rgb(37 99 235)" stroke-width="2" viewBox="0 0 24 24" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <p class="text-[.7rem] text-blue-800 leading-relaxed">
+              <span class="font-bold">[고객명]</span>, <span class="font-bold">[회사명]</span> 같은 변수는 발송 시 수신자별로 자동 치환됩니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+          <button onclick="showGalleryView()" class="btn-secondary">취소</button>
+          <button onclick="submitNewTemplate()" class="btn-primary">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+            템플릿 저장
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Style library modal -->
+  <div id="styleModal" class="modal-bg" onclick="if(event.target===this)closeStyleModal()">
+    <div class="modal-card" style="max-width: 880px;">
+      <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-pink-500 via-orange-400 to-amber-400 flex items-center justify-center shadow-md">
+            <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="white"/><circle cx="17.5" cy="10.5" r=".5" fill="white"/><circle cx="8.5" cy="7.5" r=".5" fill="white"/><circle cx="6.5" cy="12.5" r=".5" fill="white"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          </div>
+          <div>
+            <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">스타일 템플릿</h2>
+            <p class="text-[.7rem] text-slate-500">메일에 적용할 디자인 레이아웃 라이브러리</p>
+          </div>
+        </div>
+        <button onclick="closeStyleModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="px-6 pt-4 pb-2">
+        <div id="styleTabs" class="flex items-center gap-1 overflow-x-auto scroll-area pb-1">
+          <button class="tpl-tab active" data-cat="all">전체</button>
+          <button class="tpl-tab" data-cat="modern">모던</button>
+          <button class="tpl-tab" data-cat="classic">클래식</button>
+          <button class="tpl-tab" data-cat="news">뉴스</button>
+          <button class="tpl-tab" data-cat="event">이벤트</button>
+          <button class="tpl-tab" data-cat="content">콘텐츠</button>
+          <button class="tpl-tab" data-cat="promo">프로모션</button>
+        </div>
+      </div>
+
+      <div class="px-6 pb-2 max-h-[60vh] overflow-y-auto scroll-area">
+        <div id="styleGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 py-2"></div>
+      </div>
+
+      <div class="px-6 py-3 border-t border-slate-200 flex items-center justify-between gap-3">
+        <div class="text-[.7rem] text-slate-500 tnum">
+          <span id="styleRange">0-0</span> / <span id="styleTotal">0</span>개
+        </div>
+        <div id="stylePagination" class="flex items-center gap-1"></div>
+        <button onclick="closeStyleModal()" class="btn-secondary">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Style preview modal -->
+  <div id="stylePreviewModal" class="modal-bg" onclick="if(event.target===this)closeStylePreview()">
+    <div class="modal-card" style="max-width: 720px;">
+      <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <button onclick="closeStylePreview()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" title="라이브러리로">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div>
+            <h2 id="stylePreviewName" class="text-[1.02rem] font-black tracking-tight text-slate-800">스타일 미리보기</h2>
+            <p id="stylePreviewDesc" class="text-[.7rem] text-slate-500">스타일 설명</p>
+          </div>
+        </div>
+        <button onclick="closeStylePreview()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="bg-slate-100 px-6 py-6 max-h-[65vh] overflow-y-auto scroll-area">
+        <div id="stylePreviewBox" class="mx-auto rounded-xl overflow-hidden shadow-md" style="max-width: 520px;"></div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+        <button onclick="closeStylePreview()" class="btn-secondary">취소</button>
+        <button onclick="applyStyle()" class="btn-primary">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          이 스타일 적용
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campaign detail modal -->
+  <div id="campaignModal" class="modal-bg" onclick="if(event.target===this)closeCampaignModal()">
+    <div class="modal-card" style="max-width: 720px;">
+      <div id="campaignModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Edit draft modal -->
+  <div id="editModal" class="modal-bg" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal-card" style="max-width: 640px;">
+      <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-md">
+            <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <div>
+            <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">초안 수정</h2>
+            <p class="text-[.7rem] text-slate-500">제목과 본문을 다듬고 바로 발송하세요</p>
+          </div>
+        </div>
+        <button onclick="closeEditModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span>제목</span>
+            <span id="editSubjLen" class="text-[.65rem] font-semibold text-slate-400 tnum">0자</span>
+          </label>
+          <input id="editSubject" type="text" maxlength="120"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 outline-none text-[.88rem] font-bold text-slate-800 transition-all focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)]" />
+        </div>
+        <div>
+          <label class="text-[.72rem] font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span>본문</span>
+            <span id="editBodyLen" class="text-[.65rem] font-semibold text-slate-400 tnum">0자</span>
+          </label>
+          <textarea id="editBody" rows="12"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 outline-none text-[.82rem] text-slate-800 leading-relaxed transition-all focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)] resize-none scroll-area"></textarea>
+        </div>
+        <div class="rounded-lg bg-blue-50/60 border border-blue-100 px-3 py-2 flex items-start gap-2">
+          <svg width="13" height="13" fill="none" stroke="rgb(37 99 235)" stroke-width="2" viewBox="0 0 24 24" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <p class="text-[.7rem] text-blue-800 leading-relaxed">
+            <span class="font-bold">[고객명]</span> 같은 변수는 발송 시 수신자별로 자동 치환됩니다.
+          </p>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+        <button onclick="closeEditModal()" class="btn-secondary">취소</button>
+        <button onclick="applyEditOnly()" class="btn-secondary">저장만</button>
+        <button onclick="applyEditAndSend()" class="btn-primary">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          저장하고 발송
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast">
+    <svg width="14" height="14" fill="none" stroke="rgb(74 222 128)" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+    <span id="toastMsg">발송 완료</span>
+  </div>
+
+  <script src="_shared.js"></script>
+  <script>
+    renderSidebar('newsletter');
+
+    const chatEl = document.getElementById('chat');
+    const inputEl = document.getElementById('userInput');
+
+    function appendUser(text) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex gap-2.5 flex-row-reverse msg-enter';
+      wrapper.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[.65rem] font-black text-white shrink-0">김</div>
+        <div class="flex-1 min-w-0 flex flex-col items-end">
+          <div class="text-[.72rem] font-bold text-slate-700 mb-1">김민수</div>
+          <div class="rounded-2xl rounded-tr-sm bg-slate-100 border border-slate-200 px-3.5 py-2.5 text-[.85rem] text-slate-800 leading-relaxed max-w-[85%]">
+            ${text}
+          </div>
+        </div>
+      `;
+      chatEl.appendChild(wrapper);
+      chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' });
+    }
+
+    function appendTyping() {
+      const w = document.createElement('div');
+      w.id = 'typingMsg';
+      w.className = 'flex gap-2.5 msg-enter';
+      w.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[.6rem] font-black text-white shrink-0">AI</div>
+        <div>
+          <div class="text-[.72rem] font-bold text-blue-700 mb-1">Kloser AI</div>
+          <div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-4 py-3">
+            <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+          </div>
+        </div>
+      `;
+      chatEl.appendChild(w);
+      chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' });
+    }
+
+    function removeTyping() { document.getElementById('typingMsg')?.remove(); }
+
+    function appendAi(html) {
+      const w = document.createElement('div');
+      w.className = 'flex gap-2.5 msg-enter';
+      w.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[.6rem] font-black text-white shrink-0">AI</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-[.72rem] font-bold text-blue-700 mb-1">Kloser AI</div>
+          ${html}
+        </div>
+      `;
+      chatEl.appendChild(w);
+      chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' });
+    }
+
+    function generateDraft(prompt) {
+      const lower = prompt.toLowerCase();
+      let subject = '안녕하세요, Kloser입니다';
+      let body = '';
+      if (lower.includes('환영') || lower.includes('가입')) {
+        subject = '🎉 Kloser에 오신 걸 환영합니다, [고객명]님!';
+        body = `안녕하세요, [고객명]님.\n\nKloser에 가입해 주셔서 감사합니다. 영업팀의 일상이 어떻게 달라지는지, 5분 가이드로 빠르게 시작해 보세요.\n\n• 1단계: 데스크톱 앱 설치\n• 2단계: 회사 가이드 업로드\n• 3단계: 첫 통화에서 AI 추천 받기\n\n언제든 도움이 필요하시면 회신 주세요.\n\n— Kloser 팀 드림`;
+      } else if (lower.includes('업데이트') || lower.includes('월간')) {
+        subject = '📬 Kloser 5월 업데이트 — 새로운 통합 기능';
+        body = `안녕하세요, [고객명]님.\n\n이번 달 Kloser가 더 강력해졌습니다.\n\n• HubSpot · Salesforce 양방향 동기화 정식 출시\n• 통화 후 자동 메모 정확도 12% 향상\n• Slack 알림 통합\n\n자세한 내용은 [업데이트 노트]에서 확인하실 수 있어요.\n\n— Kloser 팀 드림`;
+      } else if (lower.includes('웨비나') || lower.includes('초대')) {
+        subject = '🎙 Kloser 웨비나 초대 — AI로 영업 다시 그리기';
+        body = `안녕하세요, [고객명]님.\n\n5월 12일(목) 14시, 한국 B2B 영업의 5가지 변화를 함께 살펴보는 무료 웨비나에 초대드립니다.\n\n• 일시: 2026년 5월 12일 14:00 ~ 15:00\n• 형식: 온라인 (Zoom)\n• 참가비: 무료\n\n[참가 신청] 버튼을 눌러 자리를 확보하세요.\n\n— Kloser 팀 드림`;
+      } else if (lower.includes('갱신') || lower.includes('구독')) {
+        subject = '⏰ [고객명]님, 구독 갱신 안내';
+        body = `안녕하세요, [고객명]님.\n\nKloser Pro 구독이 30일 후 자동 갱신됩니다.\n\n• 갱신일: 2026년 6월 3일\n• 결제 금액: 49,000원 (회사/월)\n• 연간 결제 시 20% 할인 적용 가능\n\n계정 페이지에서 결제 방식과 플랜을 변경하실 수 있어요.\n\n— Kloser 팀 드림`;
+      } else {
+        subject = `메일 초안: ${prompt.slice(0, 30)}…`;
+        body = `안녕하세요, [고객명]님.\n\n요청하신 내용에 맞춰 초안을 작성했습니다. 필요한 부분을 수정해 주세요.\n\n${prompt}\n\n— Kloser 팀 드림`;
+      }
+      return { subject, body };
+    }
+
+    function appendDraft(prompt, override) {
+      const { subject, body } = override || generateDraft(prompt);
+      const w = document.createElement('div');
+      w.className = 'flex gap-2.5 msg-enter';
+      w.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[.6rem] font-black text-white shrink-0">AI</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-[.72rem] font-bold text-blue-700 mb-1">Kloser AI</div>
+          <div class="rounded-xl border border-blue-200 bg-white p-3.5 max-w-[95%] shadow-sm">
+            <div class="text-[.6rem] font-black uppercase tracking-wider text-blue-700 mb-2 flex items-center gap-1.5">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+              생성된 초안
+            </div>
+            <div class="text-[.78rem] font-bold text-slate-800 mb-1.5 draft-subject"></div>
+            <div class="text-[.78rem] text-slate-700 leading-relaxed whitespace-pre-line border-t border-slate-100 pt-2.5 draft-body"></div>
+            <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
+              <button class="send-btn text-[.7rem] px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1 transition-colors">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                발송
+              </button>
+              <button class="save-btn text-[.7rem] px-2.5 py-1 rounded border border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-colors">템플릿 저장</button>
+              <button class="edit-btn text-[.7rem] px-2.5 py-1 rounded border border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-colors flex items-center gap-1">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                수정
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      w.querySelector('.draft-subject').textContent = subject;
+      w.querySelector('.draft-body').textContent = body;
+      const sendBtn = w.querySelector('.send-btn');
+      const subjectEl = w.querySelector('.draft-subject');
+      const bodyEl = w.querySelector('.draft-body');
+      sendBtn.addEventListener('click', () => openSendModal(subjectEl.textContent, bodyEl.textContent));
+      w.querySelector('.save-btn').addEventListener('click', () => showToast('템플릿으로 저장되었습니다'));
+      w.querySelector('.edit-btn').addEventListener('click', () => openEditModal(subjectEl, bodyEl));
+      chatEl.appendChild(w);
+      chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' });
+    }
+
+    function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      appendUser(text);
+      inputEl.value = '';
+      appendTyping();
+      setTimeout(() => {
+        removeTyping();
+        appendAi(`<div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-[.85rem] text-slate-700 leading-relaxed max-w-[95%]">요청하신 내용으로 초안을 작성했어요. 수신자 그룹과 발송 일정을 함께 알려주시면 더 정교하게 다듬어 드릴게요.</div>`);
+        setTimeout(() => appendDraft(text), 600);
+      }, 1000);
+    }
+
+    function sendPrompt(text) {
+      inputEl.value = text;
+      sendMessage();
+    }
+
+    window.sendMessage = sendMessage; window.sendPrompt = sendPrompt;
+
+    // ----- Send modal -----
+    const sendModal = document.getElementById('sendModal');
+    const recipientRadios = () => document.querySelectorAll('input[name="recipient"]');
+    const sendBtnLabel = document.getElementById('sendBtnLabel');
+
+    function updateSendBtnLabel() {
+      const sel = document.querySelector('input[name="recipient"]:checked');
+      if (!sel) return;
+      const count = Number(sel.value).toLocaleString();
+      const when = document.querySelector('input[name="when"]:checked')?.value;
+      sendBtnLabel.textContent = when === 'scheduled' ? `${count}명에게 예약` : `${count}명에게 발송`;
+    }
+
+    recipientRadios().forEach(r => r.addEventListener('change', updateSendBtnLabel));
+
+    function onWhenChange() {
+      const when = document.querySelector('input[name="when"]:checked').value;
+      const at = document.getElementById('scheduleAt');
+      at.disabled = when !== 'scheduled';
+      if (when === 'scheduled' && !at.value) {
+        const d = new Date(Date.now() + 60 * 60 * 1000);
+        d.setMinutes(0, 0, 0);
+        const pad = n => String(n).padStart(2, '0');
+        at.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+      updateSendBtnLabel();
+    }
+    window.onWhenChange = onWhenChange;
+
+    function openSendModal(subject, body) {
+      document.getElementById('sendPreviewSubject').textContent = subject || '제목 없음';
+      document.getElementById('sendPreviewBody').textContent = (body || '').replace(/\n/g, ' ');
+      document.getElementById('sendStep1').style.display = '';
+      document.getElementById('sendStep2').style.display = 'none';
+      document.getElementById('sendStep3').style.display = 'none';
+      document.querySelector('input[name="recipient"][value="2486"]').checked = true;
+      document.querySelector('input[name="when"][value="now"]').checked = true;
+      document.getElementById('scheduleAt').disabled = true;
+      updateSendBtnLabel();
+      sendModal.classList.add('show');
+    }
+
+    function closeSendModal() { sendModal.classList.remove('show'); }
+    window.openSendModal = openSendModal;
+    window.closeSendModal = closeSendModal;
+
+    function confirmSend() {
+      const sel = document.querySelector('input[name="recipient"]:checked');
+      const total = Number(sel.value);
+      const label = sel.dataset.label;
+      const when = document.querySelector('input[name="when"]:checked').value;
+
+      if (when === 'scheduled') {
+        const at = document.getElementById('scheduleAt').value;
+        if (!at) { showToast('예약 시간을 선택해 주세요'); return; }
+        closeSendModal();
+        const d = new Date(at);
+        const fmt = `${d.getMonth()+1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        showToast(`${fmt}에 ${total.toLocaleString()}명 예약됨`);
+        return;
+      }
+
+      // immediate send animation
+      document.getElementById('sendStep1').style.display = 'none';
+      document.getElementById('sendStep2').style.display = '';
+      document.getElementById('sendTotal').textContent = total.toLocaleString();
+
+      const bar = document.getElementById('sendBar');
+      const prog = document.getElementById('sendProgress');
+      const startedAt = performance.now();
+      const duration = 1800;
+
+      function tick(now) {
+        const t = Math.min(1, (now - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - t, 2.2);
+        const sent = Math.floor(eased * total);
+        prog.textContent = sent.toLocaleString();
+        bar.style.width = (eased * 100).toFixed(1) + '%';
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          prog.textContent = total.toLocaleString();
+          bar.style.width = '100%';
+          setTimeout(() => {
+            document.getElementById('sendStep2').style.display = 'none';
+            document.getElementById('sendStep3').style.display = '';
+            document.getElementById('sentTotal').textContent = total.toLocaleString();
+            document.getElementById('statSent').textContent = total.toLocaleString();
+            showToast(`${label} ${total.toLocaleString()}명에게 발송됨`);
+          }, 380);
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    window.confirmSend = confirmSend;
+
+    // ----- Campaigns + pagination -----
+    const campaigns = [
+      { id: 1, status: 'sent', date: '5월 1일', schedule: null, title: 'Kloser 5월 업데이트 — 새로운 통합 기능 안내', preview: 'HubSpot · Salesforce 양방향 동기화 정식 출시 안내드립니다.', recipients: 1245, group: '전체 고객', delivery: 98.2, open: 52.1, click: 14.3, bounced: 22, unsub: 4, subject: '📬 Kloser 5월 업데이트 — 새로운 통합 기능', body: '안녕하세요, [고객명]님.\n\n이번 달 Kloser가 더 강력해졌습니다.\n\n• HubSpot · Salesforce 양방향 동기화 정식 출시\n• 통화 후 자동 메모 정확도 12% 향상\n• Slack 알림 통합\n\n자세한 내용은 [업데이트 노트]에서 확인하실 수 있어요.\n\n— Kloser 팀 드림' },
+      { id: 2, status: 'scheduled', date: '5월 8일 09:00', schedule: '5월 8일 09:00', title: 'Kloser 분기 인사이트 리포트 — VIP 한정', preview: '분기별 영업 데이터 분석 리포트', recipients: 487, group: 'VIP 고객', subject: '[VIP] 분기 인사이트 리포트 — 5월호', body: '안녕하세요, [고객명]님.\n\nVIP 고객님께만 분기별로 보내드리는 영업 인사이트 리포트입니다.\n\n— Kloser 팀 드림' },
+      { id: 3, status: 'scheduled', date: '5월 5일 09:00', schedule: '5월 5일 09:00', title: '제2회 영업팀 AI 활용 웨비나 초대', preview: '5월 12일 14시 · 무료 등록 안내', recipients: 487, group: 'VIP 고객', subject: '🎙 Kloser 웨비나 초대 — AI로 영업 다시 그리기', body: '안녕하세요, [고객명]님.\n\n5월 12일(목) 14시, 한국 B2B 영업의 5가지 변화를 함께 살펴보는 무료 웨비나에 초대드립니다.\n\n— Kloser 팀 드림' },
+      { id: 4, status: 'sent', date: '4월 28일', schedule: null, title: '고객 사례: TerraBase의 도입 후기', preview: '통화 분석으로 응답률 15% 개선한 실제 사례', recipients: 982, group: '활성 고객', delivery: 96.8, open: 48.6, click: 9.7, bounced: 31, unsub: 6, subject: '📈 TerraBase는 어떻게 응답률 15%를 끌어올렸나', body: '안녕하세요, [고객명]님.\n\nTerraBase 영업팀이 Kloser로 단 60일 만에 응답률을 15% 개선한 과정을 정리했습니다.\n\n— Kloser 팀 드림' },
+      { id: 5, status: 'sent', date: '4월 22일', schedule: null, title: '[Q2] 영업 트렌드 리포트', preview: '한국 B2B 영업의 5가지 변화', recipients: 2142, group: '전체 고객', delivery: 97.9, open: 62.4, click: 21.0, bounced: 45, unsub: 8, subject: '📊 [Q2] 영업 트렌드 리포트 — 한국 B2B의 5가지 변화', body: '안녕하세요, [고객명]님.\n\n2분기 한국 B2B 영업 트렌드를 5가지 키워드로 정리했습니다.\n\n— Kloser 팀 드림' },
+      { id: 6, status: 'sent', date: '4월 18일', schedule: null, title: '신기능 출시: 통화 자동 요약 v2', preview: '12% 더 정확한 메모, 액션 아이템 추출', recipients: 1198, group: '활성 고객', delivery: 98.5, open: 54.2, click: 16.8, bounced: 18, unsub: 3, subject: '🚀 통화 요약 v2 — 더 정확하게, 더 빠르게', body: '안녕하세요, [고객명]님.\n\n오랜 베타 기간을 거쳐 통화 자동 요약 v2가 정식 출시되었습니다.\n\n— Kloser 팀 드림' },
+      { id: 7, status: 'sent', date: '4월 15일', schedule: null, title: 'Kloser 4월 업데이트', preview: '월간 변경사항 모음', recipients: 1820, group: '전체 고객', delivery: 97.6, open: 49.8, click: 13.1, bounced: 44, unsub: 7, subject: '📬 Kloser 4월 업데이트', body: '안녕하세요, [고객명]님.\n\n4월 한 달간의 변경사항을 정리했습니다.\n\n— Kloser 팀 드림' },
+      { id: 8, status: 'sent', date: '4월 10일', schedule: null, title: '영업 가이드 #6: 첫 통화 60초 룰', preview: '인트로의 골든 윈도우 활용법', recipients: 1672, group: '활성 고객', delivery: 98.1, open: 56.3, click: 18.4, bounced: 32, unsub: 4, subject: '⏱ 첫 60초가 결정한다 — 영업 가이드 #6', body: '안녕하세요, [고객명]님.\n\n첫 통화의 60초를 어떻게 쓰느냐에 따라 결과가 달라집니다.\n\n— Kloser 팀 드림' },
+      { id: 9, status: 'sent', date: '4월 4일', schedule: null, title: '신규 가입자 환영 시리즈 #2', preview: '첫 주 사용 가이드와 팁 5선', recipients: 234, group: '신규 가입자', delivery: 99.1, open: 71.4, click: 28.3, bounced: 2, unsub: 1, subject: '🎉 [고객명]님, 첫 주는 어떠셨나요?', body: '안녕하세요, [고객명]님.\n\n가입한 지 일주일이 지났습니다. 핵심 기능을 잘 활용하고 계신지 점검해 보세요.\n\n— Kloser 팀 드림' },
+      { id: 10, status: 'sent', date: '3월 28일', schedule: null, title: '고객 사례: 노바리테일 효율화 23%', preview: '주간 통화 70건을 자동 분석한 후기', recipients: 1054, group: '활성 고객', delivery: 96.2, open: 47.1, click: 11.5, bounced: 40, unsub: 5, subject: '📈 노바리테일 — 주 70통 통화를 자동 분석한 결과', body: '안녕하세요, [고객명]님.\n\n노바리테일 영업팀이 Kloser로 효율을 23% 끌어올린 과정을 공유합니다.\n\n— Kloser 팀 드림' },
+      { id: 11, status: 'sent', date: '3월 22일', schedule: null, title: '웨비나: AI 영업 자동화 입문', preview: '실시간 데모 + Q&A 1시간', recipients: 412, group: 'VIP 고객', delivery: 99.0, open: 68.2, click: 24.5, bounced: 4, unsub: 1, subject: '🎙 AI 영업 자동화 입문 — 3월 28일 14시', body: '안녕하세요, [고객명]님.\n\nAI 영업 자동화의 기초부터 실무 활용까지 1시간 만에 정리해 드리는 웨비나입니다.\n\n— Kloser 팀 드림' },
+      { id: 12, status: 'sent', date: '3월 18일', schedule: null, title: '결제 수단 갱신 안내 (재발송)', preview: '카드 만료 임박 고객 대상', recipients: 187, group: '결제 만료 임박', delivery: 95.8, open: 78.3, click: 32.1, bounced: 7, unsub: 0, subject: '💳 [고객명]님, 결제 수단 만료가 임박했습니다', body: '안녕하세요, [고객명]님.\n\n등록된 카드의 만료가 임박했습니다. 갱신을 부탁드립니다.\n\n— Kloser 팀 드림' },
+      { id: 13, status: 'sent', date: '3월 15일', schedule: null, title: 'Kloser 3월 업데이트', preview: '리포트 v3, 새 권한 모델', recipients: 1762, group: '전체 고객', delivery: 97.8, open: 51.2, click: 14.6, bounced: 38, unsub: 5, subject: '📬 Kloser 3월 업데이트', body: '안녕하세요, [고객명]님.\n\n3월 변경사항을 정리했습니다.\n\n— Kloser 팀 드림' },
+      { id: 14, status: 'sent', date: '3월 10일', schedule: null, title: '영업 가이드 #5: 거절 응대 5단계', preview: '"검토해 보겠습니다"를 살리는 법', recipients: 1591, group: '활성 고객', delivery: 98.4, open: 58.7, click: 22.1, bounced: 24, unsub: 3, subject: '🙅 "검토해 보겠습니다" 다시 살리기 — 영업 가이드 #5', body: '안녕하세요, [고객명]님.\n\n거절을 받았을 때 영업이 다시 살아나는 5단계 시퀀스를 정리했습니다.\n\n— Kloser 팀 드림' },
+      { id: 15, status: 'sent', date: '3월 4일', schedule: null, title: '[한정] 연간 결제 20% 할인', preview: '3월 한 달 한정 프로모션', recipients: 1820, group: '전체 고객', delivery: 97.0, open: 64.2, click: 26.8, bounced: 52, unsub: 9, subject: '🎁 연간 결제 20% 할인 — 3월 한정', body: '안녕하세요, [고객명]님.\n\n연간 결제로 전환하시면 20% 할인 혜택을 받으실 수 있습니다.\n\n— Kloser 팀 드림' },
+      { id: 16, status: 'sent', date: '2월 26일', schedule: null, title: '신기능: 슬랙 알림 통합', preview: '통화 직후 채널로 자동 요약 전송', recipients: 1342, group: '활성 고객', delivery: 98.2, open: 53.4, click: 19.7, bounced: 22, unsub: 4, subject: '🔔 통화 후 슬랙으로 즉시 요약 — 신기능', body: '안녕하세요, [고객명]님.\n\nSlack 통합으로 통화 직후 채널에 자동 요약이 도착합니다.\n\n— Kloser 팀 드림' },
+      { id: 17, status: 'sent', date: '2월 22일', schedule: null, title: '휴면 고객 재참여 캠페인', preview: '30일 이상 미접속 고객 대상', recipients: 286, group: '휴면 고객', delivery: 94.1, open: 38.6, click: 9.2, bounced: 15, unsub: 11, subject: '👋 [고객명]님, 오랜만이에요', body: '안녕하세요, [고객명]님.\n\n오랜만에 인사드립니다. 그동안 Kloser가 어떻게 달라졌는지 짧게 정리했어요.\n\n— Kloser 팀 드림' },
+      { id: 18, status: 'sent', date: '2월 18일', schedule: null, title: '고객 사례: 디지털커머스 성장사', preview: '초기 스타트업의 6개월 성장기', recipients: 1041, group: '활성 고객', delivery: 96.9, open: 45.3, click: 10.7, bounced: 28, unsub: 6, subject: '📈 디지털커머스 — 6개월 만에 ARR 3배', body: '안녕하세요, [고객명]님.\n\n디지털커머스 팀이 6개월 만에 ARR을 3배로 끌어올린 과정을 공유합니다.\n\n— Kloser 팀 드림' },
+      { id: 19, status: 'sent', date: '2월 14일', schedule: null, title: '발렌타인 특별 인사 — 영업의 본질', preview: '관계의 메일', recipients: 1820, group: '전체 고객', delivery: 97.4, open: 61.8, click: 15.2, bounced: 41, unsub: 6, subject: '💌 영업은 결국 관계입니다', body: '안녕하세요, [고객명]님.\n\n발렌타인 데이를 맞아, 영업의 본질에 대한 짧은 글을 보내드립니다.\n\n— Kloser 팀 드림' },
+      { id: 20, status: 'sent', date: '2월 10일', schedule: null, title: 'Kloser 2월 업데이트', preview: '2월 한달 변경사항', recipients: 1798, group: '전체 고객', delivery: 97.2, open: 50.4, click: 13.8, bounced: 42, unsub: 5, subject: '📬 Kloser 2월 업데이트', body: '안녕하세요, [고객명]님.\n\n2월의 변경사항을 정리했습니다.\n\n— Kloser 팀 드림' },
+      { id: 21, status: 'sent', date: '2월 4일', schedule: null, title: '영업 가이드 #4: 후속 메일 템플릿 5종', preview: '실제로 답변이 오는 메일 양식', recipients: 1612, group: '활성 고객', delivery: 98.0, open: 57.4, click: 23.1, bounced: 26, unsub: 3, subject: '✉️ 답이 오는 후속 메일 5종 — 영업 가이드 #4', body: '안녕하세요, [고객명]님.\n\n실제 응답률이 검증된 후속 메일 5종을 모았습니다.\n\n— Kloser 팀 드림' },
+      { id: 22, status: 'sent', date: '1월 30일', schedule: null, title: '[Q1] 영업 트렌드 리포트', preview: '1분기 데이터 정리', recipients: 2098, group: '전체 고객', delivery: 97.7, open: 60.3, click: 19.5, bounced: 47, unsub: 8, subject: '📊 [Q1] 영업 트렌드 리포트', body: '안녕하세요, [고객명]님.\n\n1분기 한국 B2B 영업 데이터를 정리했습니다.\n\n— Kloser 팀 드림' },
+      { id: 23, status: 'sent', date: '1월 26일', schedule: null, title: '신기능: 다국어 통화 분석 (영/일)', preview: '영문·일문 통화 자동 분석 지원', recipients: 1284, group: '활성 고객', delivery: 98.3, open: 52.6, click: 17.8, bounced: 21, unsub: 3, subject: '🌐 영어 · 일본어 통화 자동 분석 — 신기능', body: '안녕하세요, [고객명]님.\n\n해외 영업팀의 요청이 많았던 다국어 통화 분석이 출시되었습니다.\n\n— Kloser 팀 드림' },
+      { id: 24, status: 'sent', date: '1월 22일', schedule: null, title: '웨비나 후속: 자료 + Q&A 다시보기', preview: '참석자 대상 자료 공유', recipients: 312, group: '웨비나 참석자', delivery: 99.0, open: 81.7, click: 41.2, bounced: 3, unsub: 0, subject: '📨 웨비나 자료 & Q&A 다시보기', body: '안녕하세요, [고객명]님.\n\n참석해 주셔서 감사드립니다. 발표 자료와 Q&A 영상을 공유드립니다.\n\n— Kloser 팀 드림' },
+      { id: 25, status: 'sent', date: '1월 18일', schedule: null, title: 'Kloser 1월 업데이트', preview: '신년 첫 업데이트', recipients: 1734, group: '전체 고객', delivery: 97.5, open: 49.2, click: 13.2, bounced: 39, unsub: 6, subject: '📬 Kloser 1월 업데이트', body: '안녕하세요, [고객명]님.\n\n2026년 첫 업데이트입니다.\n\n— Kloser 팀 드림' },
+      { id: 26, status: 'sent', date: '1월 14일', schedule: null, title: '신년 인사 — 2026년 영업의 변화', preview: '신년 메시지', recipients: 1798, group: '전체 고객', delivery: 97.6, open: 63.1, click: 16.4, bounced: 38, unsub: 4, subject: '🎊 새해 복 많이 받으세요, [고객명]님', body: '안녕하세요, [고객명]님.\n\n2026년 새해 복 많이 받으세요. 올해 영업의 변화를 함께 짚어봅니다.\n\n— Kloser 팀 드림' },
+      { id: 27, status: 'sent', date: '1월 8일', schedule: null, title: '영업 가이드 #3: KPI 다시 짜기', preview: '연초 목표 설정 프레임', recipients: 1542, group: '활성 고객', delivery: 98.0, open: 54.7, click: 21.3, bounced: 28, unsub: 4, subject: '🎯 새해 KPI, 다시 짜는 법 — 영업 가이드 #3', body: '안녕하세요, [고객명]님.\n\n연초에 영업 KPI를 다시 짜는 5단계 프레임을 공유합니다.\n\n— Kloser 팀 드림' },
+      { id: 28, status: 'sent', date: '1월 4일', schedule: null, title: '결제 갱신 안내 (12월 만료자)', preview: '연간 결제 만료 고객 대상', recipients: 142, group: '갱신 대상', delivery: 96.4, open: 76.8, click: 35.2, bounced: 5, unsub: 0, subject: '💳 [고객명]님, 연간 결제 갱신 안내', body: '안녕하세요, [고객명]님.\n\n작년에 등록하신 연간 결제가 갱신을 앞두고 있습니다.\n\n— Kloser 팀 드림' },
+      { id: 29, status: 'sent', date: '12월 28일', schedule: null, title: '연말 결산 리포트', preview: '2025년 한 해 요약', recipients: 1882, group: '전체 고객', delivery: 97.3, open: 67.2, click: 22.8, bounced: 51, unsub: 7, subject: '🎁 [고객명]님의 2025년 영업 결산 리포트', body: '안녕하세요, [고객명]님.\n\n2025년 한 해 동안의 영업 활동을 한 페이지로 정리해 드립니다.\n\n— Kloser 팀 드림' },
+      { id: 30, status: 'sent', date: '12월 20일', schedule: null, title: '신기능: 모바일 앱 베타 오픈', preview: 'iOS · Android 베타 신청 안내', recipients: 1346, group: '활성 고객', delivery: 98.4, open: 58.9, click: 28.6, bounced: 21, unsub: 2, subject: '📱 Kloser 모바일 앱 베타 — 베타 테스터 모집', body: '안녕하세요, [고객명]님.\n\n오랫동안 요청 주신 모바일 앱이 드디어 베타로 공개됩니다.\n\n— Kloser 팀 드림' },
+      { id: 31, status: 'sent', date: '12월 14일', schedule: null, title: 'Kloser 12월 업데이트', preview: '연말 마지막 업데이트', recipients: 1712, group: '전체 고객', delivery: 97.4, open: 50.1, click: 13.7, bounced: 40, unsub: 5, subject: '📬 Kloser 12월 업데이트', body: '안녕하세요, [고객명]님.\n\n12월 한 달간의 변경사항입니다.\n\n— Kloser 팀 드림' },
+      { id: 32, status: 'sent', date: '12월 8일', schedule: null, title: '고객 사례 모음 — 2025 베스트 5', preview: '한 해 동안 가장 많이 읽힌 사례', recipients: 1820, group: '전체 고객', delivery: 97.7, open: 55.6, click: 18.2, bounced: 38, unsub: 4, subject: '⭐ 2025년 가장 많이 읽힌 고객 사례 베스트 5', body: '안녕하세요, [고객명]님.\n\n2025년 한 해 동안 가장 많이 읽힌 고객 사례 5편을 모았습니다.\n\n— Kloser 팀 드림' },
+    ];
+
+    const PER_PAGE = 8;
+    let campPage = 1;
+    const campListEl = document.getElementById('campaignList');
+    const campTotalEl = document.getElementById('campTotal');
+    const campTotalLabelEl = document.getElementById('campTotalLabel');
+    const campRangeEl = document.getElementById('campRange');
+    const paginationEl = document.getElementById('pagination');
+
+    function statusBadge(status) {
+      if (status === 'sent') return '<span class="badge badge-emerald">전송 완료</span>';
+      if (status === 'scheduled') return '<span class="badge badge-blue">발송 예약</span>';
+      return '<span class="badge badge-amber">대기</span>';
+    }
+
+    function renderCampaigns() {
+      const total = campaigns.length;
+      const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+      campPage = Math.min(campPage, totalPages);
+      const start = (campPage - 1) * PER_PAGE;
+      const end = Math.min(start + PER_PAGE, total);
+      const slice = campaigns.slice(start, end);
+
+      campTotalEl.textContent = total.toLocaleString();
+      campTotalLabelEl.textContent = total.toLocaleString();
+      campRangeEl.textContent = total === 0 ? '0-0' : `${start + 1}-${end}`;
+
+      campListEl.innerHTML = slice.map(c => `
+        <button data-id="${c.id}" class="campaign-card w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-colors flex items-center gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              ${statusBadge(c.status)}
+              <span class="text-[.65rem] text-slate-400">${c.status === 'scheduled' ? c.schedule + ' 예정' : c.date + ' 발송'}</span>
+            </div>
+            <div class="font-bold text-slate-800 text-[.88rem] truncate">${c.title}</div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[.78rem] font-bold text-slate-800 tnum">${c.recipients.toLocaleString()}</div>
+            <div class="text-[.62rem] text-slate-400">${c.status === 'scheduled' ? '대상' : '수신자'}</div>
+          </div>
+          <svg class="text-slate-300 shrink-0" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      `).join('');
+
+      campListEl.querySelectorAll('.campaign-card').forEach(el => {
+        el.addEventListener('click', () => openCampaignModal(Number(el.dataset.id)));
+      });
+
+      renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+      if (totalPages <= 1) { paginationEl.innerHTML = ''; return; }
+      const pages = [];
+      const window = 1;
+      for (let p = 1; p <= totalPages; p++) {
+        const near = Math.abs(p - campPage) <= window;
+        const edge = p === 1 || p === totalPages;
+        if (near || edge) pages.push(p);
+        else if (pages[pages.length - 1] !== '…') pages.push('…');
+      }
+      const btn = (label, page, active = false, disabled = false) => `
+        <button data-page="${page}" class="page-btn h-7 min-w-[28px] px-2 rounded-md text-[.72rem] font-bold tnum transition-colors
+          ${active ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}
+          ${disabled ? 'opacity-30 cursor-not-allowed' : ''}">${label}</button>`;
+      paginationEl.innerHTML =
+        btn('‹', campPage - 1, false, campPage === 1) +
+        pages.map(p => p === '…'
+          ? `<span class="px-1 text-[.72rem] text-slate-400">…</span>`
+          : btn(String(p), p, p === campPage)).join('') +
+        btn('›', campPage + 1, false, campPage === totalPages);
+
+      paginationEl.querySelectorAll('.page-btn').forEach(el => {
+        el.addEventListener('click', () => {
+          const p = Number(el.dataset.page);
+          if (!p || p < 1 || p > totalPages || p === campPage) return;
+          campPage = p;
+          renderCampaigns();
+        });
+      });
+    }
+
+    // ----- Campaign detail modal -----
+    const campaignModal = document.getElementById('campaignModal');
+    const campaignModalContent = document.getElementById('campaignModalContent');
+
+    function openCampaignModal(id) {
+      const c = campaigns.find(x => x.id === id);
+      if (!c) return;
+      campaignModalContent.innerHTML = renderCampaignDetail(c);
+      campaignModal.classList.add('show');
+    }
+    function closeCampaignModal() { campaignModal.classList.remove('show'); }
+    window.closeCampaignModal = closeCampaignModal;
+
+    function renderCampaignDetail(c) {
+      const isSent = c.status === 'sent';
+      const delivered = isSent ? Math.round(c.recipients * c.delivery / 100) : 0;
+      const opened = isSent ? Math.round(c.recipients * c.open / 100) : 0;
+      const clicked = isSent ? Math.round(c.recipients * c.click / 100) : 0;
+      const escapedBody = c.body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const escapedSubject = c.subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      return `
+        <div class="px-6 py-5 border-b border-slate-200 flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+              ${statusBadge(c.status)}
+              <span class="text-[.7rem] text-slate-500 tnum">${c.status === 'scheduled' ? c.schedule + ' 예정' : c.date + ' 발송'}</span>
+              <span class="text-slate-300">·</span>
+              <span class="text-[.7rem] text-slate-500">${c.group}</span>
+            </div>
+            <h2 class="text-[1.05rem] font-black tracking-tight text-slate-800 leading-snug">${c.title}</h2>
+            <p class="text-[.78rem] text-slate-500 mt-1">${c.preview}</p>
+          </div>
+          <button onclick="closeCampaignModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors shrink-0">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="max-h-[65vh] overflow-y-auto scroll-area">
+          ${isSent ? `
+          <div class="px-6 py-5 border-b border-slate-100">
+            <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-500 mb-3">발송 결과</div>
+            <div class="grid grid-cols-4 gap-2">
+              <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5">
+                <div class="text-[.62rem] font-bold text-slate-500 mb-1">수신자</div>
+                <div class="text-[1.05rem] font-black tnum text-slate-800">${c.recipients.toLocaleString()}</div>
+              </div>
+              <div class="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+                <div class="text-[.62rem] font-bold text-emerald-700 mb-1">전달</div>
+                <div class="text-[1.05rem] font-black tnum text-emerald-700">${c.delivery}%</div>
+              </div>
+              <div class="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5">
+                <div class="text-[.62rem] font-bold text-blue-700 mb-1">오픈</div>
+                <div class="text-[1.05rem] font-black tnum text-blue-700">${c.open}%</div>
+              </div>
+              <div class="rounded-lg bg-violet-50 border border-violet-100 px-3 py-2.5">
+                <div class="text-[.62rem] font-bold text-violet-700 mb-1">클릭</div>
+                <div class="text-[1.05rem] font-black tnum text-violet-700">${c.click}%</div>
+              </div>
+            </div>
+            <div class="mt-4 space-y-2.5">
+              <div>
+                <div class="flex items-center justify-between text-[.7rem] mb-1">
+                  <span class="font-bold text-slate-600">전달됨</span>
+                  <span class="tnum text-slate-500">${delivered.toLocaleString()}명</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-emerald-500" style="width:${c.delivery}%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-[.7rem] mb-1">
+                  <span class="font-bold text-slate-600">오픈됨</span>
+                  <span class="tnum text-slate-500">${opened.toLocaleString()}명</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-blue-500" style="width:${c.open}%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-[.7rem] mb-1">
+                  <span class="font-bold text-slate-600">링크 클릭</span>
+                  <span class="tnum text-slate-500">${clicked.toLocaleString()}명</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-violet-500" style="width:${c.click}%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          ` : `
+          <div class="px-6 py-5 border-b border-slate-100">
+            <div class="rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-3.5 flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0">
+                <svg width="14" height="14" fill="none" stroke="rgb(37 99 235)" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              </div>
+              <div class="flex-1">
+                <div class="text-[.62rem] font-black uppercase tracking-wider text-blue-700 mb-1">예약된 발송</div>
+                <div class="text-[.92rem] font-black text-slate-800 mb-0.5 tnum">${c.schedule}</div>
+                <div class="text-[.72rem] text-slate-600">${c.recipients.toLocaleString()}명에게 자동으로 발송됩니다 · 그룹: ${c.group}</div>
+              </div>
+            </div>
+          </div>
+          `}
+
+          <div class="px-6 py-5 border-b border-slate-100">
+            <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-500 mb-2">메일 내용</div>
+            <div class="rounded-xl border border-slate-200 bg-white">
+              <div class="px-4 py-3 border-b border-slate-100">
+                <div class="text-[.62rem] font-bold text-slate-500 mb-0.5">제목</div>
+                <div class="text-[.88rem] font-bold text-slate-800">${escapedSubject}</div>
+              </div>
+              <div class="px-4 py-3">
+                <div class="text-[.62rem] font-bold text-slate-500 mb-1.5">본문</div>
+                <pre class="text-[.78rem] text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">${escapedBody}</pre>
+              </div>
+            </div>
+          </div>
+
+          ${isSent ? `
+          <div class="px-6 py-5">
+            <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-500 mb-2">상세 지표</div>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-[.78rem]">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-2"><span class="text-slate-500">발신</span><span class="font-bold text-slate-800">noreply@kloser.com</span></div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-2"><span class="text-slate-500">수신자 그룹</span><span class="font-bold text-slate-800">${c.group}</span></div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-2"><span class="text-slate-500">반송</span><span class="font-bold text-slate-800 tnum">${c.bounced}명</span></div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-2"><span class="text-slate-500">수신거부</span><span class="font-bold text-slate-800 tnum">${c.unsub}명</span></div>
+            </div>
+          </div>
+          ` : ''}
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+          ${isSent
+            ? `<button onclick="closeCampaignModal()" class="btn-primary">닫기</button>`
+            : `<button onclick="closeCampaignModal()" class="btn-secondary">닫기</button>
+               <button onclick="showToast('지금 발송을 시작했습니다')" class="btn-primary">
+                 <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                 지금 즉시 발송
+               </button>`}
+        </div>
+      `;
+    }
+
+    renderCampaigns();
+
+    // ----- Style library -----
+    const styles = [
+      { id: 'minimal',   name: '미니멀 화이트',   desc: '여백 위주의 단순한 본문',           cat: 'modern',  catLabel: '모던',     catBadge: 'badge-blue' },
+      { id: 'gradient',  name: '그라디언트 헤더',  desc: '브랜드 컬러 배너로 시작',          cat: 'modern',  catLabel: '모던',     catBadge: 'badge-blue' },
+      { id: 'card',      name: '하이라이트 카드',  desc: '메인 콘텐츠를 카드로 강조',        cat: 'modern',  catLabel: '모던',     catBadge: 'badge-blue' },
+      { id: 'classic',   name: '클래식 비즈니스',  desc: '전통적인 비즈니스 메일 형식',      cat: 'classic', catLabel: '클래식',   catBadge: 'badge-amber' },
+      { id: 'digest',    name: '뉴스 다이제스트',  desc: '여러 소식을 섹션으로 정리',        cat: 'news',    catLabel: '뉴스',     catBadge: 'badge-violet' },
+      { id: 'event',     name: '이벤트 카드',      desc: '날짜·장소가 한눈에 보이는 행사형', cat: 'event',   catLabel: '이벤트',   catBadge: 'badge-emerald' },
+      { id: 'cta',       name: 'CTA 강조',         desc: '큰 행동 버튼을 가운데 배치',       cat: 'modern',  catLabel: '모던',     catBadge: 'badge-blue' },
+      { id: 'study',     name: '케이스 스터디',    desc: '큰 숫자와 인용으로 사례 강조',     cat: 'content', catLabel: '콘텐츠',   catBadge: 'badge-violet' },
+      { id: 'dark',      name: '다크 모드',        desc: '검정 배경 + 청록 액센트 컬러',    cat: 'modern',  catLabel: '모던',     catBadge: 'badge-blue' },
+      { id: 'split',     name: '스플릿 컬럼',      desc: '좌측 컬러 사이드바 + 본문',       cat: 'modern',  catLabel: '모던',     catBadge: 'badge-blue' },
+      { id: 'pastel',    name: '핑크 파스텔',      desc: '부드러운 그라디언트와 라운드 버튼', cat: 'modern',  catLabel: '모던',     catBadge: 'badge-blue' },
+      { id: 'letter',    name: '레터 편지지',      desc: '베이지 더블 보더 + 손편지 톤',     cat: 'classic', catLabel: '클래식',   catBadge: 'badge-amber' },
+      { id: 'newspaper', name: '신문 스타일',      desc: '더블 보더 + 2단 컬럼 본문',       cat: 'classic', catLabel: '클래식',   catBadge: 'badge-amber' },
+      { id: 'magazine',  name: '매거진 커버',      desc: '큰 헤드라인 + 컬러 분할 배경',    cat: 'news',    catLabel: '뉴스',     catBadge: 'badge-violet' },
+      { id: 'weekly3',   name: '주간 3컬럼',       desc: '카테고리별 컬러 코드 3분할',      cat: 'news',    catLabel: '뉴스',     catBadge: 'badge-violet' },
+      { id: 'ticket',    name: '티켓 스타일',      desc: '점선 절취선 + 티켓 디자인',       cat: 'event',   catLabel: '이벤트',   catBadge: 'badge-emerald' },
+      { id: 'countdown', name: '카운트다운',       desc: '큰 D-DAY 숫자 강조',             cat: 'event',   catLabel: '이벤트',   catBadge: 'badge-emerald' },
+      { id: 'quote',     name: '인용 강조',        desc: '큰 따옴표로 고객 후기 강조',       cat: 'content', catLabel: '콘텐츠',   catBadge: 'badge-violet' },
+      { id: 'report',    name: '데이터 리포트',    desc: '지표 카드 + 차트 시각화',         cat: 'content', catLabel: '콘텐츠',   catBadge: 'badge-violet' },
+      { id: 'discount',  name: '할인 배너',        desc: '큰 % 강조 + 그라디언트 배경',     cat: 'promo',   catLabel: '프로모션', catBadge: 'badge-amber' },
+    ];
+
+    // Returns inline-styled HTML for either a thumbnail (compact) or full preview.
+    function renderStyleHTML(id, full = false) {
+      const fs = full ? 1 : 0.45;
+      const px = (n) => `${Math.round(n * fs)}px`;
+      const titleSize = full ? '20px' : '9px';
+      const textSize = full ? '13px' : '6px';
+      const ctaSize = full ? '13px' : '6.5px';
+      const labelSize = full ? '11px' : '5.5px';
+      const ratio = full ? '' : 'aspect-ratio: 4 / 5;';
+
+      const head = (extra = '') => `<div style="font-size:${labelSize}; color:#94a3b8; letter-spacing:1px; font-weight:700; ${extra}">KLOSER</div>`;
+      const lines = (n, color = '#cbd5e1') => Array.from({length:n}, (_,i)=>`<div style="height:${px(6)}; background:${color}; border-radius:${px(4)}; margin-bottom:${px(5)}; width:${[100,90,75,85,60][i%5]}%;"></div>`).join('');
+
+      switch (id) {
+        case 'minimal':
+          return `<div style="background:white; padding:${px(28)}; ${ratio} font-family:Pretendard,sans-serif;">
+            ${head('margin-bottom:'+px(22))}
+            <div style="font-size:${titleSize}; font-weight:900; color:#0f172a; line-height:1.3; margin-bottom:${px(16)};">제품 업데이트 안내</div>
+            ${lines(4)}
+            <div style="margin-top:${px(20)};"><span style="display:inline-block; padding:${px(12)} ${px(20)}; border:${px(2)} solid #2563eb; color:#2563eb; font-weight:700; border-radius:${px(8)}; font-size:${ctaSize};">자세히 보기 →</span></div>
+          </div>`;
+        case 'gradient':
+          return `<div style="background:white; ${ratio} font-family:Pretendard,sans-serif; display:flex; flex-direction:column;">
+            <div style="background:linear-gradient(120deg,#2563eb 0%, #06b6d4 100%); padding:${px(28)} ${px(28)} ${px(34)}; color:white;">
+              <div style="font-size:${labelSize}; letter-spacing:2px; font-weight:800; opacity:.85;">KLOSER</div>
+              <div style="font-size:${titleSize}; font-weight:900; line-height:1.25; margin-top:${px(10)};">5월 신기능 출시</div>
+            </div>
+            <div style="padding:${px(28)}; flex:1;">
+              ${lines(3)}
+              <div style="margin-top:${px(18)};"><span style="display:inline-block; padding:${px(12)} ${px(20)}; background:#0f172a; color:white; font-weight:700; border-radius:${px(8)}; font-size:${ctaSize};">지금 시작하기 →</span></div>
+            </div>
+          </div>`;
+        case 'card':
+          return `<div style="background:#f1f5f9; padding:${px(24)}; ${ratio} font-family:Pretendard,sans-serif;">
+            ${head('text-align:center; margin-bottom:'+px(18))}
+            <div style="background:white; border-radius:${px(14)}; padding:${px(28)}; border-left:${px(5)} solid #2563eb; box-shadow:0 ${px(6)} ${px(20)} -${px(8)} rgba(15,23,42,.15);">
+              <div style="font-size:${titleSize}; font-weight:900; color:#0f172a; line-height:1.3; margin-bottom:${px(14)};">알아두실 핵심</div>
+              ${lines(3)}
+              <div style="margin-top:${px(16)};"><span style="display:inline-block; padding:${px(10)} ${px(18)}; background:#2563eb; color:white; font-weight:700; border-radius:${px(7)}; font-size:${ctaSize};">자세히 보기</span></div>
+            </div>
+          </div>`;
+        case 'classic':
+          return `<div style="background:#fafaf7; padding:${px(28)}; ${ratio} font-family:'Times New Roman',serif;">
+            <div style="text-align:center; padding-bottom:${px(18)}; border-bottom:${px(2)} solid #1e293b;">
+              <div style="font-size:${labelSize}; letter-spacing:3px; color:#1e293b; font-weight:700;">KLOSER</div>
+            </div>
+            <div style="font-size:${titleSize}; font-weight:700; color:#0f172a; text-align:center; margin:${px(22)} 0 ${px(18)}; line-height:1.3;">분기 인사 말씀</div>
+            ${lines(5, '#cbd5e1')}
+            <div style="margin-top:${px(20)}; text-align:center; font-size:${textSize}; color:#475569; font-style:italic;">— Kloser 팀 드림</div>
+          </div>`;
+        case 'digest':
+          const section = (label, accent) => `
+            <div style="margin-bottom:${px(16)};">
+              <div style="display:inline-block; font-size:${labelSize}; padding:${px(3)} ${px(8)}; background:${accent}; color:white; border-radius:${px(4)}; font-weight:700; margin-bottom:${px(8)};">${label}</div>
+              <div style="height:${px(8)}; background:#1e293b; border-radius:${px(4)}; width:80%; margin-bottom:${px(5)};"></div>
+              ${lines(2)}
+            </div>`;
+          return `<div style="background:white; ${ratio} font-family:Pretendard,sans-serif;">
+            <div style="background:#0f172a; padding:${px(20)} ${px(28)};">
+              <div style="font-size:${labelSize}; color:#06b6d4; letter-spacing:2px; font-weight:800;">KLOSER WEEKLY</div>
+              <div style="font-size:${titleSize}; color:white; font-weight:900; margin-top:${px(6)};">이번 주 모아보기</div>
+            </div>
+            <div style="padding:${px(24)} ${px(28)};">
+              ${section('NEW', '#2563eb')}
+              ${section('TIPS', '#7c3aed')}
+              ${section('CASE', '#059669')}
+            </div>
+          </div>`;
+        case 'event':
+          return `<div style="background:linear-gradient(160deg,#fef3c7 0%, #fed7aa 100%); padding:${px(28)}; ${ratio} font-family:Pretendard,sans-serif;">
+            ${head('color:#92400e; margin-bottom:'+px(14))}
+            <div style="display:flex; align-items:center; gap:${px(14)}; margin-bottom:${px(18)};">
+              <div style="background:white; padding:${px(10)} ${px(14)}; border-radius:${px(10)}; text-align:center; box-shadow:0 ${px(4)} ${px(12)} -${px(4)} rgba(146,64,14,.2);">
+                <div style="font-size:${labelSize}; color:#92400e; font-weight:800;">5월</div>
+                <div style="font-size:${titleSize}; color:#78350f; font-weight:900; line-height:1;">12</div>
+              </div>
+              <div>
+                <div style="font-size:${ctaSize}; color:#92400e; font-weight:700;">14:00 — 15:00</div>
+                <div style="font-size:${labelSize}; color:#78350f;">온라인 (Zoom)</div>
+              </div>
+            </div>
+            <div style="font-size:${titleSize}; font-weight:900; color:#451a03; line-height:1.3; margin-bottom:${px(10)};">AI 영업 자동화 웨비나</div>
+            ${lines(2, '#fbbf24')}
+            <div style="margin-top:${px(18)};"><span style="display:inline-block; padding:${px(12)} ${px(22)}; background:#92400e; color:white; font-weight:700; border-radius:${px(8)}; font-size:${ctaSize};">참가 신청 →</span></div>
+          </div>`;
+        case 'cta':
+          return `<div style="background:white; padding:${px(28)}; ${ratio} font-family:Pretendard,sans-serif; text-align:center;">
+            ${head('margin-bottom:'+px(18))}
+            <div style="font-size:${titleSize}; font-weight:900; color:#0f172a; line-height:1.25; margin-bottom:${px(14)};">지금 시작하면<br/>20% 할인</div>
+            ${lines(2, '#cbd5e1')}
+            <div style="margin:${px(24)} auto 0;">
+              <div style="display:inline-block; padding:${px(16)} ${px(36)}; background:linear-gradient(120deg,#dc2626,#f97316); color:white; font-weight:900; border-radius:${px(10)}; font-size:${ctaSize}; box-shadow:0 ${px(8)} ${px(20)} -${px(6)} rgba(220,38,38,.4);">지금 시작하기 →</div>
+            </div>
+            <div style="margin-top:${px(14)}; font-size:${labelSize}; color:#94a3b8;">5월 31일까지 한정</div>
+          </div>`;
+        case 'study':
+          return `<div style="background:white; ${ratio} font-family:Pretendard,sans-serif;">
+            <div style="background:#1e3a8a; color:white; padding:${px(20)} ${px(28)};">
+              <div style="font-size:${labelSize}; color:#93c5fd; letter-spacing:2px; font-weight:800;">CASE STUDY</div>
+              <div style="font-size:${titleSize}; font-weight:900; margin-top:${px(6)}; line-height:1.25;">노바리테일 효율화</div>
+            </div>
+            <div style="padding:${px(24)} ${px(28)};">
+              <div style="display:flex; gap:${px(12)}; margin-bottom:${px(18)};">
+                <div style="flex:1; background:#eff6ff; padding:${px(14)} ${px(12)}; border-radius:${px(8)}; text-align:center;">
+                  <div style="font-size:${titleSize}; font-weight:900; color:#1e3a8a;">+23%</div>
+                  <div style="font-size:${labelSize}; color:#475569; font-weight:600; margin-top:${px(2)};">효율</div>
+                </div>
+                <div style="flex:1; background:#ecfdf5; padding:${px(14)} ${px(12)}; border-radius:${px(8)}; text-align:center;">
+                  <div style="font-size:${titleSize}; font-weight:900; color:#065f46;">60일</div>
+                  <div style="font-size:${labelSize}; color:#475569; font-weight:600; margin-top:${px(2)};">기간</div>
+                </div>
+              </div>
+              ${lines(3)}
+            </div>
+          </div>`;
+        case 'dark':
+          return `<div style="background:#0f172a; padding:${px(28)}; ${ratio} font-family:Pretendard,sans-serif;">
+            <div style="font-size:${labelSize}; color:#06b6d4; letter-spacing:2px; font-weight:800;">KLOSER</div>
+            <div style="font-size:${titleSize}; color:white; font-weight:900; line-height:1.25; margin-top:${px(14)};">신기능 발표</div>
+            <div style="margin:${px(14)} 0;">${lines(3, '#334155')}</div>
+            <div><span style="display:inline-block; padding:${px(12)} ${px(22)}; background:#06b6d4; color:#0f172a; font-weight:900; border-radius:${px(8)}; font-size:${ctaSize};">Try it now →</span></div>
+          </div>`;
+        case 'split':
+          return `<div style="${ratio} font-family:Pretendard,sans-serif; display:flex;">
+            <div style="background:#7c3aed; color:white; padding:${px(20)}; width:38%; display:flex; flex-direction:column; justify-content:space-between;">
+              <div style="font-size:${labelSize}; letter-spacing:2px; font-weight:800; opacity:.85;">KLOSER</div>
+              <div>
+                <div style="font-size:${titleSize}; font-weight:900; line-height:1.1;">5월<br/>호</div>
+                <div style="height:${px(3)}; background:rgba(255,255,255,.5); width:${px(28)}; margin-top:${px(8)};"></div>
+              </div>
+            </div>
+            <div style="background:white; padding:${px(20)}; flex:1;">
+              <div style="font-size:${labelSize}; color:#7c3aed; letter-spacing:1px; font-weight:800; margin-bottom:${px(10)};">FEATURE</div>
+              <div style="font-size:${titleSize}; color:#0f172a; font-weight:900; line-height:1.25; margin-bottom:${px(12)};">제품 인사이트</div>
+              ${lines(3)}
+            </div>
+          </div>`;
+        case 'pastel':
+          return `<div style="background:linear-gradient(160deg, #fce7f3 0%, #fed7aa 100%); padding:${px(28)}; ${ratio} font-family:Pretendard,sans-serif;">
+            <div style="font-size:${labelSize}; color:#9f1239; letter-spacing:2px; font-weight:800;">KLOSER</div>
+            <div style="font-size:${titleSize}; color:#831843; font-weight:900; line-height:1.25; margin:${px(18)} 0 ${px(14)};">사랑받는 제품의 비밀</div>
+            ${lines(3, '#fda4af')}
+            <div style="margin-top:${px(18)};"><span style="display:inline-block; padding:${px(12)} ${px(24)}; background:white; color:#831843; font-weight:800; border-radius:${px(99)}; font-size:${ctaSize};">더 알아보기 →</span></div>
+          </div>`;
+        case 'letter':
+          return `<div style="background:#fffbeb; padding:${px(28)}; ${ratio} font-family:Georgia,'Times New Roman',serif; border:${px(3)} double #fbbf24; box-sizing:border-box;">
+            <div style="text-align:right; font-size:${labelSize}; color:#78350f; font-style:italic; margin-bottom:${px(18)};">2026년 5월 6일</div>
+            <div style="font-size:${ctaSize}; color:#451a03; margin-bottom:${px(12)};">친애하는 [고객명]님,</div>
+            ${lines(4, '#fcd34d')}
+            <div style="text-align:right; font-style:italic; color:#78350f; margin-top:${px(16)}; font-size:${ctaSize};">— Kloser 팀 드림</div>
+          </div>`;
+        case 'newspaper':
+          return `<div style="background:#fafafa; padding:${px(20)} ${px(24)}; ${ratio} font-family:Georgia,'Times New Roman',serif; border-top:${px(5)} double #1e293b; box-sizing:border-box;">
+            <div style="text-align:center; padding-bottom:${px(8)}; border-bottom:${px(2)} solid #1e293b;">
+              <div style="font-size:${labelSize}; letter-spacing:5px; color:#1e293b; font-weight:800;">THE KLOSER TIMES</div>
+              <div style="font-size:${labelSize}; color:#64748b; margin-top:${px(3)};">VOL.42 · 2026년 5월 6일</div>
+            </div>
+            <div style="font-size:${titleSize}; font-weight:900; text-align:center; margin:${px(12)} 0; line-height:1.2; color:#0f172a;">B2B 영업의 변화</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:${px(10)}; border-top:${px(1)} solid #cbd5e1; padding-top:${px(10)};">
+              <div>${lines(4, '#cbd5e1')}</div>
+              <div>${lines(4, '#cbd5e1')}</div>
+            </div>
+          </div>`;
+        case 'magazine':
+          return `<div style="background:linear-gradient(180deg, #2563eb 38%, #0f172a 38%); padding:${px(20)} ${px(28)}; ${ratio} color:white; display:flex; flex-direction:column; justify-content:flex-end; font-family:Pretendard,sans-serif; box-sizing:border-box;">
+            <div style="font-size:${labelSize}; color:#fbbf24; letter-spacing:3px; font-weight:800; margin-bottom:${px(8)};">COVER STORY</div>
+            <div style="font-size:${titleSize}; font-weight:900; line-height:1.05; margin-bottom:${px(10)};">올해의<br/>영업 인사이트</div>
+            ${lines(2, 'rgba(255,255,255,.4)')}
+            <div style="margin-top:${px(14)};"><span style="display:inline-block; padding:${px(10)} ${px(20)}; background:white; color:#0f172a; font-weight:900; border-radius:${px(99)}; font-size:${ctaSize};">읽기 →</span></div>
+          </div>`;
+        case 'weekly3':
+          return `<div style="background:white; padding:${px(20)} ${px(24)}; ${ratio} font-family:Pretendard,sans-serif;">
+            <div style="text-align:center; padding-bottom:${px(8)}; border-bottom:${px(2)} solid #0f172a; margin-bottom:${px(14)};">
+              <div style="font-size:${labelSize}; letter-spacing:3px; color:#0f172a; font-weight:900;">WEEKLY · 5월 첫째주</div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:${px(8)};">
+              ${[['#2563eb','업데이트'],['#7c3aed','사례'],['#059669','팁']].map(([color,label]) => `
+                <div>
+                  <div style="font-size:${labelSize}; color:${color}; font-weight:800; margin-bottom:${px(6)};">${label}</div>
+                  <div style="height:${px(6)}; background:${color}; border-radius:${px(3)}; margin-bottom:${px(4)}; width:90%;"></div>
+                  <div style="height:${px(4)}; background:#cbd5e1; border-radius:${px(2)}; margin-bottom:${px(3)};"></div>
+                  <div style="height:${px(4)}; background:#cbd5e1; border-radius:${px(2)}; width:80%;"></div>
+                </div>`).join('')}
+            </div>
+          </div>`;
+        case 'ticket':
+          return `<div style="background:#dcfce7; padding:${px(18)}; ${ratio} font-family:Pretendard,sans-serif; box-sizing:border-box;">
+            <div style="background:white; border-radius:${px(14)}; padding:${px(20)}; box-shadow:0 ${px(4)} ${px(12)} -${px(4)} rgba(0,0,0,.1); position:relative;">
+              <div style="font-size:${labelSize}; color:#059669; letter-spacing:2px; font-weight:900;">★ ADMIT ONE ★</div>
+              <div style="font-size:${titleSize}; color:#064e3b; font-weight:900; margin-top:${px(8)}; line-height:1.2;">5/12 웨비나</div>
+              <div style="border-top:${px(2)} dashed #d1d5db; margin:${px(14)} -${px(20)} ${px(14)}; position:relative;">
+                <span style="position:absolute; left:-${px(8)}; top:-${px(8)}; width:${px(16)}; height:${px(16)}; background:#dcfce7; border-radius:50%;"></span>
+                <span style="position:absolute; right:-${px(8)}; top:-${px(8)}; width:${px(16)}; height:${px(16)}; background:#dcfce7; border-radius:50%;"></span>
+              </div>
+              <div style="font-size:${labelSize}; color:#475569; font-weight:700;">시간 · 14:00 — 15:00</div>
+              <div style="font-size:${labelSize}; color:#475569; font-weight:700; margin-top:${px(4)};">장소 · 온라인 (Zoom)</div>
+            </div>
+          </div>`;
+        case 'countdown':
+          return `<div style="background:#1e1b4b; padding:${px(24)}; ${ratio} font-family:Pretendard,sans-serif; color:white; text-align:center; display:flex; flex-direction:column; justify-content:center; box-sizing:border-box;">
+            <div style="font-size:${labelSize}; letter-spacing:4px; color:#a78bfa; font-weight:800;">제품 출시까지</div>
+            <div style="font-size:${full?'78px':'36px'}; font-weight:900; line-height:1; color:white; margin:${px(12)} 0 ${px(8)};">D-7</div>
+            <div style="height:${px(2)}; background:#a78bfa; width:30%; margin:${px(8)} auto ${px(16)};"></div>
+            ${lines(2, '#312e81')}
+            <div style="margin-top:${px(14)};"><span style="display:inline-block; padding:${px(12)} ${px(22)}; background:#a78bfa; color:#1e1b4b; font-weight:900; border-radius:${px(8)}; font-size:${ctaSize};">알림 받기</span></div>
+          </div>`;
+        case 'quote':
+          return `<div style="background:white; padding:${px(28)}; ${ratio} font-family:Pretendard,sans-serif; box-sizing:border-box;">
+            ${head('margin-bottom:'+px(12))}
+            <div style="font-family:Georgia,serif; font-size:${full?'72px':'34px'}; line-height:0.4; color:#cbd5e1; margin:${px(18)} 0 ${px(2)};">"</div>
+            <div style="font-size:${ctaSize}; color:#0f172a; line-height:1.45; font-weight:600; font-style:italic;">통화 분석 덕분에 매주 응답률을 측정하고 즉각 개선할 수 있게 됐습니다.</div>
+            <div style="font-size:${labelSize}; color:#64748b; margin-top:${px(14)}; font-weight:700;">— TerraBase 영업팀장</div>
+            <div style="margin-top:${px(16)};">${lines(2)}</div>
+          </div>`;
+        case 'report':
+          return `<div style="background:white; padding:${px(20)} ${px(24)}; ${ratio} font-family:Pretendard,sans-serif; box-sizing:border-box;">
+            ${head('margin-bottom:'+px(8))}
+            <div style="font-size:${titleSize}; font-weight:900; color:#0f172a; margin-bottom:${px(14)};">[Q2] 영업 리포트</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:${px(8)}; margin-bottom:${px(14)};">
+              <div style="background:#eff6ff; padding:${px(12)}; border-radius:${px(8)};">
+                <div style="font-size:${labelSize}; color:#1e3a8a; font-weight:700;">응답률</div>
+                <div style="font-size:${full?'24px':'13px'}; font-weight:900; color:#1e3a8a; margin-top:${px(2)};">42%</div>
+              </div>
+              <div style="background:#f0fdf4; padding:${px(12)}; border-radius:${px(8)};">
+                <div style="font-size:${labelSize}; color:#065f46; font-weight:700;">전환</div>
+                <div style="font-size:${full?'24px':'13px'}; font-weight:900; color:#065f46; margin-top:${px(2)};">+18%</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:flex-end; gap:${px(4)}; height:${px(36)};">
+              ${[40,65,50,80,60,90,75].map(h => `<div style="flex:1; background:linear-gradient(180deg,#3b82f6,#1e3a8a); border-radius:${px(2)} ${px(2)} 0 0; height:${h}%;"></div>`).join('')}
+            </div>
+          </div>`;
+        case 'discount':
+          return `<div style="background:linear-gradient(135deg,#dc2626,#f97316); padding:${px(20)}; ${ratio} color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-family:Pretendard,sans-serif; box-sizing:border-box;">
+            <div style="font-size:${labelSize}; letter-spacing:3px; font-weight:800; opacity:.85;">LIMITED OFFER</div>
+            <div style="font-size:${full?'88px':'40px'}; font-weight:900; line-height:1; margin:${px(8)} 0;">20<span style="font-size:${full?'48px':'22px'};">%</span></div>
+            <div style="font-size:${titleSize}; font-weight:900; margin-bottom:${px(14)};">연간 결제 할인</div>
+            <div style="background:white; color:#dc2626; padding:${px(10)} ${px(22)}; font-weight:900; border-radius:${px(99)}; font-size:${ctaSize};">지금 시작 →</div>
+            <div style="font-size:${labelSize}; opacity:.85; margin-top:${px(8)};">5월 31일까지</div>
+          </div>`;
+      }
+      return '';
+    }
+
+    const styleModal = document.getElementById('styleModal');
+    const stylePreviewModal = document.getElementById('stylePreviewModal');
+    const styleGrid = document.getElementById('styleGrid');
+    const styleTabs = document.getElementById('styleTabs');
+    const styleTotalEl = document.getElementById('styleTotal');
+    const styleRangeEl = document.getElementById('styleRange');
+    const stylePaginationEl = document.getElementById('stylePagination');
+    const STYLES_PER_PAGE = 8;
+    let activeStyleCat = 'all';
+    let stylePage = 1;
+    let currentPreviewStyle = null;
+
+    function renderStyles() {
+      const list = activeStyleCat === 'all' ? styles : styles.filter(s => s.cat === activeStyleCat);
+      const total = list.length;
+      const totalPages = Math.max(1, Math.ceil(total / STYLES_PER_PAGE));
+      stylePage = Math.min(stylePage, totalPages);
+      const start = (stylePage - 1) * STYLES_PER_PAGE;
+      const end = Math.min(start + STYLES_PER_PAGE, total);
+      const slice = list.slice(start, end);
+
+      styleTotalEl.textContent = total.toLocaleString();
+      styleRangeEl.textContent = total === 0 ? '0-0' : `${start + 1}-${end}`;
+
+      styleGrid.innerHTML = slice.map(s => `
+        <button data-id="${s.id}" class="style-card text-left rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:shadow-md transition-all overflow-hidden">
+          <div class="border-b border-slate-100">
+            ${renderStyleHTML(s.id, false)}
+          </div>
+          <div class="p-3">
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <div class="font-bold text-slate-800 text-[.82rem] leading-tight">${s.name}</div>
+              <span class="badge ${s.catBadge} shrink-0">${s.catLabel}</span>
+            </div>
+            <div class="text-[.68rem] text-slate-500 leading-snug">${s.desc}</div>
+          </div>
+        </button>
+      `).join('') || `<div class="col-span-full text-center text-[.78rem] text-slate-400 py-12">표시할 스타일이 없습니다</div>`;
+
+      styleGrid.querySelectorAll('.style-card').forEach(el => {
+        el.addEventListener('click', () => openStylePreview(el.dataset.id));
+      });
+
+      renderStylePagination(totalPages);
+    }
+
+    function renderStylePagination(totalPages) {
+      if (totalPages <= 1) { stylePaginationEl.innerHTML = ''; return; }
+      const pages = [];
+      const window = 1;
+      for (let p = 1; p <= totalPages; p++) {
+        const near = Math.abs(p - stylePage) <= window;
+        const edge = p === 1 || p === totalPages;
+        if (near || edge) pages.push(p);
+        else if (pages[pages.length - 1] !== '…') pages.push('…');
+      }
+      const btn = (label, page, active = false, disabled = false) => `
+        <button data-page="${page}" class="style-page-btn h-7 min-w-[28px] px-2 rounded-md text-[.72rem] font-bold tnum transition-colors
+          ${active ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}
+          ${disabled ? 'opacity-30 cursor-not-allowed' : ''}">${label}</button>`;
+      stylePaginationEl.innerHTML =
+        btn('‹', stylePage - 1, false, stylePage === 1) +
+        pages.map(p => p === '…'
+          ? `<span class="px-1 text-[.72rem] text-slate-400">…</span>`
+          : btn(String(p), p, p === stylePage)).join('') +
+        btn('›', stylePage + 1, false, stylePage === totalPages);
+
+      stylePaginationEl.querySelectorAll('.style-page-btn').forEach(el => {
+        el.addEventListener('click', () => {
+          const p = Number(el.dataset.page);
+          if (!p || p < 1 || p > totalPages || p === stylePage) return;
+          stylePage = p;
+          renderStyles();
+        });
+      });
+    }
+
+    styleTabs.querySelectorAll('.tpl-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        styleTabs.querySelectorAll('.tpl-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeStyleCat = btn.dataset.cat;
+        stylePage = 1;
+        renderStyles();
+      });
+    });
+
+    function openStyleModal() {
+      activeStyleCat = 'all';
+      stylePage = 1;
+      styleTabs.querySelectorAll('.tpl-tab').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+      renderStyles();
+      styleModal.classList.add('show');
+    }
+    function closeStyleModal() { styleModal.classList.remove('show'); }
+
+    function openStylePreview(id) {
+      const s = styles.find(x => x.id === id);
+      if (!s) return;
+      currentPreviewStyle = s;
+      document.getElementById('stylePreviewName').textContent = s.name;
+      document.getElementById('stylePreviewDesc').textContent = s.desc;
+      document.getElementById('stylePreviewBox').innerHTML = renderStyleHTML(s.id, true);
+      stylePreviewModal.classList.add('show');
+    }
+    function closeStylePreview() { stylePreviewModal.classList.remove('show'); }
+
+    function applyStyle() {
+      if (!currentPreviewStyle) return;
+      const name = currentPreviewStyle.name;
+      closeStylePreview();
+      closeStyleModal();
+      showToast(`'${name}' 스타일이 적용되었어요`);
+    }
+
+    window.openStyleModal = openStyleModal;
+    window.closeStyleModal = closeStyleModal;
+    window.openStylePreview = openStylePreview;
+    window.closeStylePreview = closeStylePreview;
+    window.applyStyle = applyStyle;
+
+    // ----- Edit draft modal -----
+    const editModal = document.getElementById('editModal');
+    const editSubject = document.getElementById('editSubject');
+    const editBody = document.getElementById('editBody');
+    const editSubjLen = document.getElementById('editSubjLen');
+    const editBodyLen = document.getElementById('editBodyLen');
+    let editTargets = null; // { subjectEl, bodyEl }
+
+    function syncEditCounts() {
+      editSubjLen.textContent = `${editSubject.value.length}자`;
+      editBodyLen.textContent = `${editBody.value.length}자`;
+    }
+    editSubject.addEventListener('input', syncEditCounts);
+    editBody.addEventListener('input', syncEditCounts);
+
+    function openEditModal(subjectEl, bodyEl) {
+      editTargets = { subjectEl, bodyEl };
+      editSubject.value = subjectEl.textContent;
+      editBody.value = bodyEl.textContent;
+      syncEditCounts();
+      editModal.classList.add('show');
+      setTimeout(() => editSubject.focus(), 50);
+    }
+    function closeEditModal() { editModal.classList.remove('show'); editTargets = null; }
+
+    function applyEdits() {
+      if (!editTargets) return null;
+      const subj = editSubject.value.trim() || '제목 없음';
+      const body = editBody.value;
+      editTargets.subjectEl.textContent = subj;
+      editTargets.bodyEl.textContent = body;
+      return { subj, body };
+    }
+
+    function applyEditOnly() {
+      const r = applyEdits();
+      closeEditModal();
+      if (r) showToast('초안이 수정되었습니다');
+    }
+
+    function applyEditAndSend() {
+      const r = applyEdits();
+      closeEditModal();
+      if (r) openSendModal(r.subj, r.body);
+    }
+
+    window.openEditModal = openEditModal;
+    window.closeEditModal = closeEditModal;
+    window.applyEditOnly = applyEditOnly;
+    window.applyEditAndSend = applyEditAndSend;
+
+    // ----- Template gallery -----
+    const templates = [
+      { cat: 'onboarding', icon: '🎉', iconBg: 'from-emerald-50 to-emerald-100', iconBorder: 'border-emerald-200', badge: 'badge-emerald', badgeLabel: '온보딩',
+        title: '신규 가입 환영', desc: 'Kloser 시작 5분 가이드와 첫 통화 안내', prompt: '신규 가입 환영 메일' },
+      { cat: 'onboarding', icon: '👋', iconBg: 'from-emerald-50 to-cyan-100', iconBorder: 'border-emerald-200', badge: 'badge-emerald', badgeLabel: '온보딩',
+        title: '첫 주 체크인', desc: '가입 7일차 사용 현황 점검 메일', prompt: '가입 1주차 체크인 메일' },
+      { cat: 'news', icon: '📬', iconBg: 'from-blue-50 to-blue-100', iconBorder: 'border-blue-200', badge: 'badge-blue', badgeLabel: '뉴스',
+        title: '월간 업데이트', desc: '제품 변경사항과 신규 통합 안내', prompt: '월간 업데이트 안내' },
+      { cat: 'news', icon: '🚀', iconBg: 'from-blue-50 to-violet-100', iconBorder: 'border-blue-200', badge: 'badge-blue', badgeLabel: '뉴스',
+        title: '신기능 출시', desc: '주요 기능 발표 및 사용 방법', prompt: '신규 기능 출시 안내 메일' },
+      { cat: 'event', icon: '🎙', iconBg: 'from-violet-50 to-violet-100', iconBorder: 'border-violet-200', badge: 'badge-violet', badgeLabel: '이벤트',
+        title: '웨비나 초대', desc: '온라인 세미나 일정 및 신청 안내', prompt: '웨비나 초대' },
+      { cat: 'event', icon: '💌', iconBg: 'from-violet-50 to-pink-100', iconBorder: 'border-violet-200', badge: 'badge-violet', badgeLabel: '이벤트',
+        title: '참석 감사 인사', desc: '이벤트 후속 메일과 자료 공유', prompt: '이벤트 참석 감사 메일' },
+      { cat: 'billing', icon: '⏰', iconBg: 'from-amber-50 to-amber-100', iconBorder: 'border-amber-200', badge: 'badge-amber', badgeLabel: '결제',
+        title: '구독 갱신 알림', desc: '결제일 30일 전 자동 안내', prompt: '구독 갱신 알림' },
+      { cat: 'billing', icon: '💳', iconBg: 'from-amber-50 to-orange-100', iconBorder: 'border-amber-200', badge: 'badge-amber', badgeLabel: '결제',
+        title: '결제 실패 안내', desc: '카드 갱신 요청과 해결 가이드', prompt: '결제 실패 안내 메일' },
+      { cat: 'content', icon: '⭐', iconBg: 'from-blue-50 to-cyan-100', iconBorder: 'border-blue-200', badge: 'badge-blue', badgeLabel: '콘텐츠',
+        title: '고객 사례 공유', desc: '베스트 프랙티스 케이스 스터디', prompt: '고객 사례 소개 메일' },
+      { cat: 'reengage', icon: '🔔', iconBg: 'from-amber-50 to-rose-100', iconBorder: 'border-amber-200', badge: 'badge-amber', badgeLabel: '재참여',
+        title: '휴면 고객 재참여', desc: '30일 이상 미접속 고객 대상', prompt: '휴면 고객 재참여 메일' },
+    ];
+
+    const tplModal = document.getElementById('templateModal');
+    const tplGrid = document.getElementById('templateGrid');
+    const tplTabs = document.getElementById('tplTabs');
+    let activeCat = 'all';
+
+    function renderTemplates() {
+      const list = activeCat === 'all' ? templates : templates.filter(t => t.cat === activeCat);
+      tplGrid.innerHTML = list.map((t) => `
+        <button class="tpl-card" data-idx="${templates.indexOf(t)}">
+          <div class="flex items-start justify-between">
+            <div class="tpl-icon bg-gradient-to-br ${t.iconBg} border ${t.iconBorder}">${t.icon}</div>
+            <div class="flex flex-col items-end gap-1">
+              <span class="badge ${t.badge}">${t.badgeLabel}</span>
+              ${t.custom ? '<span class="text-[.6rem] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">내 템플릿</span>' : ''}
+            </div>
+          </div>
+          <div>
+            <div class="font-bold text-slate-800 text-[.88rem] mb-1">${t.title}</div>
+            <div class="text-[.72rem] text-slate-500 leading-relaxed">${t.desc}</div>
+          </div>
+          <div class="flex items-center gap-1 text-[.68rem] font-bold text-blue-600 mt-1">
+            <span>이 템플릿으로 작성</span>
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
+        </button>
+      `).join('') || `<div class="col-span-full text-center text-[.78rem] text-slate-400 py-12">표시할 템플릿이 없습니다</div>`;
+
+      tplGrid.querySelectorAll('.tpl-card').forEach(el => {
+        el.addEventListener('click', () => {
+          const t = templates[Number(el.dataset.idx)];
+          closeTemplateModal();
+          if (t.custom) {
+            appendUser(`템플릿 사용: ${t.title}`);
+            appendTyping();
+            setTimeout(() => {
+              removeTyping();
+              appendAi(`<div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-[.85rem] text-slate-700 leading-relaxed max-w-[95%]">'${t.title}' 템플릿으로 초안을 준비했어요. 수정이 필요하면 말씀해 주세요.</div>`);
+              setTimeout(() => appendDraft(t.title, { subject: t.subject, body: t.body }), 500);
+            }, 700);
+          } else {
+            sendPrompt(t.prompt);
+          }
+        });
+      });
+    }
+
+    tplTabs.querySelectorAll('.tpl-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tplTabs.querySelectorAll('.tpl-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeCat = btn.dataset.cat;
+        renderTemplates();
+      });
+    });
+
+    function openTemplateModal() {
+      activeCat = 'all';
+      tplTabs.querySelectorAll('.tpl-tab').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+      renderTemplates();
+      showGalleryView();
+      tplModal.classList.add('show');
+    }
+    function closeTemplateModal() { tplModal.classList.remove('show'); }
+    window.openTemplateModal = openTemplateModal;
+    window.closeTemplateModal = closeTemplateModal;
+
+    // ----- Template create form -----
+    const tplGalleryView = document.getElementById('tplGalleryView');
+    const tplCreateView = document.getElementById('tplCreateView');
+    const tplIconPicker = document.getElementById('tplIconPicker');
+    const tplName = document.getElementById('tplName');
+    const tplCategory = document.getElementById('tplCategory');
+    const tplDesc = document.getElementById('tplDesc');
+    const tplSubjectInput = document.getElementById('tplSubject');
+    const tplBodyInput = document.getElementById('tplBody');
+
+    const ICON_OPTIONS = ['🎉', '📬', '🚀', '🎙', '💌', '⏰', '💳', '⭐', '🔔', '👋', '📢', '🎁', '📊', '✉️', '🌐', '📱'];
+    const CAT_THEME = {
+      onboarding: { iconBg: 'from-emerald-50 to-emerald-100', iconBorder: 'border-emerald-200', badge: 'badge-emerald', badgeLabel: '온보딩' },
+      news:       { iconBg: 'from-blue-50 to-blue-100',       iconBorder: 'border-blue-200',    badge: 'badge-blue',    badgeLabel: '뉴스' },
+      event:      { iconBg: 'from-violet-50 to-violet-100',   iconBorder: 'border-violet-200',  badge: 'badge-violet',  badgeLabel: '이벤트' },
+      billing:    { iconBg: 'from-amber-50 to-amber-100',     iconBorder: 'border-amber-200',   badge: 'badge-amber',   badgeLabel: '결제' },
+      content:    { iconBg: 'from-blue-50 to-cyan-100',       iconBorder: 'border-blue-200',    badge: 'badge-blue',    badgeLabel: '콘텐츠' },
+      reengage:   { iconBg: 'from-amber-50 to-rose-100',      iconBorder: 'border-amber-200',   badge: 'badge-amber',   badgeLabel: '재참여' },
+    };
+
+    let selectedIcon = ICON_OPTIONS[0];
+
+    function renderIconPicker() {
+      tplIconPicker.innerHTML = ICON_OPTIONS.map(e => `
+        <button type="button" data-emoji="${e}" class="icon-opt w-9 h-9 rounded-lg border text-[1.05rem] flex items-center justify-center transition-all ${e === selectedIcon ? 'border-blue-500 bg-blue-50 shadow-[0_0_0_3px_rgba(59,130,246,.12)]' : 'border-slate-200 bg-white hover:border-slate-300'}">${e}</button>
+      `).join('');
+      tplIconPicker.querySelectorAll('.icon-opt').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedIcon = btn.dataset.emoji;
+          renderIconPicker();
+        });
+      });
+    }
+
+    function resetCreateForm() {
+      tplName.value = '';
+      tplCategory.value = 'onboarding';
+      tplDesc.value = '';
+      tplSubjectInput.value = '';
+      tplBodyInput.value = '';
+      selectedIcon = ICON_OPTIONS[0];
+      renderIconPicker();
+    }
+
+    function showCreateTemplateView() {
+      resetCreateForm();
+      tplGalleryView.style.display = 'none';
+      tplCreateView.style.display = '';
+      setTimeout(() => tplName.focus(), 50);
+    }
+
+    function showGalleryView() {
+      tplCreateView.style.display = 'none';
+      tplGalleryView.style.display = '';
+    }
+
+    function submitNewTemplate() {
+      const name = tplName.value.trim();
+      const subject = tplSubjectInput.value.trim();
+      const body = tplBodyInput.value.trim();
+      if (!name) { showToast('템플릿 이름을 입력해 주세요'); tplName.focus(); return; }
+      if (!subject) { showToast('메일 제목을 입력해 주세요'); tplSubjectInput.focus(); return; }
+      if (!body) { showToast('메일 본문을 입력해 주세요'); tplBodyInput.focus(); return; }
+
+      const cat = tplCategory.value;
+      const theme = CAT_THEME[cat];
+      templates.unshift({
+        cat, icon: selectedIcon,
+        iconBg: theme.iconBg, iconBorder: theme.iconBorder,
+        badge: theme.badge, badgeLabel: theme.badgeLabel,
+        title: name,
+        desc: tplDesc.value.trim() || subject,
+        custom: true,
+        subject, body,
+      });
+
+      renderTemplates();
+      showGalleryView();
+      showToast('새 템플릿이 추가되었어요');
+    }
+
+    window.showCreateTemplateView = showCreateTemplateView;
+    window.showGalleryView = showGalleryView;
+    window.submitNewTemplate = submitNewTemplate;
+
+    // ----- Toast -----
+    let toastTimer;
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+    window.showToast = showToast;
+  </script>
+</body>
+</html>

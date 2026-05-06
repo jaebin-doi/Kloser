@@ -1,0 +1,2477 @@
+﻿<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>DOI AI — 드론 AI 공간정보 플랫폼</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Orbitron:wght@500;700;900&family=Outfit:wght@700;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+            orbitron: ['Orbitron', 'sans-serif']
+          },
+          colors: {
+            bg: '#05050f', surface: '#0e0e1f', s2: '#161628', s3: '#1e1e35',
+            accent: '#2563eb', a2: '#3b82f6', cyan: '#22d3ee', pink: '#f472b6', gold: '#fbbf24',
+          },
+          animation: {
+            'float1': 'floatOrb 14s ease-in-out infinite',
+            'float2': 'floatOrb 18s ease-in-out infinite reverse',
+            'float3': 'floatOrb 11s ease-in-out infinite 3s',
+            'marquee': 'marquee 28s linear infinite',
+            'shimmer': 'shimmer 1.8s infinite',
+            'blink': 'blink 1.6s ease-in-out infinite',
+            'grad': 'gradShift 6s ease infinite',
+            'scroll': 'scrollDot 2s ease-in-out infinite',
+          },
+          keyframes: {
+            floatOrb: { '0%,100%': { transform: 'translate(0,0)' }, '33%': { transform: 'translate(40px,-30px)' }, '66%': { transform: 'translate(-25px,35px)' } },
+            marquee: { '0%': { transform: 'translateX(0)' }, '100%': { transform: 'translateX(-50%)' } },
+            shimmer: { '0%': { backgroundPosition: '200% 0' }, '100%': { backgroundPosition: '-200% 0' } },
+            blink: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.2' } },
+            gradShift: { '0%,100%': { backgroundPosition: '0%' }, '50%': { backgroundPosition: '100%' } },
+            scrollDot: { '0%': { transform: 'translateY(0)', opacity: '1' }, '100%': { transform: 'translateY(12px)', opacity: '0' } },
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden
+    }
+
+    /* noise */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9998;
+      opacity: .15;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E")
+    }
+
+    /* gradient text */
+    .g-text {
+      background: linear-gradient(100deg, #2563eb 0%, #06b6d4 50%, #0284c7 100%);
+      background-size: 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradShift 6s ease infinite
+    }
+
+    /* gradient border card */
+    .g-border {
+      position: relative
+    }
+
+    .g-border::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(59, 130, 246, .5), rgba(6, 182, 212, .2), rgba(14, 165, 233, .2));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      padding: 1px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s
+    }
+
+    .g-border:hover::before {
+      opacity: 1
+    }
+
+    /* shimmer */
+    .sk {
+      background: linear-gradient(90deg, #161628 25%, rgba(255, 255, 255, .04) 50%, #161628 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.8s infinite
+    }
+
+    /* glow btn */
+    .glow-btn {
+      position: relative;
+      overflow: hidden
+    }
+
+    .glow-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255, 255, 255, .15), transparent 60%);
+      opacity: 0;
+      transition: opacity .3s
+    }
+
+    .glow-btn:hover::before {
+      opacity: 1
+    }
+
+    /* pill / filter */
+    .fpill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, .1);
+      color: #8b8aaa;
+      background: transparent;
+      font-family: inherit;
+      transition: all .2s;
+      white-space: nowrap;
+      flex-shrink: 0
+    }
+
+    .fpill:hover {
+      color: #0f172a;
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .fpill.on {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, .25);
+    }
+
+    .fpill .n {
+      padding: 2px 7px;
+      background: #f1f5f9;
+      border-radius: 999px;
+      font-size: .68rem;
+    }
+
+    .fpill.on .n {
+      background: rgba(255, 255, 255, .28);
+    }
+
+    /* lp card */
+    .lp-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      overflow: hidden;
+      transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), box-shadow .3s, border-color .3s;
+      cursor: pointer;
+      display: none;
+      position: relative;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+    }
+
+    .lp-card:hover {
+      transform: translateY(-8px);
+      border-color: #cbd5e1;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, .08);
+    }
+
+    .lp-card .thumb {
+      position: relative;
+      aspect-ratio: 16/10;
+      overflow: hidden;
+      background: #f1f5f9;
+    }
+
+    .lp-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform .55s ease
+    }
+
+    .lp-card:hover .thumb img {
+      transform: scale(1.06)
+    }
+
+    .thumb-ov {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 35%, rgba(15, 23, 42, .8));
+      opacity: 0;
+      transition: opacity .3s;
+      display: flex;
+      align-items: flex-end;
+      padding: 16px
+    }
+
+    .lp-card:hover .thumb-ov {
+      opacity: 1
+    }
+
+    .ov-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      background: rgba(255, 255, 255, .95);
+      color: #111;
+      border-radius: 8px;
+      font-size: .8rem;
+      font-weight: 700;
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+      transition: background .15s
+    }
+
+    .cat-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 3px 10px;
+      background: rgba(255, 255, 255, .9);
+      backdrop-filter: blur(8px);
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      font-size: .68rem;
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: .04em
+    }
+
+    .like-btn {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      border: 1px solid #e2e8f0;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .8rem;
+      color: #64748b;
+      transition: all .2s;
+      font-family: inherit
+    }
+
+    .like-btn:hover,
+    .like-btn.on {
+      border-color: #f472b6;
+      color: #f472b6;
+      background: rgba(14, 165, 233, .08)
+    }
+
+    .ctag {
+      padding: 3px 9px;
+      background: #eef2ff;
+      color: #4f46e5;
+      border-radius: 5px;
+      font-size: .7rem;
+      font-weight: 600;
+      border: 1px solid #e0e7ff;
+    }
+
+    /* cat sidebar */
+    .crow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all .2s;
+      border: 1px solid transparent;
+    }
+
+    .crow:hover {
+      background: #f1f5f9;
+    }
+
+    .crow.on {
+      background: #0f172a;
+      border-color: #1e293b;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .crow-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: #e2e8f0;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all .2s;
+    }
+
+    .crow.on .crow-icon {
+      background: rgba(255, 255, 255, 0.1);
+      color: #22d3ee;
+    }
+
+    .crow-cat {
+      font-size: .65rem;
+      font-weight: 700;
+      color: #0284c7;
+      margin-bottom: 2px;
+    }
+
+    .crow.on .crow-cat {
+      color: #38bdf8;
+    }
+
+    .crow-title {
+      font-size: .8rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.2;
+    }
+
+    .crow.on .crow-title {
+      color: #ffffff;
+    }
+
+    .badge-wrap {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .tag-badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: .6rem;
+      font-weight: 800;
+      background: #e2e8f0;
+      color: #94a3b8;
+    }
+
+    .tag-badge.active {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    .crow.on .tag-badge {
+      background: rgba(255, 255, 255, 0.1);
+      color: #64748b;
+    }
+
+    .crow.on .tag-badge.active {
+      background: rgba(14, 165, 233, 0.2);
+      color: #38bdf8;
+    }
+
+    /* reveal */
+    .rv {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity .55s ease, transform .55s ease
+    }
+
+    .rv.show {
+      opacity: 1;
+      transform: none
+    }
+
+    /* notify input */
+    .notify-input {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-size: .88rem;
+      color: #ede9ff;
+      font-family: inherit;
+      outline: none;
+      width: 100%;
+      transition: border-color .2s, box-shadow .2s
+    }
+
+    .notify-input::placeholder {
+      color: #4a4a6a
+    }
+
+    .notify-input:focus {
+      border-color: rgba(59, 130, 246, .5);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, .1)
+    }
+
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 5px;
+      border: 2px solid #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2563eb;
+    }
+
+    select option {
+      background: #ffffff;
+      color: #1e293b;
+    }
+
+    #notifyMsg {
+      display: none;
+      font-size: .8rem;
+      margin-top: 10px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      transition: opacity .3s
+    }
+
+    #notifyMsg.success {
+      background: rgba(59, 130, 246, .12);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, .25)
+    }
+
+    #notifyMsg.error {
+      background: rgba(14, 165, 233, .1);
+      color: #f472b6;
+      border: 1px solid rgba(14, 165, 233, .2)
+    }
+
+    /* ── 모바일 nav 메뉴 링크 ── */
+    .mob-nav-link {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #64748b;
+      text-decoration: none;
+      transition: all .2s;
+      border: 1px solid transparent
+    }
+
+    .mob-nav-link:hover {
+      color: #0f172a;
+      background: #f1f5f9;
+      border-color: #e2e8f0;
+    }
+
+    /* ══════════════════════════════════════════════════
+   RESPONSIVE — showcase.html
+══════════════════════════════════════════════════ */
+
+    /* ── 폰 (< 640px) ───────────────────────────────── */
+    @media (max-width:639px) {
+
+      /* 히어로 제목: 모바일에 맞게 축소 */
+      .hero-title {
+        font-size: clamp(1.9rem, 8.5vw, 2.8rem) !important
+      }
+
+      /* 히어로 섹션 패딩 축소 */
+      section.min-h-screen {
+        padding-top: 6rem;
+        padding-bottom: 4rem
+      }
+
+      /* stats row → 2×2 그리드 */
+      .stats-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stats-row>div {
+        padding: 14px 12px !important;
+        border-right: none !important;
+      }
+
+      .stats-row>div:nth-child(1),
+      .stats-row>div:nth-child(3) {
+        border-right: 1px solid rgba(255, 255, 255, .07) !important
+      }
+
+      .stats-row>div:nth-child(1),
+      .stats-row>div:nth-child(2) {
+        border-bottom: 1px solid rgba(255, 255, 255, .07)
+      }
+
+      /* 카드 그리드: 최소 너비 축소 */
+      #cardGrid {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important
+      }
+
+      #skelWrap {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important
+      }
+
+      /* showcase main: 패딩 축소 */
+      #drone-map {
+        padding-top: 2.5rem;
+        padding-bottom: 4rem
+      }
+
+      /* 광고 스트립: wrap */
+      #drone-map~div[class*="flex items-center justify-center"] {
+        flex-wrap: wrap;
+        text-align: center
+      }
+    }
+
+    /* ── 태블릿·모바일 (< 1024px) — aside 숨김 ──────── */
+    @media (max-width:1023px) {
+      #drone-map aside {
+        display: none !important
+      }
+
+      #drone-map {
+        grid-template-columns: 1fr !important
+      }
+
+      /* grid 자식이 컬럼 너비 이상으로 팽창하는 것을 방지 */
+      #drone-map main {
+        min-width: 0;
+        overflow-x: hidden
+      }
+
+      /* 필터 pills: 가로 스크롤 */
+      #filterPills {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        min-width: 0
+      }
+
+      #filterPills::-webkit-scrollbar {
+        display: none
+      }
+    }
+
+    /* ── 태블릿 (640px ~ 1023px) ─────────────────────── */
+    @media (min-width:640px) and (max-width:1023px) {
+      .hero-title {
+        font-size: clamp(2.6rem, 5.5vw, 4rem) !important
+      }
+
+      #cardGrid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important
+      }
+    }
+
+    /* ── 모바일 (<640px) — 지도 내부 컨트롤/오버레이 정리 ── */
+    @media (max-width:639px) {
+      /* 모드 핀: 작게 + 한 줄 유지 */
+      #mapModePills button {
+        width: 54px !important;
+        height: 54px !important;
+      }
+      #mapModePills button > div:first-child {
+        height: 32px !important;
+      }
+      #mapModePills button > div:last-child {
+        height: 22px !important;
+        font-size: 9px !important;
+      }
+      #mapModePills {
+        gap: 0.375rem !important;
+      }
+
+      /* AI 챗봇 입력창: 우측 컨트롤 피해서 좌측만 차지 */
+      #mapChatbot {
+        left: 0.75rem !important;
+        right: 5.75rem !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════ NAV ═══════ -->
+  <nav id="mainNav"
+    class="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 md:px-8 h-[62px] border-b border-slate-200 transition-transform duration-300"
+    style="background:rgba(255,255,255,.8);backdrop-filter:blur(24px) saturate(180%)">
+    <a href="#" class="flex items-center gap-2.5 no-underline">
+      <img src="assets/logo.png" alt="Kloser" class="h-6 w-auto" />
+    </a>
+
+    <div class="hidden md:flex items-center gap-1 text-sm">
+      <a href="#notify"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">문의</a>      
+      <a href="#features"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">기능</a>
+      <a href="#pricing"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">가격</a>
+      <a href="platform/dashboard.html"
+        class="px-3 py-1.5 rounded-lg text-blue-700 hover:text-blue-900 hover:bg-blue-50 transition-all no-underline font-bold inline-flex items-center gap-1">
+        체험판
+        <span class="px-1 py-0.5 rounded text-[.55rem] font-black text-emerald-700 bg-emerald-100 tracking-wider">LIVE</span>
+      </a>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="platform/dashboard.html"
+        class="hidden md:flex items-center gap-1.5 px-5 py-2 text-sm font-bold text-white rounded-[9px] bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors no-underline">
+        체험판 시작
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+          stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M5 12h14M13 5l7 7-7 7" />
+        </svg>
+      </a>
+      <!-- 모바일 햄버거 -->
+      <button id="mobNavBtn"
+        class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all bg-white">
+        <svg id="mobNavIcon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══════ MOBILE NAV MENU ═══════ -->
+  <div id="mobNav" class="fixed inset-0 z-[55] flex-col items-center justify-center gap-8"
+    style="display:none;background:rgba(255,255,255,.98);backdrop-filter:blur(24px)"
+    onclick="handleMobNavBgClick(event)">
+    <!-- close button -->
+    <button onclick="closeMobNav()" aria-label="메뉴 닫기"
+      class="absolute top-3.5 right-3.5 w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center transition-all">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </svg>
+    </button>
+    <div id="mobNavContent" class="flex flex-col items-center gap-2 w-full px-8">
+      <a href="#features" onclick="closeMobNav()"
+        class="mob-nav-link text-slate-700 hover:text-slate-900 hover:bg-slate-100">기능</a>
+      <a href="#pricing" onclick="closeMobNav()"
+        class="mob-nav-link text-slate-700 hover:text-slate-900 hover:bg-slate-100">가격</a>
+      <a href="platform/dashboard.html"
+        class="mob-nav-link text-blue-700 hover:text-blue-900 hover:bg-blue-50 font-bold">체험판 LIVE</a>
+      <a href="#pricing" onclick="closeMobNav()"
+        class="mob-nav-link text-slate-700 hover:text-slate-900 hover:bg-slate-100">문의</a>
+    </div>
+    <button
+      class="flex items-center gap-2 px-8 py-3 text-base font-bold text-white rounded-[10px] bg-blue-600 hover:bg-blue-700 shadow-md transition-all"
+      onclick="closeMobNav(); window.scrollTo({top:0,behavior:'smooth'});">
+      구매 문의
+      <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M5 12h14M13 5l7 7-7 7" />
+      </svg>
+    </button>
+  </div>
+
+
+  <!-- ═══════ HERO ═══════ -->
+  <section id="notify"
+    class="relative min-h-screen flex flex-col items-center justify-center text-center px-6 pt-28 pb-24 overflow-hidden">
+
+    <!-- mesh bg -->
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute -top-32 -left-56 w-[700px] h-[700px] rounded-full animate-float1 blur-[100px]"
+        style="background:radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 65%)"></div>
+      <div class="absolute top-40 -right-40 w-[550px] h-[550px] rounded-full animate-float2 blur-[90px]"
+        style="background:radial-gradient(circle,rgba(6,182,212,.1) 0%,transparent 65%)"></div>
+      <div class="absolute bottom-0 left-[25%] w-[450px] h-[450px] rounded-full animate-float3 blur-[90px]"
+        style="background:radial-gradient(circle,rgba(14,165,233,.08) 0%,transparent 65%)"></div>
+      <!-- grid -->
+      <div class="absolute inset-0"
+        style="background-image:linear-gradient(rgba(0,0,0,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.03) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse 85% 55% at 50% 50%,black,transparent)">
+      </div>
+    </div>
+
+
+    <!-- 라이브 뱃지 -->
+    <div
+      class="relative z-10 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50/70 text-blue-700 text-[.72rem] font-bold tracking-wide mb-6">
+      <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+      실시간 AI 통화 어시스턴트
+    </div>
+
+    <h1 class="hero-title relative z-10 font-black leading-[1.04] tracking-[-0.045em] mb-5 text-slate-800"
+      style="font-size:clamp(3rem,7vw,5.6rem)">
+      고객과 통화하는 그 순간,<br>
+      <span class="g-text">AI가 답을 알려드립니다</span>
+    </h1>
+
+    <p class="relative z-10 text-[1.05rem] text-slate-500 max-w-[560px] leading-[1.78] mb-10">
+      Kloser는 인바운드 상담을 실시간으로 분석해, 회사 가이드에 맞는 응대 멘트를 즉시 추천합니다. 통화가 끝나면 자동 요약과 다음 액션까지 정리해드려요.
+    </p>
+
+    <!-- CTA: 이메일 입력 + 확장형 문의 폼 -->
+    <form id="inquiryForm" class="relative z-10 w-full max-w-[520px] mb-12" onsubmit="submitInquiry(event)">
+      <div id="inquiryCard"
+        class="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all focus-within:border-blue-400 focus-within:shadow-[0_0_0_4px_rgba(59,130,246,.15)] overflow-hidden">
+        <!-- 상단: 이메일 + 버튼 -->
+        <div class="flex items-center gap-2 p-1.5">
+          <input id="inquiryEmail" type="email" placeholder="회사 이메일을 입력하세요" required
+            onfocus="expandInquiry()"
+            class="flex-1 bg-transparent outline-none px-4 text-[.93rem] text-slate-800 placeholder:text-slate-400" />
+          <button type="submit"
+            class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[.85rem] font-bold tracking-tight whitespace-nowrap transition-colors shadow-sm">
+            구매 문의 신청
+          </button>
+        </div>
+        <!-- 확장 영역: 포커스 시 부드럽게 펼쳐짐 -->
+        <div id="inquiryExtra" class="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out">
+          <div class="overflow-hidden">
+            <div class="px-4 pb-4 pt-2 border-t border-slate-100 grid sm:grid-cols-2 gap-2.5">
+              <input id="inquiryName" type="text" placeholder="고객명"
+                class="px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50/40 outline-none text-[.85rem] text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:bg-white transition-colors" />
+              <input id="inquiryPhone" type="tel" placeholder="연락처 (예: 010-1234-5678)"
+                class="px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50/40 outline-none text-[.85rem] text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:bg-white transition-colors" />
+              <textarea id="inquiryMsg" rows="3" placeholder="문의 내용 (회사 규모, 도입 시기, 궁금하신 점 등)"
+                class="sm:col-span-2 px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50/40 outline-none text-[.85rem] text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:bg-white transition-colors resize-none"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p id="inquiryStatus" class="text-[.7rem] text-slate-400 mt-3 transition-colors">도입 상담 무료 · 1영업일 내 답변</p>
+    </form>
+
+    <script>
+      function expandInquiry() {
+        document.getElementById('inquiryExtra').classList.replace('grid-rows-[0fr]', 'grid-rows-[1fr]');
+      }
+      function collapseInquiry() {
+        document.getElementById('inquiryExtra').classList.replace('grid-rows-[1fr]', 'grid-rows-[0fr]');
+      }
+      function submitInquiry(e) {
+        e.preventDefault();
+        const email = document.getElementById('inquiryEmail').value.trim();
+        if (!email) return;
+        // 확장 영역 닫기
+        collapseInquiry();
+        // 입력창 비우기
+        ['inquiryEmail', 'inquiryName', 'inquiryPhone', 'inquiryMsg'].forEach(id => {
+          const el = document.getElementById(id); if (el) el.value = '';
+        });
+        document.activeElement && document.activeElement.blur();
+        // 상태 메시지 변경
+        const status = document.getElementById('inquiryStatus');
+        status.className = 'text-[.78rem] font-bold text-emerald-600 mt-3 transition-colors flex items-center justify-center gap-1.5';
+        status.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> 구매 문의가 정상적으로 접수되었습니다 · 1영업일 내 연락드리겠습니다';
+      }
+    </script>
+
+    <!-- 기능 4개 -->
+    <div
+      class="stats-row relative z-10 flex flex-wrap justify-center overflow-hidden rounded-xl border border-slate-200 bg-white/60 backdrop-blur-md shadow-sm">
+      <div class="px-7 py-4 text-center border-r border-slate-200">
+        <div class="text-[1rem] font-black tracking-tight text-slate-800">실시간 통화 보조</div>
+        <div class="text-[.68rem] text-slate-500 mt-1 uppercase tracking-widest font-medium">2~3초 응답 추천</div>
+      </div>
+      <div class="px-7 py-4 text-center border-r border-slate-200">
+        <div class="text-[1rem] font-black tracking-tight text-slate-800">자동 요약</div>
+        <div class="text-[.68rem] text-slate-500 mt-1 uppercase tracking-widest font-medium">통화 종료 즉시 생성</div>
+      </div>
+      <div class="px-7 py-4 text-center border-r border-slate-200">
+        <div class="text-[1rem] font-black tracking-tight text-slate-800">일일 To-Do</div>
+        <div class="text-[.68rem] text-slate-500 mt-1 uppercase tracking-widest font-medium">매일 자동 업데이트</div>
+      </div>
+      <div class="px-7 py-4 text-center">
+        <div class="text-[1rem] font-black tracking-tight text-slate-800">뉴스레터 자동화</div>
+        <div class="text-[.68rem] text-slate-500 mt-1 uppercase tracking-widest font-medium">AI 챗봇으로 발송</div>
+      </div>
+    </div>
+
+    <!-- scroll cue -->
+    <div
+      class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-slate-400 text-[.65rem] font-semibold uppercase tracking-[.12em]">
+      <div class="w-5 h-8 border-2 border-slate-300 rounded-full flex justify-center" style="padding-top:5px">
+        <div class="w-0.5 h-[7px] bg-slate-400 rounded-full animate-scroll"></div>
+      </div>
+      scroll
+    </div>
+  </section>
+
+
+  <!-- ═══════ MARQUEE ═══════ -->
+  <!--
+  <div class="overflow-hidden border-y border-white/[.06] py-3.5" style="background:rgba(14,14,31,.7)">
+    <div class="flex animate-marquee whitespace-nowrap">
+      <template id="marqueeTpl">
+        <span class="mx-6 text-[.75rem] font-semibold text-[#5a5a7a] uppercase tracking-widest">Orthomosaic 2D</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#2563eb] uppercase tracking-widest">3D Point Cloud</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#5a5a7a] uppercase tracking-widest">DSM / DTM</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#22d3ee] uppercase tracking-widest">AI Object Detection</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#5a5a7a] uppercase tracking-widest">RTK Precision</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#f472b6] uppercase tracking-widest">Change Detection</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#5a5a7a] uppercase tracking-widest">GeoTIFF Export</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#fbbf24] uppercase tracking-widest">Digital Twin</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#5a5a7a] uppercase tracking-widest">LiDAR Scanning</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+        <span class="mx-6 text-[.75rem] font-semibold text-[#5a5a7a] uppercase tracking-widest">Photogrammetry</span>
+        <span class="mx-2 text-[#3a3a55]">✦</span>
+      </template>
+    </div>
+  </div>
+  -->
+
+  <!-- ═══════ PARTNERS / INTEGRATIONS ═══════ -->
+  <!-- <section aria-labelledby="partners-heading" class="max-w-[1360px] mx-auto px-6 lg:px-8 py-12 sm:py-16">
+    <div class="text-center mb-10 sm:mb-12">
+      <p class="text-[.68rem] font-black tracking-[.22em] uppercase text-blue-600 mb-3">
+        Powered by · Integrates with
+      </p>
+      <h2 id="partners-heading"
+        class="text-[clamp(1.35rem,2.3vw,1.75rem)] font-black tracking-[-0.03em] text-slate-800 leading-tight">
+        세계 최고의 AI 모델과 검증된 비즈니스 도구로 작동합니다
+      </h2>
+      <p class="text-[.85rem] text-slate-500 mt-3 max-w-[540px] mx-auto leading-relaxed">
+        Kloser는 글로벌 AI 인프라 위에서, 한국 영업팀이 매일 쓰는 도구들과 매끄럽게 연결됩니다.
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-center gap-x-10 sm:gap-x-14 lg:gap-x-16 gap-y-8">
+      <a href="https://www.anthropic.com" target="_blank" rel="noopener noreferrer" aria-label="Anthropic"
+        class="group inline-flex items-center" title="Anthropic · Claude 기반 통화 분석">
+        <img src="https://cdn.simpleicons.org/anthropic/64748b" alt="Anthropic" loading="lazy" decoding="async"
+          class="h-6 sm:h-7 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+      <a href="https://about.google" target="_blank" rel="noopener noreferrer" aria-label="Google"
+        class="group inline-flex items-center" title="Google · Gemini & Cloud">
+        <img src="https://cdn.simpleicons.org/google/64748b" alt="Google" loading="lazy" decoding="async"
+          class="h-6 sm:h-7 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+      <a href="https://www.navercorp.com" target="_blank" rel="noopener noreferrer" aria-label="Naver"
+        class="group inline-flex items-center" title="Naver · 검색 API + Clova STT">
+        <img src="https://cdn.simpleicons.org/naver/64748b" alt="Naver" loading="lazy" decoding="async"
+          class="h-5 sm:h-6 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+      <a href="https://www.kakaocorp.com" target="_blank" rel="noopener noreferrer" aria-label="KakaoTalk"
+        class="group inline-flex items-center" title="KakaoTalk · 채널/뉴스레터 발송">
+        <img src="https://cdn.simpleicons.org/kakaotalk/64748b" alt="KakaoTalk" loading="lazy" decoding="async"
+          class="h-7 sm:h-8 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+      <a href="https://www.hubspot.com" target="_blank" rel="noopener noreferrer" aria-label="HubSpot"
+        class="group inline-flex items-center" title="HubSpot · CRM 양방향 동기화">
+        <img src="https://cdn.simpleicons.org/hubspot/64748b" alt="HubSpot" loading="lazy" decoding="async"
+          class="h-7 sm:h-8 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+      <a href="https://mailchimp.com" target="_blank" rel="noopener noreferrer" aria-label="Mailchimp"
+        class="group inline-flex items-center" title="Mailchimp · 뉴스레터 발송">
+        <img src="https://cdn.simpleicons.org/mailchimp/64748b" alt="Mailchimp" loading="lazy" decoding="async"
+          class="h-7 sm:h-8 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+      <a href="https://www.notion.so" target="_blank" rel="noopener noreferrer" aria-label="Notion"
+        class="group inline-flex items-center" title="Notion · 회사 가이드/매뉴얼 연동">
+        <img src="https://cdn.simpleicons.org/notion/64748b" alt="Notion" loading="lazy" decoding="async"
+          class="h-7 sm:h-8 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+      <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer" aria-label="Gmail"
+        class="group inline-flex items-center" title="Gmail · 이메일 발송 채널">
+        <img src="https://cdn.simpleicons.org/gmail/64748b" alt="Gmail" loading="lazy" decoding="async"
+          class="h-6 sm:h-7 w-auto opacity-60 group-hover:opacity-100 transition-opacity duration-200" />
+      </a>
+    </div>
+
+    <p class="text-center text-[.7rem] text-slate-400 mt-10">
+      * 일부 통합은 베타 또는 로드맵 단계입니다. 위 로고는 각 사의 상표이며 표시는 정보 제공 목적입니다.
+    </p>
+  </section> -->
+
+  <!-- ═══════ FEATURES (PLATFORM INTRO) ═══════ -->
+  <section id="features" class="relative">
+
+    <!-- ─── 01. 실시간 통화 AI 어시스턴트 ─── -->
+    <div class="border-b border-slate-100">
+      <div
+        class="max-w-[1200px] mx-auto px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <div>
+          <div class="inline-flex items-center gap-3 mb-5">
+            <span class="text-[.7rem] font-black text-blue-600 tracking-[.22em]">FEATURE 01</span>
+            <span class="w-10 h-px bg-blue-200"></span>
+          </div>
+          <h2 class="text-[clamp(1.85rem,3.4vw,2.6rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.18] mb-5">
+            통화 중에 바로 답이 보이는<br>
+            <span class="g-text">실시간 AI 어시스턴트</span>
+          </h2>
+          <p class="text-[1.02rem] text-slate-600 leading-[1.78] mb-8 max-w-[480px]">
+            고객과 통화하는 동안 AI가 대화를 실시간으로 분석하고, 회사 가이드에 맞는 응대 방향을 즉시 제안합니다.
+            상담원은 망설이지 않고 자연스럽게 흐름을 이어갈 수 있어요.
+          </p>
+          <ul class="grid sm:grid-cols-2 gap-4">
+            <li class="flex items-start gap-2.5">
+              <span
+                class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                  width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg></span>
+              <div>
+                <div class="text-[.92rem] font-bold text-slate-800">실시간 대화 분석</div>
+                <div class="text-[.76rem] text-slate-500 mt-0.5">청크 단위로 흐름 추적</div>
+              </div>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <span
+                class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                  width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg></span>
+              <div>
+                <div class="text-[.92rem] font-bold text-slate-800">응대 방향 제안</div>
+                <div class="text-[.76rem] text-slate-500 mt-0.5">상황별 추천 멘트</div>
+              </div>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <span
+                class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                  width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg></span>
+              <div>
+                <div class="text-[.92rem] font-bold text-slate-800">추천 토픽 포인트</div>
+                <div class="text-[.76rem] text-slate-500 mt-0.5">놓치기 쉬운 주제 제시</div>
+              </div>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <span
+                class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                  width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg></span>
+              <div>
+                <div class="text-[.92rem] font-bold text-slate-800">체크리스트 제공</div>
+                <div class="text-[.76rem] text-slate-500 mt-0.5">필수 안내 항목 가이드</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative">
+          <div
+            class="absolute -inset-6 bg-gradient-to-tr from-blue-200/30 via-cyan-200/30 to-transparent rounded-[2rem] blur-2xl -z-10">
+          </div>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,.18)] overflow-hidden">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50/60">
+              <div class="flex gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-300"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-300"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-300"></span>
+              </div>
+              <div class="ml-3 flex items-center gap-1.5">
+                <img src="assets/logo2.png" alt="" class="h-3.5 w-auto opacity-90" />
+                <span class="text-[.66rem] font-bold text-slate-500 tracking-tight">실시간 상담</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 bg-slate-50/40">
+              <div class="rounded-lg border border-slate-200 bg-white p-3">
+                <div class="text-[.55rem] font-black uppercase text-slate-400 tracking-wider mb-2">실시간 통화</div>
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="relative flex w-2 h-2">
+                    <span class="absolute inset-0 rounded-full bg-emerald-400 opacity-60 animate-ping"></span>
+                    <span class="relative rounded-full w-2 h-2 bg-emerald-500"></span>
+                  </span>
+                  <span class="text-[.7rem] font-bold text-slate-700">통화 진행 중</span>
+                </div>
+                <div class="text-[1.05rem] font-black text-slate-800 tabular-nums tracking-tight">00:04:32</div>
+                <div class="mt-2.5 pt-2.5 border-t border-slate-100 text-[.62rem] text-slate-500 space-y-0.5">
+                  <div>고객: 김민수 님</div>
+                  <div>유형: 신규 문의</div>
+                </div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-white p-3">
+                <div class="text-[.55rem] font-black uppercase text-slate-400 tracking-wider mb-2">실시간 대화 요약</div>
+                <div class="space-y-1.5">
+                  <div class="flex gap-1.5"><span
+                      class="text-[.5rem] px-1 rounded bg-slate-100 text-slate-500 shrink-0 self-start mt-0.5 font-bold">고객</span>
+                    <p class="text-[.62rem] text-slate-700 leading-snug">저희는 현재 여러 CRM을 사용 중인데, 데이터가 분산되어 있어서…</p>
+                  </div>
+                  <div class="flex gap-1.5"><span
+                      class="text-[.5rem] px-1 rounded bg-blue-100 text-blue-700 shrink-0 self-start mt-0.5 font-bold">영업</span>
+                    <p class="text-[.62rem] text-slate-700 leading-snug">기존 데이터 마이그레이션은 저희가 지원해 드립니다.</p>
+                  </div>
+                  <div class="flex gap-1.5"><span
+                      class="text-[.5rem] px-1 rounded bg-slate-100 text-slate-500 shrink-0 self-start mt-0.5 font-bold">고객</span>
+                    <p class="text-[.62rem] text-slate-700 leading-snug">월 비용은 어느 정도 수준인가요?</p>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-50/30 p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="text-[.55rem] font-black uppercase text-blue-700 tracking-wider">AI 어시스턴트 제안</div>
+                  <span class="flex items-center gap-1 text-[.5rem] font-bold text-emerald-600">
+                    <span class="w-1 h-1 rounded-full bg-emerald-500"></span>실시간
+                  </span>
+                </div>
+                <div class="rounded-md bg-white border border-blue-100 p-2 mb-2">
+                  <div class="text-[.55rem] font-bold text-blue-700 mb-1">▶ 응대 방향 제안</div>
+                  <p class="text-[.6rem] text-slate-700 leading-snug">고객은 데이터 통합과 시스템 연동에 관심이 있습니다.</p>
+                </div>
+                <div class="space-y-1">
+                  <div class="flex items-center gap-1.5 text-[.6rem] text-slate-700"><span
+                      class="text-emerald-500 font-black">✓</span><span>14일 무료 체험 안내</span></div>
+                  <div class="flex items-center gap-1.5 text-[.6rem] text-slate-700"><span
+                      class="text-emerald-500 font-black">✓</span><span>도입 사례 공유</span></div>
+                  <div class="flex items-center gap-1.5 text-[.6rem] text-slate-400"><span>○</span><span>주요 기능 시연
+                      제안</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 02. 통화 요약 & 다음 액션 ─── -->
+    <div class="bg-slate-50/60 border-b border-slate-100">
+      <div
+        class="max-w-[1200px] mx-auto px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+        <div class="order-2 lg:order-1 relative">
+          <div
+            class="absolute -inset-6 bg-gradient-to-tl from-emerald-200/25 via-blue-200/25 to-transparent rounded-[2rem] blur-2xl -z-10">
+          </div>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,.18)] overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                    viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-[.78rem] font-bold text-slate-800">통화 #2024-1453</div>
+                  <div class="text-[.6rem] text-slate-400">2026-05-01 14:23 · 통화 시간 8분 12초</div>
+                </div>
+              </div>
+              <span class="text-[.6rem] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold">완료</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-0">
+              <div class="border-b sm:border-b-0 sm:border-r border-slate-200 p-4">
+                <div class="text-[.6rem] font-black uppercase text-slate-400 tracking-wider mb-2.5">통화 Transcript</div>
+                <div class="space-y-2 max-h-[200px] overflow-hidden">
+                  <div class="flex gap-1.5"><span
+                      class="text-[.5rem] px-1 rounded bg-slate-100 text-slate-500 shrink-0 self-start mt-0.5 font-bold">고객</span>
+                    <p class="text-[.62rem] text-slate-700 leading-snug">현재 영업팀이 8명 정도 되는데…</p>
+                  </div>
+                  <div class="flex gap-1.5"><span
+                      class="text-[.5rem] px-1 rounded bg-blue-100 text-blue-700 shrink-0 self-start mt-0.5 font-bold">영업</span>
+                    <p class="text-[.62rem] text-slate-700 leading-snug">규모에 맞춰 사용량 기반 플랜을 추천드릴게요.</p>
+                  </div>
+                  <div class="flex gap-1.5"><span
+                      class="text-[.5rem] px-1 rounded bg-slate-100 text-slate-500 shrink-0 self-start mt-0.5 font-bold">고객</span>
+                    <p class="text-[.62rem] text-slate-700 leading-snug">기존 CRM과 데이터 연동이 가능할까요?</p>
+                  </div>
+                  <div class="flex gap-1.5"><span
+                      class="text-[.5rem] px-1 rounded bg-blue-100 text-blue-700 shrink-0 self-start mt-0.5 font-bold">영업</span>
+                    <p class="text-[.62rem] text-slate-700 leading-snug">HubSpot, Salesforce 양방향 동기화 지원합니다.</p>
+                  </div>
+                  <div class="text-center text-[.55rem] text-slate-400 py-1">+ 더보기 (24)</div>
+                </div>
+              </div>
+              <div class="p-4 space-y-2.5">
+                <div class="text-[.6rem] font-black uppercase text-slate-400 tracking-wider mb-1">통화 요약</div>
+                <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-2.5">
+                  <div class="text-[.6rem] font-bold text-slate-700 mb-1">고객 니즈</div>
+                  <p class="text-[.6rem] text-slate-600 leading-snug">영업 8명 규모, 기존 CRM 데이터 통합 우선</p>
+                </div>
+                <div class="rounded-lg border border-amber-200 bg-amber-50/50 p-2.5">
+                  <div class="text-[.6rem] font-bold text-amber-700 mb-1">미해결 이슈</div>
+                  <p class="text-[.6rem] text-slate-600 leading-snug">예산 시기 미확정 — 다음 주 중 공유 예정</p>
+                </div>
+                <div class="rounded-lg border border-blue-200 bg-blue-50/40 p-2.5">
+                  <div class="text-[.6rem] font-bold text-blue-700 mb-1">다음 액션</div>
+                  <ul class="space-y-0.5 text-[.6rem] text-slate-700">
+                    <li class="flex gap-1.5"><span class="text-blue-500 font-black">→</span>통합 가이드 PDF 발송</li>
+                    <li class="flex gap-1.5"><span class="text-blue-500 font-black">→</span>데모 일정 제안 (5/8)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-1 lg:order-2">
+          <div class="inline-flex items-center gap-3 mb-5">
+            <span class="text-[.7rem] font-black text-blue-600 tracking-[.22em]">FEATURE 02</span>
+            <span class="w-10 h-px bg-blue-200"></span>
+          </div>
+          <h2 class="text-[clamp(1.85rem,3.4vw,2.6rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.18] mb-5">
+            통화 후 메모,<br>
+            <span class="g-text">자동으로 정리됩니다</span>
+          </h2>
+          <p class="text-[1.02rem] text-slate-600 leading-[1.78] mb-8 max-w-[480px]">
+            통화가 종료되는 즉시 AI가 전체 대화를 요약하고, 고객 니즈와 미해결 이슈, 다음 액션까지 자동으로 정리합니다.
+            별도 메모 작성 없이 곧바로 다음 업무로 이어가세요.
+          </p>
+          <div class="grid sm:grid-cols-3 gap-3">
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div class="text-[1.4rem] font-black text-slate-800 tracking-tight">즉시</div>
+              <div class="text-[.72rem] text-slate-500 mt-1">통화 종료 후 자동 생성</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div class="text-[1.4rem] font-black text-slate-800 tracking-tight tabular-nums">3개</div>
+              <div class="text-[.72rem] text-slate-500 mt-1">자동 분류 카테고리</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div class="text-[1.4rem] font-black text-slate-800 tracking-tight tabular-nums">−50%</div>
+              <div class="text-[.72rem] text-slate-500 mt-1">메모 작성 시간</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── 03. 매일 자동 추천 영업 To-Do ─── -->
+    <div class="border-b border-slate-100">
+      <div
+        class="max-w-[1200px] mx-auto px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+        <div>
+          <div class="inline-flex items-center gap-3 mb-5">
+            <span class="text-[.7rem] font-black text-blue-600 tracking-[.22em]">FEATURE 03</span>
+            <span class="w-10 h-px bg-blue-200"></span>
+          </div>
+          <h2 class="text-[clamp(1.85rem,3.4vw,2.6rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.18] mb-5">
+            매일 아침,<br>
+            <span class="g-text">오늘 할 일이 정해져 있습니다</span>
+          </h2>
+          <p class="text-[1.02rem] text-slate-600 leading-[1.78] mb-8 max-w-[480px]">
+            네이버 검색 API로 회사가 지정한 키워드, 업계 동향, 경쟁사 소식을 매일 자동 수집해 분석합니다.
+            AI가 시장 변화에 맞춘 오늘의 영업 우선순위를 제안해드려요.
+          </p>
+          <ul class="space-y-3">
+            <li class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white">
+              <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                  viewBox="0 0 24 24">
+                  <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <div>
+                <div class="text-[.9rem] font-bold text-slate-800">시장 모니터링 자동화</div>
+                <div class="text-[.78rem] text-slate-500 mt-0.5">네이버 검색 API 기반 일일 키워드 수집</div>
+              </div>
+            </li>
+            <li class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white">
+              <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                  viewBox="0 0 24 24">
+                  <path d="M3 3v18h18M7 14l4-4 4 4 5-5" />
+                </svg>
+              </span>
+              <div>
+                <div class="text-[.9rem] font-bold text-slate-800">트렌드 점수 분석</div>
+                <div class="text-[.78rem] text-slate-500 mt-0.5">관심 키워드 변화율 자동 추적</div>
+              </div>
+            </li>
+            <li class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white">
+              <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                  viewBox="0 0 24 24">
+                  <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                </svg>
+              </span>
+              <div>
+                <div class="text-[.9rem] font-bold text-slate-800">분석 기반 To-Do</div>
+                <div class="text-[.78rem] text-slate-500 mt-0.5">AI가 우선순위로 정렬한 행동 리스트</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative">
+          <div
+            class="absolute -inset-6 bg-gradient-to-br from-amber-200/20 via-blue-200/30 to-transparent rounded-[2rem] blur-2xl -z-10">
+          </div>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,.18)] overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 bg-white">
+              <div class="text-[.7rem] text-slate-400 mb-0.5">2026.05.03 (월)</div>
+              <div class="text-[1.05rem] font-black text-slate-800 tracking-tight">좋은 아침, 김영업님 ☀</div>
+            </div>
+            <div class="p-4 grid grid-cols-4 gap-2">
+              <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-center">
+                <div class="text-[1.1rem] font-black text-slate-800 tabular-nums">128</div>
+                <div class="text-[.55rem] text-slate-500 uppercase tracking-wider mt-0.5">신규 키워드</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-center">
+                <div class="text-[1.1rem] font-black text-emerald-600 tabular-nums">+23</div>
+                <div class="text-[.55rem] text-slate-500 uppercase tracking-wider mt-0.5">트렌드 상승</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-center">
+                <div class="text-[1.1rem] font-black text-slate-800 tabular-nums">17</div>
+                <div class="text-[.55rem] text-slate-500 uppercase tracking-wider mt-0.5">추천 To-Do</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-center">
+                <div class="text-[1.1rem] font-black text-rose-500 tabular-nums">12</div>
+                <div class="text-[.55rem] text-slate-500 uppercase tracking-wider mt-0.5">긴급 알림</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-0 border-t border-slate-100">
+              <div class="p-4 border-r border-slate-100">
+                <div class="text-[.6rem] font-black uppercase text-slate-400 tracking-wider mb-2">트렌드 알림</div>
+                <ul class="space-y-2">
+                  <li class="flex items-center justify-between text-[.7rem]">
+                    <span class="text-slate-700 truncate">B2B SaaS 도입</span>
+                    <span class="text-emerald-600 font-bold tabular-nums">↑ 42%</span>
+                  </li>
+                  <li class="flex items-center justify-between text-[.7rem]">
+                    <span class="text-slate-700 truncate">AI 콜센터</span>
+                    <span class="text-emerald-600 font-bold tabular-nums">↑ 28%</span>
+                  </li>
+                  <li class="flex items-center justify-between text-[.7rem]">
+                    <span class="text-slate-700 truncate">CRM 통합</span>
+                    <span class="text-rose-500 font-bold tabular-nums">↓ 6%</span>
+                  </li>
+                </ul>
+              </div>
+              <div class="p-4">
+                <div class="text-[.6rem] font-black uppercase text-blue-700 tracking-wider mb-2">오늘의 추천 To-Do</div>
+                <ul class="space-y-1.5">
+                  <li class="flex items-center gap-1.5 text-[.7rem] text-slate-700">
+                    <span class="w-3 h-3 rounded border-2 border-blue-500 bg-blue-500 flex items-center justify-center">
+                      <svg width="8" height="8" fill="none" stroke="white" stroke-width="3.5" viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <span class="line-through text-slate-400">A사 대표님 후속 미팅</span>
+                  </li>
+                  <li class="flex items-center gap-1.5 text-[.7rem] text-slate-700">
+                    <span class="w-3 h-3 rounded border-2 border-slate-300"></span>
+                    <span>B사 도입 사례 발송</span>
+                  </li>
+                  <li class="flex items-center gap-1.5 text-[.7rem] text-slate-700">
+                    <span class="w-3 h-3 rounded border-2 border-slate-300"></span>
+                    <span>경쟁사 동향 리뷰</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── 04. 고객 관리 & 뉴스레터 자동화 ─── -->
+    <div class="bg-slate-50/60 border-b border-slate-100">
+      <div
+        class="max-w-[1200px] mx-auto px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+        <div class="order-2 lg:order-1 relative">
+          <div
+            class="absolute -inset-6 bg-gradient-to-tr from-rose-200/20 via-blue-200/30 to-transparent rounded-[2rem] blur-2xl -z-10">
+          </div>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,.18)] overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 bg-white flex items-center justify-between">
+              <div class="text-[.78rem] font-bold text-slate-800">고객 관리</div>
+              <div class="text-[.6rem] text-slate-400 tabular-nums">전체 2,486</div>
+            </div>
+            <table class="w-full text-[.7rem]">
+              <thead>
+                <tr class="border-b border-slate-100 bg-slate-50/40 text-slate-500">
+                  <th class="font-bold text-left px-3 py-2">이름</th>
+                  <th class="font-bold text-left px-3 py-2">회사</th>
+                  <th class="font-bold text-left px-3 py-2">상태</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr class="hover:bg-slate-50/40">
+                  <td class="px-3 py-2 text-slate-700">김민수</td>
+                  <td class="px-3 py-2 text-slate-600">Kloser Inc.</td>
+                  <td class="px-3 py-2"><span
+                      class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[.6rem] font-bold">활성</span>
+                  </td>
+                </tr>
+                <tr class="hover:bg-slate-50/40">
+                  <td class="px-3 py-2 text-slate-700">이지은</td>
+                  <td class="px-3 py-2 text-slate-600">DesignCo.</td>
+                  <td class="px-3 py-2"><span
+                      class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[.6rem] font-bold">검토</span></td>
+                </tr>
+                <tr class="hover:bg-slate-50/40">
+                  <td class="px-3 py-2 text-slate-700">박서준</td>
+                  <td class="px-3 py-2 text-slate-600">Nexus Lab</td>
+                  <td class="px-3 py-2"><span
+                      class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[.6rem] font-bold">활성</span>
+                  </td>
+                </tr>
+                <tr class="hover:bg-slate-50/40">
+                  <td class="px-3 py-2 text-slate-700">정유진</td>
+                  <td class="px-3 py-2 text-slate-600">TerraBase</td>
+                  <td class="px-3 py-2"><span
+                      class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[.6rem] font-bold">대기</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="border-t border-slate-200 p-3 bg-slate-50/40">
+              <div class="flex items-center gap-2 mb-2">
+                <div
+                  class="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[.55rem] font-black text-white">
+                  AI</div>
+                <div class="text-[.7rem] font-bold text-slate-700">AI 이메일 작성</div>
+              </div>
+              <div class="rounded-lg bg-white border border-slate-200 p-2.5 mb-2">
+                <p class="text-[.62rem] text-slate-700 leading-snug">김민수 고객님께 Kloser 신기능 소개 메일을 작성해줘.</p>
+              </div>
+              <div class="rounded-lg bg-blue-50/60 border border-blue-100 p-2.5">
+                <div class="text-[.55rem] font-bold text-blue-700 mb-1">생성된 초안</div>
+                <p class="text-[.62rem] text-slate-700 leading-snug">안녕하세요, 김민수 님. Kloser 신기능 안내드립니다…</p>
+                <div class="flex gap-1.5 mt-2">
+                  <button class="text-[.58rem] px-2 py-0.5 rounded bg-blue-600 text-white font-bold">메일 발송</button>
+                  <button class="text-[.58rem] px-2 py-0.5 rounded border border-slate-200 text-slate-600 font-bold">다시
+                    작성</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-1 lg:order-2">
+          <div class="inline-flex items-center gap-3 mb-5">
+            <span class="text-[.7rem] font-black text-blue-600 tracking-[.22em]">FEATURE 04</span>
+            <span class="w-10 h-px bg-blue-200"></span>
+          </div>
+          <h2 class="text-[clamp(1.85rem,3.4vw,2.6rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.18] mb-5">
+            고객 관리부터 뉴스레터까지<br>
+            <span class="g-text">AI 챗봇 한 번이면 끝</span>
+          </h2>
+          <p class="text-[1.02rem] text-slate-600 leading-[1.78] mb-8 max-w-[480px]">
+            고객 정보를 통합 DB로 관리하고, AI 챗봇과 대화하면 개인화된 이메일과 뉴스레터가 즉시 작성됩니다.
+            디자이너나 카피라이터 없이도 고품질 커뮤니케이션을 운영하세요.
+          </p>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div class="text-[1.3rem] font-black text-slate-800 tracking-tight tabular-nums">2,486</div>
+              <div class="text-[.7rem] text-slate-500 mt-1">발송 완료</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div class="text-[1.3rem] font-black text-emerald-600 tracking-tight tabular-nums">97.4%</div>
+              <div class="text-[.7rem] text-slate-500 mt-1">전달률</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4">
+              <div class="text-[1.3rem] font-black text-blue-600 tracking-tight tabular-nums">50.0%</div>
+              <div class="text-[.7rem] text-slate-500 mt-1">오픈율</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── 05. 관리자 & 직원 계정 관리 ─── -->
+    <div class="border-b border-slate-100">
+      <div
+        class="max-w-[1200px] mx-auto px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+        <div>
+          <div class="inline-flex items-center gap-3 mb-5">
+            <span class="text-[.7rem] font-black text-blue-600 tracking-[.22em]">FEATURE 05</span>
+            <span class="w-10 h-px bg-blue-200"></span>
+          </div>
+          <h2 class="text-[clamp(1.85rem,3.4vw,2.6rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.18] mb-5">
+            회사 단위로 통합되는<br>
+            <span class="g-text">관리자 & 직원 계정</span>
+          </h2>
+          <p class="text-[1.02rem] text-slate-600 leading-[1.78] mb-8 max-w-[480px]">
+            관리자 계정 1개로 직원 서브 계정을 무제한 발급할 수 있어요. 직원별 권한과 역할을 세분화하고,
+            모든 영업 데이터는 회사 단위로 자동 통합됩니다.
+          </p>
+          <ul class="grid sm:grid-cols-2 gap-3">
+            <li class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white border border-slate-200">
+              <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                  viewBox="0 0 24 24">
+                  <path
+                    d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                </svg>
+              </span>
+              <div class="text-[.78rem] font-bold text-slate-800">관리자 1 + 무제한 직원</div>
+            </li>
+            <li class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white border border-slate-200">
+              <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                  viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+              </span>
+              <div class="text-[.78rem] font-bold text-slate-800">권한별 접근 제어</div>
+            </li>
+            <li class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white border border-slate-200">
+              <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                  viewBox="0 0 24 24">
+                  <path d="M12 2v20M2 12h20" />
+                </svg>
+              </span>
+              <div class="text-[.78rem] font-bold text-slate-800">조직 구조 자유 설정</div>
+            </li>
+            <li class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white border border-slate-200">
+              <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                  viewBox="0 0 24 24">
+                  <path
+                    d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+                </svg>
+              </span>
+              <div class="text-[.78rem] font-bold text-slate-800">회사 단위 데이터 통합</div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative">
+          <div
+            class="absolute -inset-6 bg-gradient-to-bl from-violet-200/25 via-blue-200/30 to-transparent rounded-[2rem] blur-2xl -z-10">
+          </div>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,.18)] overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 bg-white flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div
+                  class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[.6rem] font-black text-white">
+                  K</div>
+                <div>
+                  <div class="text-[.78rem] font-bold text-slate-800">Kloser Inc.</div>
+                  <div class="text-[.55rem] text-slate-400">14명 · 3개 팀</div>
+                </div>
+              </div>
+              <button class="text-[.6rem] px-2 py-1 rounded bg-blue-600 text-white font-bold">+ 직원 초대</button>
+            </div>
+            <div class="p-4 space-y-2.5">
+              <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-50/60 border border-blue-100">
+                <div class="flex items-center gap-2">
+                  <div
+                    class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-[.6rem] font-black text-white">
+                    조</div>
+                  <div>
+                    <div class="text-[.7rem] font-bold text-slate-800">조성훈</div>
+                    <div class="text-[.55rem] text-slate-500">support@doi-kr.com</div>
+                  </div>
+                </div>
+                <span class="text-[.55rem] px-1.5 py-0.5 rounded bg-blue-600 text-white font-black tracking-wide">ADMIN</span>
+              </div>
+              <div class="ml-5 space-y-1.5">
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-slate-200">
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[.55rem] font-black text-white">
+                      김</div>
+                    <div class="text-[.7rem] text-slate-700">김민수 <span class="text-slate-400 text-[.6rem]">·
+                        영업1팀</span></div>
+                  </div>
+                  <span class="text-[.55rem] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">SUB</span>
+                </div>
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-slate-200">
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="w-6 h-6 rounded-full bg-rose-500 flex items-center justify-center text-[.55rem] font-black text-white">
+                      이</div>
+                    <div class="text-[.7rem] text-slate-700">이지은 <span class="text-slate-400 text-[.6rem]">·
+                        영업2팀</span></div>
+                  </div>
+                  <span class="text-[.55rem] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">SUB</span>
+                </div>
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-slate-200">
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-[.55rem] font-black text-white">
+                      박</div>
+                    <div class="text-[.7rem] text-slate-700">박서준 <span class="text-slate-400 text-[.6rem]">·
+                        CS팀</span></div>
+                  </div>
+                  <span class="text-[.55rem] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">SUB</span>
+                </div>
+                <div class="text-center text-[.6rem] text-slate-400 py-1">+ 11명 더보기</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── 06. 팀 성과 공유 대시보드 ─── -->
+    <div class="bg-gradient-to-b from-slate-50/60 to-white">
+      <div class="max-w-[1200px] mx-auto px-6 lg:px-8 py-20 lg:py-28">
+        <div class="text-center mb-12 max-w-[640px] mx-auto">
+          <div class="inline-flex items-center gap-3 mb-5">
+            <span class="w-10 h-px bg-blue-200"></span>
+            <span class="text-[.7rem] font-black text-blue-600 tracking-[.22em]">FEATURE 06</span>
+            <span class="w-10 h-px bg-blue-200"></span>
+          </div>
+          <h2 class="text-[clamp(1.85rem,3.4vw,2.6rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.18] mb-5">
+            팀 성과를 한눈에,<br>
+            <span class="g-text">실시간 KPI 대시보드</span>
+          </h2>
+          <p class="text-[1.02rem] text-slate-600 leading-[1.78]">
+            통화 건수, 응답률, 평균 통화 시간, 전환율까지 영업 핵심 KPI를 실시간으로 시각화합니다.
+            우수 사례를 빠르게 공유하고 조직 전체의 영업력을 끌어올리세요.
+          </p>
+        </div>
+
+        <div class="relative max-w-[1080px] mx-auto">
+          <div
+            class="absolute -inset-8 bg-gradient-to-tr from-blue-200/25 via-cyan-200/20 to-transparent rounded-[2.5rem] blur-3xl -z-10">
+          </div>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white shadow-[0_30px_80px_-25px_rgba(15,23,42,.22)] overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-slate-200 bg-white flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <img src="assets/logo2.png" alt="" class="h-4 w-auto" />
+                <span class="text-[.7rem] font-bold text-slate-700">팀 성과 대시보드</span>
+              </div>
+              <div class="flex items-center gap-2 text-[.6rem] text-slate-500">
+                <span class="px-2 py-1 rounded bg-slate-100 font-bold">이번 주</span>
+                <span class="px-2 py-1 rounded text-slate-400">이번 달</span>
+                <span class="px-2 py-1 rounded text-slate-400">분기</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-0">
+              <div class="p-5 border-r border-b sm:border-b-0 border-slate-100">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  <span class="text-[.6rem] font-bold text-slate-500 uppercase tracking-wider">총 통화 수</span>
+                </div>
+                <div class="text-[1.7rem] font-black text-slate-800 tabular-nums tracking-tight">12,842</div>
+                <div class="text-[.65rem] text-emerald-600 font-bold mt-0.5 tabular-nums">↑ 18.2% vs 지난주</div>
+              </div>
+              <div class="p-5 border-b sm:border-r sm:border-b-0 border-slate-100">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-[.6rem] font-bold text-slate-500 uppercase tracking-wider">응답률</span>
+                </div>
+                <div class="text-[1.7rem] font-black text-slate-800 tabular-nums tracking-tight">76.4%</div>
+                <div class="text-[.65rem] text-emerald-600 font-bold mt-0.5 tabular-nums">↑ 4.1%p</div>
+              </div>
+              <div class="p-5 border-r border-slate-100">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span class="text-[.6rem] font-bold text-slate-500 uppercase tracking-wider">평균 통화 시간</span>
+                </div>
+                <div class="text-[1.7rem] font-black text-slate-800 tabular-nums tracking-tight">12<span
+                    class="text-[1.05rem] text-slate-500 font-bold">m</span> 8<span
+                    class="text-[1.05rem] text-slate-500 font-bold">s</span></div>
+                <div class="text-[.65rem] text-rose-500 font-bold mt-0.5 tabular-nums">↓ 1.2% (효율↑)</div>
+              </div>
+              <div class="p-5">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                  <span class="text-[.6rem] font-bold text-slate-500 uppercase tracking-wider">전환 수</span>
+                </div>
+                <div class="text-[1.7rem] font-black text-slate-800 tabular-nums tracking-tight">1,643</div>
+                <div class="text-[.65rem] text-emerald-600 font-bold mt-0.5 tabular-nums">↑ 12.8%</div>
+              </div>
+            </div>
+            <div class="border-t border-slate-100 p-5 bg-slate-50/40">
+              <div class="flex items-center justify-between mb-4">
+                <div class="text-[.7rem] font-bold text-slate-700">팀별 주간 성과</div>
+                <div class="flex items-center gap-3 text-[.6rem]">
+                  <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-blue-500"></span><span
+                      class="text-slate-500">통화</span></div>
+                  <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-emerald-500"></span><span
+                      class="text-slate-500">전환</span></div>
+                </div>
+              </div>
+              <div class="grid grid-cols-7 gap-3 h-[150px]">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="flex items-end gap-1 w-full flex-1 min-h-0">
+                    <div class="flex-1 rounded-t bg-blue-500" style="height:62%"></div>
+                    <div class="flex-1 rounded-t bg-emerald-500" style="height:38%"></div>
+                  </div>
+                  <div class="text-[.6rem] text-slate-500">월</div>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="flex items-end gap-1 w-full flex-1 min-h-0">
+                    <div class="flex-1 rounded-t bg-blue-500" style="height:78%"></div>
+                    <div class="flex-1 rounded-t bg-emerald-500" style="height:52%"></div>
+                  </div>
+                  <div class="text-[.6rem] text-slate-500">화</div>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="flex items-end gap-1 w-full flex-1 min-h-0">
+                    <div class="flex-1 rounded-t bg-blue-500" style="height:54%"></div>
+                    <div class="flex-1 rounded-t bg-emerald-500" style="height:32%"></div>
+                  </div>
+                  <div class="text-[.6rem] text-slate-500">수</div>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="flex items-end gap-1 w-full flex-1 min-h-0">
+                    <div class="flex-1 rounded-t bg-blue-500" style="height:88%"></div>
+                    <div class="flex-1 rounded-t bg-emerald-500" style="height:64%"></div>
+                  </div>
+                  <div class="text-[.6rem] text-slate-500">목</div>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class="flex items-end gap-1 w-full flex-1 min-h-0">
+                    <div class="flex-1 rounded-t bg-blue-500" style="height:96%"></div>
+                    <div class="flex-1 rounded-t bg-emerald-500" style="height:72%"></div>
+                  </div>
+                  <div class="text-[.6rem] text-slate-700 font-bold">금</div>
+                </div>
+                <div class="flex flex-col items-center gap-1.5 opacity-40">
+                  <div class="flex items-end gap-1 w-full flex-1 min-h-0">
+                    <div class="flex-1 rounded-t bg-blue-300" style="height:30%"></div>
+                    <div class="flex-1 rounded-t bg-emerald-300" style="height:18%"></div>
+                  </div>
+                  <div class="text-[.6rem] text-slate-400">토</div>
+                </div>
+                <div class="flex flex-col items-center gap-1.5 opacity-40">
+                  <div class="flex items-end gap-1 w-full flex-1 min-h-0">
+                    <div class="flex-1 rounded-t bg-blue-300" style="height:14%"></div>
+                    <div class="flex-1 rounded-t bg-emerald-300" style="height:8%"></div>
+                  </div>
+                  <div class="text-[.6rem] text-slate-400">일</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+
+
+
+
+
+  <!-- ═══════ PRICING SECTION ═══════ -->
+  <section id="pricing" class="relative overflow-hidden border-y border-slate-200 py-20 lg:py-28 px-6 bg-slate-50">
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute inset-0"
+        style="background:radial-gradient(ellipse 70% 70% at 50% 50%,rgba(59,130,246,.05),transparent)"></div>
+      <div class="absolute inset-0"
+        style="background-image:linear-gradient(rgba(0,0,0,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.03) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black,transparent)">
+      </div>
+    </div>
+
+    <div class="relative z-10 max-w-[1100px] mx-auto">
+      <!-- Header -->
+      <div class="text-center mb-12 lg:mb-16">
+        <p class="text-[.7rem] font-black tracking-[.22em] uppercase text-blue-600 mb-3">PRICING</p>
+        <h2 class="text-[clamp(1.85rem,3.5vw,2.6rem)] font-black tracking-[-0.04em] text-slate-800 leading-tight mb-4">
+          팀 규모에 맞는<br><span class="g-text">합리적인 요금제</span>
+        </h2>
+        <p class="text-[.95rem] text-slate-500 leading-relaxed max-w-[560px] mx-auto">
+          모든 플랜은 <span class="font-bold text-slate-700">회사 1곳 기준</span>의 월 단위 비용이며, 플랜에 따라 직원이 쓸 수 있는 서브 계정 개수가 달라집니다.
+          <span class="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[.72rem] font-bold">연간 결제 시 −20%</span>
+        </p>
+      </div>
+
+      <!-- 3 Tiers -->
+      <div class="grid md:grid-cols-3 gap-5 lg:gap-6 items-stretch">
+
+        <!-- Starter -->
+        <div class="rounded-2xl border border-slate-200 bg-white p-7 flex flex-col">
+          <div class="text-[.7rem] font-black tracking-[.18em] uppercase text-slate-500 mb-2">STARTER</div>
+          <div class="text-[.88rem] text-slate-500 mb-6">1인 사용자를 위한 입문 플랜</div>
+          <div class="flex items-baseline gap-1 mb-1">
+            <span class="text-[2.4rem] font-black text-slate-800 tracking-tight tabular-nums">29,000</span>
+            <span class="text-[.85rem] text-slate-500 font-medium">원</span>
+          </div>
+          <div class="text-[.78rem] text-slate-500 mb-7">/ 회사 / 월 (부가세 별도)</div>
+          <ul class="space-y-2.5 mb-7 flex-1 text-[.85rem]">
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700"><span class="font-bold">직원용 서브 계정 1개</span> (관리자 1 + 직원 1)</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">실시간 AI 통화 보조 (월 200통)</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">통화 후 자동 요약 · 메모</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">고객 관리 1,000명까지</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">이메일 지원 (영업일 기준)</span></li>
+          </ul>
+          <button onclick="window.scrollTo({top:0,behavior:'smooth'});" class="w-full px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-[.88rem]">
+            구매 문의
+          </button>
+        </div>
+
+        <!-- Pro (Popular) -->
+        <div class="rounded-2xl border-2 border-blue-500 bg-white p-7 flex flex-col relative shadow-[0_24px_60px_-20px_rgba(59,130,246,.35)] md:-translate-y-2">
+          <span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-blue-600 text-white text-[.62rem] font-black tracking-[.18em] shadow-md">MOST POPULAR</span>
+          <div class="text-[.7rem] font-black tracking-[.18em] uppercase text-blue-600 mb-2">PRO</div>
+          <div class="text-[.88rem] text-slate-500 mb-6">1인 사용자가 모든 기능을 풀로 활용하는 플랜</div>
+          <div class="flex items-baseline gap-1 mb-1">
+            <span class="text-[2.4rem] font-black text-slate-800 tracking-tight tabular-nums">49,000</span>
+            <span class="text-[.85rem] text-slate-500 font-medium">원</span>
+          </div>
+          <div class="text-[.78rem] text-slate-500 mb-7">/ 회사 / 월 (부가세 별도)</div>
+          <ul class="space-y-2.5 mb-7 flex-1 text-[.85rem]">
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700"><span class="font-bold">직원용 서브 계정 1개</span> (관리자 1 + 직원 1)</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700"><span class="font-bold">Starter 모든 기능 +</span></span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">무제한 통화 분석</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">일일 To-Do 자동 추천 (네이버 검색)</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">AI 뉴스레터 자동화</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">팀 성과 KPI 대시보드</span></li>
+            <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-700">우선 채팅 지원</span></li>
+          </ul>
+          <button onclick="window.scrollTo({top:0,behavior:'smooth'});" class="w-full px-5 py-3 rounded-xl bg-blue-600 text-white font-bold text-[.88rem] shadow-md">
+            구매 문의
+          </button>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-7 flex flex-col relative overflow-hidden shadow-[0_24px_60px_-20px_rgba(245,158,11,.25)]">
+          <div class="absolute -top-24 -right-20 w-64 h-64 rounded-full bg-amber-500/20 blur-3xl pointer-events-none"></div>
+          <div class="absolute -bottom-24 -left-20 w-64 h-64 rounded-full bg-violet-500/15 blur-3xl pointer-events-none"></div>
+          <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent pointer-events-none"></div>
+
+          <div class="relative z-10 flex flex-col flex-1">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-[.7rem] font-black tracking-[.18em] uppercase text-amber-300">ENTERPRISE</div>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-200 text-[.55rem] font-black tracking-[.18em]">
+                <svg width="9" height="9" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5L12 2z"/></svg>
+                PREMIUM
+              </span>
+            </div>
+            <div class="text-[.88rem] text-slate-300 mb-6">5인 팀과 보안 요구사항이 있는 조직용</div>
+            <div class="flex items-baseline gap-1 mb-1">
+              <span class="text-[2.4rem] font-black tracking-tight tabular-nums bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent">299,000</span>
+              <span class="text-[.85rem] text-amber-300 font-medium">원~</span>
+            </div>
+            <div class="text-[.78rem] text-slate-400 mb-3">/ 회사 / 월 (5인 기준 · 부가세 별도)<br>6명 이상은 맞춤 견적</div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-200 text-[.65rem] font-bold mb-7 w-fit">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              연간 구독만 가능 · 현장 방문 초기 셋팅
+            </div>
+            <ul class="space-y-2.5 mb-7 flex-1 text-[.85rem]">
+              <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-100"><span class="font-bold">직원용 서브 계정 5개</span> (관리자 1 + 직원 5)</span></li>
+              <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-100"><span class="font-bold">Pro 모든 기능 +</span></span></li>
+              <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-200">SSO / SAML 인증 연동</span></li>
+              <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-200">SLA 99.9% 가동률 보장</span></li>
+              <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-200">전담 CS 매니저 + 온보딩</span></li>
+              <li class="flex items-start gap-2"><span class="w-4 h-4 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center mt-0.5 shrink-0"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span><span class="text-slate-200">온프레미스 / VPC 배포 옵션</span></li>
+            </ul>
+            <button onclick="window.scrollTo({top:0,behavior:'smooth'});" class="w-full px-5 py-3 rounded-xl bg-gradient-to-r from-amber-200 to-yellow-300 text-slate-900 font-black text-[.88rem] shadow-[0_8px_24px_-6px_rgba(252,211,77,.5)]">
+              구매 문의
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- footer note -->
+      <div class="mt-12 grid sm:grid-cols-3 gap-4 text-center max-w-[800px] mx-auto">
+        <div class="flex items-center justify-center gap-2 text-[.78rem] text-slate-500">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" class="text-emerald-500" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+          <span>도입 전 무료 시연 가능</span>
+        </div>
+        <div class="flex items-center justify-center gap-2 text-[.78rem] text-slate-500">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" class="text-emerald-500" viewBox="0 0 24 24"><path d="M3 12c3-6 15-6 18 0M3 12c3 6 15 6 18 0"/><circle cx="12" cy="12" r="2"/></svg>
+          <span>1영업일 내 답변 보장</span>
+        </div>
+        <div class="flex items-center justify-center gap-2 text-[.78rem] text-slate-500">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" class="text-emerald-500" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <span>ISO 27001 보안 인증</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════ HOW IT WORKS ═══════ -->
+  <section class="max-w-[1360px] mx-auto px-6 lg:px-8 py-20">
+    <div class="rv text-center mb-12">
+      <p class="text-[.7rem] font-black tracking-[.12em] uppercase text-blue-600 mb-3">Getting Started</p>
+      <h2 class="text-[clamp(1.8rem,3.5vw,2.5rem)] font-black tracking-[-0.04em] text-slate-800">Kloser는 이렇게 시작합니다</h2>
+      <p class="text-[.95rem] text-slate-500 leading-relaxed mt-3 max-w-[520px] mx-auto">
+        구매 문의부터 첫 통화까지, 평균 1~2일 안에 셋업이 완료됩니다.
+      </p>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-5">
+      <!-- Step 1 -->
+      <div class="rv rounded-2xl p-7 border border-slate-200 bg-white shadow-sm relative overflow-hidden"
+        style="transition-delay:.05s">
+        <div class="absolute top-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none"
+          style="background:radial-gradient(circle,rgba(59,130,246,.08),transparent)"></div>
+        <div
+          class="w-11 h-11 rounded-xl flex items-center justify-center text-blue-600 mb-5 border border-blue-100 bg-blue-50">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" viewBox="0 0 24 24">
+            <rect x="4" y="3" width="16" height="18" rx="2" />
+            <path d="M9 7h6M9 11h6M9 15h4" />
+          </svg>
+        </div>
+        <div class="text-[.62rem] font-black tracking-widest uppercase text-blue-600 mb-2">Step 01</div>
+        <h3 class="text-[1rem] font-bold mb-2.5 text-slate-800">회사 등록 & 가이드 업로드</h3>
+        <p class="text-[.83rem] text-slate-500 leading-relaxed mb-3">관리자 계정으로 회사를 등록한 뒤, 상담 매뉴얼·FAQ·응대 가이드를 업로드하세요.
+          AI가 자료를 학습해 회사만의 응대 방식을 만듭니다.</p>
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-200 bg-amber-50 text-amber-700 text-[.7rem] font-bold">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          기업 인터넷전화 가입 필수
+        </div>
+      </div>
+      <!-- Step 2 -->
+      <div class="rv rounded-2xl p-7 border border-slate-200 bg-white shadow-sm relative overflow-hidden"
+        style="transition-delay:.1s">
+        <div class="absolute top-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none"
+          style="background:radial-gradient(circle,rgba(249,115,22,.08),transparent)"></div>
+        <div
+          class="w-11 h-11 rounded-xl flex items-center justify-center text-orange-600 mb-5 border border-orange-100 bg-orange-50">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" viewBox="0 0 24 24">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M19 8v6M22 11h-6" />
+          </svg>
+        </div>
+        <div class="text-[.62rem] font-black tracking-widest uppercase text-orange-600 mb-2">Step 02</div>
+        <h3 class="text-[1rem] font-bold mb-2.5 text-slate-800">데스크톱 앱 설치 & 직원 계정 생성</h3>
+        <p class="text-[.83rem] text-slate-500 leading-relaxed">먼저 Kloser 데스크톱 앱을 설치한 뒤, 관리자 콘솔에서 직접 직원 서브 계정을 발급하세요.
+          직원이 자신의 계정으로 로그인하면 곧바로 사용을 시작할 수 있습니다.</p>
+      </div>
+      <!-- Step 3 -->
+      <div class="rv rounded-2xl p-7 border border-slate-200 bg-white shadow-sm relative overflow-hidden"
+        style="transition-delay:.15s">
+        <div class="absolute top-0 right-0 w-40 h-40 rounded-full blur-[50px] pointer-events-none"
+          style="background:radial-gradient(circle,rgba(20,184,166,.08),transparent)"></div>
+        <div
+          class="w-11 h-11 rounded-xl flex items-center justify-center text-teal-600 mb-5 border border-teal-100 bg-teal-50">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" viewBox="0 0 24 24">
+            <path d="M3 3v18h18" />
+            <path d="M7 14l4-4 4 4 6-6" />
+          </svg>
+        </div>
+        <div class="text-[.62rem] font-black tracking-widest uppercase text-teal-600 mb-2">Step 03</div>
+        <h3 class="text-[1rem] font-bold mb-2.5 text-slate-800">AI와 함께 매일 영업</h3>
+        <p class="text-[.83rem] text-slate-500 leading-relaxed">통화 중엔 실시간 응대 추천, 통화 후엔 자동 메모와 다음 액션, 매일 아침엔 To-Do 자동 추천,
+          그리고 뉴스레터와 팀 성과 대시보드까지 한 번에.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════ BOTTOM AD ═══════ -->
+  <!-- <div class="max-w-[1360px] mx-auto px-6 lg:px-8 mb-16">
+    <div class="rounded-2xl p-4 border border-yellow-200 bg-yellow-50/50 shadow-sm">
+      <div
+        class="h-[88px] rounded-xl flex items-center justify-center gap-3 text-yellow-700 text-[.8rem] font-bold border border-dashed border-yellow-300 bg-white/50">
+        <span
+          class="px-2 py-0.5 rounded text-[.6rem] font-black tracking-widest text-yellow-800 border border-yellow-200 bg-yellow-100">AD</span>
+        하단 광고 영역 — 728 × 90
+      </div>
+    </div>
+  </div> -->
+
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <footer class="border-t border-slate-200 px-6 lg:px-8 pt-14 pb-8 bg-white">
+    <div class="max-w-[1360px] mx-auto">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
+        <!-- Brand -->
+        <div class="lg:col-span-1">
+          <div class="flex items-center gap-2.5 mb-4">
+            <img src="assets/logo.png" alt="Kloser" class="h-6 w-auto" />
+          </div>
+          <p class="text-[.82rem] text-slate-500 leading-relaxed max-w-[260px] mb-5">
+            통화 중 실시간 응대 추천부터 자동 메모·일일 To-Do·뉴스레터까지, AI가 영업 일상을 자동화합니다.
+          </p>
+          <a href="mailto:support@doi-kr.com"
+            class="inline-flex items-center gap-1.5 text-[.78rem] text-slate-600 hover:text-blue-600 transition-colors no-underline">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <path d="m22 6-10 7L2 6" />
+            </svg>
+            support@doi-kr.com
+          </a>
+        </div>
+
+        <!-- Product -->
+        <div>
+          <p class="text-[.7rem] font-bold uppercase tracking-widest text-blue-600 mb-3.5">제품</p>
+          <div class="flex flex-col gap-2">
+            <a href="#features"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">기능</a>
+            <a href="#pricing"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">가격</a>
+            <a href="docs/guide.html"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">도입 가이드</a>
+          </div>
+        </div>
+
+        <!-- Support -->
+        <div>
+          <p class="text-[.7rem] font-bold uppercase tracking-widest text-blue-600 mb-3.5">지원</p>
+          <div class="flex flex-col gap-2">
+            <a href="#pricing"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">구매 문의</a>
+            <a href="mailto:cjb@doi-kr.com"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">고객 지원</a>
+            <a href="#"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">자주 묻는 질문</a>
+          </div>
+        </div>
+
+        <!-- Legal -->
+        <div>
+          <p class="text-[.7rem] font-bold uppercase tracking-widest text-blue-600 mb-3.5">정책</p>
+          <div class="flex flex-col gap-2">
+            <a href="#"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">이용약관</a>
+            <a href="#"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">개인정보처리방침</a>
+            <a href="#"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">보안 정책</a>
+            <a href="#"
+              class="text-[.83rem] text-slate-500 hover:text-slate-900 transition-colors no-underline">사업자 정보</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-200 pt-6 flex flex-wrap items-center justify-between gap-4">
+        <p class="text-[.78rem] text-slate-400">© 2026 Kloser. All rights reserved.</p>
+        <p class="text-[.78rem] text-slate-400 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          AI Sales Assistant Platform
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <style>
+    .cloud-tag {
+      padding: 5px 11px;
+      background: #f4f4f5;
+      border: 1px solid #e4e4e7;
+      border-radius: 8px;
+      font-size: .75rem;
+      font-weight: 500;
+      color: #71717a;
+      cursor: pointer;
+      transition: all .2s;
+      display: inline-block
+    }
+
+    .cloud-tag:hover {
+      background: #ede9ff;
+      border-color: #d8b4fe;
+      color: #2563eb
+    }
+  </style>
+
+  <script>
+    /* ───────────────────────────────
+       MARQUEE 복제
+    ─────────────────────────────── */
+    /*
+    const tpl = document.getElementById('marqueeTpl');
+    const row = tpl.parentElement;
+    const clone = tpl.content.cloneNode(true);
+    const clone2 = tpl.content.cloneNode(true);
+    row.appendChild(clone);
+    row.appendChild(clone2);
+    tpl.remove();
+    */
+
+    /* ───────────────────────────────
+       MOBILE NAV
+    ─────────────────────────────── */
+    const mobNavEl = document.getElementById('mobNav');
+    const mobNavBtn = document.getElementById('mobNavBtn');
+    const mobNavIcon = document.getElementById('mobNavIcon');
+
+    function openMobNav() {
+      mobNavEl.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      mobNavIcon.innerHTML = '<path d="M18 6 6 18M6 6l12 12"/>';
+    }
+    function closeMobNav() {
+      mobNavEl.style.display = 'none';
+      document.body.style.overflow = '';
+      mobNavIcon.innerHTML = '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>';
+    }
+    mobNavBtn.addEventListener('click', () => {
+      mobNavEl.style.display === 'flex' ? closeMobNav() : openMobNav();
+    });
+    function handleMobNavBgClick(e) {
+      if (e.target === mobNavEl) closeMobNav();
+    }
+
+    /* ───────────────────────────────
+       SMART NAVBAR (Hide on scroll down)
+    ─────────────────────────────── */
+    let lastScrollY = window.scrollY;
+    const mainNav = document.getElementById('mainNav');
+
+    window.addEventListener('scroll', () => {
+      if (!mainNav) return;
+      const currentScrollY = window.scrollY;
+
+      // 모바일 메뉴 열려있을 땐 숨기지 않음
+      if (mobNavEl && mobNavEl.style.display === 'flex') {
+        lastScrollY = currentScrollY;
+        return;
+      }
+
+      if (currentScrollY > lastScrollY && currentScrollY > 62) {
+        // Scrolling down
+        mainNav.style.transform = 'translateY(-100%)';
+      } else {
+        // Scrolling up
+        mainNav.style.transform = 'translateY(0)';
+      }
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+
+    // Removed old showcase grid logic
+
+    /* ───────────────────────────────
+       TOP ALIGN SCROLL (네브바 높이 보정)
+    ─────────────────────────────── */
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        const targetEl = document.querySelector(targetId);
+        if (targetEl) {
+          e.preventDefault();
+          const navHeight = document.getElementById('mainNav')?.offsetHeight || 62;
+          const targetY = targetEl.getBoundingClientRect().top + window.scrollY - navHeight - 16;
+          window.scrollTo({ top: targetY, behavior: 'smooth' });
+          history.pushState(null, null, targetId);
+        }
+      });
+    });
+
+    /* ───────────────────────────────
+       SCROLL REVEAL
+    ─────────────────────────────── */
+    const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('show'); obs.unobserve(e.target) } }), { threshold: .07 });
+    document.querySelectorAll('.rv').forEach(el => obs.observe(el));
+
+    /* glow btn mouse effect */
+    document.querySelectorAll('.glow-btn').forEach(btn => {
+      btn.addEventListener('mousemove', e => { const r = btn.getBoundingClientRect(); btn.style.setProperty('--x', ((e.clientX - r.left) / r.width * 100) + '%'); btn.style.setProperty('--y', ((e.clientY - r.top) / r.height * 100) + '%') });
+    });
+
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('searchInput')?.focus();
+      }
+    });
+
+    /* ───────────────────────────────
+       MAP VIEWER (Leaflet + VWorld 공공데이터)
+       VWorld 키 발급: https://www.vworld.kr/dev/v4dv_2ddataguide2_s001.do
+       발급 시 호출 도메인에 127.0.0.1, localhost, 운영 도메인을 모두 등록할 것.
+    ─────────────────────────────── */
+    const VWORLD_API_KEY = '3FE611A0-3B54-3328-9CAF-0759E4040F16';
+
+    (function initMap() {
+      const el = document.getElementById('leafletMap');
+      if (!el || typeof L === 'undefined') return;
+
+      const tileOptions = {
+        minZoom: 6,
+        maxZoom: 19,
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        keepBuffer: 4,
+        tileSize: 256,
+      };
+
+      const vworldTile = (layer, ext = 'png') => L.tileLayer(
+        `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_API_KEY}/${layer}/{z}/{y}/{x}.${ext}`,
+        tileOptions
+      );
+
+      const layers = {
+        Base: vworldTile('Base', 'png'),
+        Satellite: vworldTile('Satellite', 'jpeg'),
+      };
+
+      const map = L.map(el, {
+        center: [37.5547, 126.9707], // 서울역
+        zoom: 17,
+        zoomControl: false,
+        attributionControl: false,
+        scrollWheelZoom: true,
+        wheelDebounceTime: 35,
+        wheelPxPerZoomLevel: 100,
+        preferCanvas: true,
+        zoomAnimation: true,
+        zoomAnimationThreshold: 4,
+        fadeAnimation: true,
+        markerZoomAnimation: true,
+        layers: [layers.Base],
+      });
+      let activeMode = 'Base';
+
+      // 스케일바
+      const CustomScale = L.Control.Scale.extend({
+        _updateMetric: function (maxMeters) {
+          const meters = this._getRoundNum(maxMeters);
+          const label = meters < 1000 ? meters + 'm' : (meters / 1000) + 'km';
+          const ratio = meters / maxMeters;
+          this._mScale.style.width = Math.round(this.options.maxWidth * ratio) + 'px';
+          this._mScale.innerHTML = `<span class="scale-label">${label}</span>`;
+        }
+      });
+      new CustomScale({ imperial: false, position: 'bottomleft', maxWidth: 200 }).addTo(map);
+
+      // ── 모드 핀 (일반/위성/드론) ──
+      document.querySelectorAll('#mapModePills [data-map-mode]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const mode = btn.dataset.mapMode;
+          if (mode === activeMode) return;
+          if (layers[activeMode]) map.removeLayer(layers[activeMode]);
+          if (layers[mode]) map.addLayer(layers[mode]);
+          activeMode = mode;
+          document.querySelectorAll('#mapModePills [data-map-mode]').forEach(b => {
+            const isActive = b === btn;
+
+            // Container styles
+            b.classList.toggle('border-cyan', isActive);
+            b.classList.toggle('shadow-md', isActive);
+
+            // Container styles
+            b.classList.toggle('border-2', isActive);
+            b.classList.toggle('border-cyan', isActive);
+            b.classList.toggle('shadow-md', isActive);
+
+            b.classList.toggle('border', !isActive);
+            b.classList.toggle('border-gray-300', !isActive);
+            b.classList.toggle('shadow-sm', !isActive);
+
+            // Always white background for solid card feel
+            b.classList.add('bg-white');
+
+            // Clean up any old utility classes that might conflict
+            b.classList.remove('border-white/[.15]', 'shadow-lg');
+
+            // Label styles
+            const label = b.querySelector('div:last-child');
+            if (label) {
+              // Active
+              label.classList.toggle('bg-cyan/20', isActive);
+              label.classList.toggle('font-bold', isActive);
+              label.classList.toggle('border-cyan/40', isActive);
+
+              // Inactive
+              label.classList.toggle('bg-transparent', !isActive);
+              label.classList.toggle('font-medium', !isActive);
+              label.classList.toggle('border-gray-200', !isActive);
+
+              // Always dark text for these designs
+              label.classList.add('text-[#1a1a24]');
+              label.classList.remove('backdrop-blur-md', 'bg-cyan/40', 'border-cyan/50', 'text-[#b0b0c5]', 'text-white', 'bg-white/90', 'border-gray-300', 'border-white/50');
+            }
+          });
+        });
+      });
+
+      // ── 줌 버튼 ──
+      document.getElementById('mapZoomIn')?.addEventListener('click', () => map.zoomIn());
+      document.getElementById('mapZoomOut')?.addEventListener('click', () => map.zoomOut());
+
+      // ── HUD 좌표 업데이트 ──
+      const $lat = document.getElementById('mapLatVal');
+      const $lng = document.getElementById('mapLngVal');
+      const updateHud = () => {
+        const c = map.getCenter();
+        if ($lat) $lat.textContent = `${c.lat.toFixed(6)}° ${c.lat >= 0 ? 'N' : 'S'}`;
+        if ($lng) $lng.textContent = `${c.lng.toFixed(6)}° ${c.lng >= 0 ? 'E' : 'W'}`;
+      };
+      map.on('moveend zoomend', updateHud);
+      updateHud();
+
+      // ── 거리 측정 도구 ──
+      const measureBtn = document.getElementById('mapMeasureBtn');
+      let measuring = false, measurePts = [], measureLine = null, measureMarkers = [], measureLabel = null;
+      const stopMeasure = () => {
+        measuring = false;
+        measureBtn?.classList.remove('!border-cyan', '!text-cyan');
+        el.style.cursor = '';
+      };
+      const clearMeasure = () => {
+        if (measureLine) { map.removeLayer(measureLine); measureLine = null; }
+        if (measureLabel) { map.removeLayer(measureLabel); measureLabel = null; }
+        measureMarkers.forEach(m => map.removeLayer(m));
+        measureMarkers = []; measurePts = [];
+      };
+      const fmtDist = (m) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(1)} m`;
+      const totalDistance = (pts) => pts.reduce((s, p, i) => i ? s + map.distance(pts[i - 1], p) : 0, 0);
+
+      measureBtn?.addEventListener('click', () => {
+        if (measuring) { stopMeasure(); return; }
+        clearMeasure();
+        measuring = true;
+        measureBtn.classList.add('!border-cyan', '!text-cyan');
+        el.style.cursor = 'crosshair';
+      });
+      map.on('click', (e) => {
+        if (!measuring) return;
+        measurePts.push([e.latlng.lat, e.latlng.lng]);
+        measureMarkers.push(
+          L.circleMarker(e.latlng, { radius: 4, color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 1, weight: 2 }).addTo(map)
+        );
+        if (measurePts.length >= 2) {
+          if (measureLine) map.removeLayer(measureLine);
+          measureLine = L.polyline(measurePts, { color: '#22d3ee', weight: 3, opacity: 0.9, dashArray: '6 4' }).addTo(map);
+          const total = totalDistance(measurePts);
+          if (measureLabel) map.removeLayer(measureLabel);
+          measureLabel = L.marker(measurePts[measurePts.length - 1], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="background:rgba(14,14,31,.92);border:1px solid #22d3ee;color:#22d3ee;font-family:Orbitron;font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;transform:translate(8px,-50%);box-shadow:0 4px 12px rgba(0,0,0,.4)">${fmtDist(total)}</div>`,
+              iconSize: [0, 0], iconAnchor: [0, 0],
+            }),
+            interactive: false,
+          }).addTo(map);
+        }
+      });
+      map.on('dblclick', () => { if (measuring) stopMeasure(); });
+      map.doubleClickZoom.disable();
+
+      // ── 검색 (VWorld 좌표 검색 + 자동완성 API) ──
+      function vworldJSONP(url) {
+        return new Promise((resolve, reject) => {
+          const cb = '__vw_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+          const tag = document.createElement('script');
+          const cleanup = () => { try { delete window[cb]; } catch (_) { window[cb] = undefined; } tag.remove(); };
+          window[cb] = (data) => { cleanup(); resolve(data); };
+          tag.onerror = () => { cleanup(); reject(new Error('network')); };
+          tag.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb;
+          document.head.appendChild(tag);
+        });
+      }
+      const vworldGeocode = (addr, type = 'ROAD') =>
+        vworldJSONP(`https://api.vworld.kr/req/address?service=address&request=getcoord&format=json&type=${type}&address=${encodeURIComponent(addr)}&key=${VWORLD_API_KEY}`);
+      const vworldSearch = (q, category = 'road') =>
+        vworldJSONP(`https://api.vworld.kr/req/search?service=search&request=search&type=address&category=${category}&query=${encodeURIComponent(q)}&size=8&page=1&format=json&errorformat=json&key=${VWORLD_API_KEY}`);
+
+      const $search = document.getElementById('searchInput');
+      const $sug = document.getElementById('searchSuggest');
+      const searchWrap = $search?.closest('.flex.items-center');
+      let searchMarker = null;
+      const flashSearchErr = (msg) => {
+        if (!searchWrap) return;
+        const orig = searchWrap.style.borderColor;
+        searchWrap.style.borderColor = '#f472b6';
+        const ph = $search.placeholder;
+        $search.placeholder = msg;
+        setTimeout(() => { searchWrap.style.borderColor = orig; $search.placeholder = ph; }, 2400);
+      };
+
+      function showResult(ll, refined) {
+        if (searchMarker) map.removeLayer(searchMarker);
+        const parts = (refined || '').split(' ');
+        const mainAddr = parts.slice(0, Math.min(4, parts.length)).join(' ');
+        const subAddr = parts.length > 4 ? parts.slice(4).join(' ') : '검색된 위치';
+        const popupHTML = `
+          <div class="flex flex-col bg-white rounded-[12px] shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12)] overflow-hidden w-[280px]">
+            <div class="p-4 flex flex-col gap-1.5">
+              <span class="text-[0.92rem] font-bold text-slate-800 tracking-tight leading-snug">${mainAddr}</span>
+              ${subAddr ? `<span class="text-[0.8rem] text-slate-500 font-medium tracking-tight">${subAddr}</span>` : ''}
+            </div>
+            <div class="relative w-full h-[150px] overflow-hidden bg-slate-100 group cursor-pointer">
+              <div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style="background-image: url('https://images.unsplash.com/photo-1508450859948-4e04fabaa4ea?q=80&w=400&auto=format&fit=crop')"></div>
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent opacity-90"></div>
+              <button class="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-white/40 p-1.5 rounded-lg text-slate-700 transition-all pointer-events-auto hover:bg-white hover:text-slate-900 shadow-sm">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+        searchMarker = L.marker(ll).addTo(map).bindPopup(popupHTML, { className: 'custom-street-popup', minWidth: 280, maxWidth: 280 }).openPopup();
+        map.flyTo(ll, 17, { duration: 0.8 });
+        document.getElementById('drone-map')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      async function runSearch() {
+        const addr = $search.value.trim();
+        if (!addr) return;
+        hideSuggest();
+        let r;
+        try { r = await vworldGeocode(addr, 'ROAD'); }
+        catch { flashSearchErr('네트워크 오류'); return; }
+        let pt = r?.response?.result?.point;
+        let refined = r?.response?.refined?.text;
+        if (!pt) {
+          try { r = await vworldGeocode(addr, 'PARCEL'); pt = r?.response?.result?.point; refined = r?.response?.refined?.text; } catch { }
+        }
+        if (!pt) { flashSearchErr('주소를 찾을 수 없습니다'); return; }
+        showResult([parseFloat(pt.y), parseFloat(pt.x)], refined || addr);
+      }
+
+      // ── 자동완성 ──
+      let acTimer = null, acItems = [], acSeq = 0, acIndex = -1;
+      const hideSuggest = () => { $sug?.classList.add('hidden'); acIndex = -1; };
+      const renderSuggest = () => {
+        if (!$sug) return;
+        if (!acItems.length) { hideSuggest(); return; }
+        $sug.innerHTML = acItems.map((it, i) => `
+          <button type="button" data-idx="${i}" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 flex items-start gap-2.5 ${i === acIndex ? 'bg-slate-50' : ''}">
+            <svg class="w-3.5 h-3.5 mt-0.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span class="text-[.85rem] text-slate-700">${it.addr}</span>
+          </button>
+        `).join('');
+        $sug.classList.remove('hidden');
+      };
+      const pickSuggest = (i) => {
+        const it = acItems[i];
+        if (!it) return;
+        $search.value = it.addr;
+        hideSuggest();
+        showResult(it.ll, it.addr);
+      };
+
+      $search?.addEventListener('input', () => {
+        const q = $search.value.trim();
+        clearTimeout(acTimer);
+        if (q.length < 2) { hideSuggest(); return; }
+        acTimer = setTimeout(async () => {
+          const seq = ++acSeq;
+          const [road, parcel] = await Promise.all([
+            vworldSearch(q, 'road').catch(() => null),
+            vworldSearch(q, 'parcel').catch(() => null),
+          ]);
+          if (seq !== acSeq) return;
+          const items = [];
+          const collect = (data, fld) => {
+            data?.response?.result?.items?.forEach(it => {
+              const addr = it.address?.[fld] || it.title || '';
+              const x = parseFloat(it.point?.x), y = parseFloat(it.point?.y);
+              if (addr && Number.isFinite(x) && Number.isFinite(y)) items.push({ addr, ll: [y, x] });
+            });
+          };
+          collect(road, 'road');
+          collect(parcel, 'parcel');
+          const seen = new Set();
+          acItems = items.filter(it => seen.has(it.addr) ? false : (seen.add(it.addr), true)).slice(0, 8);
+          acIndex = -1;
+          renderSuggest();
+        }, 250);
+      });
+
+      $sug?.addEventListener('mousedown', e => {
+        const btn = e.target.closest('[data-idx]');
+        if (!btn) return;
+        e.preventDefault(); // input blur 방지
+        pickSuggest(+btn.dataset.idx);
+      });
+
+      $search?.addEventListener('keydown', e => {
+        const open = $sug && !$sug.classList.contains('hidden');
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (open && acIndex >= 0) pickSuggest(acIndex);
+          else runSearch();
+        } else if (e.key === 'ArrowDown' && open) {
+          e.preventDefault();
+          acIndex = Math.min(acItems.length - 1, acIndex + 1);
+          renderSuggest();
+        } else if (e.key === 'ArrowUp' && open) {
+          e.preventDefault();
+          acIndex = Math.max(-1, acIndex - 1);
+          renderSuggest();
+        } else if (e.key === 'Escape') {
+          hideSuggest();
+        }
+      });
+
+      document.addEventListener('click', e => {
+        if ($sug && !$sug.contains(e.target) && e.target !== $search) hideSuggest();
+      });
+
+      // 컨테이너 사이즈가 늦게 잡힐 때 대비
+      setTimeout(() => map.invalidateSize(), 200);
+    })();
+
+    /* ───────────────────────────────
+       NOTIFY 구독 폼
+    ─────────────────────────────── */
+    const WORKER_URL = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+      ? 'http://localhost:8787'
+      : '';
+
+    const $notifyEmail = document.getElementById('notifyEmail');
+    const $notifyBtn = document.getElementById('notifyBtn');
+    const $notifyMsg = document.getElementById('notifyMsg');
+
+    function showNotifyMsg(type, text) {
+      $notifyMsg.textContent = text;
+      $notifyMsg.className = type;
+      $notifyMsg.style.display = 'block';
+      setTimeout(() => { $notifyMsg.style.display = 'none'; }, 5000);
+    }
+
+    $notifyBtn.addEventListener('click', async () => {
+      const email = $notifyEmail.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showNotifyMsg('error', '올바른 이메일 주소를 입력해주세요.');
+        return;
+      }
+      $notifyBtn.disabled = true;
+      $notifyBtn.textContent = '처리 중...';
+      try {
+        const res = await fetch(`${WORKER_URL}/api/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (res.ok || res.status === 200) {
+          showNotifyMsg('success', data.message || '구독이 완료되었습니다!');
+          $notifyEmail.value = '';
+        } else {
+          showNotifyMsg('error', data.error || '오류가 발생했습니다. 다시 시도해주세요.');
+        }
+      } catch {
+        showNotifyMsg('error', '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      } finally {
+        $notifyBtn.disabled = false;
+        $notifyBtn.textContent = '알림 받기';
+      }
+    });
+
+    $notifyEmail.addEventListener('keydown', e => { if (e.key === 'Enter') $notifyBtn.click(); });
+  </script>
+</body>
+
+</html>

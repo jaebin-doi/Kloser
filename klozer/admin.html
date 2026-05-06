@@ -1,0 +1,2923 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>DOI AI Console</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon-admin.svg" />
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────────── */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    :root {
+      --bg: #f0f0f7;
+      --surface: #ffffff;
+      --s2: #f5f5fb;
+      --s3: #e8e8f2;
+      --border: rgba(0, 0, 0, .08);
+      --border-h: rgba(0, 0, 0, .14);
+      --accent: #4f52e8;
+      --accent-h: #4040cc;
+      --accent-glow: rgba(79, 82, 232, .2);
+      --green: #0a9968;
+      --green-bg: rgba(10, 153, 104, .1);
+      --yellow: #d97706;
+      --yellow-bg: rgba(217, 119, 6, .1);
+      --red: #dc2626;
+      --red-bg: rgba(220, 38, 38, .1);
+      --blue: #2563eb;
+      --blue-bg: rgba(37, 99, 235, .1);
+      --purple: #7c3aed;
+      --purple-bg: rgba(124, 58, 237, .1);
+      --text: #111128;
+      --text-2: #4a5568;
+      --text-3: #9097aa;
+      --sidebar-w: 232px;
+      --header-h: 56px;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden
+    }
+
+    body {
+      font-family: 'Pretendard', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font-family: 'Pretendard', system-ui, sans-serif
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--s3);
+      border-radius: 99px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #c0c0d0
+    }
+
+    ::selection {
+      background: rgba(79, 82, 232, .2)
+    }
+
+    /* ── Layout ───────────────────────────────────────── */
+    #root {
+      display: flex;
+      height: 100vh
+    }
+
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      overflow-y: auto
+    }
+
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px
+    }
+
+    /* ── Sidebar ──────────────────────────────────────── */
+    .sidebar-header {
+      padding: 16px 16px 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: linear-gradient(145deg, #4f52e8 0%, #7c3aed 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .08) inset, 0 4px 20px rgba(99, 102, 241, .45)
+    }
+
+    .logo-name {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -.04em;
+      color: var(--text)
+    }
+
+    .logo-badge {
+      margin-left: auto;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--accent-h);
+      background: rgba(99, 102, 241, .1);
+      border: 1px solid rgba(99, 102, 241, .2);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: .06em;
+      text-transform: uppercase
+    }
+
+    .sidebar-section {
+      padding: 8px 10px
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-3);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 4px 8px 6px
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      transition: all .15s;
+      position: relative
+    }
+
+    .nav-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: .7;
+      transition: opacity .15s
+    }
+
+    .nav-item:hover {
+      background: rgba(0, 0, 0, .05);
+      color: var(--text)
+    }
+
+    .nav-item:hover svg {
+      opacity: 1
+    }
+
+    .nav-item.active {
+      background: rgba(79, 82, 232, .1);
+      color: var(--accent-h);
+      font-weight: 600
+    }
+
+    .nav-item.active svg {
+      opacity: 1;
+      color: var(--accent-h)
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 0 2px 2px 0
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 99px;
+      background: var(--accent-glow);
+      color: var(--accent-h)
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 6px 16px
+    }
+
+
+    /* ── Buttons ──────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 12px var(--accent-glow)
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-h);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 18px var(--accent-glow)
+    }
+
+    .btn-primary:active {
+      transform: none
+    }
+
+    .btn-primary:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none
+    }
+
+    .btn-secondary {
+      background: var(--s3);
+      color: var(--text-2);
+      border: 1px solid var(--border)
+    }
+
+    .btn-secondary:hover {
+      background: var(--s2);
+      color: var(--text);
+      border-color: var(--border-h)
+    }
+
+    .btn-danger {
+      background: var(--red-bg);
+      color: var(--red);
+      border: 1px solid rgba(239, 68, 68, .2)
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, .18)
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-2);
+      border: 1px solid transparent;
+      padding: 7px 12px
+    }
+
+    .btn-ghost:hover {
+      background: var(--s3);
+      color: var(--text)
+    }
+
+    .btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 6px
+    }
+
+    .btn-icon {
+      padding: 7px;
+      border-radius: 7px
+    }
+
+    /* ── Cards ────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden
+    }
+
+    .card-header {
+      padding: 18px 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text)
+    }
+
+    .card-body {
+      padding: 18px 20px
+    }
+
+    /* ── KPI Cards ────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border-h)
+    }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      opacity: .07;
+      transform: translate(20px, -20px)
+    }
+
+    .kpi-card.c-purple::after {
+      background: var(--purple)
+    }
+
+    .kpi-card.c-green::after {
+      background: var(--green)
+    }
+
+    .kpi-card.c-blue::after {
+      background: var(--blue)
+    }
+
+    .kpi-card.c-yellow::after {
+      background: var(--yellow)
+    }
+
+    .kpi-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px
+    }
+
+    .kpi-icon svg {
+      width: 16px;
+      height: 16px
+    }
+
+    .kpi-icon.purple {
+      background: var(--purple-bg);
+      color: var(--purple)
+    }
+
+    .kpi-icon.green {
+      background: var(--green-bg);
+      color: var(--green)
+    }
+
+    .kpi-icon.blue {
+      background: var(--blue-bg);
+      color: var(--blue)
+    }
+
+    .kpi-icon.yellow {
+      background: var(--yellow-bg);
+      color: var(--yellow)
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-3);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 4px
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      line-height: 1
+    }
+
+    .kpi-trend {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 99px
+    }
+
+    .kpi-trend.up {
+      color: var(--green);
+      background: var(--green-bg)
+    }
+
+    .kpi-trend.neutral {
+      color: var(--text-3);
+      background: var(--s3)
+    }
+
+    .kpi-trend svg {
+      width: 10px;
+      height: 10px
+    }
+
+    /* ── Table ────────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    thead th {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-3);
+      padding: 10px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      background: var(--s2)
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s
+    }
+
+    tbody tr:last-child {
+      border-bottom: none
+    }
+
+    tbody tr:hover {
+      background: rgba(0, 0, 0, .025)
+    }
+
+    tbody td {
+      padding: 12px 16px;
+      font-size: 13px;
+      vertical-align: middle
+    }
+
+    .td-email {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff
+    }
+
+    .email-text {
+      font-size: 13px;
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12.5px
+    }
+
+    /* ── Badges / Pills ───────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .02em
+    }
+
+    .badge::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .badge-active {
+      background: var(--green-bg);
+      color: var(--green)
+    }
+
+    .badge-active::before {
+      background: var(--green)
+    }
+
+    .badge-unsubscribed {
+      background: var(--s3);
+      color: var(--text-3)
+    }
+
+    .badge-unsubscribed::before {
+      background: var(--text-3)
+    }
+
+    .badge-bounced {
+      background: var(--yellow-bg);
+      color: var(--yellow)
+    }
+
+    .badge-bounced::before {
+      background: var(--yellow)
+    }
+
+    .badge-complained {
+      background: var(--red-bg);
+      color: var(--red)
+    }
+
+    .badge-complained::before {
+      background: var(--red)
+    }
+
+    .badge-draft {
+      background: var(--s3);
+      color: var(--text-3)
+    }
+
+    .badge-draft::before {
+      background: var(--text-3)
+    }
+
+    .badge-sending {
+      background: var(--yellow-bg);
+      color: var(--yellow)
+    }
+
+    .badge-sending::before {
+      background: var(--yellow)
+    }
+
+    .badge-sent {
+      background: var(--purple-bg);
+      color: var(--purple)
+    }
+
+    .badge-sent::before {
+      background: var(--purple)
+    }
+
+    .badge-failed {
+      background: var(--red-bg);
+      color: var(--red)
+    }
+
+    .badge-failed::before {
+      background: var(--red)
+    }
+
+    .badge-pending {
+      background: var(--blue-bg);
+      color: var(--blue)
+    }
+
+    .badge-pending::before {
+      background: var(--blue)
+    }
+
+    /* ── Inputs ───────────────────────────────────────── */
+    .input {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: all .15s;
+      width: 100%
+    }
+
+    .input::placeholder {
+      color: var(--text-3)
+    }
+
+    .input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow)
+    }
+
+    .input-wrap {
+      position: relative
+    }
+
+    .input-wrap svg {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      color: var(--text-3);
+      pointer-events: none
+    }
+
+    .input-wrap .input {
+      padding-left: 34px
+    }
+
+    .select {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text-2);
+      outline: none;
+      cursor: pointer;
+      transition: border-color .15s
+    }
+
+    .select:focus {
+      border-color: var(--accent)
+    }
+
+    .select option {
+      background: var(--s2)
+    }
+
+    textarea.input {
+      resize: vertical;
+      line-height: 1.6
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-3);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: block
+    }
+
+    /* ── Sections ─────────────────────────────────────── */
+    .section {
+      display: none
+    }
+
+    .section.active {
+      display: block
+    }
+
+    #sec-dashboard.active {
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - var(--header-h) - 56px)
+    }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: minmax(0, 1fr);
+      gap: 14px;
+      flex: 1;
+      min-height: 0
+    }
+
+    .dash-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0
+    }
+
+    .dash-card .card-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column
+    }
+
+    .dash-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 0;
+      flex: 1
+    }
+
+    .dash-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      min-height: 56px
+    }
+
+    .dash-item:last-child {
+      border-bottom: none
+    }
+
+    .dash-footer {
+      padding-top: 8px;
+      text-align: right;
+      margin-top: auto
+    }
+
+    /* ── Toolbar ──────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px
+    }
+
+    .toolbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    /* ── Tabs ─────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+      padding: 4px;
+      background: var(--s2);
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      width: fit-content;
+      margin-bottom: 16px
+    }
+
+    .tab {
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-3);
+      transition: all .15s
+    }
+
+    .tab:hover {
+      color: var(--text)
+    }
+
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .12)
+    }
+
+    /* ── Pagination ───────────────────────────────────── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 14px;
+      justify-content: flex-end
+    }
+
+    .page-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-3);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+      font-family: inherit
+    }
+
+    .page-btn:hover:not(:disabled) {
+      border-color: var(--border-h);
+      color: var(--text);
+      background: var(--s3)
+    }
+
+    .page-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff
+    }
+
+    .page-btn:disabled {
+      opacity: .3;
+      cursor: not-allowed
+    }
+
+    .page-info {
+      font-size: 12px;
+      color: var(--text-3);
+      padding: 0 8px
+    }
+
+    /* ── Modal ────────────────────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .5);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px
+    }
+
+    .overlay.show {
+      display: flex
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border-h);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 460px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, .5)
+    }
+
+    .modal-lg {
+      max-width: 720px
+    }
+
+    .modal-header {
+      padding: 20px 24px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between
+    }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -.02em
+    }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s
+    }
+
+    .modal-close:hover {
+      background: var(--s3);
+      color: var(--text)
+    }
+
+    .modal-body {
+      padding: 16px 24px
+    }
+
+    .modal-footer {
+      padding: 0 24px 20px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end
+    }
+
+    /* ── Toast ────────────────────────────────────────── */
+    #toast-stack {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid;
+      pointer-events: all;
+      transform: translateX(120%);
+      opacity: 0;
+      transition: all .3s cubic-bezier(.34, 1.56, .64, 1);
+      min-width: 240px;
+      max-width: 340px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .4)
+    }
+
+    .toast.show {
+      transform: translateX(0);
+      opacity: 1
+    }
+
+    .toast.leaving {
+      transform: translateX(120%);
+      opacity: 0;
+      transition: all .25s ease
+    }
+
+    .toast-success {
+      background: rgba(16, 185, 129, .1);
+      border-color: rgba(16, 185, 129, .25);
+      color: #34d399
+    }
+
+    .toast-error {
+      background: rgba(239, 68, 68, .1);
+      border-color: rgba(239, 68, 68, .25);
+      color: #f87171
+    }
+
+    .toast-info {
+      background: rgba(99, 102, 241, .1);
+      border-color: rgba(99, 102, 241, .25);
+      color: var(--accent-h)
+    }
+
+    .toast-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0
+    }
+
+    /* ── Empty State ──────────────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 24px;
+      text-align: center;
+      color: var(--text-3)
+    }
+
+    .empty-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--s3);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      border: 1px solid var(--border)
+    }
+
+    .empty-icon svg {
+      width: 22px;
+      height: 22px
+    }
+
+    .empty-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 6px
+    }
+
+    .empty-sub {
+      font-size: 13px;
+      color: var(--text-3)
+    }
+
+    /* ── Progress Bar ─────────────────────────────────── */
+    .progress-bar {
+      height: 4px;
+      background: var(--s3);
+      border-radius: 99px;
+      overflow: hidden
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .6s ease
+    }
+
+    .history-refresh-icon {
+      transition: transform .18s ease
+    }
+
+    .history-refresh-btn.loading .history-refresh-icon {
+      animation: history-spin .7s linear infinite
+    }
+
+    @keyframes history-spin {
+      from {
+        transform: rotate(0deg)
+      }
+
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* ── Compose ──────────────────────────────────────── */
+    #sec-compose {
+      flex-direction: column;
+      height: calc(100vh - var(--header-h) - 56px)
+    }
+
+    #sec-compose.active {
+      display: flex
+    }
+
+    .compose-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      flex: 1;
+      min-height: 0
+    }
+
+    .compose-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      min-height: 0
+    }
+
+    .preview-shell {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .06)
+    }
+
+    .preview-bar {
+      background: #f1f3f5;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      overflow: hidden
+    }
+
+    .preview-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%
+    }
+
+    /* ── Settings ─────────────────────────────────────── */
+    .settings-section {
+      max-width: 560px
+    }
+
+    .setting-row {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px
+    }
+
+    .setting-row:last-child {
+      border-bottom: none
+    }
+
+    .setting-info {
+      flex: 1
+    }
+
+    .setting-label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 3px
+    }
+
+    .setting-desc {
+      font-size: 12px;
+      color: var(--text-3);
+      line-height: 1.6
+    }
+
+    .danger-zone {
+      background: rgba(239, 68, 68, .04);
+      border: 1px solid rgba(239, 68, 68, .12);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-top: 16px
+    }
+
+    /* ── Misc ─────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 14px 0
+    }
+
+    .text-muted {
+      color: var(--text-3)
+    }
+
+    .text-sm {
+      font-size: 12px
+    }
+
+    .font-mono {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px
+    }
+
+    #campBody {
+      flex: 1;
+      min-height: 0;
+      resize: none
+    }
+
+    .truncate {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .gap-8 {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    code {
+      background: var(--s3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11.5px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--accent-h)
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--s3) 25%, var(--s2) 50%, var(--s3) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.8s infinite;
+      border-radius: 4px
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0
+      }
+
+      100% {
+        background-position: -200% 0
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════
+   RESPONSIVE
+   Desktop  : >= 1024px  (기본, 사이드바 항상 표시)
+   Tablet   : 640–1023px (사이드바 drawer)
+   Phone    : < 640px    (사이드바 drawer + 단일 컬럼)
+══════════════════════════════════════════════════════ */
+
+    /* 모바일 헤더 바 */
+    .mob-header {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      height: var(--header-h);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .mob-header .logo-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -.04em
+    }
+
+    /* 사이드바 오버레이 (backdrop) */
+    .mob-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .55);
+      z-index: 48;
+      backdrop-filter: blur(4px);
+      cursor: pointer;
+    }
+
+    .mob-overlay.show {
+      display: block
+    }
+
+    /* 햄버거 버튼 */
+    .hamburger {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-2);
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+
+    .hamburger:hover {
+      background: var(--s3);
+      color: var(--text)
+    }
+
+    .hamburger svg {
+      width: 16px;
+      height: 16px;
+      pointer-events: none
+    }
+
+    /* 사이드바 모바일 닫기 버튼 */
+    .sidebar-close {
+      display: none;
+      margin-left: auto;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+
+    .sidebar-close:hover {
+      background: var(--s3);
+      color: var(--text)
+    }
+
+    .sidebar-close svg {
+      width: 14px;
+      height: 14px
+    }
+
+    /* ── 태블릿 + 폰 (< 1024px) ────────────────────── */
+    @media (max-width:1023px) {
+
+      /* 모바일 헤더 표시 */
+      .mob-header {
+        display: flex
+      }
+
+      /* 사이드바 → 고정 drawer로 전환 */
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        transition: transform .27s cubic-bezier(.4, 0, .2, 1);
+        z-index: 50;
+        box-shadow: 8px 0 32px rgba(0, 0, 0, .5);
+      }
+
+      .sidebar.mob-open {
+        transform: translateX(0)
+      }
+
+      .sidebar-close {
+        display: flex
+      }
+
+      /* 메인 영역 풀 너비 (sidebar out of flow) */
+      .main-area {
+        width: 100%
+      }
+
+      /* 작성하기: 단일 컬럼, 가변 높이 */
+      #sec-compose {
+        height: auto
+      }
+
+      #sec-dashboard {
+        height: auto;
+        min-height: 0
+      }
+
+      .compose-grid {
+        grid-template-columns: minmax(0, 1fr);
+        flex: none;
+        height: auto;
+        overflow: visible;
+      }
+
+      .dash-grid {
+        grid-template-columns: minmax(0, 1fr);
+        flex: none;
+        height: auto;
+      }
+
+      .compose-pane {
+        overflow-y: visible;
+        min-height: 0
+      }
+
+      .preview-shell {
+        min-height: 380px
+      }
+    }
+
+    /* ── 폰 (< 640px) ──────────────────────────────── */
+    @media (max-width:639px) {
+      :root {
+        --header-h: 52px
+      }
+
+      .content {
+        padding: 14px
+      }
+
+      /* KPI: 2열 */
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 14px
+      }
+
+      .kpi-card {
+        padding: 14px
+      }
+
+      .kpi-value {
+        font-size: 20px
+      }
+
+      .kpi-label {
+        font-size: 10px
+      }
+
+      .kpi-trend {
+        font-size: 10px;
+        padding: 2px 6px
+      }
+
+      .kpi-icon {
+        width: 28px;
+        height: 28px;
+        margin-bottom: 10px
+      }
+
+      .kpi-icon svg {
+        width: 14px;
+        height: 14px
+      }
+
+      /* 대시보드 하단 2열 → 1열 */
+      .dash-grid {
+        grid-template-columns: minmax(0, 1fr) !important
+      }
+
+      /* 섹션 제목 */
+      .section>div:first-child {
+        margin-bottom: 14px
+      }
+
+      .section>div:first-child>div:first-child {
+        font-size: 17px !important
+      }
+
+      /* 툴바 */
+      .toolbar {
+        flex-wrap: wrap;
+        gap: 6px
+      }
+
+      .toolbar-right {
+        margin-left: 0;
+        width: 100%
+      }
+
+      /* 버튼 */
+      .btn {
+        font-size: 12px;
+        padding: 7px 12px
+      }
+
+      .btn svg {
+        width: 13px;
+        height: 13px
+      }
+
+      /* 탭 바: 스크롤 가능 */
+      .tab-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%
+      }
+
+      /* 설정 행: 세로 스택 */
+      .setting-row {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start
+      }
+
+      /* 모달: 풀 너비 */
+      .overlay {
+        padding: 12px
+      }
+
+      .modal {
+        max-width: 100% !important;
+        border-radius: 12px
+      }
+
+      .modal-lg {
+        max-width: 100% !important
+      }
+
+      /* 작성: textarea 최소 높이 */
+      #campBody {
+        min-height: 180px
+      }
+
+      /* 작성하기 헤더: 세로 스택 */
+      .compose-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px
+      }
+
+      .compose-header-actions {
+        width: 100%
+      }
+
+      #templateSelect {
+        min-width: 0 !important;
+        flex: 1
+      }
+
+      /* 카드 헤더 */
+      .card-header {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-bottom: 8px
+      }
+
+      /* 페이지네이션 */
+      .page-info {
+        display: none
+      }
+
+      .pagination {
+        flex-wrap: wrap;
+        justify-content: center
+      }
+    }
+
+    /* ── 초소형 폰 (< 360px) ────────────────────────── */
+    @media (max-width:359px) {
+      .kpi-grid {
+        grid-template-columns: 1fr
+      }
+
+      .kpi-value {
+        font-size: 22px
+      }
+
+      .btn-icon {
+        padding: 7px
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══ MOBILE SIDEBAR OVERLAY ══════════════════════ -->
+  <div class="mob-overlay" id="mobOverlay"></div>
+
+  <!-- ═══ TOAST ════════════════════════════════════════ -->
+  <div id="toast-stack"></div>
+
+  <!-- ═══ CONFIRM MODAL ════════════════════════════════ -->
+  <div id="confirmOverlay" class="overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="confirmTitle"></div><button class="modal-close" onclick="closeConfirm()"><svg
+            fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg></button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMsg" style="font-size:13px;color:var(--text-2);line-height:1.6"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeConfirm()">취소</button>
+        <button id="confirmOk" class="btn btn-danger btn-sm">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CAMPAIGN DETAIL MODAL ════════════════════════ -->
+  <div id="campDetailOverlay" class="overlay">
+    <div class="modal modal-lg" style="max-height:85vh;display:flex;flex-direction:column">
+      <div class="modal-header" style="flex-shrink:0">
+        <div>
+          <div class="modal-title" id="campDetailTitle"></div>
+          <div id="campDetailMeta" style="font-size:12px;color:var(--text-3);margin-top:3px"></div>
+        </div>
+        <button class="modal-close" onclick="closeCampDetail()"><svg fill="none" stroke="currentColor" stroke-width="2"
+            viewBox="0 0 24 24">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg></button>
+      </div>
+      <div class="modal-body" id="campDetailBody" style="overflow-y:auto;flex:1"></div>
+    </div>
+  </div>
+
+  <!-- ═══ APP ══════════════════════════════════════════ -->
+  <div id="root">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-mark">
+          <svg width="22" height="22" viewBox="16 24 96 80" fill="none">
+            <path d="M 46 44 L 26 64 L 46 84" stroke="white" stroke-width="10" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <path d="M 72 34 L 56 94" stroke="rgba(255,255,255,0.6)" stroke-width="10" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <path d="M 82 44 L 102 64 L 82 84" stroke="white" stroke-width="10" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div class="logo-name">DOI AI</div>
+        <div class="logo-badge">Console</div>
+        <button class="sidebar-close" id="sidebarClose" aria-label="메뉴 닫기">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">메인</div>
+        <button class="nav-item active" data-nav="dashboard">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+          </svg>
+          대시보드
+        </button>
+        <button class="nav-item" data-nav="subscribers">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          구독자 관리
+          <span class="nav-badge" id="nav-sub-count">0</span>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">뉴스레터</div>
+        <button class="nav-item" data-nav="compose">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          작성하기
+        </button>
+        <button class="nav-item" data-nav="history">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          발송 이력
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+        <button class="nav-item" data-nav="settings">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          설정
+        </button>
+      </div>
+
+    </nav>
+
+    <!-- MAIN -->
+    <div class="main-area">
+
+      <!-- 모바일 헤더 (< 1024px에서만 표시) -->
+      <div class="mob-header">
+        <button class="hamburger" id="mobMenuBtn" aria-label="메뉴 열기">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="logo-mark" style="width:28px;height:28px;border-radius:8px">
+            <svg width="20" height="20" viewBox="16 24 96 80" fill="none">
+              <path d="M 46 44 L 26 64 L 46 84" stroke="white" stroke-width="10" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M 72 34 L 56 94" stroke="rgba(255,255,255,0.6)" stroke-width="10" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M 82 44 L 102 64 L 82 84" stroke="white" stroke-width="10" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </div>
+          <span class="logo-name">LandingHub</span>
+          <span class="logo-badge">Admin</span>
+        </div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="content">
+
+        <!-- ── DASHBOARD ──────────────────────────────── -->
+        <div id="sec-dashboard" class="section active">
+          <div style="margin-bottom:20px">
+            <div style="font-size:20px;font-weight:800;letter-spacing:-.04em;margin-bottom:2px">대시보드</div>
+            <div class="text-muted text-sm">LandingHub 뉴스레터 운영 현황</div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card c-purple">
+              <div class="kpi-icon purple">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div class="kpi-label">총 구독자</div>
+              <div class="kpi-value" id="kpi-total">—</div>
+              <div class="kpi-trend neutral" id="kpi-total-trend">활성 기준</div>
+            </div>
+            <div class="kpi-card c-green">
+              <div class="kpi-icon green">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                  <polyline points="17 6 23 6 23 12" />
+                </svg>
+              </div>
+              <div class="kpi-label">이번 달 신규</div>
+              <div class="kpi-value" id="kpi-month">—</div>
+              <div class="kpi-trend up" id="kpi-month-trend">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+                이번 달
+              </div>
+            </div>
+            <div class="kpi-card c-blue">
+              <div class="kpi-icon blue">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              </div>
+              <div class="kpi-label">발송 캠페인</div>
+              <div class="kpi-value" id="kpi-camps">—</div>
+              <div class="kpi-trend neutral">누적 발송</div>
+            </div>
+            <div class="kpi-card c-yellow">
+              <div class="kpi-icon yellow">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </div>
+              <div class="kpi-label">발송 성공률</div>
+              <div class="kpi-value" id="kpi-rate">—</div>
+              <div class="kpi-trend neutral">전체 평균</div>
+            </div>
+          </div>
+
+          <div class="dash-grid">
+            <!-- 최근 구독자 -->
+            <div class="card dash-card">
+              <div class="card-header">
+                <div class="card-title">최근 구독자</div>
+                <button class="btn btn-ghost btn-sm" onclick="goNav('subscribers')">전체 보기 →</button>
+              </div>
+              <div class="card-body" id="dash-subs">
+                <div class="skeleton" style="height:14px;margin-bottom:10px"></div>
+                <div class="skeleton" style="height:14px;margin-bottom:10px;width:80%"></div>
+                <div class="skeleton" style="height:14px;width:60%"></div>
+              </div>
+            </div>
+            <!-- 최근 캠페인 -->
+            <div class="card dash-card">
+              <div class="card-header">
+                <div class="card-title">최근 캠페인</div>
+                <button class="btn btn-ghost btn-sm" onclick="goNav('history')">전체 보기 →</button>
+              </div>
+              <div class="card-body" id="dash-camps">
+                <div class="skeleton" style="height:14px;margin-bottom:10px"></div>
+                <div class="skeleton" style="height:14px;margin-bottom:10px;width:80%"></div>
+                <div class="skeleton" style="height:14px;width:60%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SUBSCRIBERS ────────────────────────────── -->
+        <div id="sec-subscribers" class="section">
+          <div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:20px;font-weight:800;letter-spacing:-.04em;margin-bottom:2px">구독자 관리</div>
+              <div class="text-muted text-sm" id="subCountLabel">불러오는 중...</div>
+            </div>
+            <div class="gap-8">
+              <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                CSV 내보내기
+              </button>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="input-wrap" style="width:260px">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input id="subSearch" type="text" class="input" placeholder="이메일 검색..." oninput="debounceSubSearch()" />
+            </div>
+            <select id="subStatusFilter" class="select" onchange="loadSubscribers(1)">
+              <option value="all">모든 상태</option>
+              <option value="active">활성</option>
+              <option value="unsubscribed">구독취소</option>
+              <option value="bounced">바운스</option>
+              <option value="complained">불만신고</option>
+            </select>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>구독자</th>
+                    <th>상태</th>
+                    <th>가입 경로</th>
+                    <th>가입일</th>
+                    <th style="text-align:right">액션</th>
+                  </tr>
+                </thead>
+                <tbody id="subBody">
+                  <tr>
+                    <td colspan="5">
+                      <div class="empty-state">
+                        <div class="empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5"
+                            viewBox="0 0 24 24">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                          </svg></div>
+                        <div class="empty-title">불러오는 중...</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div id="subPagination" class="pagination"></div>
+        </div>
+
+        <!-- ── COMPOSE ────────────────────────────────── -->
+        <div id="sec-compose" class="section">
+          <div class="compose-header"
+            style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:20px;font-weight:800;letter-spacing:-.04em;margin-bottom:2px">템플릿 작성</div>
+              <div class="text-muted text-sm">이메일 템플릿을 작성하고 새로운 발송 캠페인을 생성합니다.</div>
+            </div>
+            <div class="gap-8 compose-header-actions">
+              <div style="display:flex;flex-direction:column;gap:6px;min-width:220px">
+                <input id="templateSearch" class="input" type="search" placeholder="템플릿 검색" oninput="filterTemplates()"
+                  style="height:34px;font-size:12px">
+                <select id="templateSelect" class="select" onchange="loadTemplate()" style="min-width:180px">
+                  <option value="" disabled selected>템플릿 불러오기...</option>
+                </select>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="saveTemplate()">템플릿 저장</button>
+              <button id="deleteTemplateBtn" class="btn btn-ghost btn-sm" onclick="deleteTemplate()"
+                style="display:none;color:var(--red)">템플릿 삭제</button>
+              <button class="btn btn-ghost btn-sm" onclick="resetCompose()">초기화</button>
+            </div>
+          </div>
+
+          <div class="compose-grid">
+            <!-- 편집 패널 -->
+            <div class="compose-pane">
+              <div class="card">
+                <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+                  <div>
+                    <label class="label">제목 *</label>
+                    <input id="campSubject" type="text" class="input" placeholder="뉴스레터 제목을 입력하세요" />
+                  </div>
+                  <div>
+                    <label class="label">미리보기 텍스트 <span class="text-muted">— 받은편지함에서 표시</span></label>
+                    <div style="position:relative">
+                      <input id="campPreview" type="text" class="input" maxlength="80" placeholder="한 줄 요약 (최대 80자)"
+                        oninput="document.getElementById('pvCount').textContent=this.value.length" />
+                      <span id="pvCount"
+                        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-3)">0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
+                <div class="card-header" style="margin-bottom:8px">
+                  <div class="card-title">본문 HTML *</div>
+                  <button class="btn btn-ghost btn-sm" onclick="insertTpl()">템플릿</button>
+                </div>
+                <div class="card-body" style="padding-top:0;flex:1;display:flex;flex-direction:column;min-height:0">
+                  <textarea id="campBody" class="input font-mono" placeholder="<p>이메일 본문 HTML을 작성하세요...</p>"
+                    oninput="updatePreview()"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 프리뷰 패널 -->
+            <div style="display:flex;flex-direction:column;gap:12px;min-height:0">
+              <div class="card" style="flex:1;display:flex;flex-direction:column">
+                <div class="card-header" style="margin-bottom:8px">
+                  <div class="card-title">미리보기</div>
+                  <div class="gap-8">
+                    <button class="tab active" id="pvDesk" onclick="setPv('desktop')">데스크탑</button>
+                    <button class="tab" id="pvMob" onclick="setPv('mobile')">모바일</button>
+                  </div>
+                </div>
+                <div class="card-body" style="flex:1;display:flex;flex-direction:column;padding-top:0">
+                  <div class="preview-shell">
+                    <div class="preview-bar">
+                      <div class="preview-dot" style="background:#ff5f57"></div>
+                      <div class="preview-dot" style="background:#ffbd2e"></div>
+                      <div class="preview-dot" style="background:#28ca41"></div>
+                      <div id="previewBarTitle"
+                        style="flex:1;min-width:0;margin-left:8px;background:rgba(0,0,0,.06);border-radius:4px;padding:2px 8px;font-size:11px;color:#555;font-family:sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        제목 없음</div>
+                    </div>
+                    <iframe id="previewFrame" style="flex:1;border:none;width:100%;background:#fff"></iframe>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <input type="hidden" id="editTemplateId" />
+          <div
+            style="display:flex;align-items:center;gap:8px;margin-top:14px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg)">
+            <button class="btn btn-secondary" onclick="saveToLocal()">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              임시저장
+            </button>
+            <button class="btn btn-primary" onclick="confirmSend()">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+              발송하기
+            </button>
+            <span id="composeStatus" style="font-size:12px;color:var(--text-3);margin-left:4px"></span>
+          </div>
+        </div>
+
+        <!-- ── HISTORY ────────────────────────────────── -->
+        <div id="sec-history" class="section">
+          <div
+            style="margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:20px;font-weight:800;letter-spacing:-.04em;margin-bottom:2px">발송 이력</div>
+              <div class="text-muted text-sm">캠페인 발송 현황을 확인합니다.</div>
+            </div>
+          </div>
+
+          <div
+            style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+            <div class="tab-bar" style="margin-bottom:0">
+              <button class="tab active" data-hist="all" onclick="setHistTab('all')">전체</button>
+              <button class="tab" data-hist="sent" onclick="setHistTab('sent')">발송완료</button>
+              <button class="tab" data-hist="draft" onclick="setHistTab('draft')">발송전</button>
+              <button class="tab" data-hist="sending" onclick="setHistTab('sending')">발송중</button>
+              <button class="tab" data-hist="failed" onclick="setHistTab('failed')">실패</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button id="historyRefreshBtn" class="btn btn-ghost btn-sm history-refresh-btn" onclick="refreshHistory()"
+                style="display:inline-flex;align-items:center;gap:8px">
+                <svg id="historyRefreshIcon" class="history-refresh-icon" fill="none" stroke="currentColor"
+                  stroke-width="2" viewBox="0 0 24 24" width="14" height="14">
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 7" />
+                  <path d="M21 3v4h-4" />
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 17" />
+                  <path d="M3 21v-4h4" />
+                </svg>
+                새로고침
+              </button>
+              <div id="historyRefreshMeta" style="font-size:12px;color:var(--text-3);white-space:nowrap">마지막 갱신: -</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>캠페인</th>
+                    <th>출처</th>
+                    <th>상태</th>
+                    <th>발송일</th>
+                    <th>성공</th>
+                    <th>실패</th>
+                    <th>성공률</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="histBody">
+                  <tr>
+                    <td colspan="8">
+                      <div class="empty-state">
+                        <div class="empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5"
+                            viewBox="0 0 24 24">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                          </svg></div>
+                        <div class="empty-title">불러오는 중...</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div id="histPagination" class="pagination"></div>
+        </div>
+
+        <!-- ── SETTINGS ───────────────────────────────── -->
+        <div id="sec-settings" class="section">
+          <div style="margin-bottom:24px">
+            <div style="font-size:20px;font-weight:800;letter-spacing:-.04em;margin-bottom:2px">설정</div>
+            <div class="text-muted text-sm">시스템 연결 상태 및 구성을 관리합니다.</div>
+          </div>
+
+          <div class="settings-section">
+            <div class="card" style="margin-bottom:14px">
+              <div class="card-body">
+                <div class="setting-row" style="padding-top:0">
+                  <div class="setting-info">
+                    <div class="setting-label">발신자 정보</div>
+                    <div class="setting-desc">발송 이메일의 발신자로 표시됩니다. 현재 기본값은
+                      <code>LandingHub &lt;noreply@landinghub.kr&gt;</code> 입니다.
+                    </div>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-2);font-family:monospace;white-space:nowrap">LandingHub
+                    &lt;noreply@landinghub.kr&gt;</div>
+                </div>
+                <div class="setting-row" style="padding-bottom:0">
+                  <div class="setting-info">
+                    <div class="setting-label">데이터 모드</div>
+                    <div class="setting-desc">현재 콘솔이 사용하는 데이터 소스</div>
+                  </div>
+                  <code id="settingWorkerUrl" style="font-size:11px">정적 더미 데이터 (백엔드 없음)</code>
+                </div>
+              </div>
+            </div>
+
+            <div class="danger-zone">
+              <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px">위험 구역</div>
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">되돌릴 수 없는 작업입니다. 신중하게 실행하세요.</div>
+              <button class="btn btn-danger btn-sm" onclick="confirmDeleteUnsub()">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
+                구독취소 구독자 전체 삭제
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /main-area -->
+  </div><!-- /root -->
+
+  <script>
+    // ══════════════════════════════════════════════════════
+    // CONFIG
+    // ══════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════
+    // MOBILE SIDEBAR
+    // ══════════════════════════════════════════════════════
+    function openSidebar() {
+      document.querySelector('.sidebar').classList.add('mob-open');
+      document.getElementById('mobOverlay').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+      document.querySelector('.sidebar').classList.remove('mob-open');
+      document.getElementById('mobOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+    document.getElementById('mobMenuBtn').addEventListener('click', openSidebar);
+    document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
+    document.getElementById('mobOverlay').addEventListener('click', closeSidebar);
+
+    // 모바일에서 nav 클릭 시 사이드바 자동 닫기
+    document.querySelectorAll('.nav-item[data-nav]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (window.innerWidth < 1024) closeSidebar();
+      });
+    });
+
+    let SKIP_COMPOSE_AUTOLOAD = false;
+    let TEMPLATE_CACHE = [];
+
+    // ══════════════════════════════════════════════════════
+    // DUMMY DATA STORE (no backend)
+    // ══════════════════════════════════════════════════════
+    const _dayMs = 86400000;
+    const _now = Date.now();
+    const _iso = (daysAgo, hoursAgo = 0) => new Date(_now - daysAgo * _dayMs - hoursAgo * 3600000).toISOString();
+
+    const _emailHtml = (title, body) => `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
+  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px;text-align:center">
+    <h1 style="color:#ffffff;font-size:24px;font-weight:800;margin:0;letter-spacing:-0.04em">DOI AI</h1>
+    <p style="color:rgba(255,255,255,.75);font-size:13px;margin:6px 0 0">드론 AI 공간정보 플랫폼</p>
+  </div>
+  <div style="padding:32px">
+    <h2 style="font-size:20px;font-weight:700;color:#111;margin:0 0 12px;letter-spacing:-0.02em">${title}</h2>
+    <p style="font-size:15px;color:#555;line-height:1.7;margin:0 0 24px">${body}</p>
+    <a href="https://doi-kr.com" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700">자세히 보기 →</a>
+  </div>
+  <div style="padding:20px 32px;border-top:1px solid #eee;text-align:center">
+    <p style="font-size:12px;color:#aaa;margin:0">구독 취소: <a href="#" style="color:#6366f1">여기</a>를 클릭하세요.</p>
+  </div>
+</div>`;
+
+    let DUMMY_SUBSCRIBERS = [
+      { id: 1, email: 'kim.jiwon@example.com', status: 'active', source: 'landing', created_at: _iso(0, 2) },
+      { id: 2, email: 'park.minsu@example.com', status: 'active', source: 'landing', created_at: _iso(0, 5) },
+      { id: 3, email: 'lee.seoyeon@example.com', status: 'active', source: 'referral', created_at: _iso(1, 1) },
+      { id: 4, email: 'choi.junho@example.com', status: 'active', source: 'landing', created_at: _iso(1, 6) },
+      { id: 5, email: 'jung.haeun@example.com', status: 'unsubscribed', source: 'landing', created_at: _iso(2, 3) },
+      { id: 6, email: 'kang.dohyun@example.com', status: 'active', source: 'event', created_at: _iso(2, 12) },
+      { id: 7, email: 'yoon.miyeon@example.com', status: 'active', source: 'landing', created_at: _iso(3, 4) },
+      { id: 8, email: 'jang.sangwoo@example.com', status: 'bounced', source: 'landing', created_at: _iso(3, 9) },
+      { id: 9, email: 'oh.yuna@example.com', status: 'active', source: 'referral', created_at: _iso(4, 1) },
+      { id: 10, email: 'han.taemin@example.com', status: 'active', source: 'landing', created_at: _iso(5, 7) },
+      { id: 11, email: 'shin.eunji@example.com', status: 'active', source: 'landing', created_at: _iso(6, 2) },
+      { id: 12, email: 'seo.donghyun@example.com', status: 'unsubscribed', source: 'event', created_at: _iso(7, 11) },
+      { id: 13, email: 'bae.jihye@example.com', status: 'active', source: 'landing', created_at: _iso(8, 3) },
+      { id: 14, email: 'moon.kihoon@example.com', status: 'active', source: 'landing', created_at: _iso(10, 5) },
+      { id: 15, email: 'song.minji@example.com', status: 'active', source: 'referral', created_at: _iso(12, 1) },
+      { id: 16, email: 'noh.seojun@example.com', status: 'active', source: 'landing', created_at: _iso(14, 8) },
+      { id: 17, email: 'hwang.arin@example.com', status: 'active', source: 'event', created_at: _iso(16, 2) },
+      { id: 18, email: 'cho.juwon@example.com', status: 'bounced', source: 'landing', created_at: _iso(20, 6) },
+      { id: 19, email: 'baek.sumin@example.com', status: 'active', source: 'landing', created_at: _iso(24, 4) },
+      { id: 20, email: 'yu.gunwoo@example.com', status: 'active', source: 'referral', created_at: _iso(28, 7) },
+      { id: 21, email: 'ko.eunseo@example.com', status: 'active', source: 'landing', created_at: _iso(34, 1) },
+      { id: 22, email: 'na.jaehyun@example.com', status: 'unsubscribed', source: 'landing', created_at: _iso(40, 3) },
+      { id: 23, email: 'do.minhee@example.com', status: 'active', source: 'event', created_at: _iso(48, 9) },
+      { id: 24, email: 'pyo.junseo@example.com', status: 'active', source: 'landing', created_at: _iso(55, 2) },
+      { id: 25, email: 'gu.naeun@example.com', status: 'active', source: 'landing', created_at: _iso(62, 5) },
+    ];
+    let _nextSubId = 26;
+
+    let DUMMY_TEMPLATES = [
+      { id: 101, subject: '[DOI AI] 이번 주 새 작품 소개', preview_text: '주목할 만한 작품 5개를 골라봤어요. 지금 확인하세요!', body_html: _emailHtml('이번 주 새 작품 소개', '안녕하세요! DOI AI 쇼케이스에 새로운 작품들이 등록되었습니다.'), created_at: _iso(40) },
+      { id: 102, subject: '월간 업데이트 — 새로운 기능과 개선 사항', preview_text: '이번 달 추가된 신기능과 개선된 점을 정리했습니다.', body_html: _emailHtml('월간 업데이트', '이번 달에는 다양한 개선 사항이 있었습니다. 자세히 확인해 보세요.'), created_at: _iso(20) },
+      { id: 103, subject: '특별 이벤트 안내 — 30% 할인 프로모션', preview_text: '한정 기간 동안만 진행되는 특별 프로모션입니다.', body_html: _emailHtml('30% 할인 프로모션', '지금 가입하시면 첫 달 30% 할인 혜택을 드립니다.'), created_at: _iso(10) },
+      { id: 104, subject: '신규 기능 출시 — 드론 데이터 자동 분석', preview_text: 'AI 기반 자동 분석 기능이 새롭게 출시되었습니다.', body_html: _emailHtml('드론 데이터 자동 분석', 'AI가 드론 영상을 자동으로 분석해 공간정보 결과물을 생성합니다.'), created_at: _iso(3) },
+    ];
+    let _nextTplId = 105;
+
+    let DUMMY_CAMPAIGNS = [
+      { id: 1001, subject: '[DOI AI] 환영합니다!', template_id: null, template_subject: null, status: 'sent', total_sent: 142, total_failed: 3, created_at: _iso(45), sent_at: _iso(45), body_html: _emailHtml('환영합니다', 'DOI AI에 가입해 주셔서 감사합니다.'), preview_text: '가입을 환영합니다.' },
+      { id: 1002, subject: '월간 업데이트 — 4월', template_id: 102, template_subject: '월간 업데이트 — 새로운 기능과 개선 사항', status: 'sent', total_sent: 156, total_failed: 4, created_at: _iso(20), sent_at: _iso(20), body_html: _emailHtml('4월 업데이트', '4월 한 달 동안의 주요 개선 사항을 정리했습니다.'), preview_text: '4월 주요 업데이트.' },
+      { id: 1003, subject: '특별 이벤트 안내', template_id: 103, template_subject: '특별 이벤트 안내 — 30% 할인 프로모션', status: 'sent', total_sent: 168, total_failed: 2, created_at: _iso(10), sent_at: _iso(10), body_html: _emailHtml('30% 할인', '한정 기간 프로모션이 시작되었습니다.'), preview_text: '30% 할인 프로모션 시작.' },
+      { id: 1004, subject: '서비스 점검 안내', template_id: null, template_subject: null, status: 'sent', total_sent: 170, total_failed: 1, created_at: _iso(7), sent_at: _iso(7), body_html: _emailHtml('서비스 점검', '안정적인 서비스를 위해 점검을 진행합니다.'), preview_text: '점검 안내드립니다.' },
+      { id: 1005, subject: '4월 둘째 주 새 작품', template_id: 101, template_subject: '[DOI AI] 이번 주 새 작품 소개', status: 'failed', total_sent: 5, total_failed: 165, created_at: _iso(5), sent_at: _iso(5), body_html: _emailHtml('이번 주 새 작품', '주목할 만한 신작들을 모아봤습니다.'), preview_text: '이번 주 신작.' },
+      { id: 1006, subject: '드론 데이터 자동 분석 기능 출시', template_id: 104, template_subject: '신규 기능 출시 — 드론 데이터 자동 분석', status: 'sent', total_sent: 174, total_failed: 0, created_at: _iso(3), sent_at: _iso(3), body_html: _emailHtml('자동 분석 출시', 'AI 기반 자동 분석 기능을 만나보세요.'), preview_text: '자동 분석 출시!' },
+      { id: 1007, subject: '이번 주 인기 콘텐츠 모음', template_id: null, template_subject: null, status: 'sending', total_sent: 88, total_failed: 1, created_at: _iso(0, 1), sent_at: _iso(0, 1), body_html: _emailHtml('인기 콘텐츠', '이번 주 가장 많이 본 콘텐츠를 정리했습니다.'), preview_text: '인기 콘텐츠.' },
+      { id: 1008, subject: '5월 신규 캠페인 (초안)', template_id: null, template_subject: null, status: 'draft', total_sent: 0, total_failed: 0, created_at: _iso(0, 0), sent_at: null, body_html: _emailHtml('5월 캠페인', '5월에 진행될 캠페인 초안입니다.'), preview_text: '5월 캠페인 초안.' },
+    ];
+    let _nextCampId = 1009;
+
+    const DUMMY_LOGS = {};
+    (function _seedLogs() {
+      DUMMY_CAMPAIGNS.forEach(c => {
+        if (c.status === 'draft') { DUMMY_LOGS[c.id] = []; return; }
+        const total = Math.min(c.total_sent + c.total_failed, 8);
+        const sample = DUMMY_SUBSCRIBERS.slice(0, total);
+        DUMMY_LOGS[c.id] = sample.map((s, i) => ({
+          email: s.email,
+          status: i < c.total_sent ? 'sent' : 'failed',
+          sent_at: c.sent_at ? new Date(new Date(c.sent_at).getTime() + i * 1500).toISOString() : null,
+        }));
+      });
+    })();
+
+    // ══════════════════════════════════════════════════════
+    // TOAST
+    // ══════════════════════════════════════════════════════
+    const ICONS = {
+      success: `<svg class="toast-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
+      error: `<svg class="toast-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+      info: `<svg class="toast-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+    };
+    function toast(msg, type = 'success') {
+      const stack = document.getElementById('toast-stack');
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.innerHTML = ICONS[type] + `<span>${msg}</span>`;
+      stack.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      setTimeout(() => { el.classList.add('leaving'); el.addEventListener('transitionend', () => el.remove()); }, 3500);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // CONFIRM MODAL
+    // ══════════════════════════════════════════════════════
+    let _confirmCb = null;
+    function openConfirm(title, msg, cb, okLabel = '삭제') {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMsg').textContent = msg;
+      document.getElementById('confirmOk').textContent = okLabel;
+      document.getElementById('confirmOverlay').classList.add('show');
+      _confirmCb = cb;
+    }
+    function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); _confirmCb = null; }
+    document.getElementById('confirmOk').addEventListener('click', () => { const cb = _confirmCb; closeConfirm(); cb?.(); });
+    document.getElementById('confirmOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeConfirm(); });
+
+    // ══════════════════════════════════════════════════════
+    // MOUNT
+    // ══════════════════════════════════════════════════════
+    function mountApp() {
+      loadDashboard();
+    }
+
+    mountApp();
+
+    // ══════════════════════════════════════════════════════
+    // NAVIGATION
+    // ══════════════════════════════════════════════════════
+    const NAV_LABELS = { dashboard: '대시보드', subscribers: '구독자 관리', compose: '템플릿 작성', history: '발송 이력', settings: '설정' };
+    function goNav(name) {
+      if (name !== 'history') stopHistoryAutoRefresh();
+      document.querySelectorAll('.nav-item[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
+      document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === 'sec-' + name));
+      if (name === 'dashboard') loadDashboard();
+      if (name === 'subscribers') loadSubscribers(1);
+      if (name === 'history') {
+        loadHistory(1);
+        startHistoryAutoRefresh();
+      }
+      if (name === 'compose') {
+        if (!SKIP_COMPOSE_AUTOLOAD) {
+          loadTemplates();
+          restoreFromLocal();
+        }
+        SKIP_COMPOSE_AUTOLOAD = false;
+      }
+    }
+    document.querySelectorAll('.nav-item[data-nav]').forEach(b => b.addEventListener('click', () => goNav(b.dataset.nav)));
+
+    // ══════════════════════════════════════════════════════
+    // DASHBOARD
+    // ══════════════════════════════════════════════════════
+    function loadDashboard() {
+      const limits = getDashboardRecentLimits();
+      const total = DUMMY_SUBSCRIBERS.length;
+      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+      const thisMonthSubs = DUMMY_SUBSCRIBERS.filter(s => new Date(s.created_at) >= monthStart).length;
+      const totalCamps = DUMMY_CAMPAIGNS.length;
+      const sumSent = DUMMY_CAMPAIGNS.reduce((a, c) => a + c.total_sent, 0);
+      const sumFailed = DUMMY_CAMPAIGNS.reduce((a, c) => a + c.total_failed, 0);
+      const successRate = (sumSent + sumFailed) > 0 ? Math.round(sumSent / (sumSent + sumFailed) * 100) : 0;
+
+      document.getElementById('kpi-total').textContent = total.toLocaleString();
+      document.getElementById('kpi-month').textContent = (thisMonthSubs > 0 ? '+' : '') + thisMonthSubs.toLocaleString();
+      document.getElementById('kpi-camps').textContent = totalCamps.toLocaleString();
+      document.getElementById('kpi-rate').textContent = successRate ? successRate + '%' : '—';
+      document.getElementById('nav-sub-count').textContent = total;
+
+      const recentSubs = [...DUMMY_SUBSCRIBERS].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, limits.subscribers);
+      const recentCamps = [...DUMMY_CAMPAIGNS].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, limits.campaigns);
+
+      const subEl = document.getElementById('dash-subs');
+      if (!recentSubs.length) {
+        subEl.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-title">구독자 없음</div><div class="empty-sub">첫 구독자를 기다리는 중...</div></div>`;
+      } else {
+        subEl.innerHTML = `<div class="dash-list">${recentSubs.map(s => `
+      <div class="dash-item">
+        <div class="avatar" style="font-size:10px">${s.email[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div class="truncate" style="font-size:12.5px;color:var(--text);font-family:monospace">${s.email}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);flex-shrink:0">${fmtDate(s.created_at)}</div>
+      </div>`).join('')}</div>`;
+      }
+
+      const campEl = document.getElementById('dash-camps');
+      if (!recentCamps.length) {
+        campEl.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div class="empty-title">캠페인 없음</div><div class="empty-sub">첫 템플릿을 만들어보세요.</div><button class="btn btn-primary btn-sm" onclick="goNav('compose')" style="margin-top:10px">+ 템플릿 만들기</button></div>`;
+      } else {
+        campEl.innerHTML = `<div class="dash-list">${recentCamps.map(c => `
+      <div class="dash-item">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.subject}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px">${c.sent_at ? fmtDate(c.sent_at) : '발송 전'} · 수신 ${c.total_sent}명</div>
+        </div>
+        <span class="badge badge-${c.status}">${statusLabel(c.status)}</span>
+      </div>`).join('')}</div>`;
+      }
+    }
+
+    function getDashboardRecentLimits() {
+      const subBody = document.getElementById('dash-subs');
+      const campBody = document.getElementById('dash-camps');
+      return {
+        subscribers: calcDashboardRecentLimit(subBody, 57, 4, 24),
+        campaigns: calcDashboardRecentLimit(campBody, 57, 3, 20),
+      };
+    }
+
+    function calcDashboardRecentLimit(el, rowHeight, min, max) {
+      if (!el) return min;
+      const height = el.getBoundingClientRect().height || 0;
+      if (!height) return min;
+      const count = Math.floor((height - 14) / rowHeight);
+      return Math.max(min, Math.min(max, count));
+    }
+
+    let _dashRefreshTimer = null;
+    function scheduleDashboardRefresh() {
+      clearTimeout(_dashRefreshTimer);
+      _dashRefreshTimer = setTimeout(() => {
+        if (document.getElementById('sec-dashboard')?.classList.contains('active')) loadDashboard();
+      }, 120);
+    }
+
+    window.addEventListener('resize', scheduleDashboardRefresh);
+
+    // ══════════════════════════════════════════════════════
+    // SUBSCRIBERS
+    // ══════════════════════════════════════════════════════
+    let subPage = 1, _subTimer;
+    function debounceSubSearch() { clearTimeout(_subTimer); _subTimer = setTimeout(() => loadSubscribers(1), 380); }
+
+    function loadSubscribers(page = 1) {
+      subPage = page;
+      const search = document.getElementById('subSearch').value.trim().toLowerCase();
+      const status = document.getElementById('subStatusFilter').value;
+      let filtered = DUMMY_SUBSCRIBERS.slice();
+      if (status && status !== 'all') filtered = filtered.filter(s => s.status === status);
+      if (search) filtered = filtered.filter(s => s.email.toLowerCase().includes(search));
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const perPage = 20;
+      const total = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / perPage));
+      const start = (page - 1) * perPage;
+      const subscribers = filtered.slice(start, start + perPage);
+
+      document.getElementById('subCountLabel').textContent = `총 ${total.toLocaleString()}명의 구독자`;
+      document.getElementById('nav-sub-count').textContent = DUMMY_SUBSCRIBERS.length;
+
+      const tbody = document.getElementById('subBody');
+      if (!subscribers.length) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-title">구독자가 없습니다</div><div class="empty-sub">조건을 변경하거나 새 구독자를 기다려보세요.</div></div></td></tr>`;
+        document.getElementById('subPagination').innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = subscribers.map(s => `
+    <tr>
+      <td>
+        <div class="td-email">
+          <div class="avatar">${s.email[0].toUpperCase()}</div>
+          <div class="email-text">${s.email}</div>
+        </div>
+      </td>
+      <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+      <td class="text-muted text-sm">${s.source || '—'}</td>
+      <td class="text-muted text-sm">${fmtDate(s.created_at)}</td>
+      <td style="text-align:right">
+        <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
+          <select class="select" style="font-size:11px;padding:4px 8px" onchange="changeSubStatus(${s.id},this)">
+            <option value="">상태 변경</option>
+            <option value="active" ${s.status === 'active' ? 'selected' : ''}>활성</option>
+            <option value="unsubscribed" ${s.status === 'unsubscribed' ? 'selected' : ''}>구독취소</option>
+            <option value="bounced" ${s.status === 'bounced' ? 'selected' : ''}>바운스</option>
+          </select>
+          <button class="btn btn-danger btn-sm btn-icon" title="삭제" onclick="deleteSub(${s.id},'${esc(s.email)}')">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+
+      renderPagination('subPagination', page, totalPages, loadSubscribers);
+    }
+
+    function changeSubStatus(id, sel) {
+      const status = sel.value;
+      if (!status) return;
+      const s = DUMMY_SUBSCRIBERS.find(x => x.id === id);
+      if (!s) { toast('변경 실패', 'error'); sel.value = ''; return; }
+      s.status = status;
+      toast('상태가 변경되었습니다.');
+      loadSubscribers(subPage);
+    }
+
+    function deleteSub(id, email) {
+      openConfirm('구독자 삭제', `${email}을(를) 삭제할까요? 이 작업은 취소할 수 없습니다.`, () => {
+        DUMMY_SUBSCRIBERS = DUMMY_SUBSCRIBERS.filter(s => s.id !== id);
+        toast('삭제되었습니다.');
+        loadSubscribers(subPage);
+      });
+    }
+
+    function exportCSV() {
+      const rows = [
+        ['id', 'email', 'status', 'source', 'created_at'],
+        ...DUMMY_SUBSCRIBERS.map(s => [s.id, s.email, s.status, s.source || '', s.created_at]),
+      ];
+      const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `subscribers_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('CSV 내보내기 완료');
+    }
+
+    // ══════════════════════════════════════════════════════
+    // COMPOSE
+    // ══════════════════════════════════════════════════════
+    function updatePreview() {
+      const frame = document.getElementById('previewFrame');
+      const doc = frame.contentDocument || frame.contentWindow.document;
+      doc.open(); doc.write(document.getElementById('campBody').value); doc.close();
+    }
+    function setPv(mode) {
+      document.getElementById('pvDesk').classList.toggle('active', mode === 'desktop');
+      document.getElementById('pvMob').classList.toggle('active', mode === 'mobile');
+      const wrap = document.getElementById('previewFrame').parentElement.parentElement;
+      wrap.style.maxWidth = mode === 'mobile' ? '390px' : '100%';
+    }
+    function insertTpl() {
+      document.getElementById('campBody').value = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
+  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px;text-align:center">
+    <h1 style="color:#ffffff;font-size:24px;font-weight:800;margin:0;letter-spacing:-0.04em">LandingHub</h1>
+    <p style="color:rgba(255,255,255,.75);font-size:13px;margin:6px 0 0">뉴스레터</p>
+  </div>
+  <div style="padding:32px">
+    <h2 style="font-size:20px;font-weight:700;color:#111;margin:0 0 12px;letter-spacing:-0.02em">이번 주 새 작품 소개</h2>
+    <p style="font-size:15px;color:#555;line-height:1.7;margin:0 0 24px">안녕하세요! LandingHub에 멋진 작품들이 새롭게 등록되었습니다.</p>
+    <a href="https://landinghub.dev" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700">쇼케이스 보러가기 →</a>
+  </div>
+  <div style="padding:20px 32px;border-top:1px solid #eee;text-align:center">
+    <p style="font-size:12px;color:#aaa;margin:0">
+      구독 취소: <a href="#" style="color:#6366f1">여기</a>를 클릭하세요.
+    </p>
+  </div>
+</div>`;
+      updatePreview();
+    }
+    function resetCompose() {
+      document.getElementById('editTemplateId').value = '';
+      document.getElementById('campSubject').value = '';
+      document.getElementById('campPreview').value = '';
+      document.getElementById('campBody').value = '';
+      document.getElementById('pvCount').textContent = '0';
+      document.getElementById('templateSelect').value = '';
+      document.getElementById('templateSearch').value = '';
+      document.getElementById('composeStatus').textContent = '';
+      document.getElementById('previewBarTitle').textContent = '제목 없음';
+      document.getElementById('deleteTemplateBtn').style.display = 'none';
+      updatePreview();
+    }
+    function renderTemplateOptions() {
+      const sel = document.getElementById('templateSelect');
+      const cur = sel.value;
+      const q = document.getElementById('templateSearch').value.trim().toLowerCase();
+      const filtered = TEMPLATE_CACHE.filter(t => {
+        if (!q) return true;
+        return [t.subject, t.preview_text, String(t.id)].join(' ').toLowerCase().includes(q);
+      });
+      sel.innerHTML = '<option value="" disabled selected>템플릿 불러오기...</option>' +
+        (filtered.length
+          ? filtered.map(t => `<option value="${t.id}">${t.subject || '(제목 없음)'}</option>`).join('')
+          : '<option value="" disabled>검색 결과 없음</option>');
+      if (cur && filtered.some(t => String(t.id) === String(cur))) {
+        sel.value = cur;
+      }
+    }
+    function loadTemplates() {
+      TEMPLATE_CACHE = DUMMY_TEMPLATES.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      renderTemplateOptions();
+    }
+    function filterTemplates() {
+      if (!Array.isArray(TEMPLATE_CACHE)) TEMPLATE_CACHE = [];
+      renderTemplateOptions();
+    }
+    function loadTemplate() {
+      const id = Number(document.getElementById("templateSelect").value);
+      if (!id) return;
+      const t = DUMMY_TEMPLATES.find(x => x.id === id);
+      if (!t) return;
+      document.getElementById("editTemplateId").value = t.id;
+      document.getElementById("campSubject").value = t.subject || "";
+      document.getElementById("campPreview").value = t.preview_text || "";
+      document.getElementById("campBody").value = t.body_html || "";
+      document.getElementById("pvCount").textContent = (t.preview_text || "").length;
+      document.getElementById("composeStatus").textContent = `템플릿 #${t.id} 불러옴`;
+      document.getElementById("previewBarTitle").textContent = t.subject || "제목 없음";
+      document.getElementById("deleteTemplateBtn").style.display = "";
+      updatePreview();
+    }
+    function saveToLocal() {
+      const subject = document.getElementById('campSubject').value;
+      const preview_text = document.getElementById('campPreview').value;
+      const body_html = document.getElementById('campBody').value;
+      localStorage.setItem('compose_autosave', JSON.stringify({ subject, preview_text, body_html, savedAt: Date.now() }));
+      toast('임시저장 완료 (로컬)');
+      document.getElementById('composeStatus').textContent = '로컬 임시저장됨';
+    }
+    // 컴포즈 탭 열릴 때 localStorage 복원 (폼이 비어있을 때만)
+    function restoreFromLocal() {
+      const raw = localStorage.getItem('compose_autosave');
+      if (!raw) return;
+      if (document.getElementById('campSubject').value || document.getElementById('campBody').value) return;
+      try {
+        const { subject, preview_text, body_html, savedAt } = JSON.parse(raw);
+        if (!subject && !body_html) return;
+        document.getElementById('campSubject').value = subject || '';
+        document.getElementById('campPreview').value = preview_text || '';
+        document.getElementById('campBody').value = body_html || '';
+        document.getElementById('pvCount').textContent = (preview_text || '').length;
+        updatePreview();
+        const mins = Math.round((Date.now() - savedAt) / 60000);
+        document.getElementById('composeStatus').textContent = `로컬 임시저장본 복원됨 (${mins < 1 ? '방금 전' : mins + '분 전'})`;
+      } catch { }
+    }
+    // 템플릿 저장 → 더미 스토어
+    function saveTemplate() {
+      const subject = document.getElementById('campSubject').value.trim();
+      const body_html = document.getElementById('campBody').value.trim();
+      if (!subject || !body_html) { toast('제목과 본문을 입력하세요.', 'error'); return; }
+      const preview_text = document.getElementById('campPreview').value.trim();
+      const existId = Number(document.getElementById('editTemplateId').value);
+      if (existId) {
+        const t = DUMMY_TEMPLATES.find(x => x.id === existId);
+        if (t) { t.subject = subject; t.preview_text = preview_text; t.body_html = body_html; }
+      } else {
+        const id = _nextTplId++;
+        DUMMY_TEMPLATES.push({ id, subject, preview_text, body_html, created_at: new Date().toISOString() });
+        document.getElementById('editTemplateId').value = id;
+        document.getElementById('deleteTemplateBtn').style.display = '';
+      }
+      toast('템플릿 저장 완료');
+      document.getElementById('composeStatus').textContent = '템플릿 저장됨';
+      loadTemplates();
+    }
+    // 템플릿 삭제 → 더미 스토어
+    function deleteTemplate() {
+      const id = Number(document.getElementById('editTemplateId').value);
+      if (!id) return;
+      openConfirm('템플릿 삭제', '이 템플릿을 삭제할까요? 되돌릴 수 없습니다.', () => {
+        DUMMY_TEMPLATES = DUMMY_TEMPLATES.filter(t => t.id !== id);
+        toast('템플릿 삭제 완료');
+        resetCompose();
+        loadTemplates();
+      });
+    }
+    function confirmSend() {
+      const subject = document.getElementById('campSubject').value.trim();
+      const body_html = document.getElementById('campBody').value.trim();
+      if (!subject || !body_html) { toast('제목과 본문을 입력하세요.', 'error'); return; }
+      const targets = DUMMY_SUBSCRIBERS.filter(s => s.status === 'active');
+      const count = targets.length;
+      openConfirm('뉴스레터 발송', `활성 구독자 ${count.toLocaleString()}명에게 발송합니다. 이 작업은 취소할 수 없습니다.`, () => {
+        const templateId = Number(document.getElementById('editTemplateId').value) || null;
+        const tpl = templateId ? DUMMY_TEMPLATES.find(t => t.id === templateId) : null;
+        const id = _nextCampId++;
+        const camp = {
+          id, subject, body_html,
+          preview_text: document.getElementById('campPreview').value.trim(),
+          template_id: templateId,
+          template_subject: tpl ? tpl.subject : null,
+          status: count > 0 ? 'sending' : 'sent',
+          total_sent: 0,
+          total_failed: 0,
+          created_at: new Date().toISOString(),
+          sent_at: new Date().toISOString(),
+        };
+        DUMMY_CAMPAIGNS.push(camp);
+        DUMMY_LOGS[id] = [];
+
+        let i = 0;
+        const tick = () => {
+          const remaining = targets.length - i;
+          if (remaining <= 0) { camp.status = 'sent'; return; }
+          const batch = Math.min(remaining, Math.max(1, Math.ceil(targets.length / 10)));
+          for (let k = 0; k < batch; k++, i++) {
+            const ok = Math.random() > 0.03;
+            if (ok) camp.total_sent++; else camp.total_failed++;
+            DUMMY_LOGS[id].push({
+              email: targets[i].email,
+              status: ok ? 'sent' : 'failed',
+              sent_at: new Date().toISOString(),
+            });
+          }
+          setTimeout(tick, 700);
+        };
+        tick();
+
+        localStorage.removeItem('compose_autosave');
+        toast('발송 시작!', 'info');
+        document.getElementById('composeStatus').textContent = templateId ? `템플릿 #${templateId}로 발송 중...` : '발송 중...';
+        goNav('history');
+      }, '발송하기');
+    }
+
+    // ══════════════════════════════════════════════════════
+    // HISTORY
+    // ══════════════════════════════════════════════════════
+    let _histStatus = 'all', _histPage = 1, _histLastRefreshAt = 0;
+    let _histRefreshTimer = null, _histTickTimer = null, _histRefreshInFlight = false;
+    function setHistTab(s) {
+      _histStatus = s;
+      document.querySelectorAll('[data-hist]').forEach(b => b.classList.toggle('active', b.dataset.hist === s));
+      loadHistory(1);
+    }
+    function refreshHistory() {
+      loadHistory(_histPage);
+    }
+    function updateHistoryRefreshMeta() {
+      const el = document.getElementById('historyRefreshMeta');
+      if (!el) return;
+      if (!_histLastRefreshAt) {
+        el.textContent = '마지막 갱신: -';
+        return;
+      }
+      const sec = Math.max(0, Math.floor((Date.now() - _histLastRefreshAt) / 1000));
+      if (sec < 60) el.textContent = `마지막 갱신: ${sec}초 전`;
+      else el.textContent = `마지막 갱신: ${Math.floor(sec / 60)}분 전`;
+    }
+    function setHistoryRefreshLoading(loading) {
+      const btn = document.getElementById('historyRefreshBtn');
+      if (btn) btn.classList.toggle('loading', !!loading);
+    }
+    function startHistoryAutoRefresh() {
+      if (!_histTickTimer) {
+        _histTickTimer = setInterval(updateHistoryRefreshMeta, 1000);
+      }
+      if (_histRefreshTimer) return;
+      _histRefreshTimer = setInterval(() => {
+        if (document.getElementById('sec-history').classList.contains('active')) {
+          loadHistory(_histPage);
+        }
+      }, 5000);
+      updateHistoryRefreshMeta();
+    }
+    function stopHistoryAutoRefresh() {
+      if (_histRefreshTimer) {
+        clearInterval(_histRefreshTimer);
+        _histRefreshTimer = null;
+      }
+      if (_histTickTimer) {
+        clearInterval(_histTickTimer);
+        _histTickTimer = null;
+      }
+      setHistoryRefreshLoading(false);
+    }
+    function loadHistory(page = 1) {
+      if (_histRefreshInFlight) return;
+      _histRefreshInFlight = true;
+      setHistoryRefreshLoading(true);
+      _histPage = page;
+      try {
+        let camps = DUMMY_CAMPAIGNS.slice();
+        if (_histStatus && _histStatus !== 'all') camps = camps.filter(c => c.status === _histStatus);
+        camps.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const perPage = 10;
+        const totalPages = Math.max(1, Math.ceil(camps.length / perPage));
+        const start = (page - 1) * perPage;
+        const list = camps.slice(start, start + perPage);
+
+        const tbody = document.getElementById('histBody');
+        if (!list.length) {
+          tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="empty-title">캠페인이 없습니다</div><div class="empty-sub">뉴스레터를 작성하고 발송해보세요.</div></div></td></tr>`;
+          document.getElementById('histPagination').innerHTML = '';
+          _histLastRefreshAt = Date.now();
+          updateHistoryRefreshMeta();
+          return;
+        }
+        tbody.innerHTML = list.map(c => {
+          const total = c.total_sent + c.total_failed;
+          const rate = total > 0 ? Math.round(c.total_sent / total * 100) : 0;
+          const source = c.template_subject
+            ? `템플릿 #${c.template_id || '?'}`
+            : '직접 작성';
+          return `
+      <tr>
+        <td>
+          <div style="font-size:13px;font-weight:500;color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.subject}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px">#${c.id}</div>
+        </td>
+        <td>
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${source}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.template_subject || '템플릿 없이 생성됨'}</div>
+        </td>
+        <td><span class="badge badge-${c.status}">${statusLabel(c.status)}</span></td>
+        <td class="text-muted text-sm">${c.sent_at ? fmtDate(c.sent_at) : '—'}</td>
+        <td style="color:var(--green);font-weight:600;font-size:13px">${c.total_sent.toLocaleString()}</td>
+        <td style="color:${c.total_failed > 0 ? 'var(--red)' : 'var(--text-3)'};font-weight:600;font-size:13px">${c.total_failed.toLocaleString()}</td>
+        <td style="min-width:100px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="progress-bar" style="flex:1">
+              <div class="progress-fill" style="width:${rate}%;background:${rate > 80 ? 'var(--green)' : rate > 50 ? 'var(--yellow)' : 'var(--red)'}"></div>
+            </div>
+            <span style="font-size:11px;color:var(--text-3);width:28px;text-align:right">${rate}%</span>
+          </div>
+        </td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openCampDetail(${c.id},'${esc(c.subject)}')">
+            상세
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="12" height="12"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </td>
+      </tr>`;
+        }).join('');
+        renderPagination('histPagination', page, totalPages, loadHistory);
+        _histLastRefreshAt = Date.now();
+        updateHistoryRefreshMeta();
+      } finally {
+        _histRefreshInFlight = false;
+        setHistoryRefreshLoading(false);
+      }
+    }
+
+    function openCampDetail(id, title) {
+      document.getElementById('campDetailTitle').textContent = title;
+      document.getElementById('campDetailMeta').textContent = `캠페인 #${id}`;
+      document.getElementById('campDetailOverlay').classList.add('show');
+      document.getElementById('campDetailBody').innerHTML = `<div style="padding:20px 0"><div class="skeleton" style="height:60px;border-radius:8px;margin-bottom:12px"></div><div class="skeleton" style="height:200px;border-radius:8px"></div></div>`;
+
+      const c = DUMMY_CAMPAIGNS.find(x => x.id === id);
+      if (!c) return;
+      const logs = DUMMY_LOGS[id] || [];
+      const total = logs.length;
+      const rate = (c.total_sent + c.total_failed) > 0 ? Math.round(c.total_sent / (c.total_sent + c.total_failed) * 100) : 0;
+
+      document.getElementById('campDetailMeta').textContent = c.sent_at ? `발송일: ${fmtDate(c.sent_at)}` : `생성일: ${fmtDate(c.created_at)}`;
+      document.getElementById('campDetailBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+      ${statBox('상태', `<span class="badge badge-${c.status}">${statusLabel(c.status)}</span>`)}
+      ${statBox('성공', `<span style="color:var(--green);font-weight:700;font-size:18px">${c.total_sent}</span>`)}
+      ${statBox('실패', `<span style="color:var(--red);font-weight:700;font-size:18px">${c.total_failed}</span>`)}
+      ${statBox('성공률', `<span style="font-weight:700;font-size:18px">${rate}%</span>`)}
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <div style="font-size:12px;color:var(--text-2)">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px">출처</div>
+        <div style="font-weight:600">${c.template_subject ? `템플릿 #${c.template_id || '?'} · ${c.template_subject}` : '직접 작성'}</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="copyCampaignToTemplate(${c.id})">템플릿으로 복사</button>
+    </div>
+    <div style="margin-bottom:18px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:8px">발송 HTML 미리보기</div>
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff;min-height:360px">
+        <iframe id="campDetailPreviewFrame" style="width:100%;height:420px;border:none;display:block;background:#fff"></iframe>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:6px">구독취소 링크는 수신자별로 발송 시 치환됩니다.</div>
+    </div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:8px">수신자 로그 (${total}건)</div>
+    <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+      <table>
+        <thead><tr><th>이메일</th><th>상태</th><th>발송 시각</th></tr></thead>
+        <tbody>
+          ${logs.length ? logs.map(l => `
+            <tr>
+              <td class="font-mono">${l.email}</td>
+              <td><span class="badge badge-${l.status}">${statusLabel(l.status)}</span></td>
+              <td class="text-muted text-sm">${l.sent_at ? fmtDate(l.sent_at) : '—'}</td>
+            </tr>`).join('') : `<tr><td colspan="3"><div class="empty-state" style="padding:24px"><div class="empty-title">발송 기록 없음</div></div></td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+      const previewFrame = document.getElementById('campDetailPreviewFrame');
+      if (previewFrame) previewFrame.srcdoc = renderCampaignPreviewHtml(c);
+    }
+    function renderCampaignPreviewHtml(c) {
+      const previewUnsub = 'https://landinghub.example/unsubscribe-preview';
+      const html = String(c.body_html || '')
+        .replaceAll('{{unsubscribe_url}}', previewUnsub)
+        .replace(/href="#"/g, `href="${previewUnsub}"`);
+      return html || '<!doctype html><html><body style="font-family:sans-serif;padding:24px">본문 없음</bo' + 'dy></html>';
+    }
+    function copyCampaignToTemplate(id) {
+      const c = DUMMY_CAMPAIGNS.find(x => x.id === id);
+      if (!c) { toast('캠페인을 불러오지 못했습니다.', 'error'); return; }
+      const newId = _nextTplId++;
+      DUMMY_TEMPLATES.push({
+        id: newId,
+        subject: c.subject,
+        preview_text: c.preview_text,
+        body_html: c.body_html,
+        created_at: new Date().toISOString(),
+      });
+
+      SKIP_COMPOSE_AUTOLOAD = true;
+      document.getElementById('templateSearch').value = '';
+      loadTemplates();
+      goNav('compose');
+      document.getElementById('templateSelect').value = String(newId);
+      loadTemplate();
+      toast('템플릿으로 복사 완료');
+    }
+    function statBox(label, content) {
+      return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:8px">${label}</div>${content}</div>`;
+    }
+    function closeCampDetail() { document.getElementById('campDetailOverlay').classList.remove('show'); }
+    document.getElementById('campDetailOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeCampDetail(); });
+
+    // ══════════════════════════════════════════════════════
+    // SETTINGS
+    // ══════════════════════════════════════════════════════
+    function confirmDeleteUnsub() {
+      openConfirm('구독취소 구독자 전체 삭제', '구독을 취소한 모든 구독자를 삭제합니다. 되돌릴 수 없습니다.', () => {
+        const before = DUMMY_SUBSCRIBERS.length;
+        DUMMY_SUBSCRIBERS = DUMMY_SUBSCRIBERS.filter(s => s.status !== 'unsubscribed');
+        const removed = before - DUMMY_SUBSCRIBERS.length;
+        toast(`${removed}명 삭제 완료`);
+        if (document.getElementById('sec-subscribers')?.classList.contains('active')) loadSubscribers(1);
+        if (document.getElementById('sec-dashboard')?.classList.contains('active')) loadDashboard();
+      });
+    }
+
+    // ══════════════════════════════════════════════════════
+    // UTILS
+    // ══════════════════════════════════════════════════════
+    function statusLabel(s) {
+      return {
+        active: '활성', unsubscribed: '구독취소', bounced: '바운스', complained: '불만신고',
+        draft: '발송전', sending: '발송중', sent: '발송완료', failed: '실패', pending: '대기'
+      }[s] || s;
+    }
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      return iso.replace('T', ' ').slice(0, 16);
+    }
+    function esc(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+    function renderPagination(containerId, page, totalPages, cb) {
+      const el = document.getElementById(containerId);
+      if (totalPages <= 1) { el.innerHTML = ''; return; }
+      el.innerHTML = `
+    <span class="page-info">총 ${totalPages}페이지</span>
+    <button class="page-btn" onclick="${cb.name}(${page - 1})" ${page <= 1 ? 'disabled' : ''}>
+      <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="12" height="12"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="page-btn active">${page}</button>
+    <button class="page-btn" onclick="${cb.name}(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>
+      <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>`;
+    }
+
+    document.getElementById('campSubject').addEventListener('input', function () {
+      document.getElementById('previewBarTitle').textContent = this.value || '제목 없음';
+    });
+  </script>
+</body>
+
+</html>

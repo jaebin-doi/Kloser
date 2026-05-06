@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>무료 체험 신청 — Kloser</title>
+  <meta name="description"
+    content="Kloser를 도입 전 직접 체험해보세요. 30분 화상 시연으로 실시간 통화 분석부터 자동 메모까지 회사 환경에 맞춰 확인하실 수 있습니다." />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@700;900&display=swap"
+    rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    html { scroll-padding-top: 90px; }
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+    }
+    .g-text {
+      background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    @keyframes floatOrb { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,-30px)} }
+    .animate-float1 { animation: floatOrb 14s ease-in-out infinite; }
+    .animate-float2 { animation: floatOrb 18s ease-in-out infinite reverse; }
+    .field-label { font-size: .72rem; font-weight: 700; color: rgb(71 85 105); margin-bottom: 6px; display: block; letter-spacing: -.005em; }
+    .field-input,
+    .field-select,
+    .field-textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      font-size: .9rem;
+      color: rgb(15 23 42);
+      background: white;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      font-family: inherit;
+    }
+    .field-input::placeholder,
+    .field-textarea::placeholder { color: rgb(148 163 184); }
+    .field-input:focus,
+    .field-select:focus,
+    .field-textarea:focus {
+      border-color: rgb(96 165 250);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.12);
+    }
+    .field-textarea { resize: none; }
+    .field-select { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%2364748b' stroke-width='2' viewBox='0 0 24 24'%3e%3cpath d='m6 9 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 14px center; background-size: 14px; padding-right: 36px; }
+  </style>
+</head>
+
+<body class="bg-white text-slate-800">
+
+  <!-- ═══════ NAV ═══════ -->
+  <nav
+    class="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 md:px-8 h-[62px] border-b border-slate-200"
+    style="background:rgba(255,255,255,.85);backdrop-filter:blur(24px) saturate(180%)">
+    <a href="index.html" class="flex items-center gap-2.5 no-underline">
+      <img src="assets/logo.png" alt="Kloser" class="h-6 w-auto" />
+    </a>
+    <div class="hidden md:flex items-center gap-1 text-sm">
+      <a href="index.html#features"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">기능</a>
+      <a href="index.html#pricing"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">가격</a>
+      <a href="trial.html"
+        class="px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 transition-all no-underline font-bold">무료 체험</a>
+      <a href="docs/guide.html"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">도입 가이드</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="index.html#pricing"
+        class="hidden md:flex items-center gap-1.5 px-5 py-2 text-sm font-bold text-white rounded-[9px] bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors no-underline">
+        구매 문의
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+          stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M5 12h14M13 5l7 7-7 7" />
+        </svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- ═══════ HERO ═══════ -->
+  <header class="relative pt-32 pb-20 px-6 lg:px-8 overflow-hidden">
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute -top-32 -left-56 w-[700px] h-[700px] rounded-full animate-float1 blur-[100px]"
+        style="background:radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 65%)"></div>
+      <div class="absolute top-40 -right-40 w-[550px] h-[550px] rounded-full animate-float2 blur-[90px]"
+        style="background:radial-gradient(circle,rgba(6,182,212,.1) 0%,transparent 65%)"></div>
+      <div class="absolute inset-0"
+        style="background-image:linear-gradient(rgba(0,0,0,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.03) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse 85% 55% at 50% 50%,black,transparent)">
+      </div>
+    </div>
+    <div class="relative max-w-[1100px] mx-auto text-center">
+      <nav aria-label="Breadcrumb"
+        class="inline-flex items-center gap-2 mb-5 text-[.78rem] font-medium text-slate-500">
+        <a href="index.html" class="hover:text-blue-600 no-underline">Kloser</a>
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+        <span class="text-slate-700 font-bold">무료 체험</span>
+      </nav>
+
+      <div
+        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50/70 text-blue-700 text-[.72rem] font-bold tracking-wide mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+        FREE TRIAL · 30분 화상 시연
+      </div>
+      <h1 class="font-black leading-[1.06] tracking-[-0.045em] text-slate-800 mb-5"
+        style="font-size:clamp(2.4rem,5vw,4rem)">
+        도입 전 직접 체험,<br>
+        <span class="g-text">30분이면 답이 나옵니다</span>
+      </h1>
+      <p class="text-[1.05rem] text-slate-600 leading-[1.78] max-w-[620px] mx-auto mb-10">
+        Kloser를 우리 회사 환경에 맞춰 어떻게 쓸지 30분 화상 시연으로 직접 확인하세요.
+        도입 컨설팅, 실시간 통화 분석 데모, Q&A까지 — <span class="font-bold text-slate-800">전부 무료</span>입니다.
+      </p>
+
+      <a href="#apply"
+        class="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[.95rem] shadow-md transition-colors no-underline">
+        지금 신청하기
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+          stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M12 5v14M19 12l-7 7-7-7" />
+        </svg>
+      </a>
+
+      <div class="flex flex-wrap items-center justify-center gap-4 mt-10 text-[.78rem]">
+        <span class="inline-flex items-center gap-1.5 text-slate-500">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-emerald-500"
+            viewBox="0 0 24 24">
+            <path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+          </svg>
+          신용카드 등록 불필요
+        </span>
+        <span class="inline-flex items-center gap-1.5 text-slate-500">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-emerald-500"
+            viewBox="0 0 24 24">
+            <path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+          </svg>
+          1영업일 내 일정 조율
+        </span>
+        <span class="inline-flex items-center gap-1.5 text-slate-500">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-emerald-500"
+            viewBox="0 0 24 24">
+            <path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+          </svg>
+          체험 후 가입 강제 없음
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════ WHAT YOU GET ═══════ -->
+  <section class="border-y border-slate-100 bg-slate-50/40">
+    <div class="max-w-[1200px] mx-auto px-6 lg:px-8 py-20 lg:py-24">
+      <div class="text-center mb-12">
+        <p class="text-[.7rem] font-black tracking-[.22em] uppercase text-blue-600 mb-3">What You Get</p>
+        <h2
+          class="text-[clamp(1.7rem,3.2vw,2.4rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.2] mb-4">
+          체험에서 무엇을<br class="sm:hidden"> <span class="g-text">확인할 수 있나요?</span>
+        </h2>
+        <p class="text-[.95rem] text-slate-500 leading-relaxed max-w-[520px] mx-auto">
+          30분 안에 회사 환경에 맞는 활용 방안을 함께 점검합니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+        <!-- 1 -->
+        <div
+          class="rounded-2xl p-6 border border-slate-200 bg-white shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] pointer-events-none"
+            style="background:radial-gradient(circle,rgba(59,130,246,.08),transparent)"></div>
+          <div
+            class="w-11 h-11 rounded-xl flex items-center justify-center text-blue-600 mb-5 border border-blue-100 bg-blue-50">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+              <path d="M21 19a2 2 0 0 1-2 2h-1v-6h3v4zM3 19a2 2 0 0 0 2 2h1v-6H3v4z" />
+            </svg>
+          </div>
+          <div class="text-[.62rem] font-black tracking-widest uppercase text-blue-600 mb-2">01</div>
+          <h3 class="text-[1rem] font-bold mb-2 text-slate-800">실시간 통화 분석 데모</h3>
+          <p class="text-[.83rem] text-slate-500 leading-relaxed">
+            실제 영업 통화 시나리오로 AI 응대 추천이 어떻게 표시되는지 직접 확인하세요.
+          </p>
+        </div>
+
+        <!-- 2 -->
+        <div
+          class="rounded-2xl p-6 border border-slate-200 bg-white shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] pointer-events-none"
+            style="background:radial-gradient(circle,rgba(249,115,22,.08),transparent)"></div>
+          <div
+            class="w-11 h-11 rounded-xl flex items-center justify-center text-orange-600 mb-5 border border-orange-100 bg-orange-50">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" viewBox="0 0 24 24">
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+              <path d="M9 7h6M9 11h6M9 15h4" />
+            </svg>
+          </div>
+          <div class="text-[.62rem] font-black tracking-widest uppercase text-orange-600 mb-2">02</div>
+          <h3 class="text-[1rem] font-bold mb-2 text-slate-800">회사 가이드 학습 시연</h3>
+          <p class="text-[.83rem] text-slate-500 leading-relaxed">
+            보유 중인 상담 매뉴얼·FAQ를 업로드해 AI가 회사만의 응대를 학습하는 과정을 확인하세요.
+          </p>
+        </div>
+
+        <!-- 3 -->
+        <div
+          class="rounded-2xl p-6 border border-slate-200 bg-white shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] pointer-events-none"
+            style="background:radial-gradient(circle,rgba(20,184,166,.08),transparent)"></div>
+          <div
+            class="w-11 h-11 rounded-xl flex items-center justify-center text-teal-600 mb-5 border border-teal-100 bg-teal-50">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <div class="text-[.62rem] font-black tracking-widest uppercase text-teal-600 mb-2">03</div>
+          <h3 class="text-[1rem] font-bold mb-2 text-slate-800">자동 메모 & 다음 액션</h3>
+          <p class="text-[.83rem] text-slate-500 leading-relaxed">
+            통화 종료 즉시 생성되는 요약, 고객 니즈 분류, 후속 액션 제안까지 한 사이클을 시연합니다.
+          </p>
+        </div>
+
+        <!-- 4 -->
+        <div
+          class="rounded-2xl p-6 border border-slate-200 bg-white shadow-sm relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] pointer-events-none"
+            style="background:radial-gradient(circle,rgba(245,158,11,.08),transparent)"></div>
+          <div
+            class="w-11 h-11 rounded-xl flex items-center justify-center text-amber-600 mb-5 border border-amber-100 bg-amber-50">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" viewBox="0 0 24 24">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div class="text-[.62rem] font-black tracking-widest uppercase text-amber-600 mb-2">04</div>
+          <h3 class="text-[1rem] font-bold mb-2 text-slate-800">도입 환경 점검</h3>
+          <p class="text-[.83rem] text-slate-500 leading-relaxed">
+            기업 인터넷전화·PC 환경·인원수에 맞춰 적합한 플랜과 도입 일정을 함께 짚어드립니다.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ STEPS ═══════ -->
+  <section class="border-b border-slate-100">
+    <div class="max-w-[1100px] mx-auto px-6 lg:px-8 py-20 lg:py-24">
+      <div class="text-center mb-12">
+        <p class="text-[.7rem] font-black tracking-[.22em] uppercase text-blue-600 mb-3">Process</p>
+        <h2
+          class="text-[clamp(1.7rem,3.2vw,2.4rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.2]">
+          신청부터 시연까지 <span class="g-text">3단계</span>
+        </h2>
+      </div>
+
+      <ol class="grid sm:grid-cols-3 gap-5">
+        <li
+          class="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_4px_16px_-8px_rgba(15,23,42,.08)]">
+          <div class="text-[2rem] font-black text-blue-600 leading-none tabular-nums tracking-tight mb-2">01</div>
+          <h3 class="text-[1rem] font-bold text-slate-800 mb-2">신청서 작성</h3>
+          <p class="text-[.83rem] text-slate-500 leading-relaxed">
+            아래 폼에 회사 정보와 담당자 연락처, 도입 시기를 입력하세요. 1분이면 완료됩니다.
+          </p>
+          <div class="mt-3 inline-flex items-center gap-1 text-[.72rem] font-bold text-slate-500">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            소요 1분
+          </div>
+        </li>
+        <li
+          class="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_4px_16px_-8px_rgba(15,23,42,.08)]">
+          <div class="text-[2rem] font-black text-blue-600 leading-none tabular-nums tracking-tight mb-2">02</div>
+          <h3 class="text-[1rem] font-bold text-slate-800 mb-2">담당자 연락 & 일정 조율</h3>
+          <p class="text-[.83rem] text-slate-500 leading-relaxed">
+            1영업일 내 Kloser 담당자가 연락드립니다. 회의 시간과 화상 도구를 함께 정해요.
+          </p>
+          <div class="mt-3 inline-flex items-center gap-1 text-[.72rem] font-bold text-slate-500">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            1영업일
+          </div>
+        </li>
+        <li
+          class="relative rounded-2xl border-2 border-blue-500 bg-gradient-to-br from-blue-50 via-white to-cyan-50/40 p-6 shadow-[0_8px_24px_-8px_rgba(59,130,246,.25)]">
+          <div class="text-[2rem] font-black text-blue-600 leading-none tabular-nums tracking-tight mb-2">03</div>
+          <h3 class="text-[1rem] font-bold text-slate-800 mb-2">30분 화상 시연</h3>
+          <p class="text-[.83rem] text-slate-600 leading-relaxed">
+            회사 환경에 맞는 데모 시나리오를 시연하고, 도입 시 예상되는 효과를 함께 검토합니다.
+          </p>
+          <div class="mt-3 inline-flex items-center gap-1 text-[.72rem] font-bold text-blue-700">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+            </svg>
+            소요 30분 · 무료
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══════ APPLY FORM ═══════ -->
+  <section id="apply" class="bg-slate-50/40 border-b border-slate-100">
+    <div class="max-w-[920px] mx-auto px-6 lg:px-8 py-20 lg:py-24">
+      <div class="grid lg:grid-cols-[280px_1fr] gap-10 lg:gap-12 items-start">
+
+        <!-- Left intro -->
+        <div class="lg:sticky lg:top-[90px]">
+          <p class="text-[.7rem] font-black tracking-[.22em] uppercase text-blue-600 mb-3">Apply</p>
+          <h2 class="text-[clamp(1.6rem,2.8vw,2rem)] font-black tracking-[-0.03em] text-slate-800 leading-[1.2] mb-4">
+            무료 체험 신청
+          </h2>
+          <p class="text-[.88rem] text-slate-500 leading-relaxed mb-5">
+            아래 정보를 작성해 주시면 1영업일 내 담당자가 일정 조율을 위해 연락드립니다.
+          </p>
+          <div class="rounded-xl border border-slate-200 bg-white p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600"
+                viewBox="0 0 24 24">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span class="text-[.78rem] font-bold text-slate-700">바로 문의</span>
+            </div>
+            <a href="mailto:cjb@doi-kr.com"
+              class="text-[.82rem] text-slate-600 hover:text-blue-600 transition-colors no-underline">cjb@doi-kr.com</a>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <form id="trialForm" class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-[0_4px_16px_-8px_rgba(15,23,42,.08)]"
+          onsubmit="submitTrial(event)">
+          <div class="grid sm:grid-cols-2 gap-5">
+            <div class="sm:col-span-2">
+              <label class="field-label">회사명 <span class="text-rose-500">*</span></label>
+              <input type="text" name="company" required class="field-input" placeholder="(주)클로저" />
+            </div>
+
+            <div>
+              <label class="field-label">담당자명 <span class="text-rose-500">*</span></label>
+              <input type="text" name="name" required class="field-input" placeholder="홍길동" />
+            </div>
+            <div>
+              <label class="field-label">직무</label>
+              <input type="text" name="role" class="field-input" placeholder="영업팀장" />
+            </div>
+
+            <div>
+              <label class="field-label">회사 이메일 <span class="text-rose-500">*</span></label>
+              <input type="email" name="email" required class="field-input" placeholder="name@company.com" />
+            </div>
+            <div>
+              <label class="field-label">연락처 <span class="text-rose-500">*</span></label>
+              <input type="tel" name="phone" required class="field-input" placeholder="010-1234-5678" />
+            </div>
+
+            <div>
+              <label class="field-label">영업 인원 (직원 수)</label>
+              <select name="size" class="field-select">
+                <option value="">선택해 주세요</option>
+                <option value="1">1명 (1인 사업자)</option>
+                <option value="2-5">2~5명</option>
+                <option value="6-20">6~20명</option>
+                <option value="21-50">21~50명</option>
+                <option value="50+">50명 이상</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">예상 도입 시기</label>
+              <select name="timeline" class="field-select">
+                <option value="">선택해 주세요</option>
+                <option value="now">즉시 도입 가능</option>
+                <option value="1m">1개월 내</option>
+                <option value="3m">3개월 내</option>
+                <option value="6m">6개월 내</option>
+                <option value="research">검토 단계</option>
+              </select>
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="field-label">관심 있는 플랜</label>
+              <div class="grid grid-cols-3 gap-2 text-[.82rem]">
+                <label class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors">
+                  <input type="radio" name="plan" value="starter" class="accent-blue-600" />
+                  <span class="text-slate-700 font-medium">Starter</span>
+                </label>
+                <label class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors">
+                  <input type="radio" name="plan" value="pro" class="accent-blue-600" />
+                  <span class="text-slate-700 font-medium">Pro</span>
+                </label>
+                <label class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors">
+                  <input type="radio" name="plan" value="enterprise" class="accent-blue-600" />
+                  <span class="text-slate-700 font-medium">Enterprise</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="field-label">궁금하신 점 / 요청사항</label>
+              <textarea name="message" rows="4" class="field-textarea"
+                placeholder="회사 환경, 사용 통화 환경(인터넷전화 통신사), 특정 기능에 대한 질문 등 자유롭게 적어주세요."></textarea>
+            </div>
+
+            <div class="sm:col-span-2 flex items-start gap-2.5 mt-1">
+              <input type="checkbox" id="consent" required class="mt-0.5 accent-blue-600" />
+              <label for="consent" class="text-[.78rem] text-slate-600 leading-relaxed">
+                <span class="font-bold text-slate-800">개인정보 수집·이용에 동의합니다</span>
+                <span class="text-rose-500">*</span><br>
+                <span class="text-slate-500">수집 항목: 회사명, 담당자명, 이메일, 연락처 / 이용 목적: 무료 체험 일정 조율 및 도입 안내 / 보유 기간: 문의 처리 후 12개월</span>
+              </label>
+            </div>
+          </div>
+
+          <button type="submit"
+            class="mt-7 w-full px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[.92rem] shadow-md transition-colors flex items-center justify-center gap-2">
+            무료 체험 신청하기
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+              stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          <!-- Success state (hidden by default) -->
+          <div id="trialSuccess" class="hidden mt-6 rounded-xl border border-emerald-200 bg-emerald-50/60 p-5">
+            <div class="flex items-start gap-3">
+              <div class="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 shadow-md">
+                <svg width="18" height="18" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <div class="font-bold text-emerald-800 mb-1">신청이 정상적으로 접수되었습니다</div>
+                <p class="text-[.85rem] text-emerald-700 leading-relaxed">
+                  1영업일 내 담당자가 입력하신 이메일/연락처로 시연 일정 조율을 위해 연락드립니다. 감사합니다!
+                </p>
+              </div>
+            </div>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ FAQ ═══════ -->
+  <section class="border-b border-slate-100">
+    <div class="max-w-[820px] mx-auto px-6 lg:px-8 py-20 lg:py-24">
+      <div class="text-center mb-10">
+        <p class="text-[.7rem] font-black tracking-[.22em] uppercase text-blue-600 mb-3">FAQ</p>
+        <h2 class="text-[clamp(1.6rem,2.8vw,2rem)] font-black tracking-[-0.03em] text-slate-800 leading-[1.2]">
+          무료 체험 자주 묻는 질문
+        </h2>
+      </div>
+
+      <div class="space-y-3">
+        <details
+          class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+          <summary
+            class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+            <span>정말로 비용이 발생하지 않나요?</span>
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+              class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
+          <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+            네, 30분 화상 시연과 도입 컨설팅은 전액 무료입니다. 신용카드 등록도 필요 없고, 체험 후 강제로 가입할 의무도 없습니다.
+          </div>
+        </details>
+
+        <details
+          class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+          <summary
+            class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+            <span>체험은 어떤 형태로 진행되나요?</span>
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+              class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
+          <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+            화상회의(Google Meet, Zoom 등)로 30분간 진행됩니다. Kloser 담당자가 화면을 공유하며 회사 환경에 맞춘 시나리오를 시연하고, Q&A를 진행합니다.
+          </div>
+        </details>
+
+        <details
+          class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+          <summary
+            class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+            <span>직접 사용해볼 수 있는 시험 계정은 제공되나요?</span>
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+              class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
+          <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+            기본 무료 체험에서는 시험 계정이 제공되지 않습니다. 데스크톱 앱 설치와 회사 가이드 학습 등 셋업이 필요해, 정식 도입 후 사용을 시작합니다. 다만 Enterprise 검토 고객에 한해 제한적인 PoC 환경을 협의할 수 있습니다.
+          </div>
+        </details>
+
+        <details
+          class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+          <summary
+            class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+            <span>일반 유선전화·휴대폰만 사용해도 체험 가능한가요?</span>
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+              class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
+          <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+            체험(시연)은 가능합니다. 다만 실제 도입을 위해서는 <span class="font-bold">기업 인터넷전화 가입이 필수</span>이므로, 시연에서 함께 통화 환경을 점검해 드립니다.
+          </div>
+        </details>
+
+        <details
+          class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+          <summary
+            class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+            <span>몇 명까지 함께 참여할 수 있나요?</span>
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+              class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
+          <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+            의사결정자 + 영업 실무자 + IT 담당자 등 회사 내 도입 검토에 필요한 인원이 모두 참석하셔도 좋습니다. 한 번의 시연으로 모든 의문을 해소하실 수 있도록 도와드립니다.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <footer class="border-t border-slate-200 px-6 lg:px-8 py-10 bg-white">
+    <div
+      class="max-w-[1360px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="assets/logo.png" alt="Kloser" class="h-5 w-auto" />
+        <span class="text-[.78rem] text-slate-400">© 2026 Kloser. All rights reserved.</span>
+      </div>
+      <div class="flex items-center gap-5 text-[.8rem] text-slate-500">
+        <a href="index.html" class="hover:text-slate-900 transition-colors no-underline">홈으로</a>
+        <a href="index.html#features" class="hover:text-slate-900 transition-colors no-underline">기능</a>
+        <a href="index.html#pricing" class="hover:text-slate-900 transition-colors no-underline">가격</a>
+        <a href="docs/guide.html" class="hover:text-slate-900 transition-colors no-underline">도입 가이드</a>
+        <a href="mailto:cjb@doi-kr.com" class="hover:text-slate-900 transition-colors no-underline">문의</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function submitTrial(e) {
+      e.preventDefault();
+      const form = document.getElementById('trialForm');
+      const successBox = document.getElementById('trialSuccess');
+      // 유효성은 브라우저 기본 + required로 처리, 여기 도달하면 통과 상태
+      form.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.type !== 'submit') el.disabled = true;
+      });
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+      submitBtn.innerHTML = '신청 완료';
+      successBox.classList.remove('hidden');
+      successBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Smooth anchor scroll with offset
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const id = a.getAttribute('href');
+        if (id === '#') return;
+        const t = document.querySelector(id);
+        if (t) {
+          e.preventDefault();
+          const y = t.getBoundingClientRect().top + window.scrollY - 80;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+          history.pushState(null, null, id);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

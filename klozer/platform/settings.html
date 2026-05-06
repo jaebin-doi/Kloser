@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>설정 — Kloser</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="_shared.css" />
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'] } } } };
+  </script>
+  <style>
+    body { overflow: hidden; }
+
+    /* In-page TOC */
+    .toc-link {
+      display: block;
+      padding: 7px 12px;
+      border-radius: 0 7px 7px 0;
+      font-size: .82rem;
+      color: rgb(71 85 105);
+      text-decoration: none;
+      transition: all .15s;
+      border-left: 2px solid transparent;
+    }
+    .toc-link:hover { color: rgb(15 23 42); background: rgb(241 245 249); }
+    .toc-link.active { color: rgb(37 99 235); font-weight: 700; background: rgb(239 246 255); border-left-color: rgb(37 99 235); }
+
+    /* Form helpers */
+    .field-input, .field-textarea, .field-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 9px;
+      font-size: .85rem;
+      color: rgb(15 23 42);
+      background: white;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .field-input:focus, .field-textarea:focus, .field-select:focus {
+      border-color: rgb(96 165 250);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.12);
+    }
+    .field-input::placeholder, .field-textarea::placeholder { color: rgb(148 163 184); }
+    .field-textarea { resize: none; min-height: 80px; }
+    .field-select { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%2364748b' stroke-width='2' viewBox='0 0 24 24'%3e%3cpath d='m6 9 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 14px; padding-right: 36px; }
+    .field-label { display: block; font-size: .75rem; font-weight: 700; color: rgb(51 65 85); margin-bottom: 6px; letter-spacing: -.005em; }
+    .field-hint { font-size: .72rem; color: rgb(100 116 139); margin-top: 5px; line-height: 1.5; }
+
+    /* Toggle switch */
+    .switch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: rgb(203 213 225); border-radius: 999px;
+      transition: background .2s;
+    }
+    .switch .slider::before {
+      content: ''; position: absolute;
+      width: 16px; height: 16px;
+      left: 3px; bottom: 3px;
+      background: white; border-radius: 50%;
+      transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .switch input:checked + .slider { background: rgb(37 99 235); }
+    .switch input:checked + .slider::before { transform: translateX(16px); }
+
+    /* Settings card */
+    .set-card { background: white; border: 1px solid rgb(226 232 240); border-radius: 14px; }
+    .set-card-header { padding: 18px 22px; border-bottom: 1px solid rgb(241 245 249); }
+    .set-card-body { padding: 20px 22px; }
+    .set-card-divider { border-top: 1px solid rgb(241 245 249); }
+
+    /* Settings row */
+    .set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid rgb(241 245 249); }
+    .set-row:last-child { border-bottom: 0; }
+    .set-row-info { flex: 1; min-width: 0; }
+    .set-row-title { font-size: .88rem; font-weight: 700; color: rgb(15 23 42); margin-bottom: 2px; }
+    .set-row-desc { font-size: .75rem; color: rgb(100 116 139); line-height: 1.5; }
+
+    /* Integration card */
+    .integ-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 12px;
+      background: white;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .integ-card:hover { border-color: rgb(148 163 184); box-shadow: 0 4px 12px -4px rgba(15,23,42,.08); }
+    .integ-logo {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; color: white; flex-shrink: 0;
+      font-size: .8rem; letter-spacing: -.02em;
+    }
+
+    @media (max-width: 1023px) {
+      .toc-mobile { display: none; }
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50">
+
+  <div class="flex h-screen">
+    <div id="sidebarSlot"></div>
+
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <!-- Topbar -->
+      <header class="h-[60px] px-4 lg:px-6 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <button onclick="toggleSidebar()" class="mobile-menu-btn w-9 h-9 rounded-lg hover:bg-slate-100 items-center justify-center text-slate-600" style="display:none">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 class="text-[1rem] font-black tracking-tight text-slate-800 truncate">설정</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn-secondary hidden sm:inline-flex">취소</button>
+          <button id="saveBtn" class="btn-primary">변경사항 저장</button>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto scroll-area">
+        <div class="max-w-[1280px] mx-auto px-4 lg:px-8 py-6 lg:py-8 grid lg:grid-cols-[220px_1fr] gap-6 lg:gap-10 items-start">
+
+          <!-- TOC -->
+          <aside class="lg:sticky lg:top-6 toc-mobile">
+            <div class="text-[.6rem] font-black tracking-[.18em] uppercase text-slate-400 px-3 mb-2">설정 카테고리</div>
+            <nav class="space-y-0.5" id="toc">
+              <a href="#profile" class="toc-link active">프로필</a>
+              <a href="#company" class="toc-link">회사 정보</a>
+              <a href="#call-env" class="toc-link">통화 환경</a>
+              <a href="#ai" class="toc-link">AI & 자동화</a>
+              <a href="#integrations" class="toc-link">통합</a>
+              <a href="#notifications" class="toc-link">알림</a>
+              <a href="#security" class="toc-link">보안 & 개인정보</a>
+              <a href="#data" class="toc-link">데이터 관리</a>
+              <a href="#billing" class="toc-link">플랜 & 결제</a>
+              <a href="#api" class="toc-link">API & 개발자</a>
+              <a href="#locale" class="toc-link">언어 & 지역</a>
+              <a href="#danger" class="toc-link">고급 / 위험 영역</a>
+            </nav>
+          </aside>
+
+          <!-- Sections -->
+          <div class="space-y-6 min-w-0">
+
+            <!-- ─── 프로필 ─── -->
+            <section id="profile" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">프로필</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">계정 기본 정보 — 통화 화면과 팀 메뉴에 표시됩니다.</p>
+              </div>
+              <div class="set-card-body">
+                <div class="flex items-center gap-4 mb-6">
+                  <div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[1.5rem] font-black text-white shrink-0">김</div>
+                  <div class="flex flex-wrap gap-2">
+                    <button class="btn-secondary">사진 업로드</button>
+                    <button class="btn-secondary">기본값으로</button>
+                  </div>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="field-label">이름</label>
+                    <input class="field-input" value="김민수" />
+                  </div>
+                  <div>
+                    <label class="field-label">부서 / 팀</label>
+                    <select class="field-select">
+                      <option selected>영업1팀</option>
+                      <option>영업2팀</option>
+                      <option>CS팀</option>
+                      <option>마케팅팀</option>
+                      <option>경영지원</option>
+                    </select>
+                    <div class="field-hint">관리자가 등록한 회사 부서 목록에서 선택합니다.</div>
+                  </div>
+                  <div>
+                    <label class="field-label">직무 / 직책</label>
+                    <input class="field-input" value="대리" />
+                  </div>
+                  <div>
+                    <label class="field-label">전화번호</label>
+                    <input class="field-input" value="010-1234-5678" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="field-label">이메일</label>
+                    <input class="field-input" value="kim@kloser.com" />
+                    <div class="field-hint">로그인 ID로 사용됩니다. 변경 시 인증 메일이 발송돼요.</div>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="field-label">자기소개 (팀 페이지 표시용)</label>
+                    <textarea class="field-textarea" placeholder="간단한 자기소개를 작성해 주세요.">B2B 영업 8년차, SaaS 도입 컨설팅 전문</textarea>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 회사 정보 ─── -->
+            <section id="company" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">회사 정보</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">관리자만 수정 가능합니다. 변경 시 모든 직원 계정에 즉시 반영돼요.</p>
+              </div>
+              <div class="set-card-body">
+                <div class="grid sm:grid-cols-2 gap-4 mb-6">
+                  <div class="sm:col-span-2 flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[1.2rem] font-black text-white shrink-0">K</div>
+                    <button class="btn-secondary">로고 업로드</button>
+                  </div>
+                  <div>
+                    <label class="field-label">회사명</label>
+                    <input class="field-input" value="Kloser Inc." />
+                  </div>
+                  <div>
+                    <label class="field-label">사업자 등록번호</label>
+                    <input class="field-input" value="123-45-67890" />
+                  </div>
+                  <div>
+                    <label class="field-label">대표자명</label>
+                    <input class="field-input" value="조성훈" />
+                  </div>
+                  <div>
+                    <label class="field-label">업종</label>
+                    <select class="field-select">
+                      <option>소프트웨어 / SaaS</option>
+                      <option>제조</option>
+                      <option>유통 / 리테일</option>
+                      <option>금융 / 보험</option>
+                      <option>교육</option>
+                      <option>기타</option>
+                    </select>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="field-label">주소</label>
+                    <input class="field-input" value="서울특별시 강남구 테헤란로 123, 4층" />
+                  </div>
+                </div>
+
+                <div class="set-card-divider pt-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">회사 가이드 / 매뉴얼</div>
+                  <div class="rounded-xl border-2 border-dashed border-slate-200 p-5 text-center bg-slate-50/40">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" class="text-slate-400 mx-auto mb-2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                    <div class="text-[.85rem] font-bold text-slate-700">상담 매뉴얼 · FAQ · 응대 가이드 업로드</div>
+                    <div class="text-[.72rem] text-slate-500 mt-1">PDF, DOCX, TXT 지원 · 최대 50MB</div>
+                    <button class="btn-secondary mt-3">파일 선택</button>
+                  </div>
+                  <div class="mt-3 space-y-2">
+                    <div class="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white text-[.82rem]">
+                      <div class="flex items-center gap-2.5 min-w-0">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="text-rose-500" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span class="font-bold text-slate-700 truncate">상담 응대 매뉴얼 v3.2.pdf</span>
+                        <span class="text-[.7rem] text-slate-400">2.4MB</span>
+                      </div>
+                      <span class="badge badge-emerald">학습 완료</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white text-[.82rem]">
+                      <div class="flex items-center gap-2.5 min-w-0">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="text-rose-500" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span class="font-bold text-slate-700 truncate">FAQ - 가격/플랜 안내.docx</span>
+                        <span class="text-[.7rem] text-slate-400">512KB</span>
+                      </div>
+                      <span class="badge badge-amber">학습 중 (78%)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 통화 환경 ─── -->
+            <section id="call-env" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">통화 환경</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">기업 인터넷전화 연결, 오디오 캡처, STT 엔진을 설정합니다.</p>
+              </div>
+              <div class="set-card-body">
+                <!-- 인터넷전화 -->
+                <div class="rounded-xl bg-emerald-50/60 border border-emerald-200 p-4 mb-5 flex items-start gap-3">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" class="text-emerald-600 shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+                  <div class="flex-1">
+                    <div class="text-[.85rem] font-bold text-emerald-900">기업 인터넷전화 연결됨</div>
+                    <div class="text-[.78rem] text-emerald-800 mt-0.5">KT 비즈콜 · 02-1234-5678 · 마지막 통화 2분 전</div>
+                  </div>
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-4 mb-5">
+                  <div>
+                    <label class="field-label">통신사</label>
+                    <select class="field-select">
+                      <option>KT 비즈콜</option>
+                      <option>SK 비즈콜</option>
+                      <option>LG U+ 070 인터넷전화</option>
+                      <option>가비아 클라우드 PBX</option>
+                      <option>기타 SIP 호환</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">대표 번호</label>
+                    <input class="field-input" value="02-1234-5678" />
+                  </div>
+                </div>
+
+                <div class="set-card-divider pt-5 mb-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">오디오 장치</div>
+                  <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="field-label">마이크</label>
+                      <select class="field-select">
+                        <option>Jabra Evolve2 65 MS</option>
+                        <option>기본 (시스템 장치)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="field-label">스피커 / 헤드폰</label>
+                      <select class="field-select">
+                        <option>Jabra Evolve2 65 MS</option>
+                        <option>기본 (시스템 장치)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-row-info">
+                      <div class="set-row-title">시스템 오디오 자동 캡처</div>
+                      <div class="set-row-desc">소프트폰 출력 음성을 자동으로 녹음·분석합니다 (WASAPI loopback).</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-row-info">
+                      <div class="set-row-title">노이즈 제거</div>
+                      <div class="set-row-desc">배경 소음을 자동으로 줄여 STT 정확도를 높입니다.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                </div>
+
+                <div class="set-card-divider pt-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">STT 엔진</div>
+                  <div class="grid sm:grid-cols-2 gap-3">
+                    <label class="flex items-start gap-3 p-3.5 rounded-xl border-2 border-blue-500 bg-blue-50/40 cursor-pointer">
+                      <input type="radio" name="stt" checked class="mt-1 accent-blue-600" />
+                      <div>
+                        <div class="text-[.85rem] font-bold text-slate-800">Naver Clova Speech</div>
+                        <div class="text-[.72rem] text-slate-500 mt-0.5">한국어 영업 도메인 정확도 우수 (권장)</div>
+                      </div>
+                    </label>
+                    <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 bg-white cursor-pointer">
+                      <input type="radio" name="stt" class="mt-1 accent-blue-600" />
+                      <div>
+                        <div class="text-[.85rem] font-bold text-slate-800">Deepgram Nova-2</div>
+                        <div class="text-[.72rem] text-slate-500 mt-0.5">영어 비중 높은 통화에 적합</div>
+                      </div>
+                    </label>
+                    <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 bg-white cursor-pointer">
+                      <input type="radio" name="stt" class="mt-1 accent-blue-600" />
+                      <div>
+                        <div class="text-[.85rem] font-bold text-slate-800">OpenAI Whisper</div>
+                        <div class="text-[.72rem] text-slate-500 mt-0.5">다국어 (51개 언어 지원)</div>
+                      </div>
+                    </label>
+                    <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 bg-white cursor-pointer">
+                      <input type="radio" name="stt" class="mt-1 accent-blue-600" />
+                      <div>
+                        <div class="text-[.85rem] font-bold text-slate-800">Google Speech-to-Text</div>
+                        <div class="text-[.72rem] text-slate-500 mt-0.5">멀티 채널 분리 전사</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── AI & 자동화 ─── -->
+            <section id="ai" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">AI & 자동화</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">AI 추천 톤과 자동화 동작 방식을 설정합니다.</p>
+              </div>
+              <div class="set-card-body">
+
+                <div class="mb-5">
+                  <label class="field-label">AI 응답 톤</label>
+                  <div class="grid sm:grid-cols-3 gap-2">
+                    <label class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer">
+                      <input type="radio" name="tone" class="accent-blue-600"/><span class="text-[.82rem] text-slate-700">격식</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 border-blue-500 bg-blue-50/40 cursor-pointer">
+                      <input type="radio" name="tone" checked class="accent-blue-600"/><span class="text-[.82rem] text-slate-700 font-bold">균형 (권장)</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer">
+                      <input type="radio" name="tone" class="accent-blue-600"/><span class="text-[.82rem] text-slate-700">친근</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">실시간 응대 추천</div>
+                    <div class="set-row-desc">통화 중 AI가 응대 멘트를 우측 패널에 표시합니다.</div>
+                  </div>
+                  <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">통화 후 자동 요약</div>
+                    <div class="set-row-desc">통화 종료 즉시 요약, 다음 액션, 태그를 자동 생성합니다.</div>
+                  </div>
+                  <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">감정 분석</div>
+                    <div class="set-row-desc">고객 감정 변화(긍정/망설임/불만)를 실시간 표시합니다.</div>
+                  </div>
+                  <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">금지 표현 경고</div>
+                    <div class="set-row-desc">회사 가이드의 금지 표현 사용 시 경고 알림.</div>
+                  </div>
+                  <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">매일 To-Do 자동 생성</div>
+                    <div class="set-row-desc">네이버 검색 트렌드 + 통화 기록 분석 기반.</div>
+                  </div>
+                  <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="set-card-divider pt-5 mt-2">
+                  <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="field-label">매일 To-Do 발송 시간</label>
+                      <select class="field-select">
+                        <option>05:00</option>
+                        <option selected>06:00</option>
+                        <option>07:00</option>
+                        <option>08:00</option>
+                        <option>09:00</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="field-label">추천 빈도 (통화 중)</label>
+                      <select class="field-select">
+                        <option>최소 (중요한 순간만)</option>
+                        <option selected>보통 (15초마다)</option>
+                        <option>자주 (5초마다)</option>
+                      </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label class="field-label">모니터링 키워드 (콤마로 구분)</label>
+                      <textarea class="field-textarea">B2B SaaS, AI 콜센터, CRM 통합, 영업 자동화, 통화 분석, HubSpot, Salesforce</textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 통합 ─── -->
+            <section id="integrations" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">통합</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">외부 도구와 데이터를 연결합니다.</p>
+              </div>
+              <div class="set-card-body">
+                <div class="grid sm:grid-cols-2 gap-3">
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-orange-500">HS</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">HubSpot</div>
+                      <div class="text-[.72rem] text-slate-500">CRM · 양방향 동기화</div>
+                    </div>
+                    <span class="badge badge-emerald">연결됨</span>
+                  </div>
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-blue-500">SF</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">Salesforce</div>
+                      <div class="text-[.72rem] text-slate-500">CRM · 양방향 동기화</div>
+                    </div>
+                    <button class="btn-secondary text-[.72rem] py-1.5">연결</button>
+                  </div>
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-violet-500">Sl</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">Slack</div>
+                      <div class="text-[.72rem] text-slate-500">통화 요약 자동 푸시</div>
+                    </div>
+                    <span class="badge badge-emerald">연결됨</span>
+                  </div>
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-slate-700">No</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">Notion</div>
+                      <div class="text-[.72rem] text-slate-500">회사 가이드 동기화</div>
+                    </div>
+                    <button class="btn-secondary text-[.72rem] py-1.5">연결</button>
+                  </div>
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-yellow-400 text-slate-900">K</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">KakaoTalk 채널</div>
+                      <div class="text-[.72rem] text-slate-500">뉴스레터 · 알림 발송</div>
+                    </div>
+                    <button class="btn-secondary text-[.72rem] py-1.5">연결</button>
+                  </div>
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-red-500">Gm</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">Gmail</div>
+                      <div class="text-[.72rem] text-slate-500">이메일 발송 채널</div>
+                    </div>
+                    <span class="badge badge-emerald">연결됨</span>
+                  </div>
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-emerald-500">N</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">Naver 검색 API</div>
+                      <div class="text-[.72rem] text-slate-500">일일 To-Do 트렌드 수집</div>
+                    </div>
+                    <span class="badge badge-emerald">연결됨</span>
+                  </div>
+
+                  <div class="integ-card">
+                    <div class="integ-logo bg-pink-500">Mc</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[.88rem] font-bold text-slate-800">Mailchimp</div>
+                      <div class="text-[.72rem] text-slate-500">뉴스레터 캠페인</div>
+                    </div>
+                    <button class="btn-secondary text-[.72rem] py-1.5">연결</button>
+                  </div>
+
+                </div>
+
+                <div class="set-card-divider pt-5 mt-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">데스크톱 앱</div>
+                  <div class="rounded-xl border border-slate-200 bg-slate-50/40 p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="text-[.85rem] font-bold text-slate-800">Kloser for Windows v2.4.1</div>
+                      <div class="text-[.72rem] text-slate-500 mt-0.5">3대 기기에 설치됨 · 최신 버전</div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button class="btn-secondary">기기 관리</button>
+                      <button class="btn-primary">앱 다운로드</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 알림 ─── -->
+            <section id="notifications" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">알림</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">어떤 알림을 어디로 받을지 선택하세요.</p>
+              </div>
+              <div class="set-card-body">
+                <table class="w-full text-[.82rem]">
+                  <thead>
+                    <tr class="border-b border-slate-200 text-slate-500 text-[.72rem] uppercase tracking-wider font-bold">
+                      <th class="text-left py-2.5 font-bold">알림 종류</th>
+                      <th class="text-center py-2.5 font-bold w-20">이메일</th>
+                      <th class="text-center py-2.5 font-bold w-20">앱</th>
+                      <th class="text-center py-2.5 font-bold w-20">Slack</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr><td class="py-3">통화 종료 후 요약 완료</td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td></tr>
+                    <tr><td class="py-3">매일 To-Do 발송</td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td></tr>
+                    <tr><td class="py-3">신규 고객 등록</td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td></tr>
+                    <tr><td class="py-3">팀 성과 주간 리포트</td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td></tr>
+                    <tr><td class="py-3">계약 갱신 임박 (30일 전)</td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td></tr>
+                    <tr><td class="py-3">시스템 상태 / 장애</td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></td></tr>
+                    <tr><td class="py-3">제품 업데이트 / 마케팅</td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td><td class="text-center"><label class="switch"><input type="checkbox"><span class="slider"></span></label></td></tr>
+                  </tbody>
+                </table>
+
+                <div class="set-card-divider pt-5 mt-5 grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="field-label">방해금지 시간</label>
+                    <div class="flex items-center gap-2">
+                      <select class="field-select"><option>21:00</option><option selected>22:00</option><option>23:00</option></select>
+                      <span class="text-slate-500">~</span>
+                      <select class="field-select"><option>06:00</option><option selected>07:00</option><option>08:00</option></select>
+                    </div>
+                    <div class="field-hint">긴급 알림(P1)은 시간과 무관하게 발송됩니다.</div>
+                  </div>
+                  <div>
+                    <label class="field-label">주말 알림</label>
+                    <select class="field-select">
+                      <option selected>긴급 알림만</option>
+                      <option>모두 받기</option>
+                      <option>모두 끄기</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 보안 ─── -->
+            <section id="security" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">보안 & 개인정보</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">계정 보안과 개인정보 처리 정책을 관리합니다.</p>
+              </div>
+              <div class="set-card-body">
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">비밀번호</div>
+                    <div class="set-row-desc">마지막 변경: 2026-04-12</div>
+                  </div>
+                  <button class="btn-secondary">변경</button>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">2단계 인증 (2FA)</div>
+                    <div class="set-row-desc">로그인 시 인증 앱(Authenticator) 6자리 코드 추가 입력.</div>
+                  </div>
+                  <span class="badge badge-emerald">활성</span>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">활성 세션</div>
+                    <div class="set-row-desc">현재 3개 기기에서 로그인 중 (Windows · iPhone · MacBook)</div>
+                  </div>
+                  <button class="btn-secondary">세션 관리</button>
+                </div>
+
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">로그인 알림</div>
+                    <div class="set-row-desc">새 기기/위치 로그인 시 이메일 알림.</div>
+                  </div>
+                  <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="set-card-divider pt-5 mt-2">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">개인정보 마스킹</div>
+                  <div class="set-row">
+                    <div class="set-row-info">
+                      <div class="set-row-title">주민등록번호 자동 마스킹</div>
+                      <div class="set-row-desc">통화 transcript에서 발견 시 자동으로 ******-******로 치환.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-row-info">
+                      <div class="set-row-title">카드번호 자동 마스킹</div>
+                      <div class="set-row-desc">16자리 카드 패턴을 자동 감지해 마지막 4자리만 노출.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-row-info">
+                      <div class="set-row-title">계좌번호 자동 마스킹</div>
+                      <div class="set-row-desc">은행 계좌 패턴 자동 감지.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-row-info">
+                      <div class="set-row-title">통화 시작 안내 멘트</div>
+                      <div class="set-row-desc">"이 통화는 AI 품질 분석을 위해 녹음됩니다" 자동 재생.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                </div>
+
+                <div class="set-card-divider pt-5 mt-2">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">데이터 보관</div>
+                  <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="field-label">통화 녹음 보관 기간</label>
+                      <select class="field-select">
+                        <option>7일</option>
+                        <option>30일</option>
+                        <option selected>90일</option>
+                        <option>1년</option>
+                        <option>3년</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="field-label">Transcript 보관 기간</label>
+                      <select class="field-select">
+                        <option>30일</option>
+                        <option>90일</option>
+                        <option>1년</option>
+                        <option selected>3년</option>
+                        <option>영구</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="field-hint mt-2">보관 기간 만료 시 자동 삭제됩니다. 법정 의무 기간(통신비밀보호법 5년) 이내에서 설정해 주세요.</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 데이터 관리 ─── -->
+            <section id="data" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">데이터 관리</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">데이터 내보내기, 가져오기, 백업.</p>
+              </div>
+              <div class="set-card-body">
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">고객 데이터 내보내기</div>
+                    <div class="set-row-desc">CSV / Excel / JSON 형식으로 다운로드.</div>
+                  </div>
+                  <button class="btn-secondary">내보내기</button>
+                </div>
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">통화 기록 내보내기</div>
+                    <div class="set-row-desc">최근 1년치 통화 transcript + 요약 일괄 다운로드.</div>
+                  </div>
+                  <button class="btn-secondary">내보내기</button>
+                </div>
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">CRM에서 고객 가져오기</div>
+                    <div class="set-row-desc">HubSpot / Salesforce / CSV에서 일괄 가져오기.</div>
+                  </div>
+                  <button class="btn-secondary">가져오기</button>
+                </div>
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">전체 데이터 백업</div>
+                    <div class="set-row-desc">전체 회사 데이터를 zip 파일로 백업합니다.</div>
+                  </div>
+                  <button class="btn-secondary">백업 시작</button>
+                </div>
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">감사 로그 다운로드</div>
+                    <div class="set-row-desc">관리자 작업 이력 (로그인, 데이터 변경, 권한 변경) 90일치.</div>
+                  </div>
+                  <button class="btn-secondary">다운로드</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 플랜 & 결제 ─── -->
+            <section id="billing" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">플랜 & 결제</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">현재 플랜 정보와 결제 내역을 확인합니다.</p>
+              </div>
+              <div class="set-card-body">
+
+                <div class="rounded-xl border-2 border-blue-500 bg-gradient-to-br from-blue-50/40 to-cyan-50/30 p-5 mb-5 flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-[.62rem] font-black tracking-[.18em] uppercase text-blue-600">현재 플랜</span>
+                      <span class="badge badge-blue">PRO</span>
+                    </div>
+                    <div class="text-[1.4rem] font-black text-slate-800 tnum">49,000원<span class="text-[.85rem] text-slate-500 font-medium ml-1">/ 회사 / 월</span></div>
+                    <div class="text-[.75rem] text-slate-500 mt-1">다음 결제일: 2026-06-03 · 자동 결제</div>
+                  </div>
+                  <div class="flex gap-2 flex-wrap">
+                    <button class="btn-secondary">플랜 변경</button>
+                    <button class="btn-primary">연간 결제 (-20%)</button>
+                  </div>
+                </div>
+
+                <div class="set-card-divider pt-5 mb-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">결제 수단</div>
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-7 rounded bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-[.6rem] font-black">VISA</div>
+                        <div>
+                          <div class="text-[.82rem] font-bold text-slate-800 tnum">**** **** **** 4242</div>
+                          <div class="text-[.7rem] text-slate-500">만료 12/27 · 기본 결제수단</div>
+                        </div>
+                      </div>
+                      <button class="text-[.72rem] font-bold text-slate-500 hover:text-slate-800">변경</button>
+                    </div>
+                  </div>
+                  <button class="btn-secondary mt-3">+ 결제 수단 추가</button>
+                </div>
+
+                <div class="set-card-divider pt-5 mb-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">청구 정보</div>
+                  <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="field-label">사업자등록번호</label>
+                      <input class="field-input" value="123-45-67890" />
+                    </div>
+                    <div>
+                      <label class="field-label">세금계산서 이메일</label>
+                      <input class="field-input" value="billing@kloser.com" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="set-card-divider pt-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">최근 결제 내역</div>
+                  <table class="tbl">
+                    <thead>
+                      <tr><th>일자</th><th>플랜</th><th>금액</th><th>상태</th><th class="text-right">영수증</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>2026-05-03</td><td>Pro (월간)</td><td class="tnum">49,000원</td><td><span class="badge badge-emerald">결제 완료</span></td><td class="text-right"><button class="text-blue-600 hover:underline text-[.78rem] font-bold">PDF</button></td></tr>
+                      <tr><td>2026-04-03</td><td>Pro (월간)</td><td class="tnum">49,000원</td><td><span class="badge badge-emerald">결제 완료</span></td><td class="text-right"><button class="text-blue-600 hover:underline text-[.78rem] font-bold">PDF</button></td></tr>
+                      <tr><td>2026-03-15</td><td>Pro (월간)</td><td class="tnum">49,000원</td><td><span class="badge badge-emerald">결제 완료</span></td><td class="text-right"><button class="text-blue-600 hover:underline text-[.78rem] font-bold">PDF</button></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── API & 개발자 ─── -->
+            <section id="api" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">API & 개발자</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">API 키, 웹훅, SSO 설정.</p>
+              </div>
+              <div class="set-card-body">
+                <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">API 키</div>
+                <div class="space-y-2 mb-5">
+                  <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50/50">
+                    <div class="min-w-0 flex-1">
+                      <div class="text-[.82rem] font-bold text-slate-800 mb-0.5">Production Key</div>
+                      <div class="text-[.72rem] text-slate-500 font-mono truncate">klzr_prod_••••••••••••3f2a · 마지막 사용 5분 전</div>
+                    </div>
+                    <div class="flex gap-1.5">
+                      <button class="btn-secondary text-[.72rem] py-1.5">복사</button>
+                      <button class="btn-secondary text-[.72rem] py-1.5">재발급</button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50/50">
+                    <div class="min-w-0 flex-1">
+                      <div class="text-[.82rem] font-bold text-slate-800 mb-0.5">Staging Key</div>
+                      <div class="text-[.72rem] text-slate-500 font-mono truncate">klzr_test_••••••••••••8c1d · 미사용</div>
+                    </div>
+                    <div class="flex gap-1.5">
+                      <button class="btn-secondary text-[.72rem] py-1.5">복사</button>
+                      <button class="btn-secondary text-[.72rem] py-1.5">재발급</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn-secondary">+ 새 API 키</button>
+
+                <div class="set-card-divider pt-5 mt-5">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">웹훅</div>
+                  <div class="set-row">
+                    <div class="set-row-info">
+                      <div class="set-row-title">통화 종료 이벤트</div>
+                      <div class="set-row-desc font-mono">https://api.example.com/webhooks/kloser</div>
+                    </div>
+                    <span class="badge badge-emerald">활성</span>
+                  </div>
+                  <button class="btn-secondary mt-3">+ 웹훅 추가</button>
+                </div>
+
+                <div class="set-card-divider pt-5 mt-2">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">SSO / SAML <span class="badge badge-violet ml-1">Enterprise</span></div>
+                  <div class="rounded-xl bg-slate-50 border border-slate-200 p-4 text-[.78rem] text-slate-600 leading-relaxed">
+                    Okta, Azure AD, Google Workspace를 통한 SSO 연동은 <b>Enterprise 플랜</b>에서 사용 가능합니다.
+                    <button class="ml-2 text-blue-600 font-bold hover:underline">업그레이드 알아보기 →</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 언어 & 지역 ─── -->
+            <section id="locale" class="set-card">
+              <div class="set-card-header">
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">언어 & 지역</h2>
+              </div>
+              <div class="set-card-body grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="field-label">언어</label>
+                  <select class="field-select">
+                    <option selected>한국어</option>
+                    <option>English</option>
+                    <option>日本語</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label">시간대</label>
+                  <select class="field-select">
+                    <option selected>(UTC+9) 서울</option>
+                    <option>(UTC+9) 도쿄</option>
+                    <option>(UTC+0) 런던</option>
+                    <option>(UTC-8) 로스앤젤레스</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label">통화</label>
+                  <select class="field-select">
+                    <option selected>KRW (₩)</option>
+                    <option>USD ($)</option>
+                    <option>JPY (¥)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label">날짜 형식</label>
+                  <select class="field-select">
+                    <option selected>YYYY-MM-DD</option>
+                    <option>DD/MM/YYYY</option>
+                    <option>MM/DD/YYYY</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label">시간 형식</label>
+                  <select class="field-select">
+                    <option selected>24시간 (14:30)</option>
+                    <option>12시간 (2:30 PM)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label">주 시작일</label>
+                  <select class="field-select">
+                    <option selected>월요일</option>
+                    <option>일요일</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 위험 영역 ─── -->
+            <section id="danger" class="set-card border-rose-200">
+              <div class="set-card-header border-rose-100">
+                <h2 class="text-[1rem] font-black tracking-tight text-rose-700">고급 / 위험 영역</h2>
+                <p class="text-[.78rem] text-rose-500 mt-0.5">실행 시 되돌릴 수 없는 작업입니다. 신중히 진행하세요.</p>
+              </div>
+              <div class="set-card-body">
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">회사 계정 비활성화</div>
+                    <div class="set-row-desc">모든 직원의 로그인이 차단됩니다. 데이터는 계정 삭제 전까지 그대로 보존됩니다.</div>
+                  </div>
+                  <button class="btn-secondary text-rose-600 border-rose-200 hover:bg-rose-50">비활성화</button>
+                </div>
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">전체 데이터 삭제 요청</div>
+                    <div class="set-row-desc">고객·통화·뉴스레터 등 회사 전체 데이터를 영구 삭제합니다 (개인정보 파기 절차). 직접 처리할 수 없으며 고객센터를 통해 요청해 주세요.</div>
+                  </div>
+                  <a href="mailto:cjb@doi-kr.com?subject=%5BKloser%5D%20%EC%A0%84%EC%B2%B4%20%EB%8D%B0%EC%9D%B4%ED%84%B0%20%EC%82%AD%EC%A0%9C%20%EC%9A%94%EC%B2%AD"
+                    class="btn-secondary no-underline">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+                    고객센터 문의
+                  </a>
+                </div>
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">계정 영구 삭제</div>
+                    <div class="set-row-desc">데이터 보호 및 정산 정책상 영구 삭제는 직접 처리할 수 없습니다. 고객센터로 요청해 주세요.</div>
+                  </div>
+                  <a href="mailto:cjb@doi-kr.com?subject=%5BKloser%5D%20%EA%B3%84%EC%A0%95%20%EC%98%81%EA%B5%AC%20%EC%82%AD%EC%A0%9C%20%EC%9A%94%EC%B2%AD"
+                    class="btn-secondary no-underline">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+                    고객센터 문의
+                  </a>
+                </div>
+              </div>
+            </section>
+
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Save toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-3 rounded-xl bg-slate-900 text-white text-[.82rem] font-bold shadow-2xl opacity-0 pointer-events-none transition-all z-[200]"></div>
+
+  <script src="_shared.js"></script>
+  <script>
+    renderSidebar('settings');
+
+    // TOC scroll spy
+    const sections = document.querySelectorAll('main section[id]');
+    const tocLinks = document.querySelectorAll('#toc .toc-link');
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          tocLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    sections.forEach(s => obs.observe(s));
+
+    // Smooth anchor scroll (works reliably for first/last/middle sections)
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const id = a.getAttribute('href');
+        if (!id || id === '#') return;
+        const t = document.querySelector(id);
+        if (!t) return;
+        e.preventDefault();
+        t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.pushState(null, '', id);
+      });
+    });
+
+    // Save button toast
+    function showToast(text) {
+      const t = document.getElementById('toast');
+      t.textContent = text;
+      t.classList.remove('opacity-0');
+      t.classList.add('opacity-100');
+      setTimeout(() => { t.classList.remove('opacity-100'); t.classList.add('opacity-0'); }, 2400);
+    }
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      showToast('✓ 설정이 저장되었습니다');
+    });
+  </script>
+</body>
+</html>
