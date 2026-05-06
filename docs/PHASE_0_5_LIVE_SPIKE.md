@@ -14,7 +14,7 @@
 
 - [x] Day 0 — `server/` 부트스트랩 + `/health` (Fastify 5 + TS, port 3001, health 응답 OK)
 - [x] Day 1 — Socket.io `/calls` 네임스페이스 + echo + clientSentAt round-trip (Node 테스트 클라이언트로 RTT 2ms 검증)
-- [ ] Day 2 — `platform/ws.js` 래퍼 + socket.io-client CDN 주입
+- [x] Day 2 — `platform/ws.js` 래퍼 + socket.io-client CDN 주입 (브라우저 검증은 Day 3 mock 제거 후 통합)
 - [ ] Day 3 — `live.html` mock 제거 + textContent 전환 + async IIFE init
 - [ ] Day 4 — `fixtures/demo-call.ts` + start_call 자동 재생 + 타이머 정리
 - [ ] Playwright 검증 — 자동 재생 흐름 + RTT < 150ms 확인
