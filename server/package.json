@@ -1,0 +1,22 @@
+{
+  "name": "kloser-server",
+  "version": "0.5.0-spike",
+  "private": true,
+  "type": "module",
+  "description": "Kloser backend — Phase 0.5 live stream spike",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "fastify": "^5.1.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
