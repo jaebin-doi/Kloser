@@ -1,78 +1,74 @@
-# 실시간 통화 보조 (PC 데스크톱 앱) — 별도 트랙
+# PC 데스크톱 앱 트랙 — 보류
 
-> **상태**: 보류 (Deferred). 본 트랙은 `docs/realtime-call-assistant-guide.md`를 기반으로 별도 일정에 진행.
-> Kloser 백엔드 메인 트랙(`docs/BACKEND_PLAN.md`)에는 포함되지 않음.
+> **상태**: 보류 (Deferred). 본 트랙은 `docs/realtime-call-assistant-guide.md` 4절·13절을 기반으로 별도 일정에 진행.
+> 통화 백엔드(WebSocket 세션·이벤트 스키마·STT 어댑터·`live.html`/`calls.html` 백엔드)는 메인 트랙(`docs/BACKEND_PLAN.md` Phase 0.5/4/5)에 포함됨. 본 문서는 **PC 앱 자체**에만 집중.
 
 ---
 
 ## 분리 사유
 
-`realtime-call-assistant-guide.md` 전체가 이 트랙에 해당합니다. 핵심 이유:
+`realtime-call-assistant-guide.md` 13절: "가장 큰 리스크는 모델 성능보다 오디오 수집 안정성이다." 이건 다음 항목들에서 발생:
 
-- **가장 큰 리스크는 백엔드가 아니라 Windows 오디오 캡처 + 30분 안정성 + 평균 지연 3초** (가이드 13·15절)
-- **표준 환경(헤드셋·소프트폰·Win 버전) 파일럿이 선결 조건** (가이드 13절)
-- **PC 앱 자체가 별도 제품 라인** (Electron/Tauri/.NET WPF, 자동 업데이트, 디바이스 등록, 장애 리포트)
-- **백엔드 영역도 일반 SaaS와 분리됨**: STT 게이트웨이, RAG/지식베이스, 발화 단위 세그먼트, 큐 기반 후처리 — 이건 일반 CRUD와 라이프사이클이 다름
+- 고객사 PC마다 오디오 장치 구성이 다름
+- 소프트폰 앱이 오디오 캡처를 제한할 수 있음
+- 마이크와 시스템 오디오 분리
+- 네트워크 품질로 인한 실시간성 저하
+- Windows 환경 표준화 (헤드셋·소프트폰·OS 버전)
 
-본 트랙을 메인 백엔드 계획에 섞으면 양쪽 모두 진척이 느려지므로 분리합니다.
+이 리스크들은 **백엔드 작업과 라이프사이클이 다름** — 파일럿 고객사 확보, 표준 장비 합의, Windows 네이티브 모듈 디버깅이 필요. 메인 백엔드 진척과 섞으면 양쪽 모두 느려지므로 분리.
+
+> **메인 백엔드는 PC 앱 없이도 진행 가능**: Phase 0.5 spike는 텍스트 청크로, Phase 5 실 STT는 브라우저 `MediaRecorder` 또는 테스트 오디오 파일을 임시 소스로 검증 가능. PC 앱은 production 단계의 오디오 소스 중 하나.
 
 ---
 
-## 본 트랙에 포함되는 항목
+## 본 트랙 범위
 
-### 클라이언트
-- Windows 데스크톱 앱 (Electron / Tauri / .NET WPF 중 결정)
+### 클라이언트 (PC 앱)
+- Windows 데스크톱 앱 — Electron / Tauri / .NET WPF 중 결정
 - WASAPI loopback + 마이크 캡처
+- 통화 시작/종료 감지 또는 수동 버튼
 - 오디오 청크(100~300ms, 16/24kHz mono PCM/Opus) WebSocket 업로드
-- 로컬 VAD, 짧은 버퍼링, 디바이스 등록, 자동 업데이트, 로그/장애 리포트
+- 로컬 VAD, 짧은 버퍼링 (네트워크 끊김 대비)
+- 사용자 로그인 + 디바이스 등록
+- 자동 업데이트, 로그/장애 리포트, 전송 상태 표시
 
-### 서버 (메인 백엔드와 별개 또는 별도 모듈)
-- 실시간 스트리밍 게이트웨이 (Fastify + WebSocket 또는 별도 서비스)
-- STT 처리 워커 (Clova gRPC + PCM 게이트웨이 / Deepgram WS / OpenAI Realtime — 결정 필요)
-- 발화 단위 세그먼트 처리, VAD 후처리
-- AI 추천 워커 (RAG, FAQ 매칭, 추천 답변)
-- 통화 종료 후 요약 워커 (BullMQ 비동기)
+### 인터페이스 (메인 백엔드와의 계약)
+- `BACKEND_PLAN.md` 0.4의 이벤트 스키마 그대로 따름:
+  - C→S `audio_chunk { seq, mime, data }`
+  - S→C `transcript`, `suggestion`, `sentiment`, `error`
+- 인증: Supabase JWT (PC 앱이 자체 로그인 화면 → supabase-js)
+- 본 트랙은 메인 백엔드의 `/calls` 네임스페이스에 클라로 접속
 
-### DB 스키마 (본 트랙 전용)
-가이드 5절 기준:
-- `call_sessions`
-- `audio_streams`
-- `transcript_segments` (+ `org_id`, `agent_id`)
-- `ai_suggestions` (+ `org_id`)
-- `call_summaries`
-- `follow_up_tasks` (메인 `todos` 테이블과 통합 검토)
-- `knowledge_bases` / `knowledge_chunks` (pgvector)
-- `devices` (PC 앱 등록·검증)
-
-### 프론트 페이지 영향
-- `platform/live.html` — 본 트랙 완료 시 백엔드 연결
-- `platform/calls.html` — 본 트랙의 통화 기록 데이터에 의존
-- `platform/dashboard.html` — 통화 관련 KPI(오늘 통화, 응답률, 평균 통화)는 본 트랙 완료 후 표시. 그 전엔 mock 또는 hide.
+### 파일럿 환경 표준화
+- 상담원 3~5명
+- 동일 헤드셋 (모델 결정 필요)
+- 동일 소프트폰 (모델 결정 필요)
+- 동일 Windows 버전
+- 하루 20~50콜
+- 저장/전송 동의 절차 완료
 
 ---
 
 ## 의사결정 필요 항목 (착수 시점)
 
-가이드 14절 1단계 시작 전 결정:
-
-1. **STT 벤더**: Clova(한국어 정확도) vs Deepgram(WS 단순) vs OpenAI Realtime(통합 편의) — 실측 필요
-2. **PC 앱 스택**: Electron(빠른 PoC) vs Tauri(가벼움) vs .NET WPF(Windows 네이티브 안정성)
-3. **오디오 전송**: WebSocket vs WebRTC
-4. **RAG 인프라**: pgvector vs 전용 벡터 DB(Pinecone/Weaviate)
-5. **녹취 저장 정책**: Supabase Storage vs S3 vs 미저장 — 법무·PIPA 검토
-6. **파일럿 고객사 환경 표준**: 헤드셋 모델, 소프트폰, Windows 버전
+1. **PC 앱 스택**: Electron(빠른 PoC) vs Tauri(가벼움) vs .NET WPF(Windows 네이티브 안정성)
+2. **오디오 전송**: WebSocket vs WebRTC (저지연 양방향이 필요하면 WebRTC 검토)
+3. **자동 업데이트**: Squirrel(Electron) / Tauri Updater / MSI + 자체 채널
+4. **디바이스 등록 정책**: 디바이스당 1 user vs user당 N 디바이스
+5. **녹취 저장 정책**: Supabase Storage / S3 / 미저장 — PIPA·법무 검토
+6. **파일럿 표준 장비**: 헤드셋·소프트폰 모델
 
 ---
 
 ## 착수 조건
 
-본 트랙은 다음 중 하나 충족 시 우선순위 재검토:
-- 메인 백엔드 Phase 1~3 완료 (Customers/Team/알림이 동작)
+다음 중 둘 이상 충족 시 우선순위 재검토:
+- 메인 백엔드 Phase 5 (실 STT) 완료 — 브라우저 MediaRecorder 기반 데모로 STT 파이프라인 검증됨
 - 파일럿 고객사 1개 이상 확보 + 표준 환경 합의
-- PC 앱 개발 리소스(개발자, 디자이너) 할당
+- PC 앱 개발 리소스 할당
 
 ---
 
 ## 참고 문서
-- `docs/realtime-call-assistant-guide.md` — 제품·아키텍처 정의 (단일 진실원)
-- `docs/BACKEND_PLAN.md` — 메인 백엔드 트랙 (본 문서와 분리)
+- `docs/realtime-call-assistant-guide.md` — 제품·아키텍처 정의 (단일 진실원, 4절·13절·14절 1~2단계가 본 트랙)
+- `docs/BACKEND_PLAN.md` — 메인 백엔드 트랙 (0.4 이벤트 스키마 = 본 트랙과의 계약)
