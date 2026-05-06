@@ -1,9 +1,10 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import { Server as IOServer } from "socket.io";
+import { registerCallsNamespace } from "./ws/calls.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "0.0.0.0";
-
 const STATIC_ORIGIN = process.env.STATIC_ORIGIN ?? "http://localhost:8765";
 
 const app = Fastify({
@@ -22,4 +23,13 @@ app.get("/health", async () => ({
 }));
 
 await app.listen({ port: PORT, host: HOST });
+
+const io = new IOServer(app.server, {
+  cors: {
+    origin: [STATIC_ORIGIN, "http://127.0.0.1:8765"],
+    credentials: true,
+  },
+});
+registerCallsNamespace(io);
+
 app.log.info({ port: PORT, staticOrigin: STATIC_ORIGIN }, "kloser-server listening");

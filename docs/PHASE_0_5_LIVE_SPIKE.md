@@ -13,7 +13,7 @@
 > 이 섹션은 구현하면서 갱신된다. 각 항목 옆 체크박스 + 한 줄 메모.
 
 - [x] Day 0 — `server/` 부트스트랩 + `/health` (Fastify 5 + TS, port 3001, health 응답 OK)
-- [ ] Day 1 — Socket.io `/calls` 네임스페이스 + echo + clientSentAt round-trip
+- [x] Day 1 — Socket.io `/calls` 네임스페이스 + echo + clientSentAt round-trip (Node 테스트 클라이언트로 RTT 2ms 검증)
 - [ ] Day 2 — `platform/ws.js` 래퍼 + socket.io-client CDN 주입
 - [ ] Day 3 — `live.html` mock 제거 + textContent 전환 + async IIFE init
 - [ ] Day 4 — `fixtures/demo-call.ts` + start_call 자동 재생 + 타이머 정리
