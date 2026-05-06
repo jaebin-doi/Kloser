@@ -43,3 +43,23 @@ python screenshots.py       # screenshots/ 폴더에 PNG 캡처
 
 - 스크립트들은 `http://localhost:8765/platform/...`을 가정합니다. 포트가 다르면 각 파일에서 URL 수정 필요.
 - 일부 스크립트는 캡처 결과를 현재 작업 디렉토리에 저장합니다. `cd test`에서 실행하면 `test/`에 저장됩니다.
+
+## Phase 0.5 e2e (Node)
+
+`phase_0_5_e2e.mjs`는 백엔드 spike(`server/`)와 `live.html`이 같이 떠있는지 검증하는 Node + Playwright 테스트입니다.
+
+```bash
+# 1) 정적 서버 (Python alias 없으면 npx 사용)
+#   python -m http.server 8765
+npx http-server . -p 8765 --silent
+
+# 2) 백엔드 (별도 터미널)
+cd server && npm install && npm run dev
+
+# 3) 검증 (프로젝트 루트)
+npm install --no-save playwright
+node test/phase_0_5_e2e.mjs
+# expect: 12 PASS lines + "E2E PASSED"
+```
+
+산출물: `test/phase_0_5_e2e.png` 스크린샷.

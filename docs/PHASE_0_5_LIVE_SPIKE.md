@@ -18,7 +18,7 @@
 - [x] Day 3 — `live.html` mock 제거 + textContent 전환 + async IIFE init (Playwright로 connect/start_call ack/RTT 1ms 확인)
 - [x] Day 4 — `fixtures/demo-call.ts` + start_call 자동 재생 + 타이머 정리 (sentiment 그룹별로 합쳐 emit)
 - [x] Playwright 검증 — 자동 재생 흐름 + RTT < 150ms (test/phase_0_5_e2e.mjs, 12/12 PASS, 수동 RTT 1ms)
-- [ ] Day 4-5 — `server/README.md` + `PHASE_0_5_FINDINGS.md` + 체크박스 업데이트
+- [x] Day 4-5 — `server/README.md` + `docs/PHASE_0_5_FINDINGS.md` + `BACKEND_PLAN.md` §8 체크박스 갱신
 
 **환경 노트**:
 - Windows 11에 Python alias 미설치 → 정적 서버는 `npx http-server -p 8765`로 대체 (동작 동일: 루트 서빙). README에 두 가지 명령 모두 명시.
@@ -401,19 +401,17 @@ Phase 1 시작 시 **transcript text + suggestion title/body 전체에 sanitizat
 
 ---
 
-## 7. 완료 기준 (Phase 0.5 전체 — go/no-go gate)
+## 7. 완료 기준 (Phase 0.5 전체 — go/no-go gate) ✅ 통과
 
-다음을 모두 만족하면 0.5 종료, Phase 1 (Auth + DB) 착수.
+- [x] `npm run dev`로 서버가 뜨고 `/health`가 응답 (`{ok:true, version:"0.5-spike"}`)
+- [x] `live.html`에 `setTimeout(appendMessage)` / `setTimeout(renderSuggestions)`가 0개
+- [x] `live.html` 로드 → 자동으로 기존 데모와 동일한 흐름(인사 → HubSpot → 가격 → 견적)이 재생됨 (Playwright e2e 검증)
+- [x] sentiment(`관심` → `망설임` → `재고려`)가 같은 타이밍에 갱신
+- [x] 수동 `text_chunk` 라운드트립 < 150ms (로컬) — 측정값 **1ms**
+- [x] 서버 재시작 후 페이지 reload만으로 동일 동작 (재연결 의존 X)
+- [x] `docs/PHASE_0_5_FINDINGS.md`에 Phase 1 후속 항목 정리됨 (9개 발견 + Phase 1 첫 5개 task 제안)
 
-- [ ] `npm run dev`로 서버가 뜨고 `/health`가 응답
-- [ ] `live.html`에 `setTimeout(appendMessage)` / `setTimeout(renderSuggestions)`가 0개
-- [ ] `live.html` 로드 → 자동으로 기존 데모와 동일한 흐름(인사 → HubSpot → 가격 → 견적)이 재생됨
-- [ ] sentiment(`관심` → `망설임` → `재고려`)가 같은 타이밍에 갱신
-- [ ] 수동 `text_chunk` 라운드트립 < 150ms (로컬)
-- [ ] 서버 재시작 후 페이지 reload만으로 동일 동작 (재연결 의존 X)
-- [ ] `docs/PHASE_0_5_FINDINGS.md`에 Phase 1 후속 항목 정리됨
-
-하나라도 실패하면 0.5에 머문다. Phase 1로 넘어가지 않는다.
+→ Phase 1 (Auth + DB) 착수 가능.
 
 ---
 
