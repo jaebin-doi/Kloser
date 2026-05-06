@@ -33,10 +33,10 @@
 - 자동 업데이트, 로그/장애 리포트, 전송 상태 표시
 
 ### 인터페이스 (메인 백엔드와의 계약)
-- `BACKEND_PLAN.md` 0.4의 이벤트 스키마 그대로 따름:
-  - C→S `audio_chunk { seq, mime, data }`
-  - S→C `transcript`, `suggestion`, `sentiment`, `error`
-- 인증: Supabase JWT (PC 앱이 자체 로그인 화면 → supabase-js)
+- `BACKEND_PLAN.md` 섹션 6 "Live WebSocket" 이벤트 그대로 따름:
+  - C→S `start_call`, `audio_chunk` (Phase 5), `text_chunk` (0.5 spike), `end_call`
+  - S→C `transcript`, `suggestion`, `sentiment`, `checklist_update`, `error`
+- 인증: 자체 Auth JWT (`BACKEND_PLAN.md` 3.2). PC 앱이 자체 로그인 화면 → `POST /auth/login`으로 access/refresh token 발급 → WebSocket handshake 시 token 전달
 - 본 트랙은 메인 백엔드의 `/calls` 네임스페이스에 클라로 접속
 
 ### 파일럿 환경 표준화
@@ -55,7 +55,7 @@
 2. **오디오 전송**: WebSocket vs WebRTC (저지연 양방향이 필요하면 WebRTC 검토)
 3. **자동 업데이트**: Squirrel(Electron) / Tauri Updater / MSI + 자체 채널
 4. **디바이스 등록 정책**: 디바이스당 1 user vs user당 N 디바이스
-5. **녹취 저장 정책**: Supabase Storage / S3 / 미저장 — PIPA·법무 검토
+5. **녹취 저장 정책**: 로컬 디스크 / MinIO / 미저장 — PIPA·법무 검토 (`BACKEND_PLAN.md` 3.3 정합)
 6. **파일럿 표준 장비**: 헤드셋·소프트폰 모델
 
 ---
@@ -71,4 +71,4 @@
 
 ## 참고 문서
 - `docs/realtime-call-assistant-guide.md` — 제품·아키텍처 정의 (단일 진실원, 4절·13절·14절 1~2단계가 본 트랙)
-- `docs/BACKEND_PLAN.md` — 메인 백엔드 트랙 (0.4 이벤트 스키마 = 본 트랙과의 계약)
+- `docs/BACKEND_PLAN.md` — 메인 백엔드 트랙 (섹션 6 "Live WebSocket" 이벤트 = 본 트랙과의 계약)

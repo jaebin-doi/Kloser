@@ -1,368 +1,556 @@
-# Kloser 백엔드 구현 계획 (v0.3)
+# Kloser 백엔드 구현 계획 (v0.4, On-Premise)
 
-> **변경 이력**
-> - v0.1 → v0.2: 실시간 통화 보조 트랙을 `DESKTOP_APP_PLAN.md`로 분리. 멀티테넌트·Auth 경계·프론트 데이터 계층·큐·보안을 Phase 0/1로 승격. AI 모델 작업별 분리.
-> - v0.2 → v0.3: **분리를 잘못 함**. v0.2에서 통화 백엔드(WebSocket 세션·이벤트 스키마·STT 어댑터·calls/transcripts 스키마)까지 데스크톱 트랙으로 같이 보냈는데, 이건 본 트랙의 제품 핵심이라 다시 끌어옴. 데스크톱 앱(Electron/Tauri/WPF, WASAPI 캡처)만 별도 트랙. **Phase 0.5(Live 스파이크)** 신설 — Auth보다 먼저 WebSocket 이벤트 파이프라인을 텍스트 청크로 검증. **첫 완성 CRUD 페이지는 customers.html**로 명시. STT 표현은 "WebSocket 모드"가 아니라 "서버 내부 gRPC STT adapter".
->
-> **범위**
-> - 포함: 실시간 통화 백엔드(WebSocket 세션·이벤트·STT 어댑터·`live.html`/`calls.html` 백엔드), Customers, Team, Newsletter, Daily, Dashboard, Settings, 알림, 통합
-> - 제외: PC 데스크톱 앱 자체(Electron/Tauri/WPF 결정·WASAPI 캡처·디바이스 등록·자동 업데이트·파일럿 환경 표준화) — `docs/DESKTOP_APP_PLAN.md` 참조
+> **결정 변경**
+> - v0.3까지는 Supabase managed를 DB/Auth/Storage 인프라로 가정했다.
+> - v0.4부터는 **자체 서버 온프레미스 배포**를 기본 전제로 한다.
+> - 이유: 자체 서버 보유, 자체 배포 예정, 클라우드 사용량 과금 리스크 회피, 개발 속도가 최우선이 아님.
 
 ---
 
-## Phase 0 — 결정사항 (착수 전 확정)
+## 0. 최종 아키텍처 결정
 
-### 0.1 확정 사항
+### 확정 사항
 
 - **백엔드**: Node.js + Fastify + TypeScript
-- **DB / 인증 인프라**: Supabase (PostgreSQL + Auth + Storage)
+- **배포**: 자체 서버 온프레미스
+- **DB**: 직접 운영 PostgreSQL
+- **인증**: Fastify 자체 Auth 구현을 기본값으로 시작
+- **파일 저장**: 자체 서버 파일 스토리지 또는 MinIO
+- **큐/워커**: Redis + BullMQ
+- **Reverse proxy / TLS**: Nginx 또는 Caddy
 - **모노레포**: 단일 repo, `server/` 디렉토리 추가
 
-### 0.2 추가 결정 사항
+### Supabase managed 제외
 
-| 항목 | 결정 | 이유 |
-|---|---|---|
-| **Auth 책임 경계** | 프론트가 `supabase-js`로 signup/login/refresh 직접 호출 → JWT를 Fastify에 보냄 → Fastify는 검증만. 초대 토큰 검증과 org attach만 Fastify 담당 | 책임 단순화, 토큰 갱신 로직 중복 방지, Supabase Auth 기능(SSO, OAuth) 그대로 활용 |
-| **큐 / 워커** | BullMQ + Redis. `server/src/jobs/` 디렉토리. 워커 프로세스는 동일 코드베이스에서 별도 entry (`pnpm worker`) | 가이드 11절(Redis Streams 추천)과 정합. BullMQ는 Redis 위에서 retry/backoff/dashboard DX 우수 |
-| **프론트 데이터 계층** | `platform/api.js` 신설: `apiFetch()` 래퍼(JWT 자동 첨부·재시도·에러 통일), `escapeHtml()`/`renderList()` 헬퍼, loading/empty/error 상태 패턴 | mock → API 전환 시 동일 패턴 적용. XSS 방지 일원화 |
-| **WebSocket 라이브러리** | Socket.io (`@fastify/websocket` 위) | 자동 재연결·room·네임스페이스 기본 제공. 통화 세션 단위 room 관리 자연스러움 |
-| **AI 모델** | 작업별 분리. 통화 후 요약·뉴스레터 초안·통화 중 추천 = Claude Sonnet 4.6. 빠른 분류·태깅·감정 = Claude Haiku 4.5. 운영 진입 시 Opus 4.7 비교 | 통화 중 추천은 발화 단위(1~2초)로 묶어 호출 → 저지연 + 품질 균형은 Sonnet |
-| **이메일 발송** | Resend | DX·로그·webhook 가장 단순 |
-| **시크릿 관리** | `.env` + dotenv (개발), Railway secrets (운영) | 운영 진입 시 Doppler 재검토 |
-| **배포** | Railway | WebSocket 대응, 빠른 배포, 비용 합리적 |
+Supabase managed는 사용하지 않는다.
 
-### 0.3 보안 / 개인정보 베이스라인 (Phase 1 필수)
+이유:
 
-`realtime-call-assistant-guide.md` 10절 적용:
+- 클라우드 비용과 egress 비용이 리스크
+- 자체 서버에서 배포/운영할 계획
+- Auth/DB/Storage를 직접 운영할 여력이 있음
+- 개발 속도보다 비용 통제와 데이터 통제가 중요함
 
-- TLS 강제 (Railway 기본)
-- 조직별 데이터 분리: 모든 테이블 `org_id` + Supabase RLS
-- 역할 기반 접근: admin / manager / employee / viewer
-- **감사 로그 (`activity_log`)**: 인증·권한·민감 데이터 변경 모두 기록
-- 통화 세션 권한 확인 (사용자가 자기 세션·자기 팀 세션만 접근)
-- 녹취/전사 저장 토글 (조직 설정), 보관 기간 설정, 삭제 요청 처리
-- 민감정보 마스킹 (전화번호·카드번호 정규식 기반 — Phase 5 시점)
-- Supabase service role key는 서버에만, 프론트 노출 금지
-- PIPA 컴플라이언스 체크리스트 (`docs/SECURITY.md` — Phase 1 deliverable)
+### Supabase self-hosted는 보류
 
-### 0.4 WebSocket 이벤트 스키마 (Phase 0.5에서 확정)
+Supabase self-hosted는 후보로는 가능하지만 기본값으로 두지 않는다.
 
-통화 세션 단위 room. 이벤트 4종:
+이유:
 
-| 방향 | 이벤트 | 페이로드 | 비고 |
-|---|---|---|---|
-| C→S | `audio_chunk` | `{ seq, mime, data }` | 실제 오디오는 Phase 5부터. 0.5 spike에서는 `text_chunk`로 대체 |
-| C→S | `text_chunk` | `{ seq, speaker, text }` | spike 전용 |
-| S→C | `transcript` | `{ seq, speaker, text, ts_ms, partial }` | 발화 단위 세그먼트 |
-| S→C | `suggestion` | `{ kind, payload }` | kind: `direction` / `script` / `warning` / `action` |
-| S→C | `sentiment` | `{ mood, interest, stage }` | 1~2초 단위 |
-| S→C | `error` | `{ code, message }` | |
+- Supabase Auth/Storage/Studio를 묶음으로 가져올 수 있음
+- 하지만 구성요소가 많아져 운영 복잡도가 증가
+- Kloser MVP에 필요한 핵심은 PostgreSQL, Auth, Storage, Redis 정도라 직접 구성하는 편이 더 단순함
 
 ---
 
-## 1. 디렉토리 구조
+## 1. 온프레미스 전체 구조
 
+```text
+[Browser / Platform HTML]
+[Desktop App - 별도 트랙]
+          |
+          | HTTPS / WebSocket
+          v
+[Nginx or Caddy]
+          |
+          v
+[Fastify API + WebSocket Server]
+          |
+          +--> [PostgreSQL]
+          +--> [Redis + BullMQ]
+          +--> [File Storage / MinIO]
+          +--> [External APIs]
+                 - Clova STT
+                 - Claude/OpenAI
+                 - Naver Search
+                 - Resend or SMTP
+                 - HubSpot / Slack
 ```
+
+Fastify는 제품 로직의 중심이다. PostgreSQL은 직접 운영하고, 인증도 Fastify가 발급하는 JWT/session 기반으로 시작한다.
+
+---
+
+## 2. 서버 디렉토리 구조
+
+```text
 kloser/
-├── platform/             # 기존 정적 프론트
-│   ├── api.js            # ← 신규: fetch 래퍼 + escape + 상태 헬퍼
-│   ├── ws.js             # ← 신규 (Phase 0.5): Socket.io 클라이언트 래퍼
-│   └── ... (기존 *.html, _shared.js 등)
-├── server/               # ← 신규
-│   ├── src/
-│   │   ├── routes/       # /customers, /team, /daily, /newsletter, /calls, ...
-│   │   ├── ws/           # Socket.io 핸들러 (call session, notifications)
-│   │   ├── services/     # 비즈니스 로직
-│   │   ├── jobs/         # BullMQ 워커 (cron, fan-out, AI 호출, 통화 후 요약)
-│   │   ├── integrations/ # naver-search, hubspot, slack, resend, anthropic, clova
-│   │   ├── middleware/   # auth(JWT 검증), rls 컨텍스트, audit log
-│   │   ├── db/           # Supabase 클라이언트, 타입 생성물
-│   │   └── server.ts
-│   ├── migrations/       # supabase/migrations/*.sql
+├── platform/
+│   ├── api.js              # fetch wrapper, auth token, error handling
+│   ├── ws.js               # WebSocket/Socket.io client wrapper
+│   └── ...
+├── server/
 │   ├── package.json
-│   └── tsconfig.json
-├── shared/               # ← 신규: 프론트·백 공통 TypeScript 타입
+│   ├── tsconfig.json
+│   ├── src/
+│   │   ├── app.ts
+│   │   ├── server.ts
+│   │   ├── worker.ts
+│   │   ├── config/
+│   │   │   └── env.ts
+│   │   ├── plugins/
+│   │   │   ├── db.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── cors.ts
+│   │   │   ├── cookies.ts
+│   │   │   └── socket.ts
+│   │   ├── routes/
+│   │   │   ├── auth.ts
+│   │   │   ├── me.ts
+│   │   │   ├── customers.ts
+│   │   │   ├── team.ts
+│   │   │   ├── calls.ts
+│   │   │   ├── dashboard.ts
+│   │   │   ├── daily.ts
+│   │   │   ├── newsletter.ts
+│   │   │   └── settings.ts
+│   │   ├── services/
+│   │   ├── repositories/
+│   │   ├── ws/
+│   │   ├── jobs/
+│   │   ├── integrations/
+│   │   │   ├── clova/
+│   │   │   ├── anthropic/
+│   │   │   ├── openai/
+│   │   │   ├── naver/
+│   │   │   ├── mail/
+│   │   │   └── hubspot/
+│   │   ├── schemas/
+│   │   └── utils/
+│   ├── migrations/
+│   └── seeds/
+├── shared/
 │   └── types/
-└── docs/
-    ├── BACKEND_PLAN.md         (이 문서)
-    ├── DESKTOP_APP_PLAN.md     (PC 앱 트랙)
-    └── realtime-call-assistant-guide.md
+└── ops/
+    ├── docker-compose.yml
+    ├── nginx/
+    ├── postgres/
+    └── systemd/
 ```
 
 ---
 
-## 2. 도메인 모델 (DB 스키마)
+## 3. 온프레미스 인프라 구성
 
-PK는 모두 `uuid`, `created_at`/`updated_at` 공통. **모든 테이블에 `org_id` 직접 보유** (조인 RLS 회피, 트리거로 부모와 동기화 강제).
+### 3.1 PostgreSQL
 
-### 조직 & 인증
-- `organizations` (id, name, plan, settings, created_at)
-- `users` (id, org_id, email, name, role, team_id, avatar_url) — Supabase `auth.users`와 1:1
-- `teams` (id, org_id, name, manager_id)
-- `invitations` (id, org_id, email, role, token, expires_at, accepted_at)
-- `activity_log` (id, org_id, user_id, action, target_type, target_id, payload, created_at)
+직접 운영 PostgreSQL을 기본 DB로 사용한다.
+
+권장:
+
+- PostgreSQL 16+
+- `pgcrypto` 활성화
+- `pgvector`는 RAG 단계에서 활성화
+- daily backup
+- WAL archiving 또는 PITR은 운영 진입 시 적용
+- 주요 테이블 `org_id` index 필수
+
+마이그레이션 도구:
+
+- 1순위: `node-pg-migrate`
+- 대안: `drizzle-kit` 또는 `knex`
+
+초기에는 ORM보다 SQL migration + repository 계층을 권장한다. RLS, index, partial index, partition 같은 DB 기능을 명시적으로 다루기 쉽다.
+
+### 3.2 Auth
+
+초기 기본값은 자체 Auth다.
+
+구성:
+
+- password hash: Argon2id
+- access token: JWT, 짧은 만료
+- refresh token: DB 저장, rotation
+- session table: `sessions`
+- email verification: Phase 2 이후
+- password reset: Phase 2 이후
+- SSO/SAML: Enterprise 단계에서 Keycloak 검토
+
+Keycloak은 처음부터 도입하지 않는다. 이유는 MVP의 조직/권한 모델을 우리가 먼저 확정해야 하고, Keycloak은 운영 구성과 개념 비용이 있다. 단, 엔터프라이즈 SSO가 가까워지면 Keycloak을 붙이는 선택지를 열어둔다.
+
+### 3.3 Storage
+
+초기 선택:
+
+- 단일 서버면 로컬 디스크 + metadata table
+- 여러 서버 또는 고객별 격리가 필요하면 MinIO
+
+대상:
+
+- 통화 녹취
+- 회사 가이드/FAQ PDF
+- 뉴스레터 이미지
+- export 결과물
+
+초기 MVP에서는 녹취 원본 저장을 기본 OFF로 둔다. 전사 저장만 먼저 구현하고, 녹취 저장은 조직 설정으로 켜는 구조가 안전하다.
+
+### 3.4 Redis + BullMQ
+
+비동기 작업은 HTTP 요청 안에서 직접 처리하지 않는다.
+
+Job 종류:
+
+- `call.summarize`
+- `ai.suggest`
+- `daily.refresh`
+- `newsletter.send`
+- `hubspot.sync`
+- `notification.fanout`
+
+Redis는 queue와 rate limit 용도로 쓴다.
+
+### 3.5 Reverse proxy
+
+Nginx 또는 Caddy가 앞단을 맡는다.
+
+역할:
+
+- TLS 종료
+- 정적 파일 서빙
+- `/api` → Fastify
+- `/socket.io` 또는 `/ws` → Fastify WebSocket
+- request body limit
+- basic rate limit
+- access log
+
+---
+
+## 4. 보안 / 개인정보 베이스라인
+
+Phase 1부터 필수:
+
+- HTTPS 강제
+- password Argon2id hash
+- refresh token rotation
+- HttpOnly cookie 또는 Authorization Bearer 중 하나로 정책 확정
+- 조직별 데이터 분리: 모든 주요 테이블 `org_id`
+- role 기반 권한: `admin`, `manager`, `employee`, `viewer`
+- audit log: 인증, 권한 변경, 고객/통화/전사 접근, 삭제 기록
+- 통화 전사/녹취 보관 기간 설정
+- 삭제 요청 처리
+- 민감정보 마스킹: 전화번호, 카드번호, 주민번호 패턴
+- 운영자 DB 접근 기록
+- DB backup 암호화
+
+**PostgreSQL RLS는 Phase 1부터 default-deny로 켠다.** 모든 org-스코프 테이블에 `org_id` 컬럼 + `ENABLE ROW LEVEL SECURITY` + `USING (org_id = current_setting('app.org_id')::uuid)` 정책. Fastify auth 미들웨어가 매 요청 시작 시 `SET LOCAL app.org_id = '<jwt의 org_id>'`를 트랜잭션에 주입한다. Repository 계층의 `org_id` filter는 RLS와 중복 방어선으로 유지.
+
+이유: repository에서 `org_id` 한 줄 빠뜨리는 실수는 PR 리뷰로 잡기 어렵고 잡혔을 땐 이미 조직 데이터 누출. RLS가 default-deny면 `org_id` 누락 시 결과가 0건이라 조용한 누출이 사고로 즉시 드러남. "운영 전에 RLS 추가"는 첫 고객 데이터가 들어온 뒤가 되어 마이그레이션 비용이 큼 — 처음부터 켜는 것이 노력 차이는 작고 위험 차이는 천 배.
+
+워커 프로세스는 `app.org_id` 주입을 명시적으로 처리하거나 별도의 service-role connection으로 우회 (BullMQ job context에서 `org_id` 페이로드 → 매 쿼리 전에 SET).
+
+---
+
+## 5. 핵심 DB 모델
+
+모든 주요 테이블은 `id uuid`, `org_id uuid`, `created_at`, `updated_at`를 가진다.
+
+### 조직 / 인증
+
+- `organizations`  
+  `id`, `name`, `plan`, `settings`
+
+- `users`  
+  `id`, `email`, `password_hash`, `name`, `avatar_url`, `email_verified_at`, `disabled_at`
+
+- `memberships`  
+  `id`, `org_id`, `user_id`, `role`, `team_id`, `status`
+
+- `sessions`  
+  `id`, `user_id`, `refresh_token_hash`, `user_agent`, `ip`, `expires_at`, `revoked_at`
+
+- `teams`  
+  `id`, `org_id`, `name`, `manager_id`
+
+- `invitations`  
+  `id`, `org_id`, `email`, `role`, `token_hash`, `expires_at`, `accepted_at`
+
+- `activity_log`  
+  `id`, `org_id`, `user_id`, `action`, `target_type`, `target_id`, `payload`
 
 ### CRM
-- `customers` (id, **org_id**, name, company, email, phone, plan, status, last_contact_at, owner_id)
-- `customer_notes` (id, **org_id**, customer_id, author_id, body)
-- `customer_tags` (id, **org_id**, customer_id, tag)
 
-### 통화 (Phase 4~5)
-- `calls` (id, **org_id**, customer_id, agent_id, started_at, ended_at, duration_s, direction, status, summary, sentiment_score, recording_url)
-- `transcripts` (id, **org_id**, call_id, speaker, text, ts_ms, partial, sentiment) — 시계열, 인덱스 (call_id, ts_ms)
-- `call_checklist` (id, **org_id**, call_id, item, done)
-- `ai_suggestions` (id, **org_id**, call_id, kind, payload, accepted, ts_ms)
-- `knowledge_bases` (id, **org_id**, name, kind) — RAG 컨테이너 (Phase 5 후반)
-- `knowledge_chunks` (id, **org_id**, kb_id, text, embedding vector(1536)) — pgvector
+- `customers`
+- `customer_notes`
+- `customer_tags`
 
-### Daily / 인사이트
-- `keywords` (id, **org_id**, term, source, active)
-- `competitors` (id, **org_id**, name, domain, last_checked_at)
-- `trend_snapshots` (id, **org_id**, keyword_id, volume, change_rate, articles_count, captured_at) — 시계열
-- `todos` (id, **org_id**, assignee_id, body, priority, source, source_ref, status, due_at, completed_at)
+### 통화
 
-### 뉴스레터
-- `newsletter_campaigns` (id, **org_id**, subject, body_html, template_id, status, scheduled_at, sent_at, sender_id)
-- `newsletter_recipients` (id, **org_id**, campaign_id, customer_id, sent_at, opened_at, clicked_at, bounced)
-- `newsletter_templates` (id, **org_id**, name, body_html, system)
-
-### 알림 / 통합
-- `notifications` (id, **org_id**, user_id, kind, title, body, link, read_at)
-- `integrations` (id, **org_id**, kind, status, credentials_encrypted, settings, last_sync_at)
-  - kind: `hubspot` / `slack` / `naver_search` / `resend` / `clova_stt` / `webhook`
-
-> RLS: 각 테이블에 `USING (org_id = auth.jwt() ->> 'org_id'::uuid)`. `service_role` 우회 가능 (서버 워커용).
-
----
-
-## 3. API 엔드포인트
-
-REST + Socket.io. 모든 엔드포인트 JWT 검증 + org 스코핑.
-
-### Auth (Fastify에 두는 것은 최소)
-- `GET  /me` — 현재 유저 + org + role + permissions
-- `POST /invitations/accept` — 초대 토큰 검증 + org attach
-
-### Customers
-- `GET    /customers?q=&status=&plan=&page=&limit=`
-- `POST   /customers`
-- `GET    /customers/:id`
-- `PATCH  /customers/:id`
-- `DELETE /customers/:id`  → soft delete (30일 grace)
-- `POST   /customers/import` — HubSpot/CSV (BullMQ로 큐잉)
-- `POST   /customers/:id/notes`
-
-### Team
-- `GET   /team/members`
-- `POST  /team/invitations` — 초대 토큰 발급 + Resend 메일
-- `PATCH /team/members/:id`
-- `DELETE /team/members/:id`
-- `GET   /team/performance?range=7d`
-
-### Calls (Phase 4)
-- `GET /calls?status=&customer=&q=&page=&from=&to=`
-- `GET /calls/:id` — detail
-- `GET /calls/:id/transcript?from_seq=&limit=` — 페이지네이션 / lazy
-- `POST /calls/:id/notes`
-- `POST /calls` — 수동 생성 (테스트·import용)
-
-### Live 통화 세션 (Socket.io, Phase 0.5 스파이크 → Phase 5 실 STT)
-- 네임스페이스: `/calls`
-- 인증: JWT (handshake에 토큰)
-- 클라이언트가 통화 시작 시 `start_call({ customer_id })` → 서버가 `call_id` 발급, room 조인
-- 이후 0.4의 이벤트 4종으로 양방향 스트리밍
-- `end_call` → 서버 `calls.ended_at` 기록 → BullMQ `call.summarize` 잡 enqueue
-
-### Dashboard
-- `GET /dashboard/summary` — 통화 KPI(오늘 통화·응답률·평균 통화·신규 전환) + 신규 고객·뉴스레터·To-Do
-- `GET /dashboard/recent-calls?limit=5`
-- `GET /dashboard/recent-activity?limit=10`
+- `calls`
+- `transcripts`
+- `call_checklist`
+- `ai_suggestions`
+- `knowledge_bases`
+- `knowledge_chunks`
 
 ### Daily
-- `GET  /daily/snapshot?date=YYYY-MM-DD`
-- `POST /daily/refresh` — Naver Search 즉시 갱신 트리거 (BullMQ)
-- `GET  /trends?range=7d&keyword_id=`
-- `CRUD /todos`, `CRUD /keywords`, `CRUD /competitors`
 
-### Newsletter
-- `GET   /newsletter/campaigns`
-- `POST  /newsletter/campaigns` (draft)
-- `PATCH /newsletter/campaigns/:id`
-- `POST  /newsletter/campaigns/:id/send` — 즉시/예약 (BullMQ fan-out)
-- `GET   /newsletter/campaigns/:id/analytics`
-- `CRUD  /newsletter/templates`
-- `POST  /newsletter/ai-draft` — Claude Sonnet 4.6
-- `POST  /webhooks/resend`
+- `keywords`
+- `competitors`
+- `trend_snapshots`
+- `todos`
 
-### Settings
-- `GET / PATCH /settings/profile`
-- `GET / PATCH /settings/company`
-- `GET / PATCH /settings/integrations/:kind`
-- `POST /settings/integrations/:kind/test`
-- `POST /webhooks/:kind/incoming`
+### 뉴스레터 / 알림 / 통합
 
-### Notifications
-- `GET   /notifications?unread=true&limit=`
-- `PATCH /notifications/:id/read`
-- `POST  /notifications/mark-all-read`
-- Socket.io 네임스페이스 `/notifications` — 실시간 푸시
+- `newsletter_campaigns`
+- `newsletter_recipients`
+- `newsletter_templates`
+- `notifications`
+- `integrations`
 
 ---
 
-## 4. 외부 연동
+## 6. API 설계
 
-| 통합 | 용도 | Phase | 인증 | 주의 |
-|---|---|---|---|---|
-| **Supabase** | DB · Auth · Storage · Realtime | 1 | Service Role / anon Key | RLS 정책 누락 주의 |
-| **Naver Search** | Daily 트렌드 | 6 | Client ID/Secret | 일일 25,000 호출. `trend_snapshots`에 캐시 |
-| **Resend** | 이메일 (초대·뉴스레터·알림) | 3 | API Key | webhook으로 open/click/bounce |
-| **Anthropic Claude** | 통화 후 요약, 통화 중 추천(RAG), 뉴스레터 초안 | 5 | API Key | Sonnet 4.6 기본, Haiku 4.5 분류용 |
-| **Naver Clova STT** | 실시간 전사 | 5 | gRPC API Key | **서버 내부 gRPC STT adapter** — 클라는 WS로 오디오 → 서버가 PCM 16kHz mono로 정규화 → Clova gRPC streaming → 결과를 다시 WS로 클라에 푸시. 클라가 직접 Clova에 붙지 않음 |
-| **HubSpot** | 고객 단방향 sync (HubSpot → Kloser, read-only) | 6 | OAuth2 | 양방향은 후순위 |
-| **Slack** | 알림 outbound | 6 | Webhook URL | 단순 |
+### Auth
+
+- `POST /auth/signup`
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `POST /auth/password/forgot`
+- `POST /auth/password/reset`
+- `GET /me`
+- `POST /invitations/accept`
+
+### Customers
+
+- `GET /customers?q=&status=&plan=&page=&limit=`
+- `POST /customers`
+- `GET /customers/:id`
+- `PATCH /customers/:id`
+- `DELETE /customers/:id`
+- `POST /customers/:id/notes`
+
+### Team
+
+- `GET /team/members`
+- `POST /team/invitations`
+- `PATCH /team/members/:id`
+- `DELETE /team/members/:id`
+- `GET /team/performance?range=7d`
+
+### Calls
+
+- `GET /calls?status=&customer=&q=&page=&from=&to=`
+- `POST /calls`
+- `GET /calls/:id`
+- `GET /calls/:id/transcript?from_seq=&limit=`
+- `POST /calls/:id/notes`
+- `POST /calls/:id/end`
+
+### Live WebSocket
+
+네임스페이스: `/calls`
+
+클라이언트 → 서버:
+
+- `start_call`
+- `text_chunk` (Phase 0.5 spike)
+- `audio_chunk` (Phase 5)
+- `end_call`
+
+서버 → 클라이언트:
+
+- `transcript`
+- `suggestion`
+- `sentiment`
+- `checklist_update`
+- `error`
+
+### Dashboard / Daily / Newsletter / Settings
+
+v0.3의 endpoint 구조를 유지하되, 인증과 DB 접근은 자체 Auth/PostgreSQL 기준으로 구현한다.
 
 ---
 
-## 5. 인증 & 권한 모델
+## 7. 외부 연동
 
-### Auth 흐름
-```
-[브라우저]
-  supabase-js.signInWithPassword() → JWT (access + refresh)
-  localStorage 저장, 자동 갱신
-       │
-       │ REST: Authorization: Bearer <jwt>
-       │ WS:   handshake auth.token = <jwt>
-       ▼
-[Fastify]
-  authPlugin: JWT 검증 (Supabase JWKS) → req.user = { id, org_id, role }
-  rlsPlugin: PostgREST set_config로 org_id 세션 주입
-  routeHandler: 권한 체크 → DB 호출 (RLS 자동 필터)
-```
-
-### 역할 권한 매트릭스
-| 액션 | admin | manager | employee | viewer |
-|---|---|---|---|---|
-| 조직 설정·결제 | ✓ | | | |
-| 멤버 초대 / 역할 변경 | ✓ | ✓ (자기 팀) | | |
-| 모든 고객·통화 read | ✓ | ✓ (자기 팀) | ✓ (담당) | ✓ |
-| 고객 write | ✓ | ✓ | ✓ (담당) | |
-| 통화 세션 시작 | ✓ | ✓ | ✓ | |
-| 뉴스레터 발송 | ✓ | ✓ | | |
-| 통합 설정 | ✓ | | | |
-
-### 초대 플로우
-1. admin/manager → `POST /team/invitations` (이메일 + 역할)
-2. 서버: 토큰 발급 → `invitations` 저장 → Resend 메일 (Phase 3 이후)
-3. 수신자: 초대 링크 → `supabase-js.signUp()`
-4. 가입 완료 → 프론트 `POST /invitations/accept` (토큰 + 새 user_id)
-5. 서버: 토큰 검증 → `users`에 org_id/role 부여 → `accepted_at` 기록
+| 통합 | 용도 | Phase | 주의 |
+|---|---|---:|---|
+| Naver Clova STT | 실시간 전사 | 5 | 서버 내부 gRPC adapter. 클라이언트가 직접 Clova에 붙지 않음 |
+| Claude/OpenAI | 통화 추천, 요약, 뉴스레터 초안 | 5~6 | 작업별 모델 분리, rate limit 필요 |
+| Naver Search | Daily 트렌드 | 6 | cron + cache 필수 |
+| SMTP/Resend | 초대, 알림, 뉴스레터 | 3~6 | 클라우드 비용 회피가 중요하면 자체 SMTP도 후보 |
+| HubSpot | 고객 sync | 6 | 초기 read-only |
+| Slack | 알림 outbound | 6 | webhook |
 
 ---
 
-## 6. 단계별 로드맵
+## 8. 단계별 로드맵
 
-### Phase 0.5 — Live 스트림 스파이크 (3~5일) ⭐ 최우선
-**가설**: "이벤트 기반 실시간 통화 콘솔 흐름이 실제로 동작하고, 우리가 만드는 게 진짜 Kloser 백엔드인지 확인."
+### Phase 0.5 — Live 스트림 스파이크 (3~5일)
 
-- [ ] `server/` 부트스트랩 (Fastify + TS + pino + Socket.io)
-- [ ] `/calls` 네임스페이스에 `start_call` / `end_call` / `text_chunk` 핸들러 (오디오 없이 텍스트로)
-- [ ] 서버가 더미 워커로 `transcript` / `suggestion` / `sentiment` 이벤트를 1~2초 간격으로 푸시 (스크립트 기반)
-- [ ] `platform/ws.js` Socket.io 클라이언트 래퍼
-- [ ] `live.html`의 `setTimeout` 시뮬레이션을 WS 이벤트 핸들러로 교체 (UI는 그대로)
-- [ ] 평균 라운드트립 지연 측정 (목표: 3초 이내)
-- [ ] 세션 권한 모델 초안 (`call_id` 기반 room 격리, 인증되지 않은 클라는 join 거부)
-- [ ] 0.4의 이벤트 스키마 확정·문서화
+목표: Auth/DB보다 먼저 Kloser 핵심인 실시간 이벤트 파이프라인을 확인한다.
 
-**완료 정의**: 두 개 브라우저 탭에서 같은 세션에 join 불가능 (다른 user)·같은 user는 join 가능. 텍스트 청크 보내면 1~3초 안에 transcript/suggestion/sentiment 이벤트가 양쪽 탭의 live.html에 표시됨.
+- [ ] `server/` Fastify + TypeScript 부트스트랩
+- [ ] Socket.io 또는 native WebSocket 적용
+- [ ] `/calls` namespace
+- [ ] `start_call`, `text_chunk`, `end_call`
+- [ ] 서버가 더미 `transcript`, `suggestion`, `sentiment` 이벤트 푸시
+- [ ] `platform/ws.js` 추가
+- [ ] `live.html`의 `setTimeout` mock을 WebSocket 이벤트 기반으로 교체
+- [ ] 지연시간 측정
 
-### Phase 1 — Auth + 공통 API 기반 (1~1.5주)
-- [ ] Supabase 프로젝트 생성, `organizations`/`users`/`teams`/`invitations`/`activity_log` 마이그레이션
-- [ ] Auth 미들웨어 (JWT 검증 + RLS 컨텍스트)
-- [ ] `GET /me`, `POST /invitations/accept`
-- [ ] **`platform/api.js`** — `apiFetch()` 래퍼, escape, loading/empty/error 헬퍼
-- [ ] Phase 0.5의 스파이크 코드를 Auth 적용으로 업그레이드 (handshake JWT)
-- [ ] seed 데이터: 데모 org 1개 + 현재 mock과 유사한 멤버 14명
-- [ ] PIPA 컴플라이언스 체크리스트 (`docs/SECURITY.md`)
-- [ ] CI: lint + test + 타입 체크 + Railway 배포
+완료 기준: 텍스트 청크를 보내면 1~3초 안에 transcript/suggestion/sentiment가 live 화면에 표시된다.
 
-### Phase 2 — Customers (첫 완성 CRUD) (1주)
-- [ ] `customers` / `customer_notes` / `customer_tags` 스키마 + RLS
-- [ ] `/customers` CRUD 5종 + 검색·필터·페이지네이션
-- [ ] `customers.html` mock 제거 → API 연결 (`api.js` 패턴 검증)
-- [ ] loading / empty / error 상태 일관 적용
-- [ ] activity_log 기록 (생성·삭제·소유권 변경)
+### Phase 1 — 온프레미스 기반 + 자체 Auth (1.5~2주)
 
-### Phase 3 — Team & 권한 + Resend (1~1.5주)
-- [ ] `teams` / `invitations` 스키마
-- [ ] `/team/members` GET/PATCH/DELETE, `/team/invitations` POST
-- [ ] 역할 매트릭스 미들웨어 적용
-- [ ] Resend 도입 + 도메인 검증 + 초대 메일 발송
+- [ ] `ops/docker-compose.yml`: postgres, redis, app
+- [ ] PostgreSQL migration 도구 적용
+- [ ] core schema: organizations, users, memberships, sessions, teams, invitations, activity_log
+- [ ] **모든 org-스코프 테이블 RLS default-deny ENABLE** (Phase 2 이후 추가되는 모든 테이블도 동일 정책 강제)
+- [ ] **auth 미들웨어에서 `SET LOCAL app.org_id` 트랜잭션 주입** + 워커 컨텍스트 동등 처리
+- [ ] **RLS 격리 단위 테스트**: 다른 org JWT로 타 org 데이터 조회/변경 차단 확인 (PR 머지 게이트)
+- [ ] Argon2id password hash
+- [ ] login/signup/refresh/logout
+- [ ] auth middleware + role middleware
+- [ ] `GET /me`
+- [ ] `platform/api.js`
+- [ ] seed 데이터 (org 2개 이상 — RLS 격리 자체 검증용)
+- [ ] Nginx/Caddy reverse proxy 초안
+
+### Phase 2 — Customers 첫 완성 CRUD (1주)
+
+- [ ] customers schema
+- [ ] customers repository/service/routes
+- [ ] 검색/필터/페이지네이션
+- [ ] `customers.html` mock 제거
+- [ ] loading/empty/error 상태
+- [ ] activity_log 기록
+- [ ] org_id 누락 방지 테스트
+
+### Phase 3 — Team + 초대 + 권한 (1~1.5주)
+
+- [ ] team/members API
+- [ ] invitations API
+- [ ] 초대 메일 발송
+- [ ] role matrix 적용
 - [ ] `team.html` mock 제거
-- [ ] 알림 시스템: `notifications` 스키마 + Socket.io `/notifications` + `_shared.js` 알림 패널 연결
+- [ ] notifications 기본
 
 ### Phase 4 — Calls + Dashboard (1.5~2주)
-- [ ] `calls` / `transcripts` / `call_checklist` / `ai_suggestions` 스키마 + RLS
-- [ ] `/calls` REST (목록·상세·트랜스크립트 페이지네이션·노트)
-- [ ] `calls.html` mock 제거 → API 연결
-- [ ] `/dashboard/summary` + `/dashboard/recent-calls` + `/dashboard/recent-activity`
-- [ ] `dashboard.html` 통화 KPI 실데이터 연결
-- [ ] BullMQ 잡: `call.summarize` (통화 종료 시 요약 생성)
-- [ ] 트랜스크립트 lazy loading (긴 통화 대비)
 
-### Phase 5 — Live 실제 STT + AI (2~3주)
-- [ ] **서버 내부 gRPC STT adapter** (`server/src/integrations/clova/`): 들어오는 PCM 청크 → 16kHz mono 정규화 → Clova gRPC streaming → 결과 콜백
-- [ ] 0.5의 `text_chunk` 경로를 `audio_chunk` 경로로 확장 (둘 다 유지: demo mode와 real mode)
-- [ ] 발화 단위 세그먼트 처리 + VAD 후처리
-- [ ] BullMQ 잡: `ai.suggest` (1~2초 단위 배치, RAG 기반 추천)
-- [ ] `knowledge_bases` / `knowledge_chunks` (pgvector) + 관리자 페이지에서 FAQ/스크립트 등록
-- [ ] 민감정보 마스킹 (전화·카드 정규식)
-- [ ] 실패 시 fallback: text demo mode 자동 전환
+- [ ] calls/transcripts/checklist/suggestions schema
+- [ ] calls REST API
+- [ ] `calls.html` mock 제거
+- [ ] dashboard summary API
+- [ ] `dashboard.html` 실데이터 연결
+- [ ] `call.summarize` job
+
+### Phase 5 — 실제 STT + AI (2~3주)
+
+- [ ] Clova gRPC STT adapter
+- [ ] audio_chunk 처리
+- [ ] PCM 16kHz mono 정규화
+- [ ] transcript segment 저장
+- [ ] AI suggestion job
+- [ ] knowledge base + pgvector
+- [ ] 민감정보 마스킹
 - [ ] 평균 지연 3초 이내 검증
 
-### Phase 6 — Daily + Newsletter + Integrations (2~3주)
-- [ ] `keywords`/`competitors`/`trend_snapshots`/`todos` + Naver Search 통합 + 매일 06:00 KST cron
-- [ ] `daily.html` mock 제거
-- [ ] 뉴스레터 캠페인·템플릿·수신자 + Resend fan-out + open/click/bounce
-- [ ] `POST /newsletter/ai-draft` (Claude Sonnet 4.6)
-- [ ] `newsletter.html` mock 제거
-- [ ] `settings.html` 모든 섹션 API 연결
-- [ ] HubSpot 단방향 sync (BullMQ 주기 잡), Slack outbound
-- [ ] `integrations` 자격증명 암호화 (pgcrypto)
+### Phase 6 — Daily / Newsletter / Integrations (2~3주)
+
+- [ ] Naver Search cron
+- [ ] daily.html 실데이터 연결
+- [ ] newsletter campaign/templates/recipients
+- [ ] 발송 queue
+- [ ] newsletter.html 실데이터 연결
+- [ ] settings.html API 연결
+- [ ] HubSpot read-only sync
+- [ ] Slack outbound
 
 ---
 
-## 7. 비기능 요구사항
+## 9. 운영 배포 방식
 
-- **로깅**: pino (구조화 JSON). 운영 진입 시 Axiom/Datadog
-- **에러**: Sentry (Phase 1부터)
-- **테스트**: vitest + supertest. RLS 정책은 단위 테스트 필수. WS 흐름은 e2e (소켓 클라이언트로)
-- **마이그레이션**: Supabase CLI. forward-only
-- **API 문서**: `@fastify/swagger` (REST) + 0.4 이벤트 스키마(WS) 별도 md
-- **CI/CD**: GitHub Actions — lint/test/typecheck → main 푸시 시 Railway 배포
-- **타입 동기화**: `supabase gen types typescript` → `shared/types/db.ts`
+초기 단일 서버:
+
+```text
+systemd
+  - kloser-api.service
+  - kloser-worker.service
+  - postgresql
+  - redis
+  - nginx/caddy
+```
+
+또는 Docker Compose:
+
+```text
+services:
+  app
+  worker
+  postgres
+  redis
+  minio
+  nginx
+```
+
+초기에는 Docker Compose가 재현성이 좋다. 운영 안정화 후 systemd + managed local services로 단순화할 수 있다.
+
+필수 운영 작업:
+
+- DB daily backup
+- backup restore drill
+- log rotation
+- disk usage alert
+- TLS certificate renewal
+- app/worker health check
+- Redis persistence 설정
+- migration before deploy
 
 ---
 
-## 8. 미정 / 추후 검토
+## 10. 테스트 전략
 
-- **녹취 저장**: Supabase Storage vs S3 vs 미저장 — 법무·PIPA 검토 (Phase 5 진입 전)
-- **STT 비용**: Clova vs Deepgram vs OpenAI Realtime — Phase 5 직전 실측
-- **결제**: Stripe vs Toss — Phase 6 이후
-- **다국어**: 한국어만. 영어 시점 미정
-- **모바일**: 반응형 웹만
-- **백업**: Supabase 일일 백업 충분한가? PITR 필요 여부
+- unit: services, repositories
+- API: Fastify inject/supertest
+- auth: signup/login/refresh/logout
+- permission: role별 접근 제어
+- org isolation: 다른 org 데이터 접근 차단
+- WebSocket: text_chunk → transcript/suggestion 이벤트
+- Playwright: 기존 smoke test 확장
+
+초기 필수 테스트:
+
+- 비밀번호 hash 검증
+- refresh token rotation
+- `/me` 인증 성공/실패
+- customers CRUD org isolation
+- viewer write 차단
+- call room unauthorized join 차단
 
 ---
 
-## 9. 다음 액션
+## 11. 미정 / 선택 필요
 
-1. Phase 0.2 결정사항 사용자 최종 확인
-2. **Phase 0.5 착수** — `server/` 부트스트랩 + Socket.io + live.html 텍스트 spike
+1. Auth token 전달 방식
+   - A. HttpOnly cookie
+   - B. Authorization Bearer
+   - 추천: 웹은 HttpOnly cookie, 데스크톱 앱은 Bearer token
+
+2. 이메일 발송
+   - A. 자체 SMTP
+   - B. Resend/SES
+   - 추천: 초기 자체 SMTP 가능. 뉴스레터 대량 발송 전에는 deliverability 때문에 전문 provider 재검토
+
+3. 파일 저장
+   - A. local disk
+   - B. MinIO
+   - 추천: 초기 local disk, 녹취 저장 켜는 시점에 MinIO
+
+4. Keycloak
+   - A. 미도입
+   - B. Enterprise SSO 시점 도입
+   - 추천: B
+
+> 이전 v0.4 미정 항목 4번 "PostgreSQL RLS"는 §4에서 **Phase 1부터 default-deny ENABLE**로 확정됨 (repository 계층은 중복 방어선으로 유지).
 
 ---
 
-## 부록 A — 외부 트랙
+## 12. 다음 액션
 
-- **`docs/DESKTOP_APP_PLAN.md`** — PC 데스크톱 앱(Electron/Tauri/WPF, WASAPI 캡처, 디바이스 등록, 자동 업데이트, 파일럿 환경 표준화). 본 트랙의 통화 백엔드와 인터페이스는 0.4의 이벤트 스키마로 고정
-- **`docs/realtime-call-assistant-guide.md`** — 제품 정의 (단일 진실원)
+1. Phase 0.5 착수: `server/` 부트스트랩 + WebSocket live spike
+2. `ops/docker-compose.yml` 초안 작성: app, worker, postgres, redis, nginx
+3. PostgreSQL migration 도구 확정: `node-pg-migrate` 우선
+4. Auth token 전달 방식 확정: 웹은 HttpOnly cookie, 데스크톱 앱은 Bearer token 권장
