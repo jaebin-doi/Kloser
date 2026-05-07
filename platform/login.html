@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kloser — 로그인</title>
+  <!--
+    Phase 1 step 4 dev login.
+
+    Minimal form for the auth flow. Calls kloserApi.login() (which
+    skips the wrapper's auto-Bearer + auto-refresh path) and on
+    success redirects to ?returnUrl= (default: /platform/live.html).
+
+    Server origin override: drop in a <meta name="kloser-api-base"
+    content="..."> right above api.js, or set window.KLOSER_API_BASE
+    before the api.js script tag.
+  -->
+  <style>
+    :root {
+      --fg: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #f8fafc;
+      --primary: rgb(37 99 235);
+      --primary-hover: rgb(29 78 216);
+      --danger: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard",
+                   "Apple SD Gothic Neo", system-ui, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    main {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 32px 28px;
+      box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.1);
+    }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    p.lead { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin: 12px 0 6px; }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+    button.primary {
+      width: 100%;
+      margin-top: 20px;
+      padding: 11px;
+      font-size: 14px;
+      font-weight: 500;
+      color: white;
+      background: var(--primary);
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button.primary:hover:not(:disabled) { background: var(--primary-hover); }
+    button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .error { margin-top: 16px; color: var(--danger); font-size: 13px; }
+    .hint { margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .org-list {
+      margin-top: 8px;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .org-list ul { margin: 4px 0 0 16px; padding: 0; }
+    .dev-fixture {
+      margin-top: 24px;
+      padding: 12px;
+      background: #fef9c3;
+      border: 1px dashed #ca8a04;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #713f12;
+    }
+    .dev-fixture code { background: white; padding: 1px 4px; border-radius: 3px; }
+    .dev-fixture-button {
+      margin-top: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      background: white;
+      border: 1px solid #ca8a04;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+  <script src="api.js"></script>
+</head>
+<body>
+  <main>
+    <form id="login-form" class="card" novalidate>
+      <h1>Kloser 로그인</h1>
+      <p class="lead">Phase 1 dev fixture · seed 자격증명 사용</p>
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+      <label for="orgId">Organization ID <span class="hint" style="font-weight: 400">— 멀티-org 사용자만 입력</span></label>
+      <input id="orgId" name="orgId" type="text" placeholder="(선택) 11111111-1111-1111-1111-111111111111">
+
+      <button id="submit" class="primary" type="submit">로그인</button>
+
+      <div id="error" class="error" hidden></div>
+      <div id="org-list" class="org-list" hidden>
+        <div>여러 조직에 가입돼 있습니다. 그중 하나의 ID를 위 입력칸에 넣고 다시 로그인하세요.</div>
+        <ul id="org-list-items"></ul>
+      </div>
+
+      <div id="dev-fixture" class="dev-fixture" hidden>
+        <strong>dev seed 자격증명</strong>
+        <ul style="margin: 6px 0 0 16px; padding: 0;">
+          <li><code>admin@acme.test</code> / <code>acme-admin-1234</code></li>
+          <li><code>emp@acme.test</code> / <code>acme-emp-1234</code></li>
+          <li><code>admin@beta.test</code> / <code>beta-admin-1234</code></li>
+          <li><code>emp@beta.test</code> / <code>beta-emp-1234</code></li>
+        </ul>
+        <button type="button" class="dev-fixture-button" id="fill-acme-admin">
+          admin@acme.test 자동 채우기
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const form = document.getElementById('login-form');
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      const orgIdInput = document.getElementById('orgId');
+      const errorDiv = document.getElementById('error');
+      const orgListDiv = document.getElementById('org-list');
+      const orgListItems = document.getElementById('org-list-items');
+      const submitBtn = document.getElementById('submit');
+      const devFixture = document.getElementById('dev-fixture');
+
+      function isLocalhost() {
+        const h = window.location.hostname;
+        return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]';
+      }
+
+      // dev fixture hint only on localhost — never on prod marketing.
+      if (isLocalhost()) {
+        devFixture.hidden = false;
+        document.getElementById('fill-acme-admin').addEventListener('click', () => {
+          emailInput.value = 'admin@acme.test';
+          passwordInput.value = 'acme-admin-1234';
+          orgIdInput.value = '';
+          emailInput.focus();
+        });
+      }
+
+      function getReturnUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('returnUrl');
+        // Only allow same-origin redirects (path only). Reject anything
+        // that smells like an absolute URL — open redirect guard.
+        if (raw && raw.startsWith('/') && !raw.startsWith('//')) {
+          return raw;
+        }
+        return '/platform/live.html';
+      }
+
+      function showError(message) {
+        errorDiv.textContent = message;
+        errorDiv.hidden = false;
+      }
+      function hideError() {
+        errorDiv.hidden = true;
+        errorDiv.textContent = '';
+      }
+      function showOrgList(orgs) {
+        orgListItems.innerHTML = '';
+        for (const org of orgs) {
+          const li = document.createElement('li');
+          // textContent intentionally — these strings come from the
+          // server but go straight into the DOM, so escape via the
+          // browser's own text-node mechanism.
+          li.textContent = `${org.name} (${org.role}) — ${org.id}`;
+          orgListItems.appendChild(li);
+        }
+        orgListDiv.hidden = false;
+      }
+      function hideOrgList() {
+        orgListDiv.hidden = true;
+        orgListItems.innerHTML = '';
+      }
+
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        hideError();
+        hideOrgList();
+        submitBtn.disabled = true;
+        try {
+          const orgId = orgIdInput.value.trim();
+          await window.kloserApi.login({
+            email: emailInput.value.trim(),
+            password: passwordInput.value,
+            orgId: orgId.length > 0 ? orgId : undefined,
+          });
+          // Success: token is in memory (kloserApi did setAccessToken).
+          // Refresh cookie was set via Set-Cookie. Bounce to returnUrl.
+          window.location.replace(getReturnUrl());
+        } catch (err) {
+          const status = err && err.status;
+          const body = err && err.body;
+          if (status === 400 && body && body.code === 'org_id_required' && Array.isArray(body.availableOrgs)) {
+            showOrgList(body.availableOrgs);
+            showError('가입된 조직이 여러 개입니다. orgId를 지정해 주세요.');
+            orgIdInput.focus();
+          } else if (status === 401) {
+            showError('이메일 또는 비밀번호가 올바르지 않습니다.');
+          } else if (status === 400) {
+            showError('입력값을 다시 확인해 주세요.');
+          } else {
+            showError('로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            console.error('[login] unexpected error', err);
+          }
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
