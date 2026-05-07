@@ -12,6 +12,8 @@ import { Server as IOServer } from "socket.io";
 import { registerCallsNamespace } from "./ws/calls.js";
 import authPlugin from "./plugins/auth.js";
 import dbPlugin from "./plugins/db.js";
+import authRoutes from "./routes/auth.js";
+import meRoutes from "./routes/me.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -28,6 +30,9 @@ await app.register(cors, {
 
 await app.register(authPlugin);
 await app.register(dbPlugin);
+
+await app.register(authRoutes);
+await app.register(meRoutes);
 
 app.get("/health", async () => ({
   ok: true,

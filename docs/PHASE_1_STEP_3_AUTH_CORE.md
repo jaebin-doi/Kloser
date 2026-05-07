@@ -15,8 +15,8 @@
 - [x] 5. seed password를 Argon2id hash로 갱신 + 평문 4쌍을 seed 파일 헤더 코멘트에 명시 (dev/test 사용성)
 - [x] 6. auth repository/service 작성
 - [x] 7. auth plugin/middleware 작성 (`request.user`, `requireAuth`, `requireRole`)
-- [ ] 8. routes 작성 (`/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/me`)
-- [ ] 9. `orgContext`를 JWT 우선으로 전환하고 prod에서 `X-Org-Id` 차단
+- [x] 8. routes 작성 (`/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/me`)
+- [x] 9. `orgContext`를 JWT 우선으로 전환하고 prod에서 `X-Org-Id` 차단
 - [ ] 10. auth 테스트 작성 (login/refresh/logout/me/role/RLS)
 - [ ] 11. Phase 0.5 e2e 회귀 영향 정리
 - [ ] 12. `docs/PHASE_1_STEP_3_FINDINGS.md` 작성
