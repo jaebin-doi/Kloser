@@ -1,4 +1,4 @@
-/* Phase 0.5 end-to-end Playwright verification.
+/* Phase 0.5 end-to-end Playwright verification — refreshed for Phase 1 step 4.
  *
  * Pre-req:
  *   - API:    `npm --prefix server run dev`            (port 3001)
@@ -6,13 +6,28 @@
  *
  * Run:
  *   node test/phase_0_5_e2e.mjs
+ *
+ * Phase 1 step 4 changes vs. the spike-era version:
+ *   - Step 0 (setup, not counted): login through /platform/login.html. The
+ *     old test could land on live.html directly; with the auth gate added
+ *     in step 4, an unauthenticated visit bounces to login.html.
+ *   - Probe sockets pass tokenProvider instead of the now-deleted userId
+ *     query param. They share the page's access token via kloserApi.
+ *   - End of run adds 2 auth-reject cases (15, 16) — handshake without a
+ *     token and with a mangled token — using raw window.io to avoid the
+ *     wrapper's auto-refresh-on-401 dance.
+ *
+ * Total accounted for: 14 prior cases + 2 auth reject = 16 PASS.
  */
 import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const STATIC_URL = "http://localhost:8765/platform/live.html";
-const API_HEALTH = "http://localhost:3001/health";
+const STATIC_ORIGIN = "http://localhost:8765";
+const LOGIN_URL     = `${STATIC_ORIGIN}/platform/login.html`;
+const LIVE_URL      = `${STATIC_ORIGIN}/platform/live.html`;
+const API_HEALTH    = "http://localhost:3001/health";
+const API_BASE      = "http://localhost:3001";
 
 // Resolve screenshot path relative to this script so the test is cwd-independent.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,7 +57,23 @@ async function main() {
   });
   page.on("pageerror", (err) => consoleErrors.push(`[pageerror] ${err.message}`));
 
-  await page.goto(STATIC_URL, { waitUntil: "domcontentloaded" });
+  // ─────────────────────────────────────────────────────────────────────
+  // Step 0 (setup, not a counted PASS): log in via the real login form.
+  //   - login.html POSTs /auth/login → Set-Cookie (refresh, Path=/auth)
+  //     and a Bearer access token in api.js memory.
+  //   - login.html then window.location.replace('/platform/live.html').
+  //   - On live.html, getAccessToken() is empty (new page, fresh memory),
+  //     so the auth gate calls refreshAccessToken() which uses the cookie.
+  //   - That repopulates the token, and ws.js opens /calls with it.
+  // ─────────────────────────────────────────────────────────────────────
+  await page.goto(LOGIN_URL, { waitUntil: "domcontentloaded" });
+  await page.fill("#email",    "admin@acme.test");
+  await page.fill("#password", "acme-admin-1234");
+  await Promise.all([
+    page.waitForURL((url) => url.pathname.endsWith("/platform/live.html"), { timeout: 5000 }),
+    page.click("#submit"),
+  ]);
+  console.log("→ login OK, redirected to live.html");
 
   // 1. Connection + start_call ack appear quickly
   await page.waitForFunction(
@@ -51,8 +82,10 @@ async function main() {
   );
   pass("kloserWS loaded");
 
-  // 2. First transcript (agent greeting) appears within 1500ms (delay 0 + RTT)
-  await page.waitForSelector("#transcript .msg-enter", { timeout: 2000 });
+  // 2. First transcript (agent greeting) appears within ~1500ms after the
+  //    auth gate completes (refresh round-trip + start_call ack + delay 0).
+  //    Bumped slightly vs. the pre-auth-gate budget.
+  await page.waitForSelector("#transcript .msg-enter", { timeout: 4000 });
   const firstAgent = await page.locator("#transcript .msg-enter").first().innerText();
   if (!firstAgent.includes("김민수입니다")) fail(`first transcript missing greeting — got: ${firstAgent}`);
   else pass(`first transcript: greeting agent line received`);
@@ -81,11 +114,19 @@ async function main() {
   else pass(`suggestion cards rendered (${suggestionCount} present)`);
 
   // 6. Manual text_chunk RTT probe via wrapper.
-  //    Filter by seq instead of `once` — the probe socket also calls startCall,
-  //    so server-driven demo transcripts (seq 1..10) can race with our probe.
-  //    We use seq=999 and only resolve on that.
+  //    Phase 1 step 4: probe shares the page's access token via tokenProvider;
+  //    no userId query param anymore. We filter on seq=999 because the
+  //    server's demo replay also pushes transcripts on this socket once
+  //    we call start_call.
   const probe = await page.evaluate(async () => {
-    const probe = window.kloserWS.connectCallNamespace({ baseUrl: "http://localhost:3001", userId: "e2e-probe" });
+    const probe = window.kloserWS.connectCallNamespace({
+      baseUrl:        "http://localhost:3001",
+      tokenProvider:  () => window.kloserApi.getAccessToken(),
+      // The default onAuthFailure redirects to /login; harmless during
+      // a positive probe but explicitly no-op'd to keep the page stable
+      // if anything goes sideways.
+      onAuthFailure:  () => {},
+    });
     await new Promise((r) => probe.on("connect", r));
     await window.kloserWS.startCall(probe, {});
     const t0 = Date.now();
@@ -113,7 +154,7 @@ async function main() {
   else pass(`RTT under 150ms target (${probe.rtt}ms)`);
 
   // 7. Latency badge actually updates when the page socket sends text_chunk.
-  //    The page socket is exposed as window.__liveSocket for this assertion
+  //    The page socket is exposed as window.__liveSocket on localhost
   //    (otherwise the IIFE-scoped socket is unreachable). Use a high seq to
   //    avoid colliding with server-driven demo seqs.
   const latencyBefore = await page.locator("#latencyVal").innerText();
@@ -122,7 +163,8 @@ async function main() {
   });
   await page.waitForFunction(
     () => /^\d+ms$/.test((document.getElementById("latencyVal")?.textContent || "").trim()),
-    { timeout: 2000 },
+    null,
+    { timeout: 4000 },
   );
   const latencyAfter = await page.locator("#latencyVal").innerText();
   pass(`#latencyVal updated on text_chunk: "${latencyBefore}" → "${latencyAfter}"`);
@@ -130,16 +172,24 @@ async function main() {
   if (!Number.isFinite(ms) || ms > 150) fail(`page latency exceeds 150ms or unparseable: ${latencyAfter}`);
   else pass(`page latency under 150ms target (${ms}ms)`);
 
-  // 8. Final transcript count check — at this point we should have 7 transcripts
-  // (delays 0, 4500, 9000, 13500, 18000, 22500 = 6 from server replay + 1 we know about)
-  // Plus we did not consume the page socket for a probe so the page got server-driven only.
+  // 8. Final transcript count check — informational. By this point we've
+  //    consumed several server-driven demo transcripts plus our own probes.
   const transcriptCount = await page.locator("#transcript .msg-enter").count();
   pass(`page transcript count: ${transcriptCount}`);
 
-  // 9. text_chunk payload validation — server should emit `error` on missing clientSentAt
+  // 9. text_chunk payload validation — server should emit `error` on missing clientSentAt.
+  //    Phase 1 step 4: probe needs tokenProvider too.
   const badPayloadResult = await page.evaluate(async () => {
-    const probe = window.kloserWS.connectCallNamespace({ baseUrl: "http://localhost:3001", userId: "e2e-bad" });
+    const probe = window.kloserWS.connectCallNamespace({
+      baseUrl:        "http://localhost:3001",
+      tokenProvider:  () => window.kloserApi.getAccessToken(),
+      onAuthFailure:  () => {},
+    });
     await new Promise((r) => probe.on("connect", r));
+    // start_call first — server's no_active_call check would otherwise
+    // win over BAD_PAYLOAD. We're testing payload validation, not the
+    // sequencing invariant.
+    await window.kloserWS.startCall(probe, {});
     const result = await new Promise((resolve) => {
       probe.once("error", (err) => resolve({ ok: true, err }));
       setTimeout(() => resolve({ ok: false, reason: "no error event in 1500ms" }), 1500);
@@ -153,7 +203,71 @@ async function main() {
   else if (badPayloadResult.err?.code !== "BAD_PAYLOAD") fail(`payload validation: unexpected error code ${badPayloadResult.err?.code}`);
   else pass(`payload validation: BAD_PAYLOAD emitted on missing clientSentAt`);
 
-  // 10. No console errors
+  // ─── auth-reject cases (Phase 1 step 4 §1.8 additions) ────────────────
+  //
+  // We use raw window.io directly (not kloserWS) because the wrapper would
+  // try to refresh-and-reconnect on an auth-code error, which contaminates
+  // the test. forceNew + reconnection:false ensure each socket dies cleanly
+  // after one attempt.
+
+  // 10. Handshake without a token → connect_error code 'missing_token'
+  const noTokenResult = await page.evaluate(async (apiBase) => {
+    const sock = window.io(apiBase + "/calls", {
+      auth:         { token: "" },
+      transports:   ["websocket"],
+      reconnection: false,
+      forceNew:     true,
+    });
+    return await new Promise((resolve) => {
+      const t = setTimeout(() => resolve({ ok: false, reason: "timeout" }), 3000);
+      sock.once("connect_error", (err) => {
+        clearTimeout(t);
+        sock.disconnect();
+        resolve({ ok: true, code: err && err.data && err.data.code, message: err && err.message });
+      });
+      sock.once("connect", () => {
+        clearTimeout(t);
+        sock.disconnect();
+        resolve({ ok: false, reason: "unexpected connect" });
+      });
+    });
+  }, API_BASE);
+  if (!noTokenResult.ok) fail(`auth reject (no token): ${noTokenResult.reason}`);
+  else if (noTokenResult.code !== "missing_token") fail(`auth reject (no token): expected 'missing_token', got '${noTokenResult.code}'`);
+  else pass(`auth reject: handshake without token → connect_error 'missing_token'`);
+
+  // 11. Handshake with a mangled token → connect_error code 'invalid_token'
+  const badTokenResult = await page.evaluate(async (apiBase) => {
+    const valid = window.kloserApi.getAccessToken();
+    if (!valid) return { ok: false, reason: "no token in memory to mangle" };
+    const broken = valid.slice(0, -10) + "ZZZZZZZZZZ";
+    const sock = window.io(apiBase + "/calls", {
+      auth:         { token: broken },
+      transports:   ["websocket"],
+      reconnection: false,
+      forceNew:     true,
+    });
+    return await new Promise((resolve) => {
+      const t = setTimeout(() => resolve({ ok: false, reason: "timeout" }), 3000);
+      sock.once("connect_error", (err) => {
+        clearTimeout(t);
+        sock.disconnect();
+        resolve({ ok: true, code: err && err.data && err.data.code, message: err && err.message });
+      });
+      sock.once("connect", () => {
+        clearTimeout(t);
+        sock.disconnect();
+        resolve({ ok: false, reason: "unexpected connect" });
+      });
+    });
+  }, API_BASE);
+  if (!badTokenResult.ok) fail(`auth reject (invalid token): ${badTokenResult.reason}`);
+  else if (badTokenResult.code !== "invalid_token") fail(`auth reject (invalid token): expected 'invalid_token', got '${badTokenResult.code}'`);
+  else pass(`auth reject: handshake with mangled token → connect_error 'invalid_token'`);
+
+  // 12. No console errors. NB: the kloserWS wrapper logs connect_error as
+  //     console.warn (not error), so the auth-reject probes above using
+  //     raw window.io — which doesn't log anything — keep this clean.
   if (consoleErrors.length > 0) {
     fail(`console errors: ${JSON.stringify(consoleErrors, null, 2)}`);
   } else {

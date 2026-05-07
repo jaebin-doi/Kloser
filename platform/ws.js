@@ -139,7 +139,12 @@
     });
 
     // Dev handle — for tests and console debugging on local boxes only.
-    if (isDevHost()) {
+    // Only the FIRST socket created in this window claims the handle.
+    // The page's initial call socket is created once on load; any later
+    // sockets (test probes, secondary tabs) must not clobber the page's
+    // primary handle, otherwise `window.__liveSocket` would silently
+    // point at a closed probe and the page can't be driven from tests.
+    if (isDevHost() && !window.__liveSocket) {
       window.__liveSocket = socket;
     }
 
