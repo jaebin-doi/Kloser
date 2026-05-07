@@ -98,7 +98,7 @@ Phase 0.5는 "실시간 파이프라인이 기술적으로 가능한가?"를 답
 | 마이그레이션 도구 | **node-pg-migrate** | BACKEND_PLAN §3.1 1순위. SQL-first, RLS 정의 명시적 |
 | password hash | **Argon2id** | BACKEND_PLAN §3.2 |
 | JWT 라이브러리 | **`@fastify/jwt`** | Fastify 공식, 적은 의존성 |
-| token 저장 방식 (Step 4 결정 예정) | A. HttpOnly cookie (web) / B. Authorization Bearer (desktop) — **둘 다 지원 가능한 구조로 설계, Step 4 시점 dev 결정** | BACKEND_PLAN §11.1 권장 |
+| token 저장 방식 (Step 3 확정) | **access = Authorization Bearer (응답 body, 클라이언트 메모리)** + **refresh = HttpOnly cookie, `Path=/auth`, SameSite=Lax, prod Secure**. desktop도 동일 Bearer 사용. 자세한 근거는 `docs/PHASE_1_STEP_3_AUTH_CORE.md` §1·§3. | BACKEND_PLAN §11.1 권장 + WS handshake에서 같은 access token 재사용 |
 | ORM/Query layer | **pg + 직접 SQL + repository 패턴** | BACKEND_PLAN §3.1 — RLS·partial index를 명시적으로 다루기 위해 ORM 회피 |
 | docker compose 위치 | `ops/docker-compose.yml` | BACKEND_PLAN §2 디렉토리 구조 |
 | migration 위치 | `server/migrations/` | node-pg-migrate 기본 |

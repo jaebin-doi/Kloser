@@ -3,8 +3,9 @@
 > **Status**:
 > - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
 > - **Phase 1 Step 1** complete: DB infrastructure (compose, migration, seed, runtime verification).
-> - **Phase 1 Step 2** in progress: runtime `app` role + RLS context.
-> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`, `docs/PHASE_1_STEP_2_RLS_CONTEXT.md`.
+> - **Phase 1 Step 2** complete: runtime `app` role + RLS SET LOCAL context + isolation tests (10/10 PASS, e2e regression PASS).
+> - **Phase 1 Step 3** planned: Argon2id + JWT (Bearer access, HttpOnly refresh cookie) + sessions rotation + role guard. See `docs/PHASE_1_STEP_3_AUTH_CORE.md`.
+> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`, `docs/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/PHASE_1_STEP_2_FINDINGS.md`, `docs/PHASE_1_STEP_3_AUTH_CORE.md`.
 
 ## What this provides
 
@@ -89,14 +90,14 @@ server/
 
 ## Not done on purpose
 
-These are deferred to Phase 1+ and intentionally not implemented:
+These are deferred to later Phase 1 steps or beyond and intentionally not yet implemented:
 
-- Authentication / JWT — `userId` query param is accepted as-is
-- Persistence — no DB, no migrations, transcripts live only in-memory
-- Per-organization rooms — single socket = single call
+- Authentication / JWT — Step 3 (in planning). Today the WS handshake still accepts `userId` query param as-is.
+- DB-backed call/transcript persistence — Phase 1 step 1·2 set up postgres + RLS but call data still lives in-memory; Phase 4 wires the real storage.
+- Per-organization rooms in WS — single socket = single call
 - Runtime payload validation — only minimal shape checks
 - Real STT / LLM — Phase 5 of the broader plan
-- Reverse proxy / TLS — `localhost` plaintext only
+- Reverse proxy / TLS — `localhost` plaintext only (Step 5)
 - Sanitization of suggestion HTML — fixture is the only source for
   spike scope (`<b>`, `<br>` are intentional). Phase 1 must add
   DOMPurify or a markup whitelist before any user-authored content
