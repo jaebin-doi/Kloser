@@ -1,4 +1,4 @@
-# Kloser server (Phase 0.5 spike + Phase 1 in progress)
+# Kloser server (Phase 1 complete)
 
 > **Status**:
 > - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
@@ -6,8 +6,9 @@
 > - **Phase 1 Step 2** complete: runtime `app` role + RLS SET LOCAL context + isolation tests (10/10 PASS, e2e regression PASS).
 > - **Phase 1 Step 3** complete: Argon2id + Bearer access JWT + HttpOnly refresh cookie (Path=/auth) + sessions rotation with family reuse detection + role guard + prod X-Org-Id strict reject. 29/29 unit (auth 19 + rls 7 + orgContext 3) + 14/14 e2e PASS. See `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md` / `docs/plan/PHASE_1_STEP_3_FINDINGS.md`.
 > - **Phase 1 Step 4** complete: `platform/api.js` fetch wrapper (memory access token + single in-flight refresh + retry-once + login redirect) + `platform/login.html` + `platform/live.html` auth gate + DOMPurify suggestion sanitize + WS handshake JWT auth (`auth.token` slot, `userId` query removed) + `text_chunk` before `start_call` invariant. 37/37 unit (29 + WS auth 8) + 16/16 e2e PASS (login pre-step + 14 prior + auth reject 2). See `docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md` / `docs/plan/PHASE_1_STEP_4_FINDINGS.md`.
-> - **Phase 1 Step 5** next: Caddy reverse proxy draft + ops notes.
-> - See `docs/plan/PHASE_0_5_LIVE_SPIKE.md`, `docs/plan/PHASE_1_MASTER.md`, `docs/plan/PHASE_1_STEP_1_DB_INFRA.md`, `docs/plan/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/plan/PHASE_1_STEP_2_FINDINGS.md`, `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/plan/PHASE_1_STEP_3_FINDINGS.md`, `docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md`, `docs/plan/PHASE_1_STEP_4_FINDINGS.md`.
+> - **Phase 1 Step 5** complete: Caddy single-origin reverse proxy (`ops/Caddyfile.dev`, `tls internal`) + client-side origin auto-detect in `platform/api.js` (`https + localhost → ""` relative URLs) + `KLOSER_E2E_BASE_URL` parameterization for the e2e + `FASTIFY_GUIDE.md` §8 snake_case sync (Phase 0.5 inheritance 7/7 closed). 37/37 unit + 16/16 split-origin e2e PASS; Caddy variant e2e left for the user's Caddy-installed machine. See `docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md` / `docs/plan/PHASE_1_STEP_5_FINDINGS.md`.
+> - **Phase 1 complete.** Phase 2 (customers CRUD) is next.
+> - See `docs/plan/PHASE_0_5_LIVE_SPIKE.md`, `docs/plan/PHASE_1_MASTER.md`, `docs/plan/PHASE_1_STEP_1_DB_INFRA.md`, `docs/plan/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/plan/PHASE_1_STEP_2_FINDINGS.md`, `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/plan/PHASE_1_STEP_3_FINDINGS.md`, `docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md`, `docs/plan/PHASE_1_STEP_4_FINDINGS.md`, `docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md`, `docs/plan/PHASE_1_STEP_5_FINDINGS.md`.
 
 ## What this provides
 
@@ -68,6 +69,54 @@ node test/phase_0_5_e2e.mjs
 # expect: 16 PASS lines + "E2E PASSED"
 #   (login pre-step + 14 prior cases + 2 WS auth-reject cases)
 ```
+
+## Run (Caddy single-origin variant — Phase 1 Step 5)
+
+For a prod-equivalent dev setup where static, REST, and WS all live
+on `https://localhost` behind a self-signed cert (so cookie Secure
+behavior, same-origin fetch, and proxy WS upgrades are exercised
+end-to-end):
+
+1. Install Caddy v2 — `scoop install caddy` on Windows,
+   `brew install caddy` on macOS, `apt install caddy` on Debian.
+2. Trust the local CA once: `caddy trust`. The browser will warn on
+   the first visit until this is done.
+3. Launch from project root with the static-root env set:
+   ```powershell
+   # PowerShell
+   $env:KLOSER_STATIC_ROOT = (Resolve-Path .).Path
+   caddy run --config ops/Caddyfile.dev
+   ```
+   ```bash
+   # bash
+   KLOSER_STATIC_ROOT=$(pwd) caddy run --config ops/Caddyfile.dev
+   ```
+4. Open `https://localhost/platform/live.html`. No HTML edits are
+   needed — `platform/api.js` auto-detects the `https://localhost`
+   origin and switches to relative URLs (`/auth/*`, `/socket.io/*`)
+   that Caddy proxies to Fastify.
+
+Verify the variant with the same e2e suite:
+
+```powershell
+$env:KLOSER_E2E_BASE_URL = 'https://localhost'
+node test/phase_0_5_e2e.mjs
+Remove-Item Env:KLOSER_E2E_BASE_URL
+```
+
+```bash
+KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs
+```
+
+| 비교 | split-origin (default) | Caddy single-origin |
+|---|---|---|
+| 정적 | `http://localhost:8765` (http-server) | `https://localhost` (Caddy) |
+| API | `http://localhost:3001` (Fastify) | `https://localhost/auth/*` (Caddy → :3001) |
+| WS | `http://localhost:3001/calls` | `https://localhost/socket.io/*` (Caddy → :3001) |
+| TLS | none | `tls internal` (self-signed) |
+| Cookie `Secure` flag | false (HTTP) | can be true (HTTPS) |
+| `api.js` base URL | `http://localhost:3001` (default) | `""` auto-detected on `https://localhost` |
+| When to use | 일상 dev / e2e baseline | prod 등가 검증 / TLS 동작 확인 |
 
 The same script writes `test/phase_0_5_e2e.png` for visual evidence.
 

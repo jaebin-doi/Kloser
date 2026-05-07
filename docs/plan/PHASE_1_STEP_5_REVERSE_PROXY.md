@@ -8,15 +8,15 @@
 
 ## 진행 상태
 
-- [ ] 1. Step 4 baseline 재검증 (`npm --prefix server test` 37/37, `node test/phase_0_5_e2e.mjs` 16/16, typecheck)
-- [ ] 2. `ops/Caddyfile.dev` 신설 — `localhost:443` 단일 origin (`tls internal`), `/socket.io/*` + `/auth/*` + `/me` + `/api/*` + `/health` → `127.0.0.1:3001`, 그 외 → static (`{$KLOSER_STATIC_ROOT:.}` env-with-default `.`)
-- [ ] 3. `server/src/server.ts` — CORS allow-list에 `https://localhost`, `https://127.0.0.1` 추가 (dev direct API 호출 호환성용 — Caddy same-origin 경로 자체는 CORS를 타지 않음)
-- [ ] 4. `platform/api.js` + `platform/ws.js` — **same-origin auto-detect 휴리스틱** 도입. 명시 override (`window.KLOSER_API_BASE` / `<meta>`)가 없으면 `location.protocol === 'https:' && location.hostname === 'localhost'`일 때 자동으로 `''` (relative URL)을 사용. 기존 `length > 0` 가드 두 군데 풀고 빈 문자열 통과 허용. live.html 추적 파일은 **수정 안 함** — Caddy 모드는 단지 `https://localhost`로 접속하기만 하면 자동 활성화.
-- [ ] 5. `test/phase_0_5_e2e.mjs` — `KLOSER_E2E_BASE_URL` env로 `STATIC_ORIGIN` + `API_BASE` 동시 override + Caddy self-signed 흡수용 `ignoreHTTPSErrors: true` 분기 (URL이 `https:`로 시작할 때만). `page.evaluate` 안에 박힌 절대 URL `"http://localhost:3001"` 두 군데도 인자로 전달.
-- [ ] 6. `docs/decision/FASTIFY_GUIDE.md` §8 — `call:start`/`call:chunk`/`call:end` (3 군데) → `start_call`/`text_chunk`/`end_call`로 동기화. JSON 예시의 `"type": "call:chunk"`도 함께. Phase 0.5 인계 항목 마지막 1건 클로즈.
-- [ ] 7. `server/README.md` — Caddy 사용법 + 두 origin 모드 비교표 (split `:8765+:3001` vs single `https://localhost`)
-- [ ] 8. 루트 `README.md` run section — Caddy variant 옵션 한 단락 + dev seed 자격증명 흐름이 동일함을 명시
-- [ ] 9. `docs/plan/PHASE_1_STEP_5_FINDINGS.md` 작성 + 마스터 plan §3 Step 5 체크박스 + Phase 1 전체 §7 게이트 모두 동기화
+- [x] 1. Step 4 baseline 재검증 (`npm --prefix server test` 37/37, `node test/phase_0_5_e2e.mjs` 16/16, typecheck)
+- [x] 2. `ops/Caddyfile.dev` 신설 — `localhost:443` 단일 origin (`tls internal`), `/socket.io/*` + `/auth/*` + `/me` + `/api/*` + `/health` → `127.0.0.1:3001`, 그 외 → static (`{$KLOSER_STATIC_ROOT:.}` env-with-default `.`)
+- [x] 3. `server/src/server.ts` — CORS allow-list에 `https://localhost`, `https://127.0.0.1` 추가 (dev direct API 호출 호환성용 — Caddy same-origin 경로 자체는 CORS를 타지 않음)
+- [x] 4. `platform/api.js` + `platform/ws.js` — **same-origin auto-detect 휴리스틱** 도입. 명시 override (`window.KLOSER_API_BASE` / `<meta>`)가 없으면 `location.protocol === 'https:' && location.hostname === 'localhost'`일 때 자동으로 `''` (relative URL)을 사용. 기존 `length > 0` 가드 두 군데 풀고 빈 문자열 통과 허용. live.html 추적 파일은 **수정 안 함** — Caddy 모드는 단지 `https://localhost`로 접속하기만 하면 자동 활성화.
+- [x] 5. `test/phase_0_5_e2e.mjs` — `KLOSER_E2E_BASE_URL` env로 `STATIC_ORIGIN` + `API_BASE` 동시 override + Caddy self-signed 흡수용 `ignoreHTTPSErrors: true` 분기 (URL이 `https:`로 시작할 때만). `page.evaluate` 안에 박힌 절대 URL `"http://localhost:3001"` 두 군데도 인자로 전달.
+- [x] 6. `docs/decision/FASTIFY_GUIDE.md` §8 — `call:start`/`call:chunk`/`call:end` (3 군데) → `start_call`/`text_chunk`/`end_call`로 동기화. JSON 예시의 `"type": "call:chunk"`도 함께. Phase 0.5 인계 항목 마지막 1건 클로즈.
+- [x] 7. `server/README.md` — Caddy 사용법 + 두 origin 모드 비교표 (split `:8765+:3001` vs single `https://localhost`)
+- [x] 8. 루트 `README.md` run section — Caddy variant 옵션 한 단락 + dev seed 자격증명 흐름이 동일함을 명시
+- [x] 9. `docs/plan/PHASE_1_STEP_5_FINDINGS.md` 작성 + 마스터 plan §3 Step 5 체크박스 + Phase 1 전체 §7 게이트 모두 동기화
 
 ---
 
@@ -425,10 +425,10 @@ Step 5에서 발견·결정·미해결 인계. 최소 다음 항목:
 
 ## 6. 완료 기준 (Step 5 — go/no-go)
 
-- [ ] `npm --prefix server run typecheck` PASS
-- [ ] `npm --prefix server test` PASS (37/37 그대로 — Step 5는 server src 변경 미미)
-- [ ] `node test/phase_0_5_e2e.mjs` 16/16 PASS (split-origin 회귀)
-- [ ] Caddy single-origin variant 16/16 PASS — `caddy run --config ops/Caddyfile.dev` 사전 기동 후:
+- [x] `npm --prefix server run typecheck` PASS
+- [x] `npm --prefix server test` PASS (37/37 그대로 — Step 5는 server src 변경 거의 없음)
+- [x] `node test/phase_0_5_e2e.mjs` 16/16 PASS (split-origin 회귀)
+- [ ] Caddy single-origin variant 16/16 PASS — **사용자 측 Caddy 설치 후 1회 검증** (본 작업 환경 caddy 미설치):
   ```bash
   # bash / macOS / Linux
   KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs
@@ -439,13 +439,13 @@ Step 5에서 발견·결정·미해결 인계. 최소 다음 항목:
   node test/phase_0_5_e2e.mjs
   Remove-Item Env:KLOSER_E2E_BASE_URL
   ```
-- [ ] `caddy validate --config ops/Caddyfile.dev` ok
-- [ ] `caddy run --config ops/Caddyfile.dev` + `curl -k https://localhost/health` → `{"ok":true}`
-- [ ] 수동 smoke: 브라우저로 `https://localhost/platform/live.html` 진입 → login redirect → 데모 흐름 재생 (auto-detect 휴리스틱이 별도 HTML 변형 없이 동작하는지 시각 확인)
-- [ ] `grep -n "call:" docs/decision/FASTIFY_GUIDE.md` 결과 0건
-- [ ] `docs/plan/PHASE_1_STEP_5_FINDINGS.md` 작성
-- [ ] `PHASE_1_MASTER.md` §3 Step 5 `[x]` + §7 게이트 9개 모두 `[x]`
-- [ ] Phase 0.5 인계 7개 모두 closed (snake_case 동기화로 마지막 항목 처리)
+- [ ] `caddy validate --config ops/Caddyfile.dev` ok — 사용자 측
+- [ ] `caddy run --config ops/Caddyfile.dev` + `curl -k https://localhost/health` → `{"ok":true}` — 사용자 측
+- [ ] 수동 smoke: 브라우저로 `https://localhost/platform/live.html` 진입 → login redirect → 데모 흐름 재생 — 사용자 측
+- [x] `grep -n "call:" docs/decision/FASTIFY_GUIDE.md` 결과 0건
+- [x] `docs/plan/PHASE_1_STEP_5_FINDINGS.md` 작성
+- [x] `PHASE_1_MASTER.md` §3 Step 5 `[x]` + §7 게이트 9개 모두 `[x]`
+- [x] Phase 0.5 인계 7개 모두 closed (snake_case 동기화로 마지막 항목 처리)
 
 ---
 

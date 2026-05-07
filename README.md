@@ -143,8 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 1 Step 1~4 완료** — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring (메모리 access + single in-flight refresh + login redirect) + WS handshake JWT auth (`auth.token` slot, `userId` query 폐기) + DOMPurify suggestion sanitize까지 동작. `npm test` 37/37 + Phase 0.5 e2e 16/16 PASS. 다음은 Step 5 (Caddy reverse proxy + 운영 메모).
-> 자세한 계획·결과: [`docs/plan/BACKEND_PLAN.md`](docs/plan/BACKEND_PLAN.md), [`docs/plan/PHASE_1_MASTER.md`](docs/plan/PHASE_1_MASTER.md), [`docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md`](docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md), [`docs/plan/PHASE_1_STEP_4_FINDINGS.md`](docs/plan/PHASE_1_STEP_4_FINDINGS.md).
+> **현재 단계**: **Phase 1 완료** (Step 1~5) — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring + WS handshake JWT auth + DOMPurify + Caddy reverse proxy 옵션 (`ops/Caddyfile.dev`, single-origin auto-detect)까지 동작. `npm test` 37/37 + Phase 0.5 e2e 16/16 PASS. 다음은 Phase 2 (customers CRUD).
+> 자세한 계획·결과: [`docs/plan/BACKEND_PLAN.md`](docs/plan/BACKEND_PLAN.md), [`docs/plan/PHASE_1_MASTER.md`](docs/plan/PHASE_1_MASTER.md), [`docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md`](docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md), [`docs/plan/PHASE_1_STEP_5_FINDINGS.md`](docs/plan/PHASE_1_STEP_5_FINDINGS.md).
 
 ---
 
@@ -270,6 +270,8 @@ npm run dev                  # tsx watch
 
 로그인 후 `http://localhost:8765/platform/live.html`이 인증된 WS로 `start_call → transcript/suggestion/sentiment` 시퀀스를 푸시합니다. 자세한 실행/검증/엔드포인트는 [`server/README.md`](server/README.md).
 
+> **선택**: prod 등가 검증(HTTPS, single-origin)이 필요하면 Phase 1 Step 5의 Caddy 모드를 사용합니다. `caddy run --config ops/Caddyfile.dev`로 띄우면 정적·REST·WS가 모두 `https://localhost` 한 도메인에 모이고, `platform/api.js`가 origin 기반 auto-detect로 별도 HTML 수정 없이 동작합니다. 자세한 절차는 [`server/README.md`](server/README.md)의 "Run (Caddy single-origin variant)" 섹션.
+
 > **참고**: Tailwind CSS, Pretendard, socket.io-client는 CDN 로딩이라 첫 로드 시 인터넷 연결이 필요합니다.
 
 자동 검증 스크립트(Python smoke + Node e2e)는 [`test/README.md`](test/README.md) 참고.
@@ -293,7 +295,7 @@ npm run dev                  # tsx watch
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 1 Step 1~4 완료, Step 5 진입 대기)
+### 백엔드 (`server/` — Phase 1 완료, Phase 2 진입 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)
