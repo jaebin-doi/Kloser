@@ -14,7 +14,7 @@
 - [x] **Step 1** — DB 인프라 (docker-compose + node-pg-migrate + 초기 스키마 + RLS FORCE ENABLE + seed) → `docs/PHASE_1_STEP_1_DB_INFRA.md` · 결과 `docs/PHASE_1_STEP_1_FINDINGS.md`. **완료** (2026-05-07 runtime 검증 통과)
 - [x] **Step 2** — DB 연결/저장소 + RLS SET LOCAL + 격리 테스트 → `docs/PHASE_1_STEP_2_RLS_CONTEXT.md` · 결과 `docs/PHASE_1_STEP_2_FINDINGS.md`. **완료** (2026-05-07, 10/10 격리 + 14/14 e2e PASS)
 - [x] **Step 3** — Auth 코어: Argon2id + sessions + signup/login/refresh/logout + GET /me + role middleware → `docs/PHASE_1_STEP_3_AUTH_CORE.md` · 결과 `docs/PHASE_1_STEP_3_FINDINGS.md`. **완료** (2026-05-07, 29/29 tests + 14/14 e2e PASS)
-- [ ] **Step 4** — `platform/api.js` + WebSocket handshake auth + `live.html` 통합 → `docs/PHASE_1_STEP_4_CLIENT_WIRING.md`
+- [x] **Step 4** — `platform/api.js` + WebSocket handshake auth + `live.html` 통합 → `docs/PHASE_1_STEP_4_CLIENT_WIRING.md` · 결과 `docs/PHASE_1_STEP_4_FINDINGS.md`. **완료** (2026-05-07, 37/37 unit + 16/16 e2e PASS)
 - [ ] **Step 5** — Reverse proxy (Nginx 또는 Caddy) 초안 + 운영 메모
 
 각 step 완료 시 해당 step의 `PHASE_1_STEP_X_FINDINGS.md`도 작성한다.

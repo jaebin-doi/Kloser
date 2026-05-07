@@ -8,15 +8,15 @@
 
 ## 진행 상태
 
-- [ ] 1. Step 3 baseline 재검증 (`npm --prefix server test`, typecheck)
-- [ ] 2. `server/src/ws/calls.ts` — handshake auth + `userId` query 폐기 + `text_chunk` invariant + error 코드 문자열 고정. **`registerCallsNamespace(io, app)` 시그니처로 변경하여 `app.jwt.verify` 접근 가능** (server.ts 호출부도 동기 갱신)
-- [ ] 3. `platform/api.js` 신설 — fetch wrapper (메모리 토큰 + single in-flight refresh + retry once + login redirect + `API_BASE_URL` prefix). `kloserApi.login/logout/refreshAccessToken`은 wrapper 자동 분기와 분리
-- [ ] 4. `platform/login.html` 신설 — 미니멀 email/password 폼 + returnUrl 흐름. `kloserApi.login()` 사용 (auto-Bearer/refresh 미적용)
-- [ ] 5. `platform/live.html` — 진입 시 auth gate (`/auth/refresh` 또는 redirect) + suggestion/transcript 렌더 경로에 DOMPurify 적용
-- [ ] 6. `platform/ws.js` — `auth: { token }` 사용, `connect_error` 시 refresh + reconnect, **`__liveSocket`는 localhost 계열(`localhost`/`127.0.0.1`/`::1`/`[::1]`)에서만 노출**
+- [x] 1. Step 3 baseline 재검증 (`npm --prefix server test`, typecheck)
+- [x] 2. `server/src/ws/calls.ts` — handshake auth + `userId` query 폐기 + `text_chunk` invariant + error 코드 문자열 고정. **`registerCallsNamespace(io, app)` 시그니처로 변경하여 `app.jwt.verify` 접근 가능** (server.ts 호출부도 동기 갱신)
+- [x] 3. `platform/api.js` 신설 — fetch wrapper (메모리 토큰 + single in-flight refresh + retry once + login redirect + `API_BASE_URL` prefix). `kloserApi.login/logout/refreshAccessToken`은 wrapper 자동 분기와 분리
+- [x] 4. `platform/login.html` 신설 — 미니멀 email/password 폼 + returnUrl 흐름. `kloserApi.login()` 사용 (auto-Bearer/refresh 미적용)
+- [x] 5. `platform/live.html` — 진입 시 auth gate (`/auth/refresh` 또는 redirect) + suggestion/transcript 렌더 경로에 DOMPurify 적용
+- [x] 6. `platform/ws.js` — `auth: { token }` 사용, `connect_error` 시 refresh + reconnect, **`__liveSocket`는 localhost 계열(`localhost`/`127.0.0.1`/`::1`/`[::1]`)에서만 노출** + first-only 소유권 (§1.8 도중 발견된 보조 socket clobber 방지)
 - [x] 7. `server/test/ws_auth.test.mjs` — 8 케이스 (handshake 5 + runtime invariant 1 + happy path 2). socket.io-client + 실제 fastify random port
-- [ ] 8. `test/phase_0_5_e2e.mjs` 갱신 — login pre-step + auth reject 2 케이스 (16/16)
-- [ ] 9. `docs/PHASE_1_STEP_4_FINDINGS.md` 작성 + 마스터 plan §6의 shared types 항목을 Phase 2 deferral로 갱신
+- [x] 8. `test/phase_0_5_e2e.mjs` 갱신 — login pre-step + auth reject 2 케이스 (16/16)
+- [x] 9. `docs/PHASE_1_STEP_4_FINDINGS.md` 작성 + 마스터 plan §6의 shared types 항목을 Phase 2 deferral로 갱신
 
 ---
 
@@ -415,16 +415,16 @@ Step 4에서 발견·결정·미해결 인계. 최소 다음 항목:
 
 ## 6. 완료 기준 (Step 4 — go/no-go)
 
-- [ ] `npm --prefix server run typecheck` PASS
-- [ ] `npm --prefix server test` PASS (Step 1~3 회귀 29 + WS auth 신규 6 = 35 또는 합계 신규)
-- [ ] `node test/phase_0_5_e2e.mjs` 16/16 PASS (login pre-step + 기존 14 + auth reject 2)
-- [ ] 토큰 없이 `/platform/live.html` 진입 → login.html로 redirect (returnUrl 첨부)
-- [ ] login → live.html 데모 흐름이 Phase 0.5 동등 (RTT ~ms 유지)
-- [ ] 만료된 토큰으로 WS handshake → `connect_error: { code: "expired_token" }` → 클라가 refresh 후 reconnect 성공
-- [ ] `__liveSocket`이 prod 도메인 (예: `127.0.0.1`이 아닌 임의 호스트)에서 미노출 — 코드 리뷰
-- [ ] `text_chunk` before `start_call` → server가 `error: { code: "no_active_call" }` emit + 무시
-- [ ] `userId` query param 흔적이 server / client 양쪽에서 사라짐
-- [ ] `docs/PHASE_1_STEP_4_FINDINGS.md` 작성
+- [x] `npm --prefix server run typecheck` PASS
+- [x] `npm --prefix server test` PASS (Step 1~3 회귀 29 + WS auth 신규 8 = **37/37**)
+- [x] `node test/phase_0_5_e2e.mjs` 16/16 PASS (login pre-step + 기존 14 + auth reject 2)
+- [x] 토큰 없이 `/platform/live.html` 진입 → login.html로 redirect (returnUrl 첨부)
+- [x] login → live.html 데모 흐름이 Phase 0.5 동등 (RTT 0~2ms 유지)
+- [x] 만료된 토큰으로 WS handshake → `connect_error: { code: "expired_token" }` → 클라가 refresh 후 reconnect 성공 (단위 테스트 §1.7 + wrapper 흐름 §1.6)
+- [x] `__liveSocket`이 prod 도메인 (예: `127.0.0.1`이 아닌 임의 호스트)에서 미노출 — 코드 리뷰
+- [x] `text_chunk` before `start_call` → server가 `error: { code: "no_active_call" }` emit + 무시
+- [x] `userId` query param 흔적이 server / client 양쪽에서 사라짐
+- [x] `docs/PHASE_1_STEP_4_FINDINGS.md` 작성
 
 ---
 

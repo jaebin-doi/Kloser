@@ -2,22 +2,31 @@
  *
  * Boots a real Fastify + socket.io server on a random localhost port
  * and drives it with socket.io-client. Verifies the contract pinned
- * in PHASE_1_STEP_4_CLIENT_WIRING.md §1.4:
+ * in PHASE_1_STEP_4_CLIENT_WIRING.md §1.4 from the client's vantage —
+ * server-internal state (`socket.data.user`) isn't observable from a
+ * client test, so the happy path checks the connection itself:
  *
  *   handshake `connect_error` codes (3):
  *     - missing_token
  *     - expired_token
  *     - invalid_token
  *   handshake happy path:
- *     - connects, server attaches socket.data.user from the JWT
+ *     - client receives `connect` (server granted the handshake, which
+ *       it only does when validateAccessTokenPayload accepts the JWT)
  *   runtime `error` event (1):
  *     - no_active_call (text_chunk without prior start_call)
  *   runtime happy path:
- *     - start_call ack → text_chunk → transcript echo with our clientSentAt
+ *     - start_call ack → text_chunk → transcript echo carrying our
+ *       clientSentAt — the JWT-derived identity is implicitly verified
+ *       because `transcript` only fires for accepted sockets.
  *
  * No DB session row is required for handshake — the JWT signature
  * itself is the trust boundary. We mint tokens directly with
  * app.jwt.sign() so the test doesn't depend on /auth/login.
+ *
+ * dbPlugin is registered for parity with the other test boots; the
+ * handshake doesn't currently touch the DB but will once WS handlers
+ * start using `withOrgContext` (Phase 4 calls REST + dashboard).
  */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
