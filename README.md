@@ -143,7 +143,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 1 완료** (Step 1~5) — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring + WS handshake JWT auth + DOMPurify + Caddy reverse proxy 옵션 (`ops/Caddyfile.dev`, single-origin auto-detect)까지 동작. `npm test` 37/37 + Phase 0.5 e2e 16/16 PASS. 다음은 Phase 2 (customers CRUD).
+> **현재 단계**: **Phase 1 구현 완료** (Step 1~5 코드·테스트·문서) — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring + WS handshake JWT auth + DOMPurify + Caddy reverse proxy (`ops/Caddyfile.dev`, single-origin auto-detect)까지 작성. `npm test` 37/37 + Phase 0.5 e2e (split-origin) 16/16 PASS. **Caddy runtime 검증(`caddy validate`/`run` + variant e2e)은 사용자 머신에서 1회 수행 대기** — 작업 환경에 Caddy 미설치. 그 검증 후 Phase 2 (customers CRUD) 진입 권장.
 > 자세한 계획·결과: [`docs/plan/BACKEND_PLAN.md`](docs/plan/BACKEND_PLAN.md), [`docs/plan/PHASE_1_MASTER.md`](docs/plan/PHASE_1_MASTER.md), [`docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md`](docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md), [`docs/plan/PHASE_1_STEP_5_FINDINGS.md`](docs/plan/PHASE_1_STEP_5_FINDINGS.md).
 
 ---
@@ -181,26 +181,45 @@ kloser/
 │   └── src/                  # config · db · plugins · middleware · services
 │                             # repositories · routes · ws · fixtures
 │
-├── docs/
-│   ├── guide.html                          # 도입 가이드 (고객용)
-│   ├── pricing.md                          # 가격 정책 (내부 SSOT)
-│   ├── realtime-call-assistant-guide.md    # 백엔드 구축 가이드 (개발)
-│   ├── BACKEND_PLAN.md                     # 🆕 v0.4 자체 온프레미스 + Phase별 로드맵
-│   ├── DESKTOP_APP_PLAN.md                 # 🆕 PC 앱 트랙
-│   ├── PHASE_0_5_LIVE_SPIKE.md             # 🆕 Phase 0.5 구체 실행 계획 + 진행 로그
-│   ├── PHASE_0_5_FINDINGS.md               # 🆕 spike 결과 + Phase 1 후속 task
-│   ├── FASTIFY_GUIDE.md                    # 🆕 Fastify 도입 근거
-│   ├── NODE_VS_PYTHON_BACKEND.md           # 🆕 Node vs Python 결정 트레일
-│   ├── SUPABASE_VS_ONPREM.md               # 🆕 Supabase managed 미채택 사유
-│   ├── SUPABASE_GUIDE.md                   #   (Supabase 이전 검토용 참고 문서)
-│   ├── R730xd_server_setup.md              # 🆕 자체 서버 용량 산정
-│   ├── SLA_99.9%_서버_구성_정리.md         # 🆕 HA 구성 (LB/app/PG/Redis)
-│   └── 운영_핵심_개선_정리.md              # 🆕 RLS/감사로그/마스킹 등 보안 베이스라인
+├── docs/                                   # 문서 인덱스: docs/README.md
+│   ├── README.md                           # 폴더 인덱스 + 빠른 진입표
+│   ├── USER_GUIDE_PHASE_1.md               # Phase 1 사용자/평가자용 텍스트 가이드
+│   ├── plan/                               # Phase별 실행 계획 + 결과 인계 (14)
+│   │   ├── BACKEND_PLAN.md                 #   v0.4 자체 온프레미스 + Phase별 로드맵
+│   │   ├── DESKTOP_APP_PLAN.md             #   PC 앱 트랙 (보류)
+│   │   ├── PHASE_0_5_LIVE_SPIKE.md         #   spike 실행 계획
+│   │   ├── PHASE_0_5_FINDINGS.md           #   spike 결과
+│   │   ├── PHASE_1_MASTER.md               #   Phase 1 마스터 (5 sub-step 진행 상태)
+│   │   └── PHASE_1_STEP_{1..5}_*.md        #   각 sub-step 계획 + FINDINGS
+│   ├── decision/                           # 기술 선택 트레일 (4)
+│   │   ├── FASTIFY_GUIDE.md                #   Fastify 도입 근거 + 패턴
+│   │   ├── NODE_VS_PYTHON_BACKEND.md       #   Node vs Python 결정
+│   │   ├── SUPABASE_VS_ONPREM.md           #   Supabase managed 미채택 사유
+│   │   └── SUPABASE_GUIDE.md               #   (검토 시점 참고, 이력 보존)
+│   ├── product/                            # 제품·마케팅·도입 가이드 (5)
+│   │   ├── USER_GUIDE.html                 #   🆕 시각 가이드 — 9개 화면 walkthrough
+│   │   ├── PHASE_1_FOUNDATIONS.html        #   🆕 Phase 1 기반 기능 시각 가이드 (6 기둥)
+│   │   ├── pricing.md                      #   가격 정책 (내부 SSOT)
+│   │   ├── guide.html                      #   도입 가이드 (고객용)
+│   │   └── realtime-call-assistant-guide.md #  제품·아키텍처 정의 SSOT
+│   ├── ops/                                # 운영·인프라 메모 (3)
+│   │   ├── R730xd_server_setup.md          #   자체 서버 용량 산정
+│   │   ├── SLA_99.9%_서버_구성_정리.md     #   HA 구성 (LB/app/PG/Redis)
+│   │   └── 운영_핵심_개선_정리.md          #   RLS/감사로그/마스킹 베이스라인
+│   └── research/                           # 시장·비용 분석 (2)
+│       ├── 실시간-STT-시장분석-2026.md     #   STT 시장 분석
+│       └── AZURE_SPEECH_COST_GUIDE_2026.md #   Azure Speech 비용 가이드
+│
+├── ops/                      # 인프라 설정 (Phase 1)
+│   ├── docker-compose.yml    # postgres 16 + redis 7 dev compose
+│   ├── postgres/init/        # 첫 실행 시 app 역할 부트스트랩
+│   └── Caddyfile.dev         # 🆕 Phase 1 Step 5 — single-origin reverse proxy (선택)
 │
 ├── assets/
-│   ├── logo.png / logo.svg / logo2.png
+│   ├── logo.png / logo.svg / logo_new.png / logo_old.png
 │   ├── favicon.svg / favicon.png
-│   └── landing_img/          # 히어로 시안 이미지
+│   ├── landing_img/          # 히어로 시안 이미지
+│   └── screenshots/user_guide/  # 🆕 USER_GUIDE.html 캡처 9장
 │
 ├── test/                     # 자동화 검증 스크립트
 │   ├── README.md             # 실행 방법
@@ -209,8 +228,10 @@ kloser/
 │   ├── smoke_daily.py        # daily.html 단독 검증 (Python)
 │   ├── test_features.py      # 알림/Word 등 기능 검증 (Python)
 │   ├── screenshots.py        # 스크린샷 자동 캡처 (Python)
-│   ├── phase_0_5_e2e.mjs     # 🆕 Phase 0.5 server↔live.html e2e (Node + Playwright)
-│   ├── phase_0_5_e2e.png     # 🆕 e2e 스크린샷 (검증 산출물)
+│   ├── phase_0_5_e2e.mjs     # Phase 0.5 server↔live.html e2e (Node + Playwright)
+│   │                         #   Phase 1 Step 5에서 KLOSER_E2E_BASE_URL env로 두 모드 지원
+│   ├── phase_0_5_e2e.png     # e2e 스크린샷 (검증 산출물)
+│   ├── capture_user_guide_screenshots.mjs  # 🆕 USER_GUIDE.html 캡처 재실행 스크립트
 │   └── screenshots/          # 캡처 결과 PNG
 │
 └── (admin.html · console.html — 별도 관리자 영역, 본 README 범위 외)
@@ -295,7 +316,7 @@ npm run dev                  # tsx watch
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 1 완료, Phase 2 진입 대기)
+### 백엔드 (`server/` — Phase 1 구현 완료, Caddy runtime 검증 후 Phase 2 진입)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)
