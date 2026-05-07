@@ -1,6 +1,10 @@
 // dotenv MUST load before any module that reads process.env at top level
-// (notably ./db/pool.js). Keep this on line 1.
+// (notably ./db/pool.js, ./config/authEnv.js). Keep this on line 1.
 import "dotenv/config";
+
+// Import side-effect: ./config/authEnv validates JWT_SECRET (and friends)
+// at module load. A missing/short secret throws here, before listen().
+import "./config/authEnv.js";
 
 import Fastify from "fastify";
 import cors from "@fastify/cors";
