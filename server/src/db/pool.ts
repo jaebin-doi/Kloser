@@ -1,23 +1,26 @@
-/* PostgreSQL connection pool.
+/* PostgreSQL runtime connection pool.
  *
- * Phase 1 Step 1: defined but not yet wired into the Fastify app. Step 2
- * registers a `@fastify/postgres`-style plugin that exposes this pool and
- * injects `SET LOCAL app.org_id` in the auth middleware.
+ * DATABASE_URL is intentionally the only source — no dev fallback. The Step 1
+ * fallback (`postgres://kloser:...`) was admin credentials, which would have
+ * silently bypassed RLS if dotenv ever failed to load. The right fix is to
+ * fail loudly here and force callers to supply DATABASE_URL via .env.
  *
- * The connection string defaults are dev-only. Production reads
- * DATABASE_URL from the environment and never falls back.
+ * DATABASE_URL must point at the `app` role (NOSUPERUSER NOBYPASSRLS). The
+ * admin role is reachable only via MIGRATE_DATABASE_URL through the migration
+ * wrapper — never through this pool.
  */
 import { Pool, type PoolConfig } from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL;
-
-if (!DATABASE_URL && process.env.NODE_ENV === "production") {
-  throw new Error("DATABASE_URL is required in production");
+if (!DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL is required. Copy server/.env.example to server/.env" +
+    " (DATABASE_URL must point at the runtime `app` role)."
+  );
 }
 
 const config: PoolConfig = {
-  connectionString:
-    DATABASE_URL ?? "postgres://kloser:kloser_dev@localhost:5432/kloser_dev",
+  connectionString: DATABASE_URL,
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,

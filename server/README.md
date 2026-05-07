@@ -2,8 +2,9 @@
 
 > **Status**:
 > - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
-> - **Phase 1 Step 1** code complete: DB infrastructure (compose, migration, seed) — runtime verification awaiting docker availability.
-> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`.
+> - **Phase 1 Step 1** complete: DB infrastructure (compose, migration, seed, runtime verification).
+> - **Phase 1 Step 2** in progress: runtime `app` role + RLS context.
+> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`, `docs/PHASE_1_STEP_2_RLS_CONTEXT.md`.
 
 ## What this provides
 
@@ -66,13 +67,14 @@ The same script writes `test/phase_0_5_e2e.png` for visual evidence.
 server/
 ├── package.json           # fastify, socket.io, pg, dotenv, node-pg-migrate, tsx, ts
 ├── tsconfig.json          # ES2022 / NodeNext / strict
-├── .env.example           # 🆕 Phase 1 — DATABASE_URL, REDIS_URL, etc.
+├── .env.example           # DATABASE_URL(app), MIGRATE_DATABASE_URL(admin), REDIS_URL
 ├── migrations/            # 🆕 Phase 1 — node-pg-migrate
 │   └── 1715000000000_init.sql   # 7 tables + RLS FORCE ENABLE
 ├── seeds/                 # 🆕 Phase 1
 │   └── 0001_demo.sql       # 2 orgs × (admin + employee)
 ├── scripts/               # 🆕 Phase 1
-│   └── run-seed.mjs        # `npm run db:seed` entry
+│   ├── migrate.mjs         # routes node-pg-migrate through MIGRATE_DATABASE_URL
+│   └── run-seed.mjs        # routes seed through MIGRATE_DATABASE_URL
 └── src/
     ├── server.ts          # Fastify entry — health endpoint + io.attach
     ├── db/                # 🆕 Phase 1
@@ -117,33 +119,81 @@ WS   /calls?userId=<string>
      S2C error      { code, message }
 ```
 
-## Phase 1 — DB infrastructure (code complete, runtime pending docker)
+## Phase 1 DB / RLS Developer Guide
+
+Phase 1 uses two PostgreSQL roles on purpose:
+
+- `DATABASE_URL` is the runtime app connection. It must use the `app` role.
+  This role is `NOSUPERUSER NOBYPASSRLS`, so Row-Level Security applies to
+  user-facing queries.
+- `MIGRATE_DATABASE_URL` is for migrations and seeds only. It uses the admin
+  `kloser` role created by Docker's `POSTGRES_USER`. That role can bypass RLS
+  and must not be used by runtime code.
+
+Never point runtime code at `MIGRATE_DATABASE_URL`. If a library reads
+`DATABASE_URL` automatically, it should land on the safe `app` role.
 
 ```bash
 # 0. environment
-cp ../.env.example ../.env          # project-root (compose values)
-cp .env.example .env                # server-side (DATABASE_URL, REDIS_URL)
+cp ../.env.example ../.env          # project-root compose values
+cp .env.example .env                # DATABASE_URL, MIGRATE_DATABASE_URL, REDIS_URL
 
 # 1. infra
 docker compose -f ../ops/docker-compose.yml up -d
 
-# 2. migrations
-npm run db:migrate:up
-# expect: Migrations complete!
+# 2. app role bootstrap
+# New Docker volumes run this automatically from:
+#   ops/postgres/init/01_app_role.sql
+#
+# Existing Docker volumes do not re-run /docker-entrypoint-initdb.d scripts.
+# If the volume already existed before Step 2, apply it once manually:
+docker exec -i kloser-dev-postgres-1 \
+  psql -U kloser -d kloser_dev -f /docker-entrypoint-initdb.d/01_app_role.sql
 
-# 3. seed
+# Verify runtime role attributes:
+docker exec kloser-dev-postgres-1 psql -U kloser -d kloser_dev -c \
+  "SELECT rolname, rolsuper, rolbypassrls, rolcanlogin FROM pg_roles WHERE rolname='app'"
+# expect: app | f | f | t
+
+# Verify runtime cannot touch migration metadata:
+docker exec kloser-dev-postgres-1 psql "postgres://app:app_dev@localhost:5432/kloser_dev" -c \
+  "SELECT count(*) FROM pgmigrations"
+# expect: permission denied
+
+# 3. migrations
+# Uses MIGRATE_DATABASE_URL through scripts/migrate.mjs.
+npm run db:migrate:up
+# expect: Migrations complete! or "No migrations to run"
+
+# 4. seed
+# Uses MIGRATE_DATABASE_URL through scripts/run-seed.mjs.
 npm run db:seed
 # expect: organizations count=2 OK, users count=4 OK, memberships count=4 OK
 
-# 4. verify RLS forced on the four org-scoped tables
+# 5. verify RLS flags on the four org-scoped tables
 docker exec kloser-dev-postgres-1 psql -U kloser -d kloser_dev -c \
   "SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class \
    WHERE relname IN ('memberships','teams','invitations','activity_log') \
    ORDER BY relname"
 # expect: all four with t/t
+
+# 6. verify RLS behavior with the runtime app role
+docker exec kloser-dev-postgres-1 psql "postgres://app:app_dev@localhost:5432/kloser_dev" -c \
+  "SELECT count(*) AS no_guc FROM memberships; \
+   BEGIN; \
+   SELECT set_config('app.org_id','11111111-1111-1111-1111-111111111111', true); \
+   SELECT count(*) AS org1 FROM memberships; \
+   COMMIT;"
+# expect: no_guc = 0, org1 = 2
 ```
 
-Step 2 starts plugging this into Fastify (auth middleware injects `SET LOCAL app.org_id`).
+If `MIGRATE_DATABASE_URL` is missing, `npm run db:migrate:*` and
+`npm run db:seed` should fail immediately with a clear error. That is
+intentional: migrations and seeds require admin privileges, while runtime code
+must stay on the RLS-enforced app role.
+
+Step 2 continues by plugging this into Fastify with a transaction helper that
+sets `app.org_id` using `SET LOCAL` / `set_config(..., true)`.
 
 ## Phase 0.5 cleanup pointer (resolved)
 
