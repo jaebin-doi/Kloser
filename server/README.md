@@ -4,8 +4,9 @@
 > - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
 > - **Phase 1 Step 1** complete: DB infrastructure (compose, migration, seed, runtime verification).
 > - **Phase 1 Step 2** complete: runtime `app` role + RLS SET LOCAL context + isolation tests (10/10 PASS, e2e regression PASS).
-> - **Phase 1 Step 3** planned: Argon2id + JWT (Bearer access, HttpOnly refresh cookie) + sessions rotation + role guard. See `docs/PHASE_1_STEP_3_AUTH_CORE.md`.
-> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`, `docs/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/PHASE_1_STEP_2_FINDINGS.md`, `docs/PHASE_1_STEP_3_AUTH_CORE.md`.
+> - **Phase 1 Step 3** complete: Argon2id + Bearer access JWT + HttpOnly refresh cookie (Path=/auth) + sessions rotation with family reuse detection + role guard + prod X-Org-Id strict reject. 29/29 unit (auth 19 + rls 7 + orgContext 3) + 14/14 e2e PASS. See `docs/PHASE_1_STEP_3_AUTH_CORE.md` / `docs/PHASE_1_STEP_3_FINDINGS.md`.
+> - **Phase 1 Step 4** next: `platform/api.js` fetch wrapper + WebSocket handshake auth + `live.html` integration.
+> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`, `docs/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/PHASE_1_STEP_2_FINDINGS.md`, `docs/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/PHASE_1_STEP_3_FINDINGS.md`.
 
 ## What this provides
 

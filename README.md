@@ -143,8 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 0.5 라이브 스트림 스파이크 완료** — `server/`(Fastify+Socket.io) ↔ `live.html` 사이 `/calls` 네임스페이스가 실제로 동작하고, 수동 RTT 1ms로 검증됨. STT/LLM 연동, Auth, DB, 영속성은 Phase 1+에서.
-> 자세한 계획·결과: [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md), [`docs/PHASE_0_5_LIVE_SPIKE.md`](docs/PHASE_0_5_LIVE_SPIKE.md), [`docs/PHASE_0_5_FINDINGS.md`](docs/PHASE_0_5_FINDINGS.md).
+> **현재 단계**: **Phase 1 Step 1~3 완료** — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard)까지 동작. `npm test` 29/29 + Phase 0.5 e2e 14/14 회귀 PASS. 다음은 Step 4 (브라우저 wiring + WS handshake auth).
+> 자세한 계획·결과: [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md), [`docs/PHASE_1_MASTER.md`](docs/PHASE_1_MASTER.md), [`docs/PHASE_1_STEP_3_AUTH_CORE.md`](docs/PHASE_1_STEP_3_AUTH_CORE.md), [`docs/PHASE_1_STEP_3_FINDINGS.md`](docs/PHASE_1_STEP_3_FINDINGS.md).
 
 ---
 
@@ -287,7 +287,7 @@ npm run dev        # tsx watch — port 3001
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 0.5 spike 완료, Phase 1 착수 대기)
+### 백엔드 (`server/` — Phase 1 Step 1~3 완료, Step 4 진입 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/SUPABASE_VS_ONPREM.md`)
