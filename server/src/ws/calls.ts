@@ -89,10 +89,20 @@ export function registerCallsNamespace(io: Server): void {
     });
 
     socket.on("text_chunk", (payload: TextChunkPayload | undefined) => {
-      if (!payload || typeof payload.seq !== "number" || typeof payload.text !== "string") {
-        socket.emit("error", { code: "BAD_PAYLOAD", message: "text_chunk requires { seq, text, clientSentAt }" });
+      if (
+        !payload ||
+        typeof payload.seq !== "number" ||
+        typeof payload.text !== "string" ||
+        typeof payload.clientSentAt !== "number"
+      ) {
+        socket.emit("error", {
+          code: "BAD_PAYLOAD",
+          message: "text_chunk requires { seq:number, text:string, clientSentAt:number }",
+        });
         return;
       }
+      // Phase 1 TODO: enforce that start_call ran first (require ctx in `calls`).
+      // Spike intentionally allows standalone echo for manual probes.
       const who: "agent" | "customer" = payload.seq % 2 === 0 ? "agent" : "customer";
       socket.emit("transcript", {
         seq: payload.seq,

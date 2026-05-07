@@ -50,15 +50,16 @@
 
 (2) Phase 1 첫 task 중 하나로 `FASTIFY_GUIDE.md` §8 예시 갱신. 또는 두 가지 표기를 서로 다른 layer 의미로 정의(콜론은 namespace, snake_case는 within-namespace)하는 정책 문서화. 그대로 두면 신규 개발자가 어느 쪽을 따라야 할지 헷갈린다.
 
-### 5. transcript msg.text는 `textContent`로 잡혔지만, suggestion HTML은 여전히 `innerHTML`
+### 5. transcript msg.text는 `textContent`로 잡혔지만, suggestion HTML은 여전히 `innerHTML` — **Phase 1 P0**
 
-(1) Day 3에서 transcript bubble은 `textContent`로 전환하여 `text_chunk`가 외부 입력 통로가 된 시점의 XSS 위험을 제거. 그러나 `aiSuggestionsEl.innerHTML = ''` + `card.innerHTML = '<svg>... ${s.body}'` 경로는 그대로다. spike 동안 server fixture만 source이므로 안전하지만, **클라가 suggestion을 emit할 수 있게 되는 순간 즉시 위험.**
+(1) Day 3에서 transcript bubble은 `textContent`로 전환하여 `text_chunk`가 외부 입력 통로가 된 시점의 XSS 위험을 제거. 그러나 `platform/live.html`의 `aiSuggestionsEl.innerHTML = ''` + `card.innerHTML = '<svg>... ${s.title} ${s.body}'` 경로는 그대로다. spike 동안 server fixture만 source이므로 안전하지만, **Phase 1에서 LLM/외부 입력이 suggestion으로 들어오는 순간 즉시 RCE 수준의 위험.**
 
-(2) Phase 1에서 우선 처리 (BACKEND_PLAN.md §4 보안 베이스라인에 묶어 작업):
+(2) **이 항목은 Phase 1 첫 sprint에 반드시 포함**. BACKEND_PLAN.md §4 보안 베이스라인에 묶어 작업:
 - DOMPurify (또는 sanitize-html) 도입
 - suggestion `body`/`title` 모두 sanitize 후 렌더
 - icon SVG는 화이트리스트로 별도 처리
 - 회귀 가드: `eslint-plugin-no-unsanitized` 추가 검토
+- 동시에 `card.innerHTML` 패턴을 `createElement` + sanitize 텍스트로 전환
 
 ### 6. CORS는 좁게 잡혔지만 자체 도메인 환경에서 검증 필요
 
@@ -95,9 +96,24 @@
 - 또는 zod schema를 single source of truth로 두고 양쪽이 import (`shared/schemas/calls.ts`)
 - 의사결정 시점: monorepo 도구 (pnpm workspaces / turborepo / nx) 도입 여부 — 아직 패키지가 2개(server, platform/는 아직 패키지 아님)뿐이라 도입 비용이 크다면 단순 path alias로 시작 가능
 
+### 10. 리뷰 패스에서 추가로 발견 — review-fixes 브랜치에서 처리
+
+리뷰 검토에서 5건 추가 발견. 4건은 본 브랜치에서 즉시 수정, 1건(#5 자동 검증의 신선도)은 절차적 회귀로 처리.
+
+(1) **e2e의 latency badge 검증이 형식적이었음** — 기존 테스트는 `#latencyVal shows: "— ms"`도 PASS로 처리. 즉 **화면 latency 동작 자체를 검증하지 않았다.** 수정: `live.html`이 IIFE 내부 socket을 `window.__liveSocket`로 노출하고, e2e에서 그 socket으로 `sendTextChunk` → `#latencyVal`이 `Nms` 패턴으로 갱신되는지 `waitForFunction`. (Phase 1: `__liveSocket` 핸들은 dev 플래그/queryparam 가드 또는 제거)
+
+(2) **probe의 race**: e2e의 probe가 `startCall` → 서버 demo 자동 재생 schedule → `text_chunk` 전송이 거의 동시. `once("transcript", resolve)`로 대기하면 demo greeting(seq=1)을 먼저 잡을 가능성. 수정: seq=999 필터로 변경. **flaky 가능성을 사후 인지한 케이스이므로 Phase 1 e2e 작성 시 동일 패턴 주의** — `once`로 트랜시버 응답을 잡는 대신 항상 식별 가능한 필드로 매칭.
+
+(3) **`text_chunk` payload의 `clientSentAt` 타입 미검증**: Day 1부터 들어 있던 미스. 즉시 수정해서 `typeof !== "number"`도 BAD_PAYLOAD로 reject하도록.
+
+(4) **`text_chunk`가 `start_call` 없이도 echo됨**: spike에서는 의도된 동작(수동 probe 편의). Phase 1에서 `start_call` 선행 강제 + sessionId 기반으로 묶어야 함. `calls.ts`에 TODO 주석 박음.
+
+(5) **검증 신선도**: 리뷰 시점 `/health` uptime ~54000s — 즉 어제 띄운 서버에 e2e가 돈 케이스. 정확한 "최신 코드 통과" 증거를 위해 review-fixes 커밋 후 서버 재시작하고 e2e 재실행.
+
 ## 의도하지 않게 남긴 것
 
 - `server/src/__test_client.ts`: Day 1 검증용 throwaway. e2e가 `test/phase_0_5_e2e.mjs`로 자리잡았으므로 Phase 1 kickoff 시 삭제 권장.
+- `window.__liveSocket` 핸들 (`platform/live.html`): review fix #1을 위한 테스트 전용 노출. Phase 1에서 `__DEV__` 플래그 가드 또는 제거.
 
 ## Phase 1 첫 5개 task (제안)
 

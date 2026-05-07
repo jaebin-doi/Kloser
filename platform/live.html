@@ -630,6 +630,10 @@
         baseUrl: KLOSER_API,
         userId: 'demo-user',
       });
+      // Test-only handle so test/phase_0_5_e2e.mjs can drive sendTextChunk on
+      // the same socket the page renders into (otherwise the latency badge can't
+      // be observed from outside the IIFE). Phase 1: remove or guard with a flag.
+      window.__liveSocket = socket;
 
       // 리스너는 startCall 전에 등록 — 서버가 ack 직후 발사를 시작해도 첫 이벤트를 놓치지 않도록
       window.kloserWS.onTranscript(socket, (ev) => {

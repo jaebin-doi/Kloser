@@ -74,15 +74,27 @@ async function main() {
   if (suggestionCount < 1) fail(`expected suggestion cards, got ${suggestionCount}`);
   else pass(`suggestion cards rendered (${suggestionCount} present)`);
 
-  // 6. Manual text_chunk RTT probe via wrapper
+  // 6. Manual text_chunk RTT probe via wrapper.
+  //    Filter by seq instead of `once` — the probe socket also calls startCall,
+  //    so server-driven demo transcripts (seq 1..10) can race with our probe.
+  //    We use seq=999 and only resolve on that.
   const probe = await page.evaluate(async () => {
     const probe = window.kloserWS.connectCallNamespace({ baseUrl: "http://localhost:3001", userId: "e2e-probe" });
     await new Promise((r) => probe.on("connect", r));
     await window.kloserWS.startCall(probe, {});
     const t0 = Date.now();
     const event = await new Promise((resolve, reject) => {
-      probe.once("transcript", resolve);
-      setTimeout(() => reject(new Error("timeout")), 3000);
+      const handler = (ev) => {
+        if (ev && ev.seq === 999) {
+          probe.off("transcript", handler);
+          resolve(ev);
+        }
+      };
+      probe.on("transcript", handler);
+      setTimeout(() => {
+        probe.off("transcript", handler);
+        reject(new Error("timeout waiting for seq=999"));
+      }, 3000);
       window.kloserWS.sendTextChunk(probe, { seq: 999, text: "E2E-PROBE" });
     });
     const rtt = Date.now() - t0;
@@ -94,9 +106,23 @@ async function main() {
   if (probe.rtt > 150) fail(`RTT exceeded 150ms target: ${probe.rtt}ms`);
   else pass(`RTT under 150ms target (${probe.rtt}ms)`);
 
-  // 7. Latency badge visible
-  const latencyText = await page.locator("#latencyVal").innerText();
-  pass(`#latencyVal shows: "${latencyText}"`);
+  // 7. Latency badge actually updates when the page socket sends text_chunk.
+  //    The page socket is exposed as window.__liveSocket for this assertion
+  //    (otherwise the IIFE-scoped socket is unreachable). Use a high seq to
+  //    avoid colliding with server-driven demo seqs.
+  const latencyBefore = await page.locator("#latencyVal").innerText();
+  await page.evaluate(() => {
+    window.kloserWS.sendTextChunk(window.__liveSocket, { seq: 7777, text: "LATENCY-PROBE" });
+  });
+  await page.waitForFunction(
+    () => /^\d+ms$/.test((document.getElementById("latencyVal")?.textContent || "").trim()),
+    { timeout: 2000 },
+  );
+  const latencyAfter = await page.locator("#latencyVal").innerText();
+  pass(`#latencyVal updated on text_chunk: "${latencyBefore}" → "${latencyAfter}"`);
+  const ms = parseInt(latencyAfter, 10);
+  if (!Number.isFinite(ms) || ms > 150) fail(`page latency exceeds 150ms or unparseable: ${latencyAfter}`);
+  else pass(`page latency under 150ms target (${ms}ms)`);
 
   // 8. Final transcript count check — at this point we should have 7 transcripts
   // (delays 0, 4500, 9000, 13500, 18000, 22500 = 6 from server replay + 1 we know about)
@@ -104,7 +130,24 @@ async function main() {
   const transcriptCount = await page.locator("#transcript .msg-enter").count();
   pass(`page transcript count: ${transcriptCount}`);
 
-  // 9. No console errors
+  // 9. text_chunk payload validation — server should emit `error` on missing clientSentAt
+  const badPayloadResult = await page.evaluate(async () => {
+    const probe = window.kloserWS.connectCallNamespace({ baseUrl: "http://localhost:3001", userId: "e2e-bad" });
+    await new Promise((r) => probe.on("connect", r));
+    const result = await new Promise((resolve) => {
+      probe.once("error", (err) => resolve({ ok: true, err }));
+      setTimeout(() => resolve({ ok: false, reason: "no error event in 1500ms" }), 1500);
+      // bypass wrapper to send a malformed payload (missing clientSentAt)
+      probe.emit("text_chunk", { seq: 8888, text: "BAD" });
+    });
+    probe.close();
+    return result;
+  });
+  if (!badPayloadResult.ok) fail(`payload validation: ${badPayloadResult.reason}`);
+  else if (badPayloadResult.err?.code !== "BAD_PAYLOAD") fail(`payload validation: unexpected error code ${badPayloadResult.err?.code}`);
+  else pass(`payload validation: BAD_PAYLOAD emitted on missing clientSentAt`);
+
+  // 10. No console errors
   if (consoleErrors.length > 0) {
     fail(`console errors: ${JSON.stringify(consoleErrors, null, 2)}`);
   } else {
