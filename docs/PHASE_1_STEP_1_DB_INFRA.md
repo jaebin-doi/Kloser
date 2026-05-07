@@ -15,7 +15,7 @@
 - [x] 5. `server/seeds/0001_demo.sql` + `server/scripts/run-seed.mjs` — 2 orgs × (admin + employee)
 - [x] 6. `server/src/db/pool.ts` — pg Pool (Step 2에서 plugin으로 wire)
 - [x] 7. 정적 검증: typecheck OK, run-seed.mjs syntax OK, node-pg-migrate가 파일 인식 (dry-run 시 connection만 실패 = 환경 이슈)
-- [ ] 8. **Runtime 검증 — 보류**: docker가 호스트에 설치 안 됨 → docker compose up → migrate → seed → SELECT 확인은 docker 환경 갖춰지면 실행. 자세한 사유와 수동 실행 절차는 `docs/PHASE_1_STEP_1_FINDINGS.md` §1.
+- [x] 8. **Runtime 검증 완료** (2026-05-07): docker compose up → migrate → seed → RLS 검증까지 통과. 진행 중 마이그레이션 파일의 `-- Up` / `-- Down` 마커가 node-pg-migrate v7가 인식하는 `-- Up Migration` / `-- Down Migration`이 아니어서 첫 실행이 CREATE+DROP을 한 번에 실행한 버그 1건 발견·수정. 자세한 결과와 finding은 `docs/PHASE_1_STEP_1_FINDINGS.md` §1, §8.
 
 ---
 
@@ -196,14 +196,15 @@ export const pool = new Pool({
 
 ## 6. 완료 기준 (Step 1 — go/no-go)
 
-- [ ] `docker compose up`으로 postgres + redis 모두 healthy — **runtime 보류** (docker 미설치, findings §1)
-- [ ] `npm run db:migrate:up` 후 `pg_class` 조회 시 4개 테이블 `relrowsecurity = true` — **runtime 보류**
-- [ ] `npm run db:seed` 후 organizations=2, users=4, memberships=4 — **runtime 보류**
+- [x] `docker compose up`으로 postgres + redis 모두 healthy — 2026-05-07 통과 (`(healthy) (healthy)`)
+- [x] `npm run db:migrate:up` 후 `pg_class` 조회 시 4개 테이블 `relrowsecurity = true` — memberships/teams/invitations/activity_log 모두 `t/t`, users/organizations/sessions은 `f/f`
+- [x] `npm run db:seed` 후 organizations=2, users=4, memberships=4 — 시드 스크립트가 자체 검증
 - [x] `npm run typecheck` 통과
 - [x] Phase 0.5 e2e (`test/phase_0_5_e2e.mjs`) 회귀 통과 (DB 인프라 추가가 기존 흐름을 깨지 않음) — 14/14 PASS, RTT 1ms
 - [x] `docs/PHASE_1_STEP_1_FINDINGS.md` 작성됨
+- [x] (보너스) 비-superuser role(`rls_probe`)로 RLS 격리 동작 확인 — GUC 없음 시 0 rows, GUC=org1 시 해당 org의 2 memberships만 가시화
 
-**현재 상태**: 코드/스크립트 측 완료 (5/6 항목). **runtime 검증 3건만 docker 환경 대기**.
+**현재 상태**: Step 1 완료. Step 2 진입 가능.
 
 ---
 

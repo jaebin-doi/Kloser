@@ -2,7 +2,7 @@
 -- Tables: organizations, users, memberships, sessions, teams, invitations, activity_log
 -- RLS default-deny ENABLE on org-scoped tables.
 
--- Up
+-- Up Migration
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -34,27 +34,35 @@ CREATE TABLE users (
 );
 
 -- teams -----------------------------------------------------------------------
+-- (org_id, id) is UNIQUE so memberships(org_id, team_id) can have a composite
+-- FK against it. Without that, a row in memberships(org_id=A, team_id=t_B)
+-- would be insertable even though t_B belongs to a different org.
 CREATE TABLE teams (
     id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id      uuid        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name        text        NOT NULL,
     manager_id  uuid        REFERENCES users(id) ON DELETE SET NULL,
     created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (org_id, id)
 );
 CREATE INDEX teams_org_id_idx ON teams(org_id);
 
 -- memberships -----------------------------------------------------------------
+-- team_id FK is composite against teams(org_id, id) to prevent a membership
+-- in org A from referencing a team in org B (cross-org pollution). The plain
+-- single-column FK to teams(id) would have allowed it.
 CREATE TABLE memberships (
     id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id     uuid        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     user_id    uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role       text        NOT NULL CHECK (role IN ('admin', 'manager', 'employee', 'viewer')),
-    team_id    uuid        REFERENCES teams(id) ON DELETE SET NULL,
+    team_id    uuid,
     status     text        NOT NULL DEFAULT 'active',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (org_id, user_id)
+    UNIQUE (org_id, user_id),
+    FOREIGN KEY (org_id, team_id) REFERENCES teams(org_id, id) ON DELETE SET NULL
 );
 CREATE INDEX memberships_org_id_idx  ON memberships(org_id);
 CREATE INDEX memberships_user_id_idx ON memberships(user_id);
@@ -72,8 +80,11 @@ CREATE TABLE sessions (
     revoked_at          timestamptz,
     created_at          timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX sessions_user_id_idx               ON sessions(user_id);
-CREATE INDEX sessions_refresh_token_hash_idx    ON sessions(refresh_token_hash);
+CREATE INDEX        sessions_user_id_idx            ON sessions(user_id);
+-- refresh_token_hash is logically a unique key (each session has its own
+-- random refresh token; a collision would mean session confusion). Step 3's
+-- refresh-rotation flow relies on a single row per token.
+CREATE UNIQUE INDEX sessions_refresh_token_hash_idx ON sessions(refresh_token_hash);
 
 -- invitations -----------------------------------------------------------------
 CREATE TABLE invitations (
@@ -156,7 +167,7 @@ CREATE POLICY activity_log_org_isolation ON activity_log
     WITH CHECK (org_id = current_app_org_id());
 
 
--- Down
+-- Down Migration
 -- ============================================================================
 
 DROP POLICY IF EXISTS activity_log_org_isolation ON activity_log;

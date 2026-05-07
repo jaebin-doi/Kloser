@@ -5,19 +5,25 @@
 
 ## 결론
 
-Step 1은 **코드/스크립트 측 완료**, **runtime 검증 3건은 docker 환경 대기**. 정적 검증 (typecheck, syntax, migration 파일 인식, Phase 0.5 e2e 회귀)은 모두 통과.
+Step 1 **완료** (2026-05-07). 정적 검증과 runtime 검증 모두 통과:
 
-`PHASE_1_STEP_1_DB_INFRA.md` §6의 6개 완료 기준 중 5개 충족, 1개 (`docker compose up` runtime)는 docker 미설치로 보류.
+- docker compose: postgres + redis `(healthy)`
+- 마이그레이션: 7개 테이블 + 4개 RLS 정책 + `current_app_org_id()` 함수 적용
+- 시드: organizations=2, users=4, memberships=4
+- RLS flag: 4개 org-scoped 테이블 `relrowsecurity=t / relforcerowsecurity=t`, 비-org 3개는 `f/f`
+- 격리 sanity check: 비-superuser role(`rls_probe`)로 GUC 없음 시 0 rows, GUC=org1 시 2 rows 확인
+
+진행 중 발견·수정한 코드 버그 1건은 §8을 참고. Step 2 진입 가능.
 
 ---
 
 ## 발견 사항
 
-### 1. Windows 호스트에 Docker가 설치되어 있지 않음 — Step 1 runtime 검증 보류
+### 1. Windows 호스트 Docker 설치 후 runtime 검증 — 통과 (2026-05-07)
 
-(1) `docker --version` → command not found, `Docker Desktop`도 미설치 (`/c/Program Files/Docker/...` 부재). 따라서 `docker compose up`으로 postgres+redis를 실제로 띄우는 검증을 이번 spike(자율 작업) 중에 진행하지 못했다. 사용자 자리 비운 동안 임의로 Docker Desktop을 설치하지 않는 게 안전하다고 판단.
+(1) 사용자가 Docker Desktop(Docker 29.4.2 / compose v5.1.3) 설치 후 아래 절차로 검증 완료. 첫 실행에서 마이그레이션 마커 버그가 드러나서 1회 수정·재실행 (§8 참고). 이후 모든 단계 통과.
 
-(2) **사용자가 돌아왔을 때 진행할 수동 검증 절차**:
+(2) **수행한 검증 절차** (그대로 다시 실행해도 동일 결과):
 
 ```bash
 # 1. Docker Desktop 설치 (Windows 11) — https://docs.docker.com/desktop/install/windows-install/
@@ -52,7 +58,7 @@ docker exec kloser-dev-postgres-1 psql -U kloser -d kloser_dev -c \
 #         users/organizations/sessions는 f/f
 ```
 
-(3) Step 2 진입 전 위 검증을 한 번 돌려서 RLS가 실제로 default-deny 작동하는지 확인 필수. 안 그러면 Step 2의 SET LOCAL 미들웨어가 무용지물이라는 사실을 늦게 발견할 수 있다.
+(3) RLS 격리 동작은 마이그레이션의 owner 역할(`kloser`)이 superuser/BYPASSRLS이라 그대로는 검증할 수 없었다. 임시 비-superuser role(`rls_probe`)를 만들어서 검증 완료 — GUC 없음 시 0 rows, GUC=org1 시 2 rows. 자세한 함의는 §9 참고.
 
 ### 2. `users`와 `organizations`에 RLS를 안 건 이유 — 명시적으로 기록
 
@@ -100,6 +106,45 @@ docker exec kloser-dev-postgres-1 psql -U kloser -d kloser_dev -c \
 
 (2) Step 2 첫 작업: `server.ts` 상단에 `import "dotenv/config"` 추가. 이걸 잊으면 db plugin이 등록될 때 `pool.ts`에 박아둔 dev 기본값으로 떨어져서 production-ready가 아님.
 
+### 8. node-pg-migrate v7의 raw SQL 마커는 `-- Up Migration` / `-- Down Migration` (필수)
+
+(1) 첫 runtime 실행 시 `npm run db:migrate:up`이 "Migrations complete!"를 출력하고도 테이블이 하나도 생기지 않는 현상이 있었다. 원인: 마이그레이션 파일이 `-- Up` / `-- Down`만 마커로 사용했고, node-pg-migrate v7은 정확히 `-- Up Migration` / `-- Down Migration` 헤더를 보고 두 섹션을 분리한다. 헤더가 매칭 안 되면 **파일 전체를 한 묶음으로 실행** — 결과적으로 CREATE TABLE 직후 같은 파일 안의 DROP TABLE이 이어 실행되어 빈 DB로 끝났다. `pgmigrations`에는 row가 박혀서 "성공한 척" 보였다.
+
+(2) 수정: `1715000000000_init.sql`의 두 헤더에 ` Migration` 추가. `pgmigrations`에서 해당 row를 DELETE 후 재실행 → 정상.
+
+(3) Step 2 이후 새 마이그레이션을 만들 때는 `npm run db:migrate:create <name>`을 쓰면 도구가 마커를 자동으로 박는다 (수기로 만들지 말 것).
+
+(4) 정적 검증("파일 인식 OK")은 이 버그를 못 잡는다. 다음 Step부터는 격리 테스트가 항상 같이 실행되므로 동일 사고는 자동으로 노출됨.
+
+### 9. 마이그레이션 owner(`kloser`)가 superuser/BYPASSRLS — RLS 격리 검증은 별도 role 필요
+
+(1) `postgres:16-alpine` 이미지가 `POSTGRES_USER=kloser`로 만든 role은 기본 `rolsuper=t, rolbypassrls=t`. FORCE ROW LEVEL SECURITY를 걸어도 superuser는 못 막는다. 그 결과 같은 role로 SELECT하면 RLS가 적용되지 않는 것처럼 모든 row가 보인다 — Step 2의 SET LOCAL 미들웨어를 만들어 놓고 dev에서 테스트해도 거짓 통과 위험.
+
+(2) 본 step에서는 임시로 `rls_probe` role(NOSUPERUSER NOBYPASSRLS) + GRANT SELECT로 격리가 실제로 작동하는지 확인 (GUC 없음 시 0 rows, GUC=org1 시 2 rows). 확인 후 role drop.
+
+(3) Step 2 액션 아이템:
+- 운영용 `app` role 도입 (NOSUPERUSER NOBYPASSRLS) + `DATABASE_URL`을 두 종류로 분리:
+  - `MIGRATE_DATABASE_URL` (또는 단순 `DATABASE_URL` admin 권한): 마이그레이션 + 시드 + 관리 작업용
+  - `APP_DATABASE_URL`: 런타임 connection pool 전용, `app` role
+- pool.ts/db plugin은 `app` role 기반.
+- RLS 격리 PR-게이트 테스트 역시 `app` role로 접속. 그래야 SET LOCAL/GUC가 진짜 효과를 발휘.
+
+### 10. 첫 runtime 통과 후 init 마이그레이션 in-place 보강 (cross-org FK + sessions UNIQUE)
+
+(1) 첫 runtime 통과 직후 코드 리뷰에서 두 건의 schema 약점이 추가로 잡혔다:
+- `memberships.team_id`가 `teams(id)`만 참조해서 org A 멤버십이 org B 팀을 가리킬 수 있었다 (cross-org 데이터 오염).
+- `sessions.refresh_token_hash`가 일반 인덱스라 동일 hash 다중 row가 가능. Step 3의 refresh rotation에서 조회가 모호해진다.
+
+(2) 둘 다 day-1부터 깨끗한 게 미래 read cost가 가장 낮다고 판단해 `1715000000000_init.sql`을 in-place로 보강했다 (feature 브랜치 미푸시 상태 + dev DB만 존재 + Step 2 진입 시 어차피 `compose down -v` 한 번 하므로 비용 0).
+
+- `teams`에 `UNIQUE (org_id, id)` 추가
+- `memberships.team_id` FK를 composite `(org_id, team_id) REFERENCES teams(org_id, id)`로 변경
+- `sessions_refresh_token_hash_idx`를 `CREATE UNIQUE INDEX`로 변경
+
+(3) 그 결과 같은 init 파일을 수정해서 git history에 follow-up 마이그레이션 없이 한 줄로 재현 가능. Step 1 완료 commit (`5cc7819`)에 amend로 합쳤다.
+
+(4) **이후 룰**: Step 1 init 파일은 더 이상 in-place 수정 금지. Step 2 이후의 schema 변경은 모두 새 마이그레이션(`db:migrate:create <name>`)으로 추가.
+
 ---
 
 ## Phase 0.5 → Phase 1 인계 처리 현황
@@ -108,7 +153,7 @@ docker exec kloser-dev-postgres-1 psql -U kloser -d kloser_dev -c \
 
 - [x] **`server/src/__test_client.ts` 삭제** — Phase 0.5 throwaway, Phase 1 kickoff 권장 시점에 삭제.
 - [ ] shared types 중복 — Step 4에서
-- [ ] PostgreSQL 부트스트랩 — Step 1 (본 step에서 코드 완료, runtime 보류)
+- [x] PostgreSQL 부트스트랩 — Step 1 완료 (코드 + runtime 검증 통과, 2026-05-07)
 - [ ] JWT auth — Step 3
 - [ ] DOMPurify — Step 4
 - [ ] FASTIFY_GUIDE.md snake_case 동기화 — Step 5
@@ -126,8 +171,9 @@ docker exec kloser-dev-postgres-1 psql -U kloser -d kloser_dev -c \
 
 ## Step 2 진입 시 가장 먼저 봐야 할 것
 
-1. Docker 환경 갖춰졌는지 확인 (위 §1 절차)
-2. 위 §7대로 `server.ts`에 `import "dotenv/config"` 추가
-3. `server/src/plugins/db.ts` 작성 — `app.pg` decorator + 트랜잭션 helper
-4. `SET LOCAL app.org_id` 미들웨어
-5. RLS 격리 테스트를 PR 머지 게이트로 등록
+1. ~~Docker 환경 갖춰졌는지 확인~~ — Step 1에서 완료 (`docker compose -f ops/docker-compose.yml up -d`)
+2. §9의 `app` role 도입: `CREATE ROLE app LOGIN ... NOSUPERUSER NOBYPASSRLS;` + 적절한 GRANT, `APP_DATABASE_URL` 환경 변수 분리. 이 작업이 Step 2의 1번이어야 함 (안 하면 RLS 테스트가 거짓 통과)
+3. §7대로 `server.ts`에 `import "dotenv/config"` 추가
+4. `server/src/plugins/db.ts` 작성 — `app.pg` decorator + 트랜잭션 helper, `app` role 풀 사용
+5. `SET LOCAL app.org_id` 미들웨어
+6. RLS 격리 테스트를 PR 머지 게이트로 등록 (반드시 `app` role 접속)
