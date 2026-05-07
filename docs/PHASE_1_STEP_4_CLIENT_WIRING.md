@@ -14,7 +14,7 @@
 - [ ] 4. `platform/login.html` 신설 — 미니멀 email/password 폼 + returnUrl 흐름. `kloserApi.login()` 사용 (auto-Bearer/refresh 미적용)
 - [ ] 5. `platform/live.html` — 진입 시 auth gate (`/auth/refresh` 또는 redirect) + suggestion/transcript 렌더 경로에 DOMPurify 적용
 - [ ] 6. `platform/ws.js` — `auth: { token }` 사용, `connect_error` 시 refresh + reconnect, **`__liveSocket`는 localhost 계열(`localhost`/`127.0.0.1`/`::1`/`[::1]`)에서만 노출**
-- [ ] 7. `server/test/ws_auth.test.mjs` — handshake 3종 + runtime `no_active_call` 1종 fix
+- [x] 7. `server/test/ws_auth.test.mjs` — 8 케이스 (handshake 5 + runtime invariant 1 + happy path 2). socket.io-client + 실제 fastify random port
 - [ ] 8. `test/phase_0_5_e2e.mjs` 갱신 — login pre-step + auth reject 2 케이스 (16/16)
 - [ ] 9. `docs/PHASE_1_STEP_4_FINDINGS.md` 작성 + 마스터 plan §6의 shared types 항목을 Phase 2 deferral로 갱신
 
