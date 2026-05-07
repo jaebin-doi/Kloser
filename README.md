@@ -74,7 +74,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 
 ### 🎬 동적 시뮬레이션 하이라이트
 
-**실시간 통화 (live.html)** — 4.5초 간격으로 발화 자동 추가 + 5/14/23/36초 시점에 AI 추천 자동 갱신, 고객 감정이 긍정 → 관심 → 망설임 → 재고려로 진화
+**실시간 통화 (live.html)** — 4.5초 간격으로 발화 자동 추가 + 5/14/23/36초 시점에 AI 추천 자동 갱신, 고객 감정이 긍정 → 관심 → 망설임 → 재고려로 진화. **Phase 0.5 스파이크 이후로는 setTimeout mock이 아니라 백엔드(`server/`)가 WebSocket(`/calls`)으로 푸시하는 실시간 이벤트**로 동작 — 데모 외관은 동일하지만 통신 경로는 진짜.
 
 **AI 챗봇 (newsletter.html)** — 사용자 프롬프트(환영/업데이트/웨비나/갱신)에 따라 **다른 메일 초안 자동 생성** + 타이핑 점 애니메이션
 
@@ -121,7 +121,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 └──────────────────────│────────────────────────────────────────── ┘
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  Kloser 서버 (AWS Seoul)                                          │
+│  Kloser 서버 (자체 온프레미스 — BACKEND_PLAN.md v0.4)               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
 │  │ STT 게이트웨이│→ │ AI 어시스턴트 │→ │ 상담원 콘솔 │              │
 │  │ (Naver Clova)│  │ (RAG + LLM)  │  │ (WebSocket) │              │
@@ -129,8 +129,10 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 │                           │                                       │
 │                    ┌──────┴───────┐                               │
 │                    │ 회사 가이드   │                               │
-│                    │ (벡터 DB)    │                               │
+│                    │ (pgvector)   │                               │
 │                    └──────────────┘                               │
+│                                                                   │
+│  Stack: Fastify + Socket.io + PostgreSQL + Redis/BullMQ + Nginx   │
 └───────────────────────────────────────────────────────────────────┘
                        ▲
                        │ Naver 검색 API (매일 06:00)
@@ -141,7 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: 위 다이어그램은 백엔드 설계 청사진. 본 레포는 **프론트엔드 데모(mock 데이터)** 까지 구현됨.
+> **현재 단계**: **Phase 0.5 라이브 스트림 스파이크 완료** — `server/`(Fastify+Socket.io) ↔ `live.html` 사이 `/calls` 네임스페이스가 실제로 동작하고, 수동 RTT 1ms로 검증됨. STT/LLM 연동, Auth, DB, 영속성은 Phase 1+에서.
+> 자세한 계획·결과: [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md), [`docs/PHASE_0_5_LIVE_SPIKE.md`](docs/PHASE_0_5_LIVE_SPIKE.md), [`docs/PHASE_0_5_FINDINGS.md`](docs/PHASE_0_5_FINDINGS.md).
 
 ---
 
@@ -157,7 +160,7 @@ kloser/
 │   ├── index.html            # → dashboard.html 자동 리다이렉트
 │   ├── dashboard.html        # 메인 대시보드
 │   ├── daily.html            # 오늘의 일 (트렌드 + To-Do + 다운로드)
-│   ├── live.html             # 실시간 통화 어시스턴트
+│   ├── live.html             # 실시간 통화 어시스턴트 (server/와 WebSocket 연결)
 │   ├── calls.html            # 통화 기록 + 상세 패널
 │   ├── customers.html        # 고객 관리
 │   ├── newsletter.html       # AI 뉴스레터 작성
@@ -165,12 +168,34 @@ kloser/
 │   ├── settings.html         # 12개 카테고리 설정
 │   ├── _shared.css           # 공통 스타일 (사이드바·테이블·뱃지·버튼)
 │   ├── _shared.js            # 공통 사이드바 + 알림 패널 렌더러
-│   └── _daily.js             # daily.html 전용 로직 (4 포맷 export)
+│   ├── _daily.js             # daily.html 전용 로직 (4 포맷 export)
+│   └── ws.js                 # 🆕 Socket.io 클라이언트 wrapper (window.kloserWS)
+│
+├── server/                   # 🆕 백엔드 (Phase 0.5 spike) — Fastify + Socket.io + TS
+│   ├── README.md             # 실행 방법, 이벤트/엔드포인트 레퍼런스
+│   ├── package.json          # fastify · socket.io · tsx · typescript
+│   ├── tsconfig.json
+│   └── src/
+│       ├── server.ts         # Fastify entry — /health + io.attach
+│       ├── ws/calls.ts       # /calls 네임스페이스 (start_call/text_chunk/end_call)
+│       ├── fixtures/demo-call.ts   # conversation + aiSequence + sentiment
+│       └── __test_client.ts        # Day 1 검증용 throwaway (Phase 1에서 삭제)
 │
 ├── docs/
-│   ├── guide.html                       # 도입 가이드 (고객용)
-│   ├── pricing.md                       # 가격 정책 (내부 SSOT)
-│   └── realtime-call-assistant-guide.md # 백엔드 구축 가이드 (개발)
+│   ├── guide.html                          # 도입 가이드 (고객용)
+│   ├── pricing.md                          # 가격 정책 (내부 SSOT)
+│   ├── realtime-call-assistant-guide.md    # 백엔드 구축 가이드 (개발)
+│   ├── BACKEND_PLAN.md                     # 🆕 v0.4 자체 온프레미스 + Phase별 로드맵
+│   ├── DESKTOP_APP_PLAN.md                 # 🆕 PC 앱 트랙
+│   ├── PHASE_0_5_LIVE_SPIKE.md             # 🆕 Phase 0.5 구체 실행 계획 + 진행 로그
+│   ├── PHASE_0_5_FINDINGS.md               # 🆕 spike 결과 + Phase 1 후속 task
+│   ├── FASTIFY_GUIDE.md                    # 🆕 Fastify 도입 근거
+│   ├── NODE_VS_PYTHON_BACKEND.md           # 🆕 Node vs Python 결정 트레일
+│   ├── SUPABASE_VS_ONPREM.md               # 🆕 Supabase managed 미채택 사유
+│   ├── SUPABASE_GUIDE.md                   #   (Supabase 이전 검토용 참고 문서)
+│   ├── R730xd_server_setup.md              # 🆕 자체 서버 용량 산정
+│   ├── SLA_99.9%_서버_구성_정리.md         # 🆕 HA 구성 (LB/app/PG/Redis)
+│   └── 운영_핵심_개선_정리.md              # 🆕 RLS/감사로그/마스킹 등 보안 베이스라인
 │
 ├── assets/
 │   ├── logo.png / logo.svg / logo2.png
@@ -179,11 +204,13 @@ kloser/
 │
 ├── test/                     # 자동화 검증 스크립트
 │   ├── README.md             # 실행 방법
-│   ├── smoke_desktop.py      # 데스크톱 8 페이지 일괄 검증
-│   ├── smoke_mobile.py       # 모바일 8 페이지 검증 + 사이드바 토글
-│   ├── smoke_daily.py        # daily.html 단독 검증
-│   ├── test_features.py      # 알림/Word 등 기능 검증
-│   ├── screenshots.py        # 스크린샷 자동 캡처
+│   ├── smoke_desktop.py      # 데스크톱 8 페이지 일괄 검증 (Python)
+│   ├── smoke_mobile.py       # 모바일 8 페이지 검증 + 사이드바 토글 (Python)
+│   ├── smoke_daily.py        # daily.html 단독 검증 (Python)
+│   ├── test_features.py      # 알림/Word 등 기능 검증 (Python)
+│   ├── screenshots.py        # 스크린샷 자동 캡처 (Python)
+│   ├── phase_0_5_e2e.mjs     # 🆕 Phase 0.5 server↔live.html e2e (Node + Playwright)
+│   ├── phase_0_5_e2e.png     # 🆕 e2e 스크린샷 (검증 산출물)
 │   └── screenshots/          # 캡처 결과 PNG
 │
 └── (admin.html · console.html — 별도 관리자 영역, 본 README 범위 외)
@@ -210,11 +237,14 @@ kloser/
 
 ## 🛠️ 로컬 실행
 
+### 마케팅 사이트 + 플랫폼 데모 (정적)
+
 정적 HTML/JS/CSS만 사용하므로 빌드 없이 단순 HTTP 서버로 띄우면 됩니다.
 
 ```bash
 # 프로젝트 루트에서
 python -m http.server 8765
+# (Python alias 미설치 시) npx http-server . -p 8765 --silent
 
 # 브라우저에서:
 # 마케팅 사이트   →  http://localhost:8765/
@@ -222,9 +252,21 @@ python -m http.server 8765
 # 도입 가이드     →  http://localhost:8765/docs/guide.html
 ```
 
-> **참고**: Tailwind CSS와 Pretendard는 CDN 로딩이라 첫 로드 시 인터넷 연결이 필요합니다.
+### 라이브 통화 백엔드 (`live.html` 실시간 흐름 보기)
 
-자동 검증 스크립트는 [`test/README.md`](test/README.md) 참고.
+`platform/live.html`이 진짜 WebSocket 이벤트로 동작하는 걸 보려면 별도 터미널에서 백엔드를 띄웁니다 (Phase 0.5 spike 결과물).
+
+```bash
+cd server
+npm install        # 최초 1회
+npm run dev        # tsx watch — port 3001
+```
+
+이제 `http://localhost:8765/platform/live.html`을 열면 `server/`가 `start_call → transcript/suggestion/sentiment` 시퀀스를 자동으로 푸시합니다. 자세한 내용은 [`server/README.md`](server/README.md).
+
+> **참고**: Tailwind CSS, Pretendard, socket.io-client는 CDN 로딩이라 첫 로드 시 인터넷 연결이 필요합니다.
+
+자동 검증 스크립트(Python smoke + Node e2e)는 [`test/README.md`](test/README.md) 참고.
 
 ---
 
@@ -238,32 +280,47 @@ python -m http.server 8765
 
 ### 외부 라이브러리 (CDN)
 - **Pretendard CDN** (jsdelivr) — 한글 가변 폰트
+- **socket.io-client 4.7** — `live.html`이 `/calls` 네임스페이스에 접속
 - **html2canvas + jsPDF** — PDF 다운로드
 - **html-docx-js** — Word(.docx) 다운로드
 - **SheetJS (xlsx)** — Excel(.xlsx) 다운로드
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (예정)
+### 백엔드 (`server/` — Phase 0.5 spike 완료, Phase 1 착수 대기)
+- **런타임/언어**: Node.js 20+ / TypeScript
+- **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
+- **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/SUPABASE_VS_ONPREM.md`)
+- **DB**: 직접 운영 PostgreSQL + RLS default-deny (Phase 1부터)
+- **큐/캐시**: Redis + BullMQ (Phase 4+)
+- **Reverse proxy**: Nginx 또는 Caddy (Phase 1+)
+
+### 외부 연동 (Phase 5~6)
 - **STT**: Naver Clova Speech (한국어 영업 도메인 정확도 우선)
 - **LLM**: Anthropic Claude / OpenAI GPT — 회사 가이드 RAG 기반
-- **인프라**: AWS Seoul (Pro까지) / 온프레미스·VPC (Enterprise)
-- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처)
-- **벡터 검색**: pgvector 또는 Pinecone
+- **벡터 검색**: pgvector
+- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/DESKTOP_APP_PLAN.md`
 
 ---
 
 ## 🗺️ 로드맵
 
-### v0 — 데모 (✅ 현재 상태)
+### v0 — 데모 (✅ 완료)
 - 9페이지 인터랙티브 데모 + mock 데이터
 - 다국어 폰트 / 반응형 / 모달 / 토스트 / 다운로드
-- 자동화 검증 스크립트 (Python + Playwright)
+- 자동화 검증 스크립트 (Python smoke + Node e2e + Playwright)
 
-### v1 — MVP (다음 단계)
-- 백엔드 인증 + 멀티테넌시
+### v0.5 — 라이브 스트림 스파이크 (✅ 완료)
+- `server/` Fastify + Socket.io 부트스트랩
+- `/calls` 네임스페이스: `start_call`/`text_chunk`/`end_call` (snake_case)
+- `live.html`의 `setTimeout` mock을 WebSocket 이벤트로 교체
+- 수동 RTT 1ms · 자동 데모 재생 · sentiment 자동 전이 · 14/14 e2e PASS
+- 결과 정리: [`docs/PHASE_0_5_FINDINGS.md`](docs/PHASE_0_5_FINDINGS.md)
+
+### v1 — MVP (다음 단계, Phase 1~6)
+- **Phase 1**: 자체 Auth (JWT) + PostgreSQL 부트스트랩 + RLS default-deny + customers CRUD
+- **Phase 2~4**: Team/초대, Calls REST + Dashboard, 실시간 STT(Clova) + AI suggestion
 - Windows 데스크톱 앱 (오디오 캡처)
-- Naver Clova STT 실시간 연동
 - Claude RAG 기반 응대 추천 엔진
 - 단일 회사·1~5명 직원 기준 PoC
 

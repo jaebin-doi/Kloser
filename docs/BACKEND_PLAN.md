@@ -378,20 +378,20 @@ v0.3의 endpoint 구조를 유지하되, 인증과 DB 접근은 자체 Auth/Post
 
 ## 8. 단계별 로드맵
 
-### Phase 0.5 — Live 스트림 스파이크 (3~5일)
+### Phase 0.5 — Live 스트림 스파이크 (3~5일) ✅ 완료
 
-목표: Auth/DB보다 먼저 Kloser 핵심인 실시간 이벤트 파이프라인을 확인한다.
+목표: Auth/DB보다 먼저 Kloser 핵심인 실시간 이벤트 파이프라인을 확인한다. (구체 실행 계획: `docs/PHASE_0_5_LIVE_SPIKE.md`. 결과 정리: `docs/PHASE_0_5_FINDINGS.md`.)
 
-- [ ] `server/` Fastify + TypeScript 부트스트랩
-- [ ] Socket.io 또는 native WebSocket 적용
-- [ ] `/calls` namespace
-- [ ] `start_call`, `text_chunk`, `end_call`
-- [ ] 서버가 더미 `transcript`, `suggestion`, `sentiment` 이벤트 푸시
-- [ ] `platform/ws.js` 추가
-- [ ] `live.html`의 `setTimeout` mock을 WebSocket 이벤트 기반으로 교체
-- [ ] 지연시간 측정
+- [x] `server/` Fastify + TypeScript 부트스트랩
+- [x] Socket.io 또는 native WebSocket 적용 — Socket.io 4.7 채택
+- [x] `/calls` namespace
+- [x] `start_call`, `text_chunk`, `end_call`
+- [x] 서버가 더미 `transcript`, `suggestion`, `sentiment` 이벤트 푸시 (start_call 시 fixture 자동 재생)
+- [x] `platform/ws.js` 추가 (window.kloserWS 단일 진입점)
+- [x] `live.html`의 `setTimeout` mock을 WebSocket 이벤트 기반으로 교체 + transcript textContent 전환 (XSS 방어)
+- [x] 지연시간 측정 — 수동 text_chunk RTT 1ms (목표 150ms 대비 여유)
 
-완료 기준: 텍스트 청크를 보내면 1~3초 안에 transcript/suggestion/sentiment가 live 화면에 표시된다.
+완료 기준: 텍스트 청크를 보내면 1~3초 안에 transcript/suggestion/sentiment가 live 화면에 표시된다. → **충족** (`test/phase_0_5_e2e.mjs` 12/12 PASS).
 
 ### Phase 1 — 온프레미스 기반 + 자체 Auth (1.5~2주)
 

@@ -7,6 +7,8 @@
   <title>실시간 통화 — Kloser</title>
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <script src="ws.js"></script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
@@ -401,7 +403,10 @@
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600" viewBox="0 0 24 24"><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9zM9 9h.01M15 9h.01M9 15c1.5 1 3.5 1 6 0"/></svg>
                 <span class="text-[.78rem] font-bold text-slate-800">고객 상태 분석</span>
               </div>
-              <span class="text-[.6rem] font-bold text-slate-400">실시간</span>
+              <div class="flex items-center gap-2">
+                <span id="latencyVal" class="text-[.55rem] font-bold text-slate-400 tnum" title="WebSocket round-trip latency">— ms</span>
+                <span class="text-[.6rem] font-bold text-slate-400">실시간</span>
+              </div>
             </div>
             <div class="grid grid-cols-3 gap-2 text-center">
               <div class="rounded-lg bg-slate-50 px-2 py-2.5">
@@ -463,117 +468,13 @@
     if (typeof renderNotification === 'function') renderNotification('notifBtn');
 
     /* ────────────────────────────────────────────────
-       데이터: 시뮬레이션용 대화 + AI 추천 시퀀스
-    ──────────────────────────────────────────────── */
-    const conversation = [
-      { who: 'agent', text: '안녕하세요, Kloser 고객지원팀 김민수입니다. 무엇을 도와드릴까요?', delay: 0 },
-      { who: 'customer', text: '안녕하세요. Kloser 도입을 검토 중인데요, 저희가 영업팀이 8명 정도 됩니다.', delay: 4500 },
-      { who: 'agent', text: '네, 8명 규모시면 Pro 플랜이 가장 적합하실 것 같습니다.', delay: 9000 },
-      { who: 'customer', text: '저희가 지금 HubSpot을 쓰고 있는데, 데이터 연동이 가능한가요?', delay: 13500 },
-      { who: 'agent', text: '네, HubSpot 양방향 동기화 기본 지원합니다. 기존 고객·딜 데이터 그대로 가져오실 수 있어요.', delay: 18000 },
-      { who: 'customer', text: '좋네요. 그러면 가격은 어떻게 되나요? 1인당인가요?', delay: 22500 },
-      { who: 'agent', text: '아니요, 회사 1곳 기준 정액입니다. Pro는 월 49,000원이고요.', delay: 27000 },
-      { who: 'customer', text: '음, 8명이 같이 쓰려면 얼마인가요?', delay: 31500 },
-      { who: 'agent', text: '아 죄송합니다, Pro는 직원 1명 사용 기준이고, 5명까지는 Enterprise 플랜이 필요합니다. 8명이시면 Enterprise + 추가 인원 옵션을 협의드려야 해요.', delay: 36000 },
-      { who: 'customer', text: '아, 그렇군요. Enterprise는 얼마인가요?', delay: 40500 },
-    ];
-
-    // AI suggestions sequence (triggered at certain points)
-    const aiSequence = [
-      {
-        at: 5000,
-        suggestions: [
-          {
-            type: 'direction',
-            title: '응대 방향',
-            body: '회사 규모 청취 완료. 다음은 <b>현재 사용 중인 도구</b>를 자연스럽게 물어보세요.',
-            tone: 'blue'
-          },
-          {
-            type: 'script',
-            title: '추천 멘트',
-            body: '"혹시 지금은 영업 데이터를 어떤 도구로 관리하고 계신가요?"',
-            tone: 'cyan'
-          }
-        ]
-      },
-      {
-        at: 14000,
-        suggestions: [
-          {
-            type: 'alert',
-            title: '핵심 신호 감지',
-            body: '고객이 <b>HubSpot 사용</b>을 언급했습니다. CRM 통합이 결정 요인일 수 있어요.',
-            tone: 'amber'
-          },
-          {
-            type: 'script',
-            title: '추천 멘트',
-            body: '"HubSpot은 양방향 동기화 기본 지원입니다. 기존 데이터 그대로 가져올 수 있어요."',
-            tone: 'cyan'
-          },
-          {
-            type: 'kb',
-            title: '관련 자료',
-            body: 'HubSpot 통합 가이드 PDF · 도입 사례: 디자인코',
-            tone: 'slate'
-          }
-        ]
-      },
-      {
-        at: 23000,
-        suggestions: [
-          {
-            type: 'direction',
-            title: '응대 방향',
-            body: '가격 질문 — <b>플랜이 회사 단위 정액</b>임을 명확히 안내하세요. 8명 규모이므로 Enterprise 플랜이 필요합니다.',
-            tone: 'blue'
-          },
-          {
-            type: 'script',
-            title: '추천 멘트',
-            body: '"회사 1곳 기준 정액제이며, Pro는 직원 1명 기준입니다. 5인 팀은 Enterprise(299,000원/월)부터 시작합니다."',
-            tone: 'cyan'
-          },
-          {
-            type: 'risk',
-            title: '주의 포인트',
-            body: 'Enterprise는 <b>연간 구독만 가능 · 현장 방문 셋팅 필요</b>를 함께 안내해야 합니다.',
-            tone: 'rose'
-          }
-        ]
-      },
-      {
-        at: 36500,
-        suggestions: [
-          {
-            type: 'direction',
-            title: '응대 방향',
-            body: '8명 팀이라 <b>Enterprise 5인 + 추가 인원 옵션</b>이 필요. 정확한 견적을 위해 후속 미팅 일정을 제안하세요.',
-            tone: 'blue'
-          },
-          {
-            type: 'script',
-            title: '추천 멘트',
-            body: '"8명 팀이시면 Enterprise 기본 + 직원 3명 추가 옵션이 필요합니다. 정확한 견적과 도입 일정을 위해 30분 화상 미팅 잡으실까요?"',
-            tone: 'cyan'
-          },
-          {
-            type: 'next',
-            title: '다음 액션',
-            body: '✓ 무료 시연 일정 제안<br>✓ 도입 가이드 PDF 발송<br>✓ Enterprise 견적서 준비',
-            tone: 'emerald'
-          }
-        ]
-      },
-    ];
-
-    /* ────────────────────────────────────────────────
        Transcript 렌더링
+       (Phase 0.5: setTimeout mock 제거됨. 이벤트는 서버에서 푸시)
     ──────────────────────────────────────────────── */
     const transcriptEl = document.getElementById('transcript');
     const aiSuggestionsEl = document.getElementById('aiSuggestions');
     const callTimerEl = document.getElementById('callTimer');
+    const latencyEl = document.getElementById('latencyVal');
 
     const startedAt = Date.now();
 
@@ -594,26 +495,40 @@
       return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     }
 
+    /* transcript bubble 본문은 textContent로 주입 — XSS 방어 (Day 3) */
     function appendMessage(msg) {
       const isAgent = msg.who === 'agent';
       const wrapper = document.createElement('div');
       wrapper.className = `flex gap-3 msg-enter ${isAgent ? 'flex-row-reverse' : ''}`;
-      wrapper.innerHTML = `
-        <div class="w-8 h-8 rounded-full ${isAgent ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'} flex items-center justify-center text-[.7rem] font-black flex-shrink-0">
-          ${isAgent ? '나' : '客'}
-        </div>
-        <div class="flex flex-col ${isAgent ? 'items-end' : 'items-start'} max-w-[78%]">
-          <div class="flex items-center gap-1.5 mb-1 ${isAgent ? 'flex-row-reverse' : ''}">
-            <span class="text-[.7rem] font-bold ${isAgent ? 'text-blue-700' : 'text-slate-700'}">${isAgent ? '상담원 (나)' : '김민수 (고객)'}</span>
-            <span class="text-[.62rem] text-slate-400 tnum">${timestampNow()}</span>
-          </div>
-          <div class="rounded-2xl px-3.5 py-2.5 text-slate-800 leading-snug ${isAgent ? 'bg-blue-50 border border-blue-100 rounded-tr-sm' : 'bg-slate-50 border border-slate-100 rounded-tl-sm'}">
-            ${msg.text}
-          </div>
-        </div>
-      `;
+
+      const avatar = document.createElement('div');
+      avatar.className = `w-8 h-8 rounded-full ${isAgent ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'} flex items-center justify-center text-[.7rem] font-black flex-shrink-0`;
+      avatar.textContent = isAgent ? '나' : '客';
+
+      const col = document.createElement('div');
+      col.className = `flex flex-col ${isAgent ? 'items-end' : 'items-start'} max-w-[78%]`;
+
+      const meta = document.createElement('div');
+      meta.className = `flex items-center gap-1.5 mb-1 ${isAgent ? 'flex-row-reverse' : ''}`;
+      const speakerLabel = document.createElement('span');
+      speakerLabel.className = `text-[.7rem] font-bold ${isAgent ? 'text-blue-700' : 'text-slate-700'}`;
+      speakerLabel.textContent = isAgent ? '상담원 (나)' : '김민수 (고객)';
+      const tsLabel = document.createElement('span');
+      tsLabel.className = 'text-[.62rem] text-slate-400 tnum';
+      tsLabel.textContent = timestampNow();
+      meta.appendChild(speakerLabel);
+      meta.appendChild(tsLabel);
+
+      const bubble = document.createElement('div');
+      bubble.className = `rounded-2xl px-3.5 py-2.5 text-slate-800 leading-snug ${isAgent ? 'bg-blue-50 border border-blue-100 rounded-tr-sm' : 'bg-slate-50 border border-slate-100 rounded-tl-sm'}`;
+      bubble.textContent = msg.text;
+
+      col.appendChild(meta);
+      col.appendChild(bubble);
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(col);
+
       transcriptEl.appendChild(wrapper);
-      // auto-scroll
       transcriptEl.scrollTo({ top: transcriptEl.scrollHeight, behavior: 'smooth' });
     }
 
@@ -677,37 +592,82 @@
       ]
     });
 
-    /* ────────────────────────────────────────────────
-       시뮬레이션 진행
-    ──────────────────────────────────────────────── */
-    conversation.forEach(msg => {
-      setTimeout(() => appendMessage(msg), msg.delay);
-    });
+    /* sentiment 갱신 — Day 3에서 인라인 if-체인을 함수로 추출 */
+    const moodToneClass = {
+      '관심': 'text-[.85rem] font-black text-blue-600',
+      '망설임': 'text-[.85rem] font-black text-amber-600',
+      '재고려': 'text-[.85rem] font-black text-violet-600',
+    };
+    function updateSentiment({ mood, interest, stage } = {}) {
+      const moodEl = document.getElementById('moodVal');
+      const interestElNode = document.getElementById('interestVal');
+      const stageElNode = document.getElementById('stageVal');
+      if (mood && moodEl) {
+        moodEl.textContent = mood;
+        moodEl.className = moodToneClass[mood] || 'text-[.85rem] font-black text-slate-600';
+      }
+      if (typeof interest === 'number' && interestElNode) {
+        interestElNode.textContent = `${interest}%`;
+      }
+      if (stage && stageElNode) {
+        stageElNode.textContent = stage;
+      }
+    }
 
-    aiSequence.forEach(group => {
-      setTimeout(() => {
+    /* ────────────────────────────────────────────────
+       Live WebSocket 연결 (Phase 0.5)
+       — setTimeout mock은 모두 제거됨. 데이터는 서버 /calls 네임스페이스에서 푸시
+    ──────────────────────────────────────────────── */
+    const KLOSER_API = 'http://localhost:3001';
+
+    (async () => {
+      if (!window.kloserWS) {
+        console.error('[live] kloserWS not loaded — ws.js missing?');
+        return;
+      }
+
+      const socket = window.kloserWS.connectCallNamespace({
+        baseUrl: KLOSER_API,
+        userId: 'demo-user',
+      });
+      // Test-only handle so test/phase_0_5_e2e.mjs can drive sendTextChunk on
+      // the same socket the page renders into (otherwise the latency badge can't
+      // be observed from outside the IIFE). Phase 1: remove or guard with a flag.
+      window.__liveSocket = socket;
+
+      // 리스너는 startCall 전에 등록 — 서버가 ack 직후 발사를 시작해도 첫 이벤트를 놓치지 않도록
+      window.kloserWS.onTranscript(socket, (ev) => {
+        appendMessage({ who: ev.who, text: ev.text });
+        if (typeof ev.clientSentAt === 'number' && latencyEl) {
+          const rtt = Date.now() - ev.clientSentAt;
+          console.log('[live] rtt', rtt, 'ms');
+          latencyEl.textContent = `${rtt}ms`;
+        }
+      });
+
+      window.kloserWS.onSuggestion(socket, (group) => {
         renderSuggestions(group);
-        // Update sentiment / interest dynamically
-        if (group.at >= 14000) {
-          document.getElementById('moodVal').textContent = '관심';
-          document.getElementById('moodVal').className = 'text-[.85rem] font-black text-blue-600';
-          document.getElementById('interestVal').textContent = '92%';
-          document.getElementById('stageVal').textContent = '검토';
-        }
-        if (group.at >= 23000) {
-          document.getElementById('moodVal').textContent = '망설임';
-          document.getElementById('moodVal').className = 'text-[.85rem] font-black text-amber-600';
-          document.getElementById('interestVal').textContent = '78%';
-          document.getElementById('stageVal').textContent = '가격검토';
-        }
-        if (group.at >= 36000) {
-          document.getElementById('moodVal').textContent = '재고려';
-          document.getElementById('moodVal').className = 'text-[.85rem] font-black text-violet-600';
-          document.getElementById('interestVal').textContent = '85%';
-          document.getElementById('stageVal').textContent = '협상';
-        }
-      }, group.at);
-    });
+      });
+
+      window.kloserWS.onSentiment(socket, (s) => {
+        updateSentiment(s);
+      });
+
+      window.kloserWS.onError(socket, (err) => {
+        console.error('[live] server error', err);
+      });
+
+      try {
+        const ack = await window.kloserWS.startCall(socket, { customerId: 'demo-customer' });
+        console.log('[live] start_call ack', ack);
+      } catch (err) {
+        console.error('[live] startCall failed', err);
+      }
+
+      window.addEventListener('beforeunload', () => {
+        try { window.kloserWS.endCall(socket); } catch (_) { /* ignore */ }
+      });
+    })().catch((err) => console.error('[live] init failed', err));
 
     /* Checklist toggle */
     function toggleChk(btn) {
