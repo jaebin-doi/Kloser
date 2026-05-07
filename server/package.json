@@ -8,10 +8,10 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
-    "db:migrate:up": "node-pg-migrate up -m migrations -j sql",
-    "db:migrate:down": "node-pg-migrate down -m migrations -j sql",
-    "db:migrate:create": "node-pg-migrate create -m migrations -j sql",
-    "db:migrate:redo": "node-pg-migrate redo -m migrations -j sql",
+    "db:migrate:up": "node scripts/migrate.mjs up -m migrations -j sql",
+    "db:migrate:down": "node scripts/migrate.mjs down -m migrations -j sql",
+    "db:migrate:create": "node scripts/migrate.mjs create -m migrations -j sql",
+    "db:migrate:redo": "node scripts/migrate.mjs redo -m migrations -j sql",
     "db:seed": "node scripts/run-seed.mjs"
   },
   "dependencies": {

@@ -1,5 +1,10 @@
-/* Run the latest demo seed file against $DATABASE_URL.
+/* Run the latest demo seed file against $MIGRATE_DATABASE_URL.
  * Used as `npm run db:seed`. Phase 1 Step 1 — only one seed for now.
+ *
+ * Seeds need the admin role: they bypass RLS and may need to insert across
+ * orgs in a single connection. Step 2 split DATABASE_URL (runtime, app role)
+ * from MIGRATE_DATABASE_URL (migrations + seeds, admin role) — this script
+ * uses the latter, never the former.
  *
  * Why a script instead of `psql -f`? Windows dev boxes often don't have
  * `psql` on PATH, but they have node. This script uses pg directly so the
@@ -20,15 +25,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const seedPath   = path.resolve(__dirname, "..", SEED_FILE);
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-    console.error("DATABASE_URL is not set. Copy server/.env.example to server/.env first.");
+const MIGRATE_DATABASE_URL = process.env.MIGRATE_DATABASE_URL;
+if (!MIGRATE_DATABASE_URL) {
+    console.error(
+        "MIGRATE_DATABASE_URL is not set. Seeds require an admin role" +
+        " (NOT the runtime app role). Copy server/.env.example to server/.env" +
+        " and fill MIGRATE_DATABASE_URL."
+    );
     process.exit(2);
 }
 
 const sql = await readFile(seedPath, "utf8");
 
-const client = new pg.Client({ connectionString: DATABASE_URL });
+const client = new pg.Client({ connectionString: MIGRATE_DATABASE_URL });
 await client.connect();
 
 try {
