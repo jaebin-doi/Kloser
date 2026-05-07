@@ -10,6 +10,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { Server as IOServer } from "socket.io";
 import { registerCallsNamespace } from "./ws/calls.js";
+import authPlugin from "./plugins/auth.js";
 import dbPlugin from "./plugins/db.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -25,6 +26,7 @@ await app.register(cors, {
   credentials: true,
 });
 
+await app.register(authPlugin);
 await app.register(dbPlugin);
 
 app.get("/health", async () => ({

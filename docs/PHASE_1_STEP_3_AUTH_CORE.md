@@ -12,9 +12,9 @@
 - [x] 2. 인증 의존성 추가 (`@fastify/jwt`, `@fastify/cookie`, Argon2id 구현용 패키지)
 - [x] 3. env 계약 추가 (`JWT_SECRET`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL`, `REFRESH_GRACE_WINDOW_SECONDS`, cookie 설정 — `JWT_SECRET` 누락 시 boot fail-fast)
 - [x] 4. sessions 스키마 보강 migration (refresh rotation family/reuse detection)
-- [ ] 5. seed password를 Argon2id hash로 갱신 + 평문 4쌍을 seed 파일 헤더 코멘트에 명시 (dev/test 사용성)
-- [ ] 6. auth repository/service 작성
-- [ ] 7. auth plugin/middleware 작성 (`request.user`, `requireAuth`, `requireRole`)
+- [x] 5. seed password를 Argon2id hash로 갱신 + 평문 4쌍을 seed 파일 헤더 코멘트에 명시 (dev/test 사용성)
+- [x] 6. auth repository/service 작성
+- [x] 7. auth plugin/middleware 작성 (`request.user`, `requireAuth`, `requireRole`)
 - [ ] 8. routes 작성 (`/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/me`)
 - [ ] 9. `orgContext`를 JWT 우선으로 전환하고 prod에서 `X-Org-Id` 차단
 - [ ] 10. auth 테스트 작성 (login/refresh/logout/me/role/RLS)
