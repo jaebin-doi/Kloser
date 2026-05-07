@@ -18,9 +18,13 @@
  *     promise — no thundering herd against /auth/refresh.
  *   - Every request prefixes the configured API_BASE_URL so the
  *     cross-origin between the static server (e.g. :8765) and the
- *     API server (:3001) is explicit, not implicit. Override:
- *       <meta name="kloser-api-base" content="https://api.example">
- *       window.KLOSER_API_BASE = "https://api.example"  (BEFORE this script)
+ *     API server (:3001) is explicit, not implicit. Override
+ *     priority (Phase 1 Step 5):
+ *       1. window.KLOSER_API_BASE (string — empty allowed)
+ *       2. <meta name="kloser-api-base" content="..."> (empty allowed)
+ *       3. AUTO: https + hostname=localhost → "" (Caddy single-origin)
+ *       4. default "http://localhost:3001" (split-origin dev)
+ *     Empty string means "use relative URLs (same-origin)".
  *
  * Error contract:
  *   - login() / apiGet() / apiPost() throw on network failure.
@@ -40,13 +44,30 @@
   const REFRESH_ENDPOINT = '/auth/refresh';
 
   function resolveApiBase() {
-    if (typeof window.KLOSER_API_BASE === 'string' && window.KLOSER_API_BASE.length > 0) {
+    // 1. Explicit window override — empty string passes through as the
+    //    operator-set same-origin signal.
+    if (typeof window.KLOSER_API_BASE === 'string') {
       return window.KLOSER_API_BASE.replace(/\/+$/, '');
     }
+    // 2. Explicit <meta> override — same empty-string passthrough. We
+    //    check hasAttribute('content') so a copy-paste-without-content
+    //    isn't treated as same-origin by accident.
     const meta = document.querySelector('meta[name="kloser-api-base"]');
-    if (meta && typeof meta.content === 'string' && meta.content.length > 0) {
+    if (meta && meta.hasAttribute('content')) {
       return meta.content.replace(/\/+$/, '');
     }
+    // 3. Auto: HTTPS on localhost is almost certainly a Caddy
+    //    single-origin dev (or prod-equivalent reverse proxy) setup.
+    //    Use relative URLs so fetch targets the page's own origin.
+    //    Plain http://localhost:8765 keeps falling through to step 4.
+    if (
+      window.location.protocol === 'https:' &&
+      window.location.hostname === 'localhost'
+    ) {
+      return '';
+    }
+    // 4. Default — split-origin dev (http://localhost:8765 page hits
+    //    http://localhost:3001 API).
     return DEFAULT_API_BASE;
   }
 

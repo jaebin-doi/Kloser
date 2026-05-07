@@ -293,27 +293,28 @@ fastify.get('/customers', {
 
 ## 8. WebSocket 예시
 
-Live 통화 스파이크의 이벤트 구조:
+Live 통화 스파이크의 이벤트 구조 (`BACKEND_PLAN.md` §6 + `server/src/ws/calls.ts`와 표기 통일 — snake_case):
 
 ```text
 client -> server
-  call:start
-  call:chunk
-  call:end
+  start_call
+  text_chunk
+  end_call
 
 server -> client
   transcript
   suggestion
   sentiment
-  checklist:update
   error
 ```
+
+> Phase 0.5 spike 시점엔 본 가이드가 콜론 표기로 적혀 있었으나, 실제 코드와 BACKEND_PLAN §6은 처음부터 snake_case였다. Phase 1 Step 5 (Caddy reverse proxy) 시점에 본 가이드를 코드와 일치하도록 동기화 — Phase 0.5 인계 항목 마지막 1건 (`PHASE_0_5_FINDINGS.md` §4) 클로즈. server→client 쪽의 `checklist_update`는 코드에 없는 스파이크 시점 추정이라 제거 — Phase 4 (calls REST + dashboard)에서 새 이벤트가 생기면 그때 추가.
 
 초기 Phase 0.5에서는 실제 오디오 대신 텍스트 chunk를 보낸다.
 
 ```json
 {
-  "type": "call:chunk",
+  "type": "text_chunk",
   "callId": "uuid",
   "speaker": "customer",
   "text": "HubSpot 연동이 가능한가요?"
@@ -383,7 +384,7 @@ Fastify 서버 테스트는 다음 조합을 사용한다.
 - `GET /customers` org 격리
 - `POST /customers` validation
 - viewer role write 차단
-- WebSocket `call:chunk -> transcript/suggestion` 이벤트
+- WebSocket `text_chunk -> transcript/suggestion` 이벤트
 
 ---
 

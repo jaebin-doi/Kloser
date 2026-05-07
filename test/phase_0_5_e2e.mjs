@@ -1,11 +1,26 @@
-/* Phase 0.5 end-to-end Playwright verification — refreshed for Phase 1 step 4.
+/* Phase 0.5 end-to-end Playwright verification — refreshed for Phase 1 step 4
+ * and parameterized for Phase 1 step 5 (Caddy single-origin variant).
  *
- * Pre-req:
+ * Pre-req (default split-origin):
  *   - API:    `npm --prefix server run dev`            (port 3001)
  *   - Static: `npx http-server . -p 8765 --silent`     (project root)
  *
- * Run:
+ * Run (split-origin):
  *   node test/phase_0_5_e2e.mjs
+ *
+ * Run (Caddy single-origin variant — Phase 1 step 5 §1.5):
+ *   # PowerShell:
+ *   $env:KLOSER_E2E_BASE_URL = 'https://localhost'
+ *   node test/phase_0_5_e2e.mjs
+ *   Remove-Item Env:KLOSER_E2E_BASE_URL
+ *
+ *   # bash:
+ *   KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs
+ *
+ *   Caddy must be running (`caddy run --config ops/Caddyfile.dev`) and
+ *   proxy /auth, /me, /socket.io, /health to Fastify on :3001 and serve
+ *   the project root as static. The test ignores TLS errors when the
+ *   target is https:// so Caddy's internal-CA cert isn't a blocker.
  *
  * Phase 1 step 4 changes vs. the spike-era version:
  *   - Step 0 (setup, not counted): login through /platform/login.html. The
@@ -23,11 +38,15 @@ import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const STATIC_ORIGIN = "http://localhost:8765";
+// E2E_BASE collapses STATIC and API into one origin (Caddy mode).
+// When unset, fall back to the split-origin defaults.
+const E2E_BASE      = process.env.KLOSER_E2E_BASE_URL || "";
+const STATIC_ORIGIN = E2E_BASE || "http://localhost:8765";
+const API_BASE      = E2E_BASE || "http://localhost:3001";
 const LOGIN_URL     = `${STATIC_ORIGIN}/platform/login.html`;
 const LIVE_URL      = `${STATIC_ORIGIN}/platform/live.html`;
-const API_HEALTH    = "http://localhost:3001/health";
-const API_BASE      = "http://localhost:3001";
+const API_HEALTH    = `${API_BASE}/health`;
+const IS_HTTPS      = STATIC_ORIGIN.startsWith("https:");
 
 // Resolve screenshot path relative to this script so the test is cwd-independent.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,13 +56,21 @@ function pass(msg) { console.log("PASS:", msg); }
 function fail(msg) { console.error("FAIL:", msg); process.exitCode = 1; }
 
 async function main() {
+  console.log(`→ mode: ${E2E_BASE ? `single-origin (${E2E_BASE})` : "split-origin (8765 + 3001)"}`);
+
   // Sanity probe before launching headless browser.
+  // For HTTPS targets the self-signed cert would otherwise fail this fetch
+  // — undici (node fetch) doesn't honor browser cert stores. NODE_TLS_
+  // REJECT_UNAUTHORIZED is the simplest dev-only escape hatch.
+  if (IS_HTTPS) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
   const health = await fetch(API_HEALTH).then((r) => r.json()).catch(() => null);
   if (!health || health.ok !== true) throw new Error("API health probe failed — is server/ running?");
   pass(`API health ok (uptime ${health.uptimeSec}s)`);
 
   const browser = await chromium.launch({ headless: true });
-  const ctx = await browser.newContext();
+  // ignoreHTTPSErrors swallows Caddy's internal-CA cert warnings in dev;
+  // it's a no-op for the http:// split-origin mode.
+  const ctx = await browser.newContext({ ignoreHTTPSErrors: IS_HTTPS });
   const page = await ctx.newPage();
 
   /** @type {string[]} */
@@ -118,9 +145,10 @@ async function main() {
   //    no userId query param anymore. We filter on seq=999 because the
   //    server's demo replay also pushes transcripts on this socket once
   //    we call start_call.
-  const probe = await page.evaluate(async () => {
+  const probe = await page.evaluate(async (apiBase) => {
     const probe = window.kloserWS.connectCallNamespace({
-      baseUrl:        "http://localhost:3001",
+      // Empty string in Caddy mode → kloserWS uses page origin (relative).
+      baseUrl:        apiBase,
       tokenProvider:  () => window.kloserApi.getAccessToken(),
       // The default onAuthFailure redirects to /login; harmless during
       // a positive probe but explicitly no-op'd to keep the page stable
@@ -147,7 +175,7 @@ async function main() {
     const rtt = Date.now() - t0;
     probe.close();
     return { event, rtt };
-  });
+  }, API_BASE);
   if (probe.event.text !== "E2E-PROBE") fail(`probe transcript text mismatch: ${probe.event.text}`);
   else pass(`text_chunk echo OK (RTT ${probe.rtt}ms, clientSentAt round-tripped)`);
   if (probe.rtt > 150) fail(`RTT exceeded 150ms target: ${probe.rtt}ms`);
@@ -179,9 +207,9 @@ async function main() {
 
   // 9. text_chunk payload validation — server should emit `error` on missing clientSentAt.
   //    Phase 1 step 4: probe needs tokenProvider too.
-  const badPayloadResult = await page.evaluate(async () => {
+  const badPayloadResult = await page.evaluate(async (apiBase) => {
     const probe = window.kloserWS.connectCallNamespace({
-      baseUrl:        "http://localhost:3001",
+      baseUrl:        apiBase,
       tokenProvider:  () => window.kloserApi.getAccessToken(),
       onAuthFailure:  () => {},
     });
@@ -198,7 +226,7 @@ async function main() {
     });
     probe.close();
     return result;
-  });
+  }, API_BASE);
   if (!badPayloadResult.ok) fail(`payload validation: ${badPayloadResult.reason}`);
   else if (badPayloadResult.err?.code !== "BAD_PAYLOAD") fail(`payload validation: unexpected error code ${badPayloadResult.err?.code}`);
   else pass(`payload validation: BAD_PAYLOAD emitted on missing clientSentAt`);

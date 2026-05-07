@@ -23,8 +23,24 @@ const app = Fastify({
   logger: { level: "info" },
 });
 
+// CORS allow-list:
+//   - STATIC_ORIGIN          → split-origin dev default (http://localhost:8765).
+//                                Override per env for prod / staging deploys.
+//   - 127.0.0.1:8765          → equivalent IPv4 host for the static server.
+//   - https://localhost       → forward-compat for Phase 1 Step 5 Caddy
+//   - https://127.0.0.1         single-origin variant AND HTTPS dev proxies
+//                                (VS Code Dev Tunnels, ngrok, etc.). Caddy
+//                                same-origin requests don't reach this list —
+//                                CORS isn't triggered same-origin — so this
+//                                is purely a safety net for direct API calls
+//                                from those origins.
 await app.register(cors, {
-  origin: [STATIC_ORIGIN, "http://127.0.0.1:8765"],
+  origin: [
+    STATIC_ORIGIN,
+    "http://127.0.0.1:8765",
+    "https://localhost",
+    "https://127.0.0.1",
+  ],
   credentials: true,
 });
 
@@ -44,7 +60,12 @@ await app.listen({ port: PORT, host: HOST });
 
 const io = new IOServer(app.server, {
   cors: {
-    origin: [STATIC_ORIGIN, "http://127.0.0.1:8765"],
+    origin: [
+      STATIC_ORIGIN,
+      "http://127.0.0.1:8765",
+      "https://localhost",
+      "https://127.0.0.1",
+    ],
     credentials: true,
   },
 });

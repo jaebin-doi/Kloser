@@ -41,7 +41,12 @@
   }
 
   function defaultBaseUrl() {
-    if (window.kloserApi && typeof window.kloserApi.apiBaseUrl === 'string' && window.kloserApi.apiBaseUrl.length > 0) {
+    // Mirror api.js's resolveApiBase: empty string from kloserApi is
+    // the legitimate same-origin signal (Caddy single-origin mode),
+    // not a missing-config fallback. Pass it through unchanged so
+    // socket.io-client treats the URL as relative and reuses the
+    // page's origin.
+    if (window.kloserApi && typeof window.kloserApi.apiBaseUrl === 'string') {
       return window.kloserApi.apiBaseUrl;
     }
     return 'http://localhost:3001';
