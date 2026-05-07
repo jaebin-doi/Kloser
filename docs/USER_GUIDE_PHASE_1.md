@@ -1,257 +1,178 @@
-# Phase 1 사용자 가이드 (개발자용)
+# Kloser Phase 1 사용자 가이드
 
-> 이 레포를 받아서 로컬에서 띄우고, 로그인해서 live demo (`platform/live.html`)를 확인하기 위한 공식 가이드입니다.
-> 대상: **이 레포를 처음 받는 개발자**. 운영 배포는 아직 범위 밖이며 Phase 5+에서 다룹니다.
-> 기준 시점: **Phase 1 Step 1~4 완료, Step 5 (Caddy reverse proxy) 진입 전**.
+> Phase 1은 최종 업무 기능을 완성한 단계가 아니라, Kloser를 계정·조직·권한 단위로 안전하게 사용할 수 있게 만드는 기반 단계입니다.
 
 ---
 
-## 0. 이 가이드로 무엇을 할 수 있나
+## 1. Phase 1의 목적
 
-**할 수 있는 것 (Phase 1 시점)**:
-- PostgreSQL (RLS 활성) + Redis를 docker compose로 띄움
-- 자체 인증 흐름 동작 확인: signup / login / refresh / logout / `/me`
-- `platform/live.html`에서 인증된 WebSocket으로 데모 통화 시퀀스 (greeting → sentiment → suggestion) 재생
-- 4 종류의 시드 계정 (acme/beta × admin/employee)으로 멀티 organization isolation 확인
-- 단위 테스트 37/37 + Playwright e2e 16/16 PASS 회귀
+Kloser는 영업팀이 통화 중 실시간 AI 추천을 받고 통화 후 자동으로 메모를 정리하는 B2B SaaS입니다. 이런 업무 기능을 본격적으로 올리기 전에, 먼저 다음 다섯 가지가 흔들림 없이 동작해야 합니다.
 
-**아직 안 되는 것 (Phase 2+ 예정)**:
-- 실제 STT / LLM 연동 (현재는 setTimeout 기반 fixture, Phase 5)
-- customers / calls / dashboard CRUD (Phase 2~4)
-- email verification, password reset, SSO (Phase 3)
-- TLS / reverse proxy / production 배포 (Step 5 / Phase 6)
-- 이메일 발송 (Phase 3)
-- pgvector / RAG (Phase 5)
+1. **회사 계정으로 로그인할 수 있어야 한다.**
+2. **사용자는 자기 조직 안의 데이터만 본다.**
+3. **권한에 따라 가능한 작업이 달라진다.**
+4. **로그인 상태가 안전하게 유지되고, 로그아웃하면 즉시 종료된다.**
+5. **통화 어시스턴트가 사용하는 실시간 연결도 인증된 사용자만 쓸 수 있다.**
+
+Phase 1은 이 다섯 가지를 만든 단계입니다. 사용자가 매일 보게 될 화면들은 대부분 다음 Phase부터 본격적으로 채워집니다.
 
 ---
 
-## 1. 사전 요구사항
+## 2. Phase 1에서 가능해진 것
 
-| 도구 | 버전 | 확인 |
+평가 또는 검토 시점에 다음을 직접 확인할 수 있습니다.
+
+- **회사 계정 로그인** — 이메일과 비밀번호로 로그인합니다.
+- **본인 정보 확인** — 로그인된 사용자의 이름, 소속 조직, 부여된 권한이 즉시 확인됩니다.
+- **조직별 분리** — 다른 조직의 데이터는 어떤 방식으로도 접근되지 않습니다.
+- **권한별 차등** — 같은 화면이라도 권한에 따라 가능한 작업이 다릅니다.
+- **자동 세션 유지** — 한 번 로그인하면 일정 시간 자동으로 유지됩니다. 만료가 다가오면 자동으로 갱신됩니다.
+- **명시적 로그아웃** — 로그아웃 즉시 그 세션은 종료됩니다.
+- **인증된 실시간 연결** — 통화 어시스턴트가 사용하는 브라우저-서버 실시간 연결도 로그인된 사용자 정보로 검증됩니다.
+
+---
+
+## 3. 로그인과 계정 접근
+
+### 어떻게 동작하나
+
+회사가 발급한 이메일·비밀번호로 로그인합니다. 로그인이 끝나면 다음 정보가 함께 결합됩니다.
+
+- **사용자 본인** — 이름, 이메일.
+- **소속 조직** — 어느 회사 / 팀에 속해 있는지.
+- **권한** — 관리자, 매니저, 직원, 조회 중 하나.
+
+이후 모든 화면과 기능은 이 세 가지 정보를 기반으로 동작합니다. URL을 바꾸거나 요청을 직접 조작해도 본인이 가진 정보를 넘어서는 일은 일어나지 않습니다.
+
+### 비밀번호 보호
+
+비밀번호는 원문 그대로 저장되지 않습니다. 한 방향으로만 변환된 형태로 보관되며, 누구도 — 시스템 관리자조차도 — 사용자의 원래 비밀번호를 알 수 없습니다. 비교가 필요할 때는 같은 변환 절차를 거친 결과끼리 비교합니다.
+
+### 여러 조직에 속한 사용자
+
+한 사용자가 여러 회사·조직에 가입돼 있을 수 있습니다. 이 경우 로그인 시점에 어느 조직으로 들어갈지를 명시합니다. 한 번 결정된 조직은 로그아웃 전까지 바뀌지 않습니다.
+
+---
+
+## 4. 조직별 데이터 분리
+
+Kloser는 회사 단위 SaaS입니다. 한 화면에 여러 회사의 데이터가 섞여 보이는 일은 절대 없어야 합니다. Phase 1은 이 분리를 시스템 차원에서 보장합니다.
+
+- **조직 A의 사용자는 조직 B의 데이터를 어떤 방식으로도 볼 수 없습니다.**
+- **URL이나 요청값을 변경해도, 다른 조직의 데이터에는 접근할 수 없습니다.**
+- **분리는 한 곳이 아니라 두 곳에서 검증됩니다.** 서버 측에서 사용자의 조직 정보를 확인하고, 데이터베이스 쪽에서도 한 번 더 차단합니다.
+
+이 이중 검증 덕분에 한쪽에 실수가 있더라도 다른 쪽이 막아냅니다. 따라서 평가 시점에 "URL을 바꿔서 다른 회사 데이터를 볼 수 있나요?" 같은 시도는 모두 거부됩니다.
+
+---
+
+## 5. 권한 기반 접근
+
+같은 조직 안에서도 누구나 똑같은 일을 할 수 있는 건 아닙니다. Phase 1은 4단계 권한을 도입했습니다.
+
+| 권한 | 의미 | 일반적인 사용 |
 |---|---|---|
-| Node.js | 20 LTS+ | `node --version` |
-| npm | 10+ | `npm --version` |
-| Docker Desktop | 4.x+ | `docker --version` |
-| Git | 2.40+ | `git --version` |
+| **관리자 (Admin)** | 조직 전체 관리 — 사용자 추가, 권한 변경, 결제 등 | 회사 대표 또는 IT 담당 |
+| **매니저 (Manager)** | 팀 단위 운영 — 팀원 통화 모니터링, 보고서 등 | 팀장, 영업 매니저 |
+| **직원 (Employee)** | 일상 영업 활동 — 본인 통화, 본인 고객 관리 | 영업 사원 |
+| **조회 (Viewer)** | 읽기 전용 — 데이터 수정·삭제 불가 | 외부 컨설턴트, 임원 참관용 |
 
-OS는 Windows 11 / macOS / Linux 모두 지원 (이 가이드는 Windows 11 + bash/PowerShell 기준 명령을 동시 표기). Git Bash 또는 WSL을 쓰면 bash 예시 그대로, PowerShell이면 별도 표기를 사용.
+권한이 더 높다고 해서 무조건 모든 걸 할 수 있는 건 아닙니다. 예를 들어 "조회" 권한 사용자는 화면이 동일하게 보여도 변경 버튼을 누르거나 삭제 요청을 보내면 거부됩니다. 이 거부도 시스템 차원에서 일어나며, 화면 단순한 비활성화에 의존하지 않습니다.
 
-Playwright e2e를 돌리려면 첫 실행 시 chromium 다운로드가 필요합니다 (`npx playwright install chromium`).
-
----
-
-## 2. 환경 변수 셋업
-
-루트 + server 두 군데에 `.env`가 필요합니다. 둘 다 gitignored.
-
-```bash
-# 1. project-root .env — docker-compose 변수 (postgres/redis user/pw/port)
-cp .env.example .env
-
-# 2. server/.env — Fastify 런타임 설정 (DB URL 두 종류 + JWT 시크릿 등)
-cp server/.env.example server/.env
-```
-
-기본값 그대로 dev에서 바로 동작합니다. 핵심 변수만 정리:
-
-| 변수 | 어디 | 의미 |
-|---|---|---|
-| `DATABASE_URL` | `server/.env` | 런타임 — `app` 역할 (NOSUPERUSER, NOBYPASSRLS). 모든 user-facing query는 이걸 사용 |
-| `MIGRATE_DATABASE_URL` | `server/.env` | 마이그레이션·시드 전용 — `kloser` admin 역할. 런타임이 절대 쓰지 않도록 변수 분리 |
-| `JWT_SECRET` | `server/.env` | HMAC 서명 키. dev 기본값은 32자 이상이라 부팅 통과. **prod에선 반드시 `openssl rand -base64 48`로 교체** |
-| `STATIC_ORIGIN` | `server/.env` | CORS allow-list 첫 entry. 기본 `http://localhost:8765` |
-| `COOKIE_SECURE` | `server/.env` | dev (plaintext)에선 `false`. HTTPS 뒤에선 `true` |
-| `POSTGRES_HOST_PORT` | `.env` (root) | 호스트에 노출되는 postgres 포트. 기본 `5432`, 충돌 시 `15432` 등으로 override |
-
-> **중요**: `JWT_SECRET`이 32자 미만이면 server가 부팅 시 fail-fast로 거부합니다 (`server/src/config/authEnv.ts`). 이건 의도된 가드.
+권한이 변경되면 사용자가 가진 현재 접속 권한이 다 끝나고 다시 갱신될 때 새 권한이 반영됩니다.
 
 ---
 
-## 3. Docker DB 부팅
+## 6. 세션 유지와 로그아웃
 
-Postgres 16 + Redis 7을 한 번에 띄움. 첫 실행 시 init script (`ops/postgres/init/01_app_role.sql`)가 자동으로 `app` 역할을 생성합니다.
+### 자동 유지
 
-```bash
-docker compose -f ops/docker-compose.yml up -d
-```
+한 번 로그인하면 매번 다시 입력하지 않아도 일정 시간 동안 사용이 이어집니다. 이 "이어짐"은 두 단계로 분리돼 있습니다.
 
-healthcheck 통과 확인:
+- **짧은 접속 권한** — 매 요청에 함께 보내는 권한. 길지 않은 시간 안에 만료됩니다. 만료된 권한은 어떤 요청도 통과시키지 않습니다.
+- **안전한 갱신 절차** — 위 권한이 만료될 때 자동으로 새 권한을 발급받는 별도 절차. 보안이 강화된 형태로 보관됩니다.
 
-```bash
-docker compose -f ops/docker-compose.yml ps
-# expect: postgres + redis 둘 다 (healthy)
-```
+이렇게 분리해 두면, 짧은 접속 권한이 어떤 이유로 노출되더라도 짧은 시간 안에 무용지물이 됩니다. 갱신 절차 쪽은 일반적인 웹 페이지의 다른 부분에서 직접 읽을 수 없도록 보관됩니다.
 
-> **기존 Docker volume이 있다면 init script가 재실행되지 않습니다** — `app` 역할이 빠질 수 있습니다. 그 경우 한 번만 수동 적용:
-> ```bash
-> docker exec -i kloser-dev-postgres-1 \
->   psql -U kloser -d kloser_dev -f /docker-entrypoint-initdb.d/01_app_role.sql
-> ```
+### 충분히 길게 사용한다면
 
----
+오래 사용한 뒤에는 갱신 절차 자체도 만료됩니다. 그러면 다시 로그인해야 합니다. 사용자가 따로 신경 쓰지 않아도 자연스럽게 동작합니다.
 
-## 4. 마이그레이션 + 시드
+### 로그아웃
 
-```bash
-cd server
-npm install                      # 첫 실행만
+로그아웃하면 현재 세션은 즉시 종료됩니다. 로그아웃 이후에 그 세션 정보로 어떤 시도를 해도 통과하지 않습니다. 다른 기기나 다른 탭의 세션은 별도로 관리되므로 영향받지 않습니다.
 
-npm run db:migrate:up            # 7 tables + RLS FORCE ENABLE + sessions enrichment
-# expect: "Migrations complete!"  또는 이미 적용된 상태
+### 의심 활동 감지
 
-npm run db:seed                  # 2 orgs × (admin + employee), Argon2id 해시
-# expect: organizations count=2 OK / users count=4 OK / memberships count=4 OK
-```
-
-마이그레이션과 시드는 `MIGRATE_DATABASE_URL` (`kloser` admin)을 사용. wrapper script가 변수 누락 시 즉시 fail-fast.
+이미 만료되거나 갱신된 옛 권한을 다시 쓰려는 시도가 감지되면, 안전을 위해 그 사용자의 관련 세션 계열 전체가 즉시 무효화됩니다. 이 경우 사용자는 다시 로그인해야 하지만, 만에 하나 정보가 누출됐을 때의 피해 범위가 차단됩니다.
 
 ---
 
-## 5. server (API + WebSocket) 실행
+## 7. 인증된 실시간 연결
 
-```bash
-# server/ 디렉토리에서
-npm run dev
-# 로그:
-#   kloser-server listening on :3001
-#   [ws/calls] namespace registered at /calls (handshake auth ON)
-```
+통화 어시스턴트(전사·추천·감정 분석 화면)는 브라우저와 서버가 실시간으로 메시지를 주고받는 연결을 사용합니다. 이 연결도 일반 화면 호출과 동일한 인증 절차를 거칩니다.
 
-`tsx watch` 기반이라 src 변경 시 자동 재시작. 별도 터미널에서 `curl http://localhost:3001/health` → `{"ok":true,"version":"0.5-spike","uptimeSec":N}`.
+- **연결 시작 시점에 검증** — 사용자가 누구인지, 어느 조직 소속인지, 어떤 권한인지를 연결을 맺기 전에 확인합니다.
+- **인증되지 않은 연결은 거부** — 권한이 없거나 만료된 사용자는 연결 자체가 성립하지 않습니다.
+- **만료가 가까워지면 자동 갱신** — 사용 도중 권한이 만료에 다다르면 백그라운드에서 갱신을 시도합니다. 갱신이 실패하면 다시 로그인 화면으로 안내됩니다.
+
+연결이 살아있는 동안은 그 사용자의 조직 정보가 모든 메시지에 함께 묶여서 다뤄집니다. 즉, 통화 데이터 역시 §4의 조직별 분리 규칙을 그대로 따릅니다.
 
 ---
 
-## 6. 정적 페이지 서버 실행
+## 8. 데이터가 저장되고 보호되는 방식
 
-별도 터미널에서 프로젝트 루트의 정적 파일을 :8765로 서빙.
+Phase 1 시점에 저장되고 검증되는 데이터는 다음과 같습니다.
 
-```bash
-# Python이 있으면
-python -m http.server 8765
+- **회사 / 조직 정보**
+- **사용자 계정** — 이름, 이메일, 변환된 형태의 비밀번호
+- **소속 정보** — 어떤 사용자가 어떤 조직에 어떤 권한으로 속해 있는지
+- **세션 정보** — 갱신 절차에 필요한 식별 정보가 안전한 형태로 저장됨
 
-# 또는 Node 도구
-npx http-server . -p 8765 --silent
-```
+다음 사항이 시스템 수준에서 보장됩니다.
 
-이 시점에서 두 origin이 동시에 살아있어야 합니다:
-- `http://localhost:3001` — Fastify (API + WS)
-- `http://localhost:8765` — 정적 페이지
-
----
-
-## 7. 로그인 흐름
-
-### 7.1 시드 계정 4쌍
-
-`server/seeds/0001_demo.sql`에 박힌 dev 시드 — 평문 password를 코멘트로 명시.
-
-| 이메일 | 비밀번호 | 조직 / 역할 |
-|---|---|---|
-| `admin@acme.test` | `acme-admin-1234` | Acme / admin |
-| `emp@acme.test` | `acme-emp-1234` | Acme / employee |
-| `admin@beta.test` | `beta-admin-1234` | Beta / admin |
-| `emp@beta.test` | `beta-emp-1234` | Beta / employee |
-
-> dev 한정. prod 배포에선 시드 자체를 실행하지 않도록 운영 매뉴얼에서 분리.
-
-### 7.2 login.html 접속
-
-브라우저에서 <http://localhost:8765/platform/login.html>.
-
-- localhost 가드 안에서만 노란 "dev seed 자격증명" 박스 + auto-fill 버튼이 노출됩니다 (prod 도메인엔 안 보임).
-- "admin@acme.test 자동 채우기" 버튼으로 이메일·비밀번호 칸 채우기 → "로그인" 버튼.
-- 다중 organization 사용자가 orgId 없이 로그인하면 400 + 가능한 org 목록이 응답에 박혀 있어 inline alert로 표시됨 (multi-org switcher는 Phase 2+).
-
-### 7.3 live.html auth gate
-
-login 성공 후 `window.location.replace('/platform/live.html')`로 자동 redirect. 직접 <http://localhost:8765/platform/live.html>로 접속해도 다음 흐름:
-
-1. 페이지 boot 시 `kloserApi.getAccessToken()` → 메모리에 토큰 없음 (페이지 새로고침).
-2. `kloserApi.refreshAccessToken()` 시도 — refresh cookie (`Path=/auth`)가 살아있으면 새 access token 받음.
-3. 성공 시 `connectCallNamespace`가 그 토큰으로 WebSocket handshake.
-4. cookie도 없으면 `loginRedirect()`가 `?returnUrl=/platform/live.html` 첨부해서 `login.html`로 보냄.
+- **모든 사용자 데이터는 어느 조직 소유인지가 명시되어 저장됩니다.**
+- **데이터를 읽을 때마다 그 사용자의 조직과 비교됩니다.**
+- **세션 정보는 평문 형태로 저장되지 않으며, 만료 시간이 함께 박혀 있어 자연스럽게 폐기됩니다.**
+- **운영을 담당하는 권한과 일상 사용에 쓰이는 권한은 분리됩니다.** 일상 요청을 처리하는 쪽은 다른 조직 데이터를 들여다볼 수 없도록 권한 자체를 제한받습니다.
 
 ---
 
-## 8. WebSocket 데모 시퀀스 확인
+## 9. 사용자가 알아야 할 제한사항
 
-`live.html`이 인증된 WS로 연결되면 자동으로 시작:
+Phase 1은 기반 단계입니다. 평가·검토 시점에는 다음이 아직 완성돼 있지 않으니 미리 알아두시면 좋습니다.
 
-| 시점 | 일어나는 일 |
+- **고객 관리 (CRM)** — 화면은 보이지만 표시되는 데이터는 예시이며, 실제 입력·수정·삭제는 다음 단계에서 활성화됩니다.
+- **통화 기록의 영속 저장과 검색** — 통화 어시스턴트는 동작하지만, 통화 내용이 영구적으로 저장되거나 나중에 다시 검색되는 기능은 다음 단계입니다.
+- **실제 음성 인식 / AI 응대 추천** — 현재 어시스턴트는 정해진 시나리오를 재생합니다. 실제 STT와 AI는 별도 단계에서 도입됩니다.
+- **결제 / 구독 / 사용량 추적** — 플랜 표시 등 화면은 있지만 실제 결제 연동은 운영 단계 진입 시점에 활성화됩니다.
+- **회원가입 / 비밀번호 재설정 / 이메일 인증** — 현재는 사전 발급된 계정으로만 로그인합니다. 자가 가입 흐름은 다음 단계입니다.
+- **운영 배포 / TLS 도메인 / 외부 접근** — 현재는 내부 평가용 환경 기준입니다. 외부 운영 환경 배포는 별도 단계입니다.
+- **장기 운영 모니터링** — 이상 감지, 성능 지표, 백업 자동화 등은 운영 진입 단계에서 추가됩니다.
+
+---
+
+## 10. 다음 Phase에서 추가될 것
+
+| 다음 단계 | 추가될 기능 (요약) |
 |---|---|
-| t=0 | "안녕하세요. 김민수입니다" — 첫 agent transcript |
-| t=4.5s 간격 | customer / agent transcript 교차 출력 |
-| t=5s, 14s, 23s, 36.5s | AI suggestion 카드 자동 갱신 |
-| t=14s, 23s | sentiment 전환: `관심` → `망설임` |
-| 사용자가 텍스트 입력 후 send | client → server `text_chunk` → server echo → 화면에 transcript 추가 + 우상단 `latency` 뱃지 갱신 |
+| **Phase 2** | 실제 고객 관리 (CRUD) — 입력·수정·삭제·검색이 영속 저장에 반영 |
+| **Phase 3** | 자가 회원가입, 이메일 인증, 비밀번호 재설정, 직원 초대 메일 |
+| **Phase 4** | 통화 기록 영속화, 대시보드 KPI 실데이터, 매니저용 보고서 |
+| **Phase 5** | 실제 음성 인식, 회사 가이드 기반 AI 응대 추천, 통화 후 자동 메모 |
+| **Phase 6+** | 외부 운영 도메인 배포, 결제·구독, 외부 시스템 연동, 운영 모니터링 |
 
-> 이 모든 시퀀스는 **server-side fixture** (`server/src/fixtures/demo-call.ts`)가 setTimeout으로 emit. 실제 STT는 Phase 5에서 도입.
-
----
-
-## 9. 검증 명령
-
-전체 테스트 스위트를 한 번 돌려서 환경이 정상인지 확인:
-
-```bash
-# 1. Type check
-npm --prefix server run typecheck
-# expect: PASS (no output)
-
-# 2. Server unit tests (37 cases: auth 19 + rls 7 + orgContext 3 + ws_auth 8)
-npm --prefix server test
-# expect: tests 37 / pass 37
-
-# 3. End-to-end Playwright (login → live demo → auth-reject 2 cases)
-node test/phase_0_5_e2e.mjs
-# expect: 16 PASS lines + "E2E PASSED"
-```
-
-**3번이 통과하면 Phase 1 Step 1~4 전체가 정상 동작 중**입니다.
-
-> e2e가 처음이면 chromium 다운로드 필요: `npx playwright install chromium`.
+각 단계는 Phase 1에서 만든 기반(계정·조직·권한·세션·인증된 연결) 위에 추가됩니다. 따라서 한 번 만든 분리·권한 규칙이 새 기능마다 다시 검증될 필요 없이 그대로 적용됩니다.
 
 ---
 
-## 10. 흔한 문제 해결
+## 11. 기술 요약 (참고)
 
-### `JWT_SECRET must be at least 32 characters`
-`server/.env`의 `JWT_SECRET` 값이 비어있거나 짧음. 기본 dev 값 (`dev-only-change-me-please-this-is-not-a-real-secret-aaaaaaaaaaaa`)을 그대로 사용.
+이 섹션은 보안·아키텍처에 관심 있는 평가자가 핵심 결정 사항을 한눈에 보기 위한 짧은 요약입니다. 본 문서의 다른 섹션은 이 용어를 몰라도 이해할 수 있도록 작성했습니다.
 
-### `ECONNREFUSED 127.0.0.1:5432` / `password authentication failed for user "app"`
-1. `docker compose ps`로 postgres 컨테이너가 healthy인지 확인.
-2. 컨테이너는 살아있는데 로그인 실패면 `app` 역할이 미생성 — `docs/USER_GUIDE_PHASE_1.md` §3 마지막 박스의 init-script 수동 실행.
-
-### login은 되는데 live.html에서 무한히 login으로 redirect
-- `COOKIE_SECURE=true`인 상태로 plaintext (`http://`)로 접속 중. dev에선 `false`로 두기.
-- 또는 브라우저가 cookie를 거부 — DevTools Application → Cookies에서 `kloser_refresh` 존재 여부 확인.
-
-### 401 `org_id_required` + availableOrgs 응답
-이 user가 여러 org에 멤버십을 가짐. login 폼의 orgId 필드를 펼쳐 (또는 dev fixture에서 다른 계정 선택) 명시 입력.
-
-### e2e가 latency 어서션에서 30초 timeout
-ws.js의 `__liveSocket` 가드는 첫 socket만 핸들 점유. probe socket이 먼저 만들어지면 페이지 socket이 핸들을 못 가져감. 이건 Step 4 §1.8에서 수정됨 — 코드가 최신인지 확인.
-
-### `npm run db:migrate:up`이 모두 성공해도 빈 DB
-node-pg-migrate v7는 `-- Up`이 아닌 `-- Up Migration` 마커를 본다. Step 1 마이그레이션 (`1715000000000_init.sql`)에서 이 버그 1건 수정 — 코드 최신 시 안 만남.
-
-### `pgmigrations` 테이블 권한 거부
-`MIGRATE_DATABASE_URL` 대신 `DATABASE_URL`을 마이그레이션에 쓰려는 시도. `npm run db:migrate:*`은 admin URL을 사용해야 함 — wrapper script (`server/scripts/migrate.mjs`)가 자동 라우팅하므로 직접 `node-pg-migrate` 호출 대신 `npm run`을 사용.
-
-### Playwright "browserType.launch: Executable doesn't exist"
-chromium 미설치. `npx playwright install chromium`.
-
----
-
-## 11. 다음 단계
-
-| 다음 | 어디서 |
-|---|---|
-| Phase 1 전체 진행 상태 보기 | [`plan/PHASE_1_MASTER.md`](plan/PHASE_1_MASTER.md) |
-| Step 4가 어떻게 끝났는지 (가장 최근) | [`plan/PHASE_1_STEP_4_FINDINGS.md`](plan/PHASE_1_STEP_4_FINDINGS.md) |
-| Step 5 (Caddy reverse proxy) 계획 | [`plan/PHASE_1_STEP_5_REVERSE_PROXY.md`](plan/PHASE_1_STEP_5_REVERSE_PROXY.md) |
-| 상위 백엔드 로드맵 | [`plan/BACKEND_PLAN.md`](plan/BACKEND_PLAN.md) |
-| 인증 흐름 디테일 | [`plan/PHASE_1_STEP_3_AUTH_CORE.md`](plan/PHASE_1_STEP_3_AUTH_CORE.md) |
-| WebSocket handshake 계약 | [`plan/PHASE_1_STEP_4_CLIENT_WIRING.md`](plan/PHASE_1_STEP_4_CLIENT_WIRING.md) §1.4 |
-
-문제가 생기면 우선 본 §10을 확인하고, 그래도 안 풀리면 `plan/PHASE_1_STEP_*_FINDINGS.md`의 "의도하지 않게 남긴 것" 섹션을 참고하세요.
+- **비밀번호 보호** — Argon2id 단방향 해싱.
+- **인증 토큰** — 짧은 수명의 액세스 토큰(Bearer) + 별도 보관되는 안전한 갱신 토큰(HttpOnly cookie). 두 토큰을 분리해 노출 표면을 최소화하고, 갱신 시 회전(rotation) 절차를 거치며 의심 활동 발생 시 토큰 계열 전체를 무효화.
+- **조직 격리** — PostgreSQL의 Row-Level Security(RLS)로 데이터베이스 차원에서 강제. 일상 요청을 처리하는 데이터베이스 권한은 RLS를 우회할 수 없도록 별도 분리.
+- **권한 시스템** — admin / manager / employee / viewer 4단계 역할이 토큰에 박혀 모든 요청에서 검증.
+- **실시간 연결 인증** — 브라우저-서버 WebSocket 핸드셰이크 시점에 액세스 토큰을 검증하고, 사용자 정보를 연결 단위에 결합.
+- **세션 보호** — 의심스러운 갱신 시도 감지 시 토큰 계열 전체 즉시 무효화 (token family revoke).

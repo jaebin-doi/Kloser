@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser Phase 1 — 안전하게 쓰기 위한 6가지 기반</title>
+  <meta name="description" content="Phase 1이 만든 6가지 기반 — 로그인 / 조직 분리 / 권한 / 세션 / 인증된 실시간 연결 / 데이터 보호 — 을 사용자 입장에서 풀어 보여주는 시각 가이드." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(37, 99, 235, 0.07), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(6, 182, 212, 0.07), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+
+    .card-tight {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .03);
+    }
+
+    /* Pillar card hover. */
+    .pillar-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    }
+    .pillar-card:hover {
+      transform: translateY(-2px);
+      border-color: rgb(191 219 254);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(37, 99, 235, .15);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    /* Generic icon-bubble for cards. */
+    .icon-bubble {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Screenshot frame — soft outline + shadow that lifts the image
+       off the page background. Caption sits below in a smaller font. */
+    .shot {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgb(226 232 240);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(15, 23, 42, .15);
+      background: white;
+    }
+    .shot img { display: block; width: 100%; height: auto; }
+    .shot-caption {
+      font-size: .78rem;
+      color: rgb(100 116 139);
+      margin-top: 10px;
+      text-align: center;
+      letter-spacing: -0.005em;
+    }
+    .shot-caption strong { color: rgb(15 23 42); font-weight: 700; }
+
+    /* === Pillar visualizations =================================== */
+
+    /* Login: identity aggregation panel */
+    .login-input-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 8px;
+      background: rgb(248 250 252);
+      font-size: .8rem;
+      color: rgb(71 85 105);
+    }
+    .login-input-row .dots { letter-spacing: 4px; color: rgb(148 163 184); }
+
+    /* Org isolation: two silos */
+    .silo {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 12px;
+      padding: 14px;
+      background: white;
+    }
+    .silo-org-a { background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); }
+    .silo-org-b { background: linear-gradient(180deg, #ecfeff 0%, #ffffff 100%); }
+    .barrier {
+      border: 2px dashed rgb(248 113 113);
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: rgb(254 242 242);
+      color: rgb(153 27 27);
+      font-size: .78rem;
+      font-weight: 700;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Role cards (4 levels) */
+    .role-card {
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid;
+    }
+    .role-admin    { background: rgb(245 243 255); border-color: rgb(216 180 254); }
+    .role-manager  { background: rgb(239 246 255); border-color: rgb(191 219 254); }
+    .role-employee { background: rgb(236 254 255); border-color: rgb(165 243 252); }
+    .role-viewer   { background: rgb(248 250 252); border-color: rgb(203 213 225); }
+    .role-pill {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .role-pill-admin    { background: rgb(124 58 237); color: white; }
+    .role-pill-manager  { background: rgb(37 99 235);  color: white; }
+    .role-pill-employee { background: rgb(8 145 178);  color: white; }
+    .role-pill-viewer   { background: rgb(100 116 139); color: white; }
+
+    /* Session timeline */
+    .timeline {
+      position: relative;
+      padding-top: 28px;
+      padding-bottom: 8px;
+    }
+    .timeline-bar {
+      position: relative;
+      height: 12px;
+      background: rgb(226 232 240);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .timeline-segment {
+      position: absolute;
+      top: 0; bottom: 0;
+      border-right: 2px solid white;
+    }
+    .timeline-tick {
+      position: absolute;
+      top: -22px;
+      transform: translateX(-50%);
+      font-size: .68rem;
+      color: rgb(71 85 105);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .timeline-tick::after {
+      content: '';
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      top: 18px;
+      width: 1px;
+      height: 6px;
+      background: rgb(148 163 184);
+    }
+
+    /* Handshake step boxes for WS section */
+    .step-box {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: white;
+      flex: 1;
+    }
+    .step-box-pass { border-color: rgb(110 231 183); background: rgb(240 253 244); }
+    .step-box-fail { border-color: rgb(252 165 165); background: rgb(254 242 242); }
+    .step-arrow {
+      display: inline-flex;
+      align-items: center;
+      color: rgb(148 163 184);
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    /* Layered protection */
+    .layer {
+      border-radius: 12px;
+      padding: 12px 14px;
+      border: 1px solid;
+      font-size: .85rem;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .layer-1 { background: rgb(254 252 232); border-color: rgb(254 240 138); }
+    .layer-2 { background: rgb(254 243 199); border-color: rgb(252 211 77); }
+    .layer-3 { background: rgb(254 215 170); border-color: rgb(251 146 60); }
+    .layer-4 { background: rgb(254 202 202); border-color: rgb(248 113 113); }
+    .layer-num {
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      background: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: .72rem;
+      color: rgb(71 85 105);
+      flex-shrink: 0;
+    }
+
+    /* Status chips for limitations table */
+    .chip-can {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(209 250 229); color: rgb(6 95 70);
+      font-size: .7rem; font-weight: 700;
+    }
+    .chip-soon {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(254 243 199); color: rgb(146 64 14);
+      font-size: .7rem; font-weight: 700;
+    }
+
+    section[id] { scroll-margin-top: 24px; }
+    @media (min-width: 1024px) {
+      .toc-sticky { position: sticky; top: 24px; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">시각 가이드</a>
+        <a href="../USER_GUIDE_PHASE_1.md" class="hover:text-slate-900 no-underline">텍스트 가이드</a>
+        <a href="../README.md" class="hover:text-slate-900 no-underline">문서 인덱스</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 1 · FOUNDATIONS
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        Kloser를 안전하게 쓸 수 있는 <br>
+        <span class="g-text">6가지 기반</span>
+      </h1>
+      <p class="mt-6 text-[1.05rem] text-slate-600 leading-relaxed">
+        통화 어시스턴트, 자동 메모, AI To-Do — Kloser의 핵심 업무 기능을 본격적으로 올리기 전에,
+        <strong class="text-slate-900">계정·조직·권한 단위로 흔들림 없이 사용할 수 있는 기반</strong>이 먼저 필요합니다.
+        Phase 1은 그 기반을 만든 단계입니다.
+      </p>
+      <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
+        <p class="text-[.9rem] text-slate-700 leading-relaxed">
+          <span class="text-blue-600 font-black mr-1">⌜</span>
+          Phase 1은 최종 업무 기능을 완성한 단계가 아니라, Kloser를 계정·조직·권한 단위로
+          안전하게 사용할 수 있게 만드는 기반 단계입니다.
+          <span class="text-blue-600 font-black ml-1">⌟</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 Pillars overview -->
+  <section class="max-w-6xl mx-auto px-6 pb-16">
+    <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">기반의 구성</p>
+    <h2 class="text-[1.6rem] font-black tracking-tight mb-6">사용자가 신뢰할 수 있는 6가지 기둥</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="#login" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-blue-50 text-blue-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">1 · 로그인</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">회사 계정으로 들어오면 사용자·조직·권한이 함께 결합됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#org" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-cyan-50 text-cyan-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">2 · 조직 분리</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">자기 조직 데이터만 보입니다. 다른 조직은 어떤 방식으로도 접근 불가.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#roles" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-violet-50 text-violet-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">3 · 권한</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">Admin / Manager / Employee / Viewer 4단계로 가능한 작업이 달라집니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#session" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-emerald-50 text-emerald-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">4 · 세션 유지</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">짧은 접속 권한 + 안전한 갱신 절차로 분리. 로그아웃하면 즉시 종료.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#realtime" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-amber-50 text-amber-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M2 12h3l3 9 6-18 3 9h5"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">5 · 인증된 실시간 연결</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">통화 어시스턴트가 쓰는 실시간 채널도 인증된 사용자만.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#data" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-rose-50 text-rose-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">6 · 데이터 보호</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">비밀번호는 원문 미저장. 운영/일상 권한 분리. 의심 활동 시 자동 무효화.</p>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Detail sections ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24 space-y-20">
+
+    <!-- ─────────── 1. 로그인 ─────────── -->
+    <section id="login">
+      <p class="text-[.78rem] font-bold tracking-wider text-blue-600 mb-2">기둥 01</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">로그인 — 사용자·조직·권한이 한 번에 결합됩니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        회사가 발급한 이메일과 비밀번호로 들어오면, 그 사용자가 누구인지, 어느 조직에 속해 있는지,
+        어떤 권한을 가졌는지가 한 번에 묶여 모든 화면과 기능에 적용됩니다. 이후 URL을 바꾸거나
+        요청을 직접 조작해도 이 결합된 신원을 넘어서는 일은 일어나지 않습니다.
+      </p>
+
+      <div class="grid lg:grid-cols-[1fr_auto_1fr] gap-6 items-center">
+        <!-- Input panel -->
+        <div class="card p-5">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">사용자 입력</p>
+          <div class="space-y-2.5">
+            <div class="login-input-row">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              user@kloser.com
+            </div>
+            <div class="login-input-row">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span class="dots">••••••••</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="hidden lg:flex items-center justify-center text-blue-500">
+          <svg width="40" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+
+        <!-- Identity panel -->
+        <div class="card p-5">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">결합된 신원</p>
+          <ul class="space-y-2 text-[.88rem]">
+            <li class="flex items-center gap-2">
+              <span class="text-emerald-500">✓</span>
+              <span class="text-slate-500">사용자</span>
+              <span class="font-semibold text-slate-900 ml-auto">김민수</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-emerald-500">✓</span>
+              <span class="text-slate-500">소속 조직</span>
+              <span class="font-semibold text-slate-900 ml-auto">Kloser Inc.</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-emerald-500">✓</span>
+              <span class="text-slate-500">권한</span>
+              <span class="role-pill role-pill-employee ml-auto">EMPLOYEE</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-6 grid sm:grid-cols-2 gap-3 text-[.88rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">비밀번호는 원문으로 저장되지 않습니다</p>
+          <p class="text-slate-600 leading-relaxed">한 방향으로만 변환된 형태로 보관됩니다. 시스템 관리자도 사용자의 원래 비밀번호를 알 수 없습니다.</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">여러 조직에 속한 경우</p>
+          <p class="text-slate-600 leading-relaxed">로그인 시점에 어느 조직으로 들어갈지 명시합니다. 한 번 결정된 조직은 로그아웃 전까지 바뀌지 않습니다.</p>
+        </div>
+      </div>
+
+      <!-- Real screenshots: input form + post-login identity -->
+      <div class="mt-10 grid lg:grid-cols-2 gap-6">
+        <figure>
+          <div class="shot">
+            <img src="../../assets/screenshots/user_guide/login.png" alt="Kloser 로그인 화면">
+          </div>
+          <figcaption class="shot-caption"><strong>실제 로그인 화면</strong> — 이메일·비밀번호 입력. 멀티 조직 사용자는 조직 ID를 함께 명시.</figcaption>
+        </figure>
+        <figure>
+          <div class="shot">
+            <img src="../../assets/screenshots/user_guide/dashboard.png" alt="로그인 후 — 사이드바에 사용자·조직·역할이 표시되는 대시보드">
+          </div>
+          <figcaption class="shot-caption"><strong>로그인 직후</strong> — 좌측 사이드바에 결합된 신원(사용자·조직·역할)이 그대로 표시되며, 모든 화면이 이 신원을 기반으로 동작합니다.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. 조직 분리 ─────────── -->
+    <section id="org">
+      <p class="text-[.78rem] font-bold tracking-wider text-cyan-600 mb-2">기둥 02</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">조직 분리 — 다른 회사 데이터는 보이지 않습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Kloser는 회사 단위 SaaS입니다. 한 화면에 여러 회사의 데이터가 섞여 보이는 일은
+        절대 없어야 합니다. 분리는 한 곳이 아니라 <strong class="text-slate-900">두 곳</strong>에서
+        검증됩니다 — 서버 측에서 사용자의 조직을 확인하고, 데이터베이스에서 한 번 더 차단합니다.
+      </p>
+
+      <div class="grid lg:grid-cols-[1fr_auto_1fr] gap-6 items-stretch">
+        <div class="silo silo-org-a">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-blue-600 mb-2">조직 A — Acme Corp</p>
+          <p class="text-[.85rem] text-slate-700 mb-3 leading-relaxed">사용자가 보고 있는 화면</p>
+          <ul class="space-y-1.5 text-[.82rem] text-slate-600">
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>고객 12명</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>통화 기록 8건</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>팀원 14명</li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col items-center justify-center gap-3 lg:py-2">
+          <div class="barrier">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            서버 + DB 양쪽 차단
+          </div>
+          <p class="text-[.72rem] text-slate-500 text-center max-w-[160px] leading-relaxed">
+            URL이나 요청값을 바꿔도 통과하지 않습니다.
+          </p>
+        </div>
+
+        <div class="silo silo-org-b opacity-50">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-cyan-600 mb-2">조직 B — Beta LLC</p>
+          <p class="text-[.85rem] text-slate-700 mb-3 leading-relaxed">사용자에게 절대 보이지 않는 데이터</p>
+          <ul class="space-y-1.5 text-[.82rem] text-slate-600">
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>고객 (보이지 않음)</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>통화 기록 (보이지 않음)</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>팀원 (보이지 않음)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-6 card-tight p-4">
+        <p class="text-[.88rem] text-slate-700 leading-relaxed">
+          <strong class="text-slate-900">왜 이중 검증인가:</strong>
+          한쪽 코드에 실수가 있더라도 다른 쪽이 막아줍니다. 평가 시점에 "URL을 바꿔서 다른 회사 데이터를
+          볼 수 있나요?" 같은 시도는 모두 거부됩니다.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. 권한 ─────────── -->
+    <section id="roles">
+      <p class="text-[.78rem] font-bold tracking-wider text-violet-600 mb-2">기둥 03</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">권한 — 4단계로 가능한 작업이 달라집니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        같은 조직 안에서도 누구나 똑같은 일을 할 수 있는 건 아닙니다. 권한이 더 높다고 해서 모든 걸
+        할 수 있는 것도 아닙니다 — 예를 들어 "조회" 권한은 화면이 동일하게 보여도 <strong
+        class="text-slate-900">변경·삭제 요청은 시스템 차원에서 거부</strong>됩니다. 화면 비활성화에만 의존하지 않습니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="role-card role-admin">
+          <span class="role-pill role-pill-admin mb-3">ADMIN</span>
+          <p class="font-bold text-slate-900 mb-2">관리자</p>
+          <p class="text-[.78rem] text-slate-600 mb-3 leading-relaxed">조직 전체 관리</p>
+          <ul class="text-[.78rem] text-slate-700 space-y-1 list-disc pl-4">
+            <li>사용자 추가</li>
+            <li>권한 변경</li>
+            <li>결제·플랜</li>
+            <li>전체 데이터 접근</li>
+          </ul>
+        </div>
+
+        <div class="role-card role-manager">
+          <span class="role-pill role-pill-manager mb-3">MANAGER</span>
+          <p class="font-bold text-slate-900 mb-2">매니저</p>
+          <p class="text-[.78rem] text-slate-600 mb-3 leading-relaxed">팀 단위 운영</p>
+          <ul class="text-[.78rem] text-slate-700 space-y-1 list-disc pl-4">
+            <li>팀원 통화 모니터링</li>
+            <li>팀 보고서</li>
+            <li>팀 내 고객 조정</li>
+          </ul>
+        </div>
+
+        <div class="role-card role-employee">
+          <span class="role-pill role-pill-employee mb-3">EMPLOYEE</span>
+          <p class="font-bold text-slate-900 mb-2">직원</p>
+          <p class="text-[.78rem] text-slate-600 mb-3 leading-relaxed">일상 영업</p>
+          <ul class="text-[.78rem] text-slate-700 space-y-1 list-disc pl-4">
+            <li>본인 통화</li>
+            <li>본인 고객 관리</li>
+            <li>To-Do 작성</li>
+          </ul>
+        </div>
+
+        <div class="role-card role-viewer">
+          <span class="role-pill role-pill-viewer mb-3">VIEWER</span>
+          <p class="font-bold text-slate-900 mb-2">조회</p>
+          <p class="text-[.78rem] text-slate-600 mb-3 leading-relaxed">읽기 전용</p>
+          <ul class="text-[.78rem] text-slate-700 space-y-1 list-disc pl-4">
+            <li>데이터 보기만</li>
+            <li class="text-rose-600">수정·삭제 차단</li>
+            <li>외부 컨설턴트용</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-5 card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        <strong class="text-slate-900">권한 변경 반영:</strong>
+        admin이 누군가의 권한을 바꿔도 그 사람의 현재 접속 권한은 즉시 무효화되지 않습니다.
+        다음 자동 갱신 시점에 새 권한이 반영됩니다 (보통 길지 않은 시간 안에).
+        파괴적 작업(예: 결제 변경, 대량 삭제)은 그 시점에 한 번 더 권한을 재확인합니다.
+      </div>
+    </section>
+
+    <!-- ─────────── 4. 세션 유지 ─────────── -->
+    <section id="session">
+      <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기둥 04</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">세션 유지 — 안전과 편의가 분리됩니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        한 번 로그인하면 매번 다시 입력하지 않아도 일정 시간 사용이 이어집니다. 이 "이어짐"은
+        두 가지로 분리돼 있습니다.
+      </p>
+
+      <div class="grid lg:grid-cols-2 gap-4 mb-6">
+        <div class="card p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[.65rem] font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">SHORT</span>
+            <h3 class="text-[1rem] font-bold text-slate-900">짧은 접속 권한</h3>
+          </div>
+          <p class="text-[.85rem] text-slate-600 leading-relaxed">
+            매 요청에 함께 보내는 권한. 길지 않은 시간 안에 만료됩니다. 만료된 권한은 어떤 요청도
+            통과시키지 않습니다. 만에 하나 노출되어도 빠르게 무용지물이 됩니다.
+          </p>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[.65rem] font-bold tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700">LONG</span>
+            <h3 class="text-[1rem] font-bold text-slate-900">안전한 갱신 절차</h3>
+          </div>
+          <p class="text-[.85rem] text-slate-600 leading-relaxed">
+            짧은 권한이 만료될 때 자동으로 새 권한을 발급받는 절차. 보안이 강화된 형태로 보관되어
+            웹 페이지의 다른 부분에서 직접 읽을 수 없습니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- Timeline visualization -->
+      <div class="card p-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">세션 수명 (예시)</p>
+        <p class="text-[.85rem] text-slate-600 mb-6">짧은 권한이 여러 번 갱신되며, 갱신 절차 자체는 더 오래 살아 있습니다.</p>
+
+        <div class="timeline mb-3">
+          <div class="timeline-bar">
+            <!-- short access tokens (4 segments — 4 cycles) -->
+            <div class="timeline-segment" style="left:0%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+            <div class="timeline-segment" style="left:25%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+            <div class="timeline-segment" style="left:50%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+            <div class="timeline-segment" style="left:75%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+          </div>
+          <span class="timeline-tick" style="left:0%">로그인</span>
+          <span class="timeline-tick" style="left:25%">↻ 갱신</span>
+          <span class="timeline-tick" style="left:50%">↻ 갱신</span>
+          <span class="timeline-tick" style="left:75%">↻ 갱신</span>
+          <span class="timeline-tick" style="left:100%">갱신 절차 만료 →<br>다시 로그인</span>
+        </div>
+
+        <div class="grid sm:grid-cols-3 gap-3 mt-8 text-[.82rem]">
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">자동 유지</p>
+            <p class="text-slate-600 leading-relaxed">사용자가 신경 쓰지 않아도 갱신이 자연스럽게 동작합니다.</p>
+          </div>
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">로그아웃 시 즉시 종료</p>
+            <p class="text-slate-600 leading-relaxed">로그아웃한 세션 정보로는 어떤 시도도 통과하지 않습니다.</p>
+          </div>
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">의심 활동 감지 시 차단</p>
+            <p class="text-slate-600 leading-relaxed">옛 권한을 다시 쓰려는 시도가 감지되면 관련 세션 계열 전체가 즉시 무효화됩니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. 인증된 실시간 연결 ─────────── -->
+    <section id="realtime">
+      <p class="text-[.78rem] font-bold tracking-wider text-amber-600 mb-2">기둥 05</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">인증된 실시간 연결 — 통화 채널도 검증을 통과해야 합니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        통화 어시스턴트(전사·추천·감정 분석 화면)는 브라우저와 서버가 실시간으로 메시지를 주고받는 연결을 사용합니다.
+        이 연결도 일반 화면 호출과 동일한 인증 절차를 거칩니다.
+        <strong class="text-slate-900">인증되지 않은 연결은 그 자체가 성립하지 않습니다.</strong>
+      </p>
+
+      <!-- Two paths: pass + fail -->
+      <div class="space-y-4">
+
+        <!-- Pass path -->
+        <div class="card p-5">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-3">정상 흐름</p>
+          <div class="flex flex-col lg:flex-row items-stretch gap-3">
+            <div class="step-box">
+              <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">STEP 1</p>
+              <p class="font-bold text-slate-900 text-[.9rem]">연결 시작</p>
+              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">로그인된 사용자 정보를 함께 보냅니다.</p>
+            </div>
+            <div class="step-arrow">
+              <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="step-box step-box-pass">
+              <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-1">STEP 2 ✓</p>
+              <p class="font-bold text-slate-900 text-[.9rem]">서버 검증 통과</p>
+              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">사용자·조직·권한이 연결 단위에 결합됩니다.</p>
+            </div>
+            <div class="step-arrow">
+              <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="step-box step-box-pass">
+              <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-1">STEP 3</p>
+              <p class="font-bold text-slate-900 text-[.9rem]">메시지 흐름 시작</p>
+              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">전사·추천·감정 데이터가 실시간으로 도착합니다.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fail path -->
+        <div class="card p-5">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-3">차단되는 경우</p>
+          <div class="flex flex-col lg:flex-row items-stretch gap-3">
+            <div class="step-box">
+              <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">STEP 1</p>
+              <p class="font-bold text-slate-900 text-[.9rem]">연결 시도</p>
+              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">권한 정보가 없거나 만료된 상태.</p>
+            </div>
+            <div class="step-arrow">
+              <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="step-box step-box-fail">
+              <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-1">STEP 2 ✗</p>
+              <p class="font-bold text-slate-900 text-[.9rem]">검증 실패</p>
+              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">인증 코드 (`missing_token` / `expired_token` / `invalid_token`)와 함께 거부.</p>
+            </div>
+            <div class="step-arrow">
+              <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="step-box step-box-fail">
+              <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-1">STEP 3</p>
+              <p class="font-bold text-slate-900 text-[.9rem]">연결 자체가 안 열림</p>
+              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">사용 도중 만료라면 자동 갱신 1회 시도. 실패 시 로그인 화면으로.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-5 card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        연결이 살아있는 동안 사용자의 조직 정보가 모든 메시지에 함께 묶입니다.
+        통화 데이터 역시 <a href="#org" class="text-blue-600 hover:underline font-semibold">조직 분리 규칙</a>을 그대로 따릅니다.
+      </div>
+
+      <!-- Real screenshot: WS demo running -->
+      <figure class="mt-10">
+        <div class="shot">
+          <img src="../../assets/screenshots/user_guide/live.png" alt="인증된 사용자만 진입 가능한 실시간 통화 화면 — transcript와 AI 추천이 실시간으로 흐릅니다">
+        </div>
+        <figcaption class="shot-caption">
+          <strong>인증을 통과한 실시간 통화 화면</strong> — 검증을 거친 연결 위에서 실시간 transcript(중앙), AI 응대 추천(우측), 고객 감정 변화(우상단)가 동시에 흐릅니다. 인증되지 않은 연결은 이 화면에 도달하기 전 단계에서 차단됩니다.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- ─────────── 6. 데이터 보호 ─────────── -->
+    <section id="data">
+      <p class="text-[.78rem] font-bold tracking-wider text-rose-600 mb-2">기둥 06</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">데이터 보호 — 여러 겹의 안전장치</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 1 시점에 저장되는 핵심 데이터(회사·사용자·소속·세션)는 다음 4가지 층의 보호를 동시에 받습니다.
+        한 층이 뚫려도 다음 층이 막아냅니다.
+      </p>
+
+      <div class="space-y-3">
+        <div class="layer layer-1">
+          <span class="layer-num">1</span>
+          <div>
+            <p class="font-bold text-slate-900">비밀번호는 한 방향으로 변환되어 저장</p>
+            <p class="text-[.82rem] text-slate-700 leading-relaxed mt-0.5">원문 비밀번호는 어디에도 남지 않습니다. 비교가 필요할 때는 같은 변환 절차를 거친 결과끼리 비교합니다.</p>
+          </div>
+        </div>
+
+        <div class="layer layer-2">
+          <span class="layer-num">2</span>
+          <div>
+            <p class="font-bold text-slate-900">세션 정보는 안전한 형태로 보관 + 자연스러운 폐기</p>
+            <p class="text-[.82rem] text-slate-700 leading-relaxed mt-0.5">평문 형태로 저장되지 않습니다. 만료 시간이 함께 박혀 있어 시간이 지나면 자동으로 무효가 됩니다.</p>
+          </div>
+        </div>
+
+        <div class="layer layer-3">
+          <span class="layer-num">3</span>
+          <div>
+            <p class="font-bold text-slate-900">운영 권한과 일상 권한이 분리</p>
+            <p class="text-[.82rem] text-slate-700 leading-relaxed mt-0.5">일상 요청을 처리하는 쪽은 다른 조직 데이터를 들여다볼 수 없도록 권한 자체를 제한받습니다. 운영용 권한은 별도이며 일상 코드 경로에 노출되지 않습니다.</p>
+          </div>
+        </div>
+
+        <div class="layer layer-4">
+          <span class="layer-num">4</span>
+          <div>
+            <p class="font-bold text-slate-900">의심 활동 시 토큰 계열 전체 즉시 무효화</p>
+            <p class="text-[.82rem] text-slate-700 leading-relaxed mt-0.5">이미 만료되거나 갱신된 옛 권한을 다시 쓰려는 시도가 감지되면, 안전을 위해 그 사용자의 관련 세션 계열 전체가 즉시 무효화됩니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 제한사항 + 다음 Phase ─────────── -->
+    <section id="limits">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">SCOPE</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">Phase 1이 다루는 것 / 다루지 않는 것</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 1은 기반 단계입니다. 여기서 만든 안전한 기반 위에, 다음 Phase부터 본격적인 업무 기능이 올라갑니다.
+      </p>
+
+      <div class="card overflow-hidden">
+        <table class="w-full text-[.88rem]">
+          <thead class="bg-slate-50 text-slate-600 text-[.72rem] font-bold uppercase tracking-wider">
+            <tr>
+              <th class="text-left px-4 py-3 border-b border-slate-200">영역</th>
+              <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1)</th>
+              <th class="text-left px-4 py-3 border-b border-slate-200">예정</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-700">
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">계정 / 조직 / 권한</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">로그인 / 세션 유지 / 로그아웃</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">조직별 데이터 분리</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작 (DB 차원)</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">인증된 실시간 연결</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">고객 관리 (CRUD)</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ UI mock</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 2 — 영속 저장</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">자가 회원가입 / 비밀번호 재설정</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 미구현</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 3 — 이메일 인증과 함께</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">통화 기록 영속 저장</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 데모만 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 4</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">실제 음성 인식 / AI 응대 추천</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 시나리오 재생</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 5</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">결제 / 구독 / 사용량</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 미구현</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 6+</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-semibold">운영 배포 / TLS / 모니터링</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 평가 환경만</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 6+</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+        각 단계는 Phase 1에서 만든 기반 위에 추가됩니다. 한 번 만든 분리·권한 규칙이 새 기능마다 다시 검증될
+        필요 없이 그대로 적용됩니다.
+      </p>
+    </section>
+
+    <!-- ─────────── 기술 요약 ─────────── -->
+    <section id="tech">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">참고</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">기술 요약</h2>
+      <p class="text-slate-600 mb-6 leading-relaxed max-w-3xl">
+        보안·아키텍처에 관심 있는 평가자가 핵심 결정 사항을 한눈에 보기 위한 짧은 요약. 본 가이드의
+        다른 섹션은 이 용어를 몰라도 이해할 수 있도록 작성했습니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">비밀번호 보호</p>
+          <p class="text-slate-600 leading-relaxed">Argon2id 단방향 해싱.</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">인증 토큰</p>
+          <p class="text-slate-600 leading-relaxed">짧은 수명 access token (Bearer) + 별도 보관 refresh token (HttpOnly cookie). 갱신 시 회전(rotation), 의심 활동 발생 시 토큰 계열 전체 무효화 (token family revoke).</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">조직 격리</p>
+          <p class="text-slate-600 leading-relaxed">PostgreSQL Row-Level Security (RLS)로 DB 차원 강제. 일상 권한은 RLS를 우회할 수 없도록 별도 분리.</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">권한 시스템</p>
+          <p class="text-slate-600 leading-relaxed">admin / manager / employee / viewer 4단계가 토큰에 박혀 모든 요청에서 검증.</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">실시간 연결 인증</p>
+          <p class="text-slate-600 leading-relaxed">WebSocket 핸드셰이크 시점에 access token을 검증하고 사용자 정보를 연결 단위에 결합.</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">세션 보호</p>
+          <p class="text-slate-600 leading-relaxed">refresh rotation + grace window로 race 흡수, 옛 토큰 재사용 감지 시 family 전체 즉시 revoke.</p>
+        </div>
+      </div>
+
+      <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+        같은 내용을 텍스트 형식으로 보고 싶으면
+        <a href="../USER_GUIDE_PHASE_1.md" class="text-blue-600 hover:underline font-semibold">USER_GUIDE_PHASE_1.md</a>
+        를 참고하세요. 화면별 walkthrough는
+        <a href="USER_GUIDE.html" class="text-blue-600 hover:underline font-semibold">USER_GUIDE.html</a>
+        에 있습니다.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">Phase 1 Foundations</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">시각 가이드</a>
+        <a href="../USER_GUIDE_PHASE_1.md" class="hover:text-slate-900 no-underline">텍스트 가이드</a>
+        <a href="guide.html" class="hover:text-slate-900 no-underline">도입 가이드</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

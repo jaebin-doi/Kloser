@@ -6,7 +6,10 @@
 
 | 너는 누구? | 어디부터? |
 |---|---|
-| **이 레포를 처음 받았다 / Phase 1을 로컬에서 띄워보고 싶다** | [`USER_GUIDE_PHASE_1.md`](USER_GUIDE_PHASE_1.md) |
+| **제품을 평가/검토하는 입장 — 화면을 빠르게 둘러보고 싶다** | [`product/USER_GUIDE.html`](product/USER_GUIDE.html) — 9개 화면 시각 walkthrough |
+| **Phase 1이 만든 기반 기능을 시각적으로 이해하고 싶다** | [`product/PHASE_1_FOUNDATIONS.html`](product/PHASE_1_FOUNDATIONS.html) — 6 기둥 (로그인/조직/권한/세션/실시간/데이터) 시각 가이드 |
+| **위와 같은 내용을 텍스트로 읽고 싶다** | [`USER_GUIDE_PHASE_1.md`](USER_GUIDE_PHASE_1.md) — 동일 내용의 텍스트 reference |
+| **이 레포를 받아서 로컬에서 띄우고 싶다 (개발자)** | [`server/README.md`](../server/README.md) — 실행·검증·엔드포인트 |
 | **상위 백엔드 로드맵이 궁금하다** | [`plan/BACKEND_PLAN.md`](plan/BACKEND_PLAN.md) |
 | **Phase 1의 진행 상태가 궁금하다** | [`plan/PHASE_1_MASTER.md`](plan/PHASE_1_MASTER.md) |
 | **특정 sub-step의 결정과 결과를 보고 싶다** | `plan/PHASE_1_STEP_*` (계획) + `plan/PHASE_1_STEP_*_FINDINGS` (결과) |
@@ -56,12 +59,14 @@
 | [`SLA_99.9%_서버_구성_정리.md`](ops/SLA_99.9%_서버_구성_정리.md) | HA 구성 (LB / app / PG / Redis) |
 | [`운영_핵심_개선_정리.md`](ops/운영_핵심_개선_정리.md) | RLS / 감사로그 / 마스킹 등 보안 베이스라인 |
 
-### `product/` — 제품·마케팅·도입 가이드 (총 3개)
+### `product/` — 제품·마케팅·도입 가이드 (총 5개)
 
 고객 또는 의사결정자 대상 자료.
 
 | 파일 | 내용 |
 |---|---|
+| [`USER_GUIDE.html`](product/USER_GUIDE.html) | **시각 가이드** — 9개 화면 walkthrough + 현재/예정 구분 |
+| [`PHASE_1_FOUNDATIONS.html`](product/PHASE_1_FOUNDATIONS.html) | **Phase 1 기반 기능 시각 가이드** — 로그인/조직 분리/권한/세션/실시간 연결/데이터 보호 6 기둥 |
 | [`pricing.md`](product/pricing.md) | 가격 정책 (내부 SSOT) |
 | [`guide.html`](product/guide.html) | 도입 가이드 (고객용 — 정적 HTML) |
 | [`realtime-call-assistant-guide.md`](product/realtime-call-assistant-guide.md) | 제품·아키텍처 정의 (단일 진실원) |

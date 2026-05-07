@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser 사용자 가이드 — Phase 1</title>
+  <meta name="description" content="Kloser 플랫폼을 화면별로 둘러보는 시각 가이드. Phase 1 시점 기준." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(37, 99, 235, 0.06), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(6, 182, 212, 0.06), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+
+    /* Screenshot frame — soft outline + subtle shadow that lifts the
+       image off the page background. */
+    .shot {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgb(226 232 240);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(15, 23, 42, .15);
+      background: white;
+    }
+    .shot img { display: block; width: 100%; height: auto; }
+
+    /* Status pills used in "현재 가능 / 아직 안 됨" boxes. */
+    .pill-can {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 9999px;
+      background: rgb(209 250 229); color: rgb(6 95 70);
+      font-size: .72rem; font-weight: 700; letter-spacing: -0.005em;
+    }
+    .pill-soon {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 9999px;
+      background: rgb(254 243 199); color: rgb(146 64 14);
+      font-size: .72rem; font-weight: 700; letter-spacing: -0.005em;
+    }
+
+    .status-box-can {
+      border: 1px solid rgb(167 243 208);
+      background: rgb(236 253 245);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .status-box-soon {
+      border: 1px solid rgb(253 230 138);
+      background: rgb(255 251 235);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    /* TOC sticky behavior on wide screens. */
+    @media (min-width: 1024px) {
+      .toc-sticky { position: sticky; top: 24px; }
+    }
+
+    /* Anchored heading offset so sticky links land below the page top. */
+    section[id] { scroll-margin-top: 24px; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- ═══════════════════════════ Top bar ═══════════════════════════ -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">마케팅 사이트</a>
+        <a href="guide.html" class="hover:text-slate-900 no-underline">도입 가이드</a>
+        <a href="../README.md" class="hover:text-slate-900 no-underline">문서 인덱스</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════ Hero ═══════════════════════════ -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-10">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 1 · USER GUIDE
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        화면으로 보는 <span class="g-text">Kloser 사용자 가이드</span>
+      </h1>
+      <p class="mt-5 text-[1.05rem] text-slate-600 leading-relaxed">
+        영업팀이 매일 마주할 9개 화면을 차례로 둘러봅니다. 각 섹션엔 실제 화면 캡처와
+        주요 인터랙션, 그리고 <strong class="text-slate-900">현재(Phase 1)에 동작하는 부분</strong>과
+        <strong class="text-slate-900">아직 mock인 부분</strong>을 함께 표시했습니다.
+        평가·검토 단계의 분께 권장.
+      </p>
+      <div class="mt-7 flex flex-wrap gap-3">
+        <a href="#login" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[.85rem] font-bold no-underline transition">
+          가이드 시작 →
+        </a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-[.85rem] font-medium no-underline transition">
+          Phase 1 기반 기능 설명 →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ 본문 — TOC + 섹션 ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24">
+    <div class="grid lg:grid-cols-[220px_1fr] gap-10">
+
+      <!-- TOC -->
+      <aside class="hidden lg:block">
+        <nav class="toc-sticky text-[.82rem]">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">목차</p>
+          <ul class="space-y-1.5">
+            <li><a href="#login" class="text-slate-600 hover:text-blue-600 no-underline">1 · 로그인</a></li>
+            <li><a href="#dashboard" class="text-slate-600 hover:text-blue-600 no-underline">2 · 대시보드</a></li>
+            <li><a href="#live" class="text-slate-600 hover:text-blue-600 no-underline">3 · 실시간 통화</a></li>
+            <li><a href="#daily" class="text-slate-600 hover:text-blue-600 no-underline">4 · 오늘의 일</a></li>
+            <li><a href="#calls" class="text-slate-600 hover:text-blue-600 no-underline">5 · 통화 기록</a></li>
+            <li><a href="#customers" class="text-slate-600 hover:text-blue-600 no-underline">6 · 고객 관리</a></li>
+            <li><a href="#newsletter" class="text-slate-600 hover:text-blue-600 no-underline">7 · 뉴스레터</a></li>
+            <li><a href="#team" class="text-slate-600 hover:text-blue-600 no-underline">8 · 팀 & 계정</a></li>
+            <li><a href="#settings" class="text-slate-600 hover:text-blue-600 no-underline">9 · 설정</a></li>
+            <li class="pt-2 border-t border-slate-100 mt-3">
+              <a href="#summary" class="text-slate-600 hover:text-blue-600 no-underline font-semibold">10 · 종합 정리</a>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+
+      <div class="space-y-16">
+
+        <!-- ────────── 1. 로그인 ────────── -->
+        <section id="login">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">01</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">로그인</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            영업팀 계정으로 로그인하면 통화 어시스턴트로 진입합니다. 멀티 조직 사용자는
+            로그인 시 조직 선택 안내가 자동으로 노출됩니다.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/login.png" alt="Kloser 로그인 화면">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>이메일 + 비밀번호 로그인 (Argon2id 해시)</li>
+                <li>HttpOnly refresh cookie 30일 + Bearer access 15분 갱신</li>
+                <li>잘못된 자격증명·다중 조직 시 인라인 안내 메시지</li>
+                <li>localhost 접속 시 dev 시드 4쌍 + 자동 채우기 버튼 노출</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>회원가입 UI (Phase 3, 이메일 인증과 함께)</li>
+                <li>비밀번호 재설정 / 마법 링크 (Phase 3)</li>
+                <li>SSO / SAML — Enterprise 단계</li>
+                <li>조직 picker UI — 현재는 ID 직접 입력 (Phase 2+)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 2. 대시보드 ────────── -->
+        <section id="dashboard">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">02</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">대시보드 — 하루의 시작</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            로그인 직후 마주하는 메인 화면. 4종 KPI, 시장 트렌드 알림, AI가 생성한
+            오늘의 To-Do를 한눈에. 어디서부터 시작할지가 자명해집니다.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/dashboard.png" alt="Kloser 대시보드">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>4 KPI · 트렌드 위젯 · To-Do 체크박스 · 알림 패널 (UI 인터랙션)</li>
+                <li>fade-in / 토스트 / 모달 애니메이션 — 데모 외관 동등</li>
+                <li>반응형 — 1024px 미만에서 사이드바가 드로어로 전환</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>실제 KPI 집계 — 현재 mock 숫자 (Phase 4 calls REST)</li>
+                <li>실제 시장 트렌드 수집 — 네이버 검색 API (Phase 4~5)</li>
+                <li>To-Do 자동 생성 엔진 — 통화 기록 + 트렌드 결합 (Phase 5)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 3. 실시간 통화 ────────── -->
+        <section id="live">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">03</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">실시간 통화 — 핵심 기능</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            Kloser의 차별점. 통화 중 STT가 실시간 전사를 만들고, RAG 기반 AI가
+            <strong class="text-slate-900">2~3초 안에</strong> 응대 멘트를 추천합니다.
+            우측엔 고객 감정 변화(관심 → 망설임 → 재고려)가 실시간 갱신.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/live.png" alt="Kloser 실시간 통화 화면 — transcript + AI 추천 + 감정 분석">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>인증된 WebSocket으로 데모 시퀀스 재생 (Phase 0.5 spike)</li>
+                <li>JWT 핸드셰이크 — 서버가 토큰을 검증해야만 통화 채널 진입</li>
+                <li>transcript / suggestion / sentiment 이벤트 스트리밍</li>
+                <li>RTT 0~5ms 라운드트립 — 클릭에서 화면 갱신까지 체감 즉시</li>
+                <li>4 KPI · 상담 체크리스트 · 빠른 응대 칩 UI</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>실제 STT (Naver Clova) 연동 — Phase 5</li>
+                <li>실제 LLM 응대 추천 (Claude / RAG) — Phase 5</li>
+                <li>회사 가이드 / FAQ 벡터 검색 (pgvector) — Phase 5</li>
+                <li>통화 종료 후 자동 메모 + 다음 액션 분류 — Phase 5</li>
+                <li>현재 데모는 setTimeout 기반 fixture로 재생됩니다.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 4. 오늘의 일 ────────── -->
+        <section id="daily">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">04</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">오늘의 일 — 시장 트렌드 + To-Do</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            매일 06:00에 자동 갱신. 회사가 지정한 모니터링 키워드와 경쟁사 동향을
+            네이버 검색 API로 수집해 우선순위 To-Do로 정리합니다. 회의 자료를
+            5포맷(HTML / PDF / Word / Excel / PPT)으로 즉시 다운로드.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/daily.png" alt="오늘의 일 — 시장 트렌드 + To-Do + 경쟁사 동향">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>모니터링 관심사 chip 추가·삭제 · To-Do 체크박스 토글</li>
+                <li><strong>5 포맷 다운로드 실작동</strong> — jsPDF / html-docx-js / SheetJS / PptxGenJS</li>
+                <li>Excel은 5개 시트 자동 분리 (요약·트렌드·주간·To-Do·경쟁사)</li>
+                <li>PowerPoint는 6장 자동 구성 (표지·KPI·트렌드·To-Do·경쟁사·마무리)</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>실제 네이버 검색 API 호출 — Phase 4~5</li>
+                <li>실제 To-Do 생성 엔진 (시장 + 통화 결합) — Phase 5</li>
+                <li>To-Do 우선순위 자동 정렬 모델 — Phase 5</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 5. 통화 기록 ────────── -->
+        <section id="calls">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">05</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">통화 기록 — 검색 가능한 과거</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            지난 통화 전부가 검색·필터 가능한 상태로 보존됩니다. 클릭하면 우측에
+            상세 패널이 슬라이드되어 transcript · 요약 · 다음 액션을 확인.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/calls.png" alt="통화 기록 + 상세 패널">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>검색·필터 UI · 8건 mock 통화 데이터</li>
+                <li>우측 상세 패널 슬라이드 — 클릭 인터랙션</li>
+                <li>회사 단위 데이터 통합 — 떠난 직원의 통화도 유지</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>DB 영속 통화 기록 — Phase 4 calls REST + dashboard</li>
+                <li>RLS 기반 조직 격리 — DB 스키마는 Phase 1에 준비됨, REST 라우트는 Phase 4</li>
+                <li>전문 검색 (transcript 본문) — Phase 4~5</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 6. 고객 관리 ────────── -->
+        <section id="customers">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">06</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">고객 관리 — 통합 CRM</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            영업팀의 고객 마스터. 활성·검토중·대기 상태별 필터, 플랜 차원 분류,
+            마지막 연락 시점까지 한 화면에. Enterprise 플랜 식별도 즉시.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/customers.png" alt="고객 관리 — 2,486명 mock + 필터 + 신규 추가">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>통계 4종 + 6개 필터 + 12명 mock 데이터</li>
+                <li>신규 추가 모달 (실작동 UI)</li>
+                <li>이름·회사·이메일 검색 인터랙션</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>DB 영속 customers CRUD — <strong>Phase 2 직접 진입 항목</strong></li>
+                <li>RLS 격리 검증 — Phase 1 인프라는 준비, Phase 2 라우트 도입 시 활성화</li>
+                <li>HubSpot / Salesforce 양방향 동기화 — Phase 6 (v2 베타)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 7. 뉴스레터 ────────── -->
+        <section id="newsletter">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">07</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">뉴스레터 — AI 챗 기반 작성</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            "환영 메일 작성해줘" 한 줄로 개인화된 초안 자동 생성. 발송 후엔
+            전달률·오픈율·클릭률을 실시간 추적합니다.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/newsletter.png" alt="뉴스레터 + AI 챗봇 작성">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>캠페인 5개 + 통계 mock</li>
+                <li>AI 챗봇 UI — 4종 프롬프트 (환영/업데이트/웨비나/갱신)별 다른 초안 자동 생성 + 타이핑 점 애니메이션</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>실제 LLM 연동 (Claude / GPT) — Phase 5</li>
+                <li>실제 메일 발송 인프라 — Phase 3 (SMTP / SES)</li>
+                <li>발송 통계 실시간 트래킹 — Phase 6</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 8. 팀 & 계정 ────────── -->
+        <section id="team">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">08</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">팀 & 계정 — 권한 매트릭스</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            관리자 1개 + 직원 서브 계정 (Pro 1명 / Enterprise 5명). 권한은
+            Admin · Manager · Employee · Viewer 4단계, 우수 사례 자동 노출로
+            팀 내 베스트 프랙티스를 즉시 공유.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/team.png" alt="팀 & 계정 — 14명 + 우수 사례 + 권한 매트릭스">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>14명 구성원 + 우수 사례 랭킹 + 권한 매트릭스 UI</li>
+                <li>직원 초대 모달 (mock 흐름)</li>
+                <li>서버 측 role guard — admin / manager / employee / viewer 4단계 미들웨어 동작</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>실제 초대 메일 발송 — Phase 3 (SMTP)</li>
+                <li>초대 토큰 검증 + 가입 완성 흐름 — Phase 3</li>
+                <li>우수 사례 자동 추출 엔진 — Phase 5</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 9. 설정 ────────── -->
+        <section id="settings">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">09</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">설정 — 12 카테고리</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            프로필부터 위험 영역까지 12개 카테고리. 좌측 스크롤스파이 TOC가 현재
+            보고 있는 섹션을 항상 표시합니다.
+          </p>
+
+          <div class="shot mb-5">
+            <img src="../../assets/screenshots/user_guide/settings.png" alt="설정 — 12 카테고리">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>12 카테고리 — 프로필·회사·통화환경·AI·통합·알림·보안·데이터·플랜·API·언어·위험영역</li>
+                <li>스크롤스파이 TOC — 보고 있는 섹션 자동 강조</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 아직 안 됨</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>각 항목 저장 — Phase 4+ (해당 기능 구현 시점에)</li>
+                <li>API 키 발급 — Phase 6</li>
+                <li>2단계 인증 (TOTP) — Phase 3</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 10. 종합 정리 ────────── -->
+        <section id="summary">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">10</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">Phase 1 종합 정리</h2>
+          </div>
+          <p class="text-slate-600 mb-6 leading-relaxed">
+            지금 시점에서 무엇이 진짜로 동작하고 무엇이 mock인지를 한 표로 정리.
+            Phase 2 진입(고객 CRUD) 시점에 이 표는 갱신됩니다.
+          </p>
+
+          <div class="card overflow-hidden">
+            <table class="w-full text-[.88rem]">
+              <thead class="bg-slate-50 text-slate-600 text-[.75rem] font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="text-left px-4 py-3 border-b border-slate-200">영역</th>
+                  <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1)</th>
+                  <th class="text-left px-4 py-3 border-b border-slate-200">예정</th>
+                </tr>
+              </thead>
+              <tbody class="text-slate-700">
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">데이터 영속</td>
+                  <td class="px-4 py-3">PostgreSQL 16 + RLS default-deny + 7 tables</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 2~4 — customers / calls / transcripts CRUD</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">인증</td>
+                  <td class="px-4 py-3">자체 Auth — Argon2id + JWT + refresh rotation + role guard</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 3 — 회원가입/이메일 인증/비밀번호 재설정</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">통화 어시스턴트</td>
+                  <td class="px-4 py-3">WebSocket (인증 핸드셰이크) + 데모 시퀀스 fixture</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 5 — 실제 STT (Clova) + LLM (Claude) + RAG</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">대시보드 / KPI</td>
+                  <td class="px-4 py-3">UI 인터랙션 mock (실 데이터 없음)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 4 — calls REST + 실 KPI 집계</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">시장 트렌드</td>
+                  <td class="px-4 py-3">5 포맷 다운로드 (HTML/PDF/Word/Excel/PPT) 실작동, 데이터는 mock</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 4~5 — 네이버 검색 API + To-Do 엔진</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">팀 / 권한</td>
+                  <td class="px-4 py-3">role 미들웨어 4단계 동작, UI mock</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 3 — 초대 메일 + 가입 완성</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">데스크톱 앱</td>
+                  <td class="px-4 py-3 text-slate-500">웹 콘솔만 동작</td>
+                  <td class="px-4 py-3 text-slate-500">별도 트랙 — Electron/Tauri + WASAPI 오디오 캡처</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-3 font-semibold">운영 / TLS</td>
+                  <td class="px-4 py-3 text-slate-500">localhost plaintext만 (dev)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 1 Step 5 — Caddy reverse proxy 진입 예정</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+            Phase 1 기반 기능 시각 가이드: <a href="PHASE_1_FOUNDATIONS.html" class="text-blue-600 hover:underline">PHASE_1_FOUNDATIONS.html</a> ·
+            Phase별 상세 로드맵: <a href="../plan/BACKEND_PLAN.md" class="text-blue-600 hover:underline">BACKEND_PLAN.md</a> ·
+            Phase 1 진행 상태: <a href="../plan/PHASE_1_MASTER.md" class="text-blue-600 hover:underline">PHASE_1_MASTER.md</a>
+          </p>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════ Footer ═══════════════════════════ -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">사용자 가이드 · Phase 1</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="../../index.html#features" class="hover:text-slate-900 no-underline">기능</a>
+        <a href="../../index.html#pricing" class="hover:text-slate-900 no-underline">가격</a>
+        <a href="guide.html" class="hover:text-slate-900 no-underline">도입 가이드</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>
