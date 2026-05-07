@@ -143,8 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 1 Step 1~3 완료** — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard)까지 동작. `npm test` 29/29 + Phase 0.5 e2e 14/14 회귀 PASS. 다음은 Step 4 (브라우저 wiring + WS handshake auth).
-> 자세한 계획·결과: [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md), [`docs/PHASE_1_MASTER.md`](docs/PHASE_1_MASTER.md), [`docs/PHASE_1_STEP_3_AUTH_CORE.md`](docs/PHASE_1_STEP_3_AUTH_CORE.md), [`docs/PHASE_1_STEP_3_FINDINGS.md`](docs/PHASE_1_STEP_3_FINDINGS.md).
+> **현재 단계**: **Phase 1 Step 1~4 완료** — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring (메모리 access + single in-flight refresh + login redirect) + WS handshake JWT auth (`auth.token` slot, `userId` query 폐기) + DOMPurify suggestion sanitize까지 동작. `npm test` 37/37 + Phase 0.5 e2e 16/16 PASS. 다음은 Step 5 (Caddy reverse proxy + 운영 메모).
+> 자세한 계획·결과: [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md), [`docs/PHASE_1_MASTER.md`](docs/PHASE_1_MASTER.md), [`docs/PHASE_1_STEP_4_CLIENT_WIRING.md`](docs/PHASE_1_STEP_4_CLIENT_WIRING.md), [`docs/PHASE_1_STEP_4_FINDINGS.md`](docs/PHASE_1_STEP_4_FINDINGS.md).
 
 ---
 
@@ -169,17 +169,17 @@ kloser/
 │   ├── _shared.css           # 공통 스타일 (사이드바·테이블·뱃지·버튼)
 │   ├── _shared.js            # 공통 사이드바 + 알림 패널 렌더러
 │   ├── _daily.js             # daily.html 전용 로직 (4 포맷 export)
-│   └── ws.js                 # 🆕 Socket.io 클라이언트 wrapper (window.kloserWS)
+│   ├── login.html            # 🆕 Phase 1 Step 4 — dev 로그인 폼 + returnUrl
+│   ├── api.js                # 🆕 Phase 1 Step 4 — fetch wrapper (메모리 토큰 + auto-refresh)
+│   └── ws.js                 # Socket.io 클라이언트 wrapper (window.kloserWS, JWT handshake)
 │
-├── server/                   # 🆕 백엔드 (Phase 0.5 spike) — Fastify + Socket.io + TS
-│   ├── README.md             # 실행 방법, 이벤트/엔드포인트 레퍼런스
-│   ├── package.json          # fastify · socket.io · tsx · typescript
-│   ├── tsconfig.json
-│   └── src/
-│       ├── server.ts         # Fastify entry — /health + io.attach
-│       ├── ws/calls.ts       # /calls 네임스페이스 (start_call/text_chunk/end_call)
-│       ├── fixtures/demo-call.ts   # conversation + aiSequence + sentiment
-│       └── __test_client.ts        # Day 1 검증용 throwaway (Phase 1에서 삭제)
+├── server/                   # 백엔드 — Fastify + Socket.io + PostgreSQL/RLS + 자체 Auth
+│   ├── README.md             # 실행/검증/엔드포인트/RLS 가이드 (전체 트리는 여기 참고)
+│   ├── package.json          # fastify · socket.io · pg · @fastify/{jwt,cookie} · argon2
+│   ├── migrations/ · seeds/ · scripts/   # node-pg-migrate + Argon2id 시드
+│   ├── test/                 # tsx --test (auth · rls · orgContext · ws_auth = 37 cases)
+│   └── src/                  # config · db · plugins · middleware · services
+│                             # repositories · routes · ws · fixtures
 │
 ├── docs/
 │   ├── guide.html                          # 도입 가이드 (고객용)
@@ -254,15 +254,21 @@ python -m http.server 8765
 
 ### 라이브 통화 백엔드 (`live.html` 실시간 흐름 보기)
 
-`platform/live.html`이 진짜 WebSocket 이벤트로 동작하는 걸 보려면 별도 터미널에서 백엔드를 띄웁니다 (Phase 0.5 spike 결과물).
+`platform/live.html`이 진짜 WebSocket 이벤트로 동작하는 걸 보려면 별도 터미널에서 백엔드를 띄웁니다. Phase 1 Step 4부터는 자체 auth + JWT 핸드셰이크가 들어와서, 처음 진입하면 `login.html`로 자동 redirect 됩니다 (dev seed 자격증명: `admin@acme.test` / `acme-admin-1234`).
 
 ```bash
+# 1. infra (docker compose — postgres + redis)
+docker compose -f ops/docker-compose.yml up -d
+
+# 2. backend (Fastify on :3001)
 cd server
-npm install        # 최초 1회
-npm run dev        # tsx watch — port 3001
+npm install                  # 최초 1회
+npm run db:migrate:up        # 7 tables + RLS + sessions enrichment
+npm run db:seed              # 2 orgs × (admin + employee) Argon2id 해시
+npm run dev                  # tsx watch
 ```
 
-이제 `http://localhost:8765/platform/live.html`을 열면 `server/`가 `start_call → transcript/suggestion/sentiment` 시퀀스를 자동으로 푸시합니다. 자세한 내용은 [`server/README.md`](server/README.md).
+로그인 후 `http://localhost:8765/platform/live.html`이 인증된 WS로 `start_call → transcript/suggestion/sentiment` 시퀀스를 푸시합니다. 자세한 실행/검증/엔드포인트는 [`server/README.md`](server/README.md).
 
 > **참고**: Tailwind CSS, Pretendard, socket.io-client는 CDN 로딩이라 첫 로드 시 인터넷 연결이 필요합니다.
 
@@ -287,7 +293,7 @@ npm run dev        # tsx watch — port 3001
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 1 Step 1~3 완료, Step 4 진입 대기)
+### 백엔드 (`server/` — Phase 1 Step 1~4 완료, Step 5 진입 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/SUPABASE_VS_ONPREM.md`)
@@ -318,8 +324,9 @@ npm run dev        # tsx watch — port 3001
 - 결과 정리: [`docs/PHASE_0_5_FINDINGS.md`](docs/PHASE_0_5_FINDINGS.md)
 
 ### v1 — MVP (다음 단계, Phase 1~6)
-- **Phase 1**: 자체 Auth (JWT) + PostgreSQL 부트스트랩 + RLS default-deny + customers CRUD
-- **Phase 2~4**: Team/초대, Calls REST + Dashboard, 실시간 STT(Clova) + AI suggestion
+- **Phase 1**: PostgreSQL 부트스트랩 + RLS default-deny + 자체 Auth (Argon2id + JWT + refresh rotation) + 클라이언트 wiring + Caddy reverse proxy (Step 1~5)
+- **Phase 2**: Customers CRUD
+- **Phase 3~5**: Team/초대, Calls REST + Dashboard, 실시간 STT(Clova) + AI suggestion
 - Windows 데스크톱 앱 (오디오 캡처)
 - Claude RAG 기반 응대 추천 엔진
 - 단일 회사·1~5명 직원 기준 PoC
