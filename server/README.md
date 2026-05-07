@@ -1,10 +1,9 @@
-# Kloser server (Phase 0.5 spike)
+# Kloser server (Phase 0.5 spike + Phase 1 in progress)
 
-> **Status**: throwaway scaffold for the live-stream risk-removal spike.
-> See `docs/PHASE_0_5_LIVE_SPIKE.md` for scope.
-> Phase 1 will rewrite or significantly restructure most of this code:
-> auth, persistence, multi-tenant rooms, runtime validation, and shared
-> types are all intentionally absent.
+> **Status**:
+> - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
+> - **Phase 1 Step 1** code complete: DB infrastructure (compose, migration, seed) — runtime verification awaiting docker availability.
+> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`.
 
 ## What this provides
 
@@ -65,16 +64,26 @@ The same script writes `test/phase_0_5_e2e.png` for visual evidence.
 
 ```text
 server/
-├── package.json           # fastify, socket.io, tsx, typescript
+├── package.json           # fastify, socket.io, pg, dotenv, node-pg-migrate, tsx, ts
 ├── tsconfig.json          # ES2022 / NodeNext / strict
+├── .env.example           # 🆕 Phase 1 — DATABASE_URL, REDIS_URL, etc.
+├── migrations/            # 🆕 Phase 1 — node-pg-migrate
+│   └── 1715000000000_init.sql   # 7 tables + RLS FORCE ENABLE
+├── seeds/                 # 🆕 Phase 1
+│   └── 0001_demo.sql       # 2 orgs × (admin + employee)
+├── scripts/               # 🆕 Phase 1
+│   └── run-seed.mjs        # `npm run db:seed` entry
 └── src/
     ├── server.ts          # Fastify entry — health endpoint + io.attach
+    ├── db/                # 🆕 Phase 1
+    │   └── pool.ts         # pg Pool (Step 2 wires into a fastify plugin)
     ├── ws/
     │   └── calls.ts       # /calls namespace handler
-    ├── fixtures/
-    │   └── demo-call.ts   # conversation + aiSequence (with sentiment)
-    └── __test_client.ts   # throwaway Node CLI smoke (Phase 0.5 only)
+    └── fixtures/
+        └── demo-call.ts   # conversation + aiSequence (with sentiment)
 ```
+
+(Phase 0.5 throwaway `__test_client.ts` removed at Phase 1 kickoff per the cleanup pointer.)
 
 ## Not done on purpose
 
@@ -108,8 +117,34 @@ WS   /calls?userId=<string>
      S2C error      { code, message }
 ```
 
-## Cleanup pointer
+## Phase 1 — DB infrastructure (code complete, runtime pending docker)
 
-`src/__test_client.ts` is throwaway — delete during the Phase 1 kickoff
-once the e2e Playwright script (`test/phase_0_5_e2e.mjs`) is the canonical
-smoke check.
+```bash
+# 0. environment
+cp ../.env.example ../.env          # project-root (compose values)
+cp .env.example .env                # server-side (DATABASE_URL, REDIS_URL)
+
+# 1. infra
+docker compose -f ../ops/docker-compose.yml up -d
+
+# 2. migrations
+npm run db:migrate:up
+# expect: Migrations complete!
+
+# 3. seed
+npm run db:seed
+# expect: organizations count=2 OK, users count=4 OK, memberships count=4 OK
+
+# 4. verify RLS forced on the four org-scoped tables
+docker exec kloser-dev-postgres-1 psql -U kloser -d kloser_dev -c \
+  "SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class \
+   WHERE relname IN ('memberships','teams','invitations','activity_log') \
+   ORDER BY relname"
+# expect: all four with t/t
+```
+
+Step 2 starts plugging this into Fastify (auth middleware injects `SET LOCAL app.org_id`).
+
+## Phase 0.5 cleanup pointer (resolved)
+
+`src/__test_client.ts` was the Phase 0.5 throwaway — removed at the Phase 1 Step 1 commit. The canonical smoke is `test/phase_0_5_e2e.mjs`.

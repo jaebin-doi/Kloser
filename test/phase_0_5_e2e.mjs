@@ -8,9 +8,15 @@
  *   node test/phase_0_5_e2e.mjs
  */
 import { chromium } from "playwright";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 const STATIC_URL = "http://localhost:8765/platform/live.html";
 const API_HEALTH = "http://localhost:3001/health";
+
+// Resolve screenshot path relative to this script so the test is cwd-independent.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SCREENSHOT_PATH = path.join(__dirname, "phase_0_5_e2e.png");
 
 function pass(msg) { console.log("PASS:", msg); }
 function fail(msg) { console.error("FAIL:", msg); process.exitCode = 1; }
@@ -154,9 +160,9 @@ async function main() {
     pass("no console errors");
   }
 
-  // Screenshot for evidence
-  await page.screenshot({ path: "test/phase_0_5_e2e.png", fullPage: false });
-  pass("screenshot saved → test/phase_0_5_e2e.png");
+  // Screenshot for evidence (path resolved relative to this script).
+  await page.screenshot({ path: SCREENSHOT_PATH, fullPage: false });
+  pass(`screenshot saved → ${path.relative(process.cwd(), SCREENSHOT_PATH)}`);
 
   await browser.close();
   console.log(process.exitCode ? "\nE2E FAILED" : "\nE2E PASSED");

@@ -3,19 +3,28 @@
   "version": "0.5.0-spike",
   "private": true,
   "type": "module",
-  "description": "Kloser backend — Phase 0.5 live stream spike",
+  "description": "Kloser backend — Phase 0.5 spike + Phase 1 in progress",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate:up": "node-pg-migrate up -m migrations -j sql",
+    "db:migrate:down": "node-pg-migrate down -m migrations -j sql",
+    "db:migrate:create": "node-pg-migrate create -m migrations -j sql",
+    "db:migrate:redo": "node-pg-migrate redo -m migrations -j sql",
+    "db:seed": "node scripts/run-seed.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "dotenv": "^16.4.5",
     "fastify": "^5.1.0",
+    "pg": "^8.13.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
+    "@types/pg": "^8.11.10",
+    "node-pg-migrate": "^7.9.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

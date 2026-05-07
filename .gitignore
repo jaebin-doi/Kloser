@@ -40,3 +40,9 @@ build/
 **/index copy*.html
 **/*.bak
 *.tmp
+
+# Environment files (.env.example is committed; .env is local-only)
+.env
+.env.local
+**/.env
+**/.env.local
