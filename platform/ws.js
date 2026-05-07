@@ -78,8 +78,16 @@
       socket.auth = { token: tokenProvider() || '' };
     });
 
+    // The `recovering` latch is set when we kick off a refresh+reconnect
+    // and is cleared only when the next `connect` succeeds. If the new
+    // attempt also fails with an auth code, we treat it as terminal —
+    // refreshAccessToken returned a token the server still rejects, so
+    // looping refresh would just burn the refresh-token family.
+    let recovering = false;
+
     socket.on('connect', function () {
       console.log('[kloserWS] connected', socket.id);
+      recovering = false;
     });
     socket.on('disconnect', function (reason) {
       console.log('[kloserWS] disconnected', reason);
@@ -89,16 +97,26 @@
     // pinned: missing_token / expired_token / invalid_token. On any
     // of these, refresh once and try again. On any OTHER error (e.g.,
     // transport failure), let socket.io's own reconnection handle it.
-    let recovering = false;
     socket.on('connect_error', function (err) {
       const code = err && err.data && err.data.code;
       console.warn('[kloserWS] connect_error', code || '(no code)', err && err.message);
-      if (recovering) return;
       const isAuthCode =
         code === 'expired_token' ||
         code === 'invalid_token' ||
         code === 'missing_token';
       if (!isAuthCode) return;
+
+      if (recovering) {
+        // We already refreshed once and the new attempt still tripped
+        // an auth-code error. Don't burn the refresh family with another
+        // pass — surface terminal failure to the caller.
+        console.error('[kloserWS] auth refresh did not unblock /calls; bouncing to login');
+        try { socket.disconnect(); } catch (_) { /* ignore */ }
+        recovering = false;
+        onAuthFailure();
+        return;
+      }
+
       recovering = true;
       (async function () {
         try {
@@ -108,12 +126,14 @@
           await window.kloserApi.refreshAccessToken();
           socket.auth = { token: tokenProvider() || '' };
           socket.connect();
+          // Leave `recovering` true here on purpose. It clears when the
+          // socket actually `connect`s; if instead another connect_error
+          // fires, the early-return branch above takes over.
         } catch (refreshErr) {
           console.error('[kloserWS] auth refresh failed; bouncing to login', refreshErr);
           try { socket.disconnect(); } catch (_) { /* ignore */ }
-          onAuthFailure();
-        } finally {
           recovering = false;
+          onAuthFailure();
         }
       })();
     });

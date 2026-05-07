@@ -571,6 +571,10 @@
     // failed, return an empty string rather than letting raw HTML
     // through — Phase 5 will eventually feed real LLM output through
     // this same path, so failing safe matters now.
+    //
+    // Note: USE_PROFILES.html drops <svg> by design. We split rendering
+    // so that local trusted constants (toneIcon SVGs) bypass DOMPurify
+    // and only server-supplied strings (title, body) go through it.
     function safeSuggestionHtml(html) {
       if (!window.DOMPurify || typeof window.DOMPurify.sanitize !== 'function') {
         console.warn('[live] DOMPurify missing; suppressing unsanitized suggestion HTML');
@@ -588,13 +592,31 @@
           const card = document.createElement('div');
           card.className = `sug-card rounded-lg border ${toneStyles[s.tone]} p-3 cursor-pointer`;
           card.style.animation = `msgIn .35s cubic-bezier(0.16,1,0.3,1) ${i*0.06}s both`;
-          card.innerHTML = safeSuggestionHtml(`
-            <div class="flex items-center gap-1.5 mb-1.5 ${toneTitleColor[s.tone]}">
-              ${toneIcon[s.type] || ''}
-              <span class="text-[.65rem] font-black uppercase tracking-wider">${s.title}</span>
-            </div>
-            <p class="text-[.78rem] text-slate-700 leading-relaxed">${s.body}</p>
-          `);
+
+          const header = document.createElement('div');
+          header.className = `flex items-center gap-1.5 mb-1.5 ${toneTitleColor[s.tone] || ''}`;
+
+          // toneIcon[s.type] is a static local SVG string — trusted, no
+          // sanitize. Wrapping in a span keeps innerHTML scoped.
+          const iconWrap = document.createElement('span');
+          iconWrap.className = 'inline-flex shrink-0';
+          iconWrap.innerHTML = toneIcon[s.type] || '';
+          header.appendChild(iconWrap);
+
+          // Title comes from the server payload — DOMPurify on the way in.
+          const title = document.createElement('span');
+          title.className = 'text-[.65rem] font-black uppercase tracking-wider';
+          title.innerHTML = safeSuggestionHtml(String(s.title || ''));
+          header.appendChild(title);
+
+          // Body also from the server (the spike fixture uses <b>/<br>),
+          // sanitize for the same reason.
+          const body = document.createElement('p');
+          body.className = 'text-[.78rem] text-slate-700 leading-relaxed';
+          body.innerHTML = safeSuggestionHtml(String(s.body || ''));
+
+          card.appendChild(header);
+          card.appendChild(body);
           aiSuggestionsEl.appendChild(card);
         });
         aiSuggestionsEl.style.opacity = '1';
