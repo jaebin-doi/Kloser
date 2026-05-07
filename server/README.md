@@ -4,10 +4,10 @@
 > - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
 > - **Phase 1 Step 1** complete: DB infrastructure (compose, migration, seed, runtime verification).
 > - **Phase 1 Step 2** complete: runtime `app` role + RLS SET LOCAL context + isolation tests (10/10 PASS, e2e regression PASS).
-> - **Phase 1 Step 3** complete: Argon2id + Bearer access JWT + HttpOnly refresh cookie (Path=/auth) + sessions rotation with family reuse detection + role guard + prod X-Org-Id strict reject. 29/29 unit (auth 19 + rls 7 + orgContext 3) + 14/14 e2e PASS. See `docs/PHASE_1_STEP_3_AUTH_CORE.md` / `docs/PHASE_1_STEP_3_FINDINGS.md`.
-> - **Phase 1 Step 4** complete: `platform/api.js` fetch wrapper (memory access token + single in-flight refresh + retry-once + login redirect) + `platform/login.html` + `platform/live.html` auth gate + DOMPurify suggestion sanitize + WS handshake JWT auth (`auth.token` slot, `userId` query removed) + `text_chunk` before `start_call` invariant. 37/37 unit (29 + WS auth 8) + 16/16 e2e PASS (login pre-step + 14 prior + auth reject 2). See `docs/PHASE_1_STEP_4_CLIENT_WIRING.md` / `docs/PHASE_1_STEP_4_FINDINGS.md`.
+> - **Phase 1 Step 3** complete: Argon2id + Bearer access JWT + HttpOnly refresh cookie (Path=/auth) + sessions rotation with family reuse detection + role guard + prod X-Org-Id strict reject. 29/29 unit (auth 19 + rls 7 + orgContext 3) + 14/14 e2e PASS. See `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md` / `docs/plan/PHASE_1_STEP_3_FINDINGS.md`.
+> - **Phase 1 Step 4** complete: `platform/api.js` fetch wrapper (memory access token + single in-flight refresh + retry-once + login redirect) + `platform/login.html` + `platform/live.html` auth gate + DOMPurify suggestion sanitize + WS handshake JWT auth (`auth.token` slot, `userId` query removed) + `text_chunk` before `start_call` invariant. 37/37 unit (29 + WS auth 8) + 16/16 e2e PASS (login pre-step + 14 prior + auth reject 2). See `docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md` / `docs/plan/PHASE_1_STEP_4_FINDINGS.md`.
 > - **Phase 1 Step 5** next: Caddy reverse proxy draft + ops notes.
-> - See `docs/PHASE_0_5_LIVE_SPIKE.md`, `docs/PHASE_1_MASTER.md`, `docs/PHASE_1_STEP_1_DB_INFRA.md`, `docs/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/PHASE_1_STEP_2_FINDINGS.md`, `docs/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/PHASE_1_STEP_3_FINDINGS.md`, `docs/PHASE_1_STEP_4_CLIENT_WIRING.md`, `docs/PHASE_1_STEP_4_FINDINGS.md`.
+> - See `docs/plan/PHASE_0_5_LIVE_SPIKE.md`, `docs/plan/PHASE_1_MASTER.md`, `docs/plan/PHASE_1_STEP_1_DB_INFRA.md`, `docs/plan/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/plan/PHASE_1_STEP_2_FINDINGS.md`, `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/plan/PHASE_1_STEP_3_FINDINGS.md`, `docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md`, `docs/plan/PHASE_1_STEP_4_FINDINGS.md`.
 
 ## What this provides
 
@@ -128,7 +128,7 @@ These are deferred to later Phase 1 steps or beyond and intentionally not yet im
 - Runtime payload validation — only minimal shape checks beyond the Phase 0.5 spike (BAD_PAYLOAD on `text_chunk` shape, `no_active_call` if `text_chunk` precedes `start_call`)
 - Real STT / LLM — Phase 5 of the broader plan
 - Reverse proxy / TLS — `localhost` plaintext only (Step 5)
-- Shared types between server and browser — deferred to Phase 2 (no build step on the static pages today). See `docs/PHASE_1_STEP_4_FINDINGS.md` §10.
+- Shared types between server and browser — deferred to Phase 2 (no build step on the static pages today). See `docs/plan/PHASE_1_STEP_4_FINDINGS.md` §10.
 
 ## Endpoints / events reference
 

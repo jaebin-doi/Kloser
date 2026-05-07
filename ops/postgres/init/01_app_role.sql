@@ -8,7 +8,7 @@
 -- Why a separate role: the migration owner (kloser, created by POSTGRES_USER)
 -- is a superuser with rolbypassrls=t. RLS policies do not apply to it. The
 -- runtime `app` role is NOSUPERUSER NOBYPASSRLS, so RLS actually enforces
--- isolation against it. See docs/PHASE_1_STEP_1_FINDINGS.md §9.
+-- isolation against it. See docs/plan/PHASE_1_STEP_1_FINDINGS.md §9.
 --
 -- Why this file is not a migration: roles are cluster-wide objects, not DB
 -- objects. node-pg-migrate's down/redo would tangle with role state. Postgres

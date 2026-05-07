@@ -1,6 +1,6 @@
 # Kloser Supabase 가이드
 
-> **상태 변경**: 이 문서는 Supabase managed를 검토하던 시점의 참고 문서다. 현재 백엔드 결정은 `docs/BACKEND_PLAN.md` v0.4 기준 **자체 온프레미스**다. Supabase managed는 기본 선택에서 제외되었고, Supabase self-hosted는 추후 필요 시 후보로만 검토한다.
+> **상태 변경**: 이 문서는 Supabase managed를 검토하던 시점의 참고 문서다. 현재 백엔드 결정은 `docs/plan/BACKEND_PLAN.md` v0.4 기준 **자체 온프레미스**다. Supabase managed는 기본 선택에서 제외되었고, Supabase self-hosted는 추후 필요 시 후보로만 검토한다.
 
 > **목적**: Supabase를 선택했을 때의 역할 분담을 기록한 참고 문서다. 현재 구현 계획의 기준 문서는 아니다.
 

@@ -6,7 +6,7 @@
 
 ## Outcome
 
-`docs/PHASE_0_5_LIVE_SPIKE.md` §7의 go/no-go gate **모두 통과**:
+`docs/plan/PHASE_0_5_LIVE_SPIKE.md` §7의 go/no-go gate **모두 통과**:
 
 - `/health` 응답 OK
 - `live.html`의 `setTimeout(appendMessage)` / `setTimeout(renderSuggestions)` = 0개

@@ -7,7 +7,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 ```
 🚀 라이브 데모  →  platform/dashboard.html (회원가입 없이 바로 체험)
 🏠 마케팅 사이트 →  index.html
-📑 도입 가이드   →  docs/guide.html
+📑 도입 가이드   →  docs/product/guide.html
 ```
 
 ---
@@ -144,7 +144,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 ```
 
 > **현재 단계**: **Phase 1 Step 1~4 완료** — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring (메모리 access + single in-flight refresh + login redirect) + WS handshake JWT auth (`auth.token` slot, `userId` query 폐기) + DOMPurify suggestion sanitize까지 동작. `npm test` 37/37 + Phase 0.5 e2e 16/16 PASS. 다음은 Step 5 (Caddy reverse proxy + 운영 메모).
-> 자세한 계획·결과: [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md), [`docs/PHASE_1_MASTER.md`](docs/PHASE_1_MASTER.md), [`docs/PHASE_1_STEP_4_CLIENT_WIRING.md`](docs/PHASE_1_STEP_4_CLIENT_WIRING.md), [`docs/PHASE_1_STEP_4_FINDINGS.md`](docs/PHASE_1_STEP_4_FINDINGS.md).
+> 자세한 계획·결과: [`docs/plan/BACKEND_PLAN.md`](docs/plan/BACKEND_PLAN.md), [`docs/plan/PHASE_1_MASTER.md`](docs/plan/PHASE_1_MASTER.md), [`docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md`](docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md), [`docs/plan/PHASE_1_STEP_4_FINDINGS.md`](docs/plan/PHASE_1_STEP_4_FINDINGS.md).
 
 ---
 
@@ -231,7 +231,7 @@ kloser/
 - Enterprise는 **연간 구독만 가능** + **현장 방문 초기 셋팅** 필수
 - 6명 이상은 Enterprise 맞춤 견적
 
-상세는 [`docs/pricing.md`](docs/pricing.md), [`docs/guide.html`](docs/guide.html) 참고.
+상세는 [`docs/product/pricing.md`](docs/product/pricing.md), [`docs/product/guide.html`](docs/product/guide.html) 참고.
 
 ---
 
@@ -249,7 +249,7 @@ python -m http.server 8765
 # 브라우저에서:
 # 마케팅 사이트   →  http://localhost:8765/
 # 플랫폼 데모     →  http://localhost:8765/platform/
-# 도입 가이드     →  http://localhost:8765/docs/guide.html
+# 도입 가이드     →  http://localhost:8765/docs/product/guide.html
 ```
 
 ### 라이브 통화 백엔드 (`live.html` 실시간 흐름 보기)
@@ -296,7 +296,7 @@ npm run dev                  # tsx watch
 ### 백엔드 (`server/` — Phase 1 Step 1~4 완료, Step 5 진입 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
-- **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/SUPABASE_VS_ONPREM.md`)
+- **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)
 - **DB**: 직접 운영 PostgreSQL + RLS default-deny (Phase 1부터)
 - **큐/캐시**: Redis + BullMQ (Phase 4+)
 - **Reverse proxy**: Nginx 또는 Caddy (Phase 1+)
@@ -305,7 +305,7 @@ npm run dev                  # tsx watch
 - **STT**: Naver Clova Speech (한국어 영업 도메인 정확도 우선)
 - **LLM**: Anthropic Claude / OpenAI GPT — 회사 가이드 RAG 기반
 - **벡터 검색**: pgvector
-- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/DESKTOP_APP_PLAN.md`
+- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/plan/DESKTOP_APP_PLAN.md`
 
 ---
 
@@ -321,7 +321,7 @@ npm run dev                  # tsx watch
 - `/calls` 네임스페이스: `start_call`/`text_chunk`/`end_call` (snake_case)
 - `live.html`의 `setTimeout` mock을 WebSocket 이벤트로 교체
 - 수동 RTT 1ms · 자동 데모 재생 · sentiment 자동 전이 · 14/14 e2e PASS
-- 결과 정리: [`docs/PHASE_0_5_FINDINGS.md`](docs/PHASE_0_5_FINDINGS.md)
+- 결과 정리: [`docs/plan/PHASE_0_5_FINDINGS.md`](docs/plan/PHASE_0_5_FINDINGS.md)
 
 ### v1 — MVP (다음 단계, Phase 1~6)
 - **Phase 1**: PostgreSQL 부트스트랩 + RLS default-deny + 자체 Auth (Argon2id + JWT + refresh rotation) + 클라이언트 wiring + Caddy reverse proxy (Step 1~5)

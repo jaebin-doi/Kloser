@@ -18,7 +18,7 @@
 - [x] Day 3 — `live.html` mock 제거 + textContent 전환 + async IIFE init (Playwright로 connect/start_call ack/RTT 1ms 확인)
 - [x] Day 4 — `fixtures/demo-call.ts` + start_call 자동 재생 + 타이머 정리 (sentiment 그룹별로 합쳐 emit)
 - [x] Playwright 검증 — 자동 재생 흐름 + RTT < 150ms (test/phase_0_5_e2e.mjs, 12/12 PASS, 수동 RTT 1ms)
-- [x] Day 4-5 — `server/README.md` + `docs/PHASE_0_5_FINDINGS.md` + `BACKEND_PLAN.md` §8 체크박스 갱신
+- [x] Day 4-5 — `server/README.md` + `docs/plan/PHASE_0_5_FINDINGS.md` + `BACKEND_PLAN.md` §8 체크박스 갱신
 
 **환경 노트**:
 - Windows 11에 Python alias 미설치 → 정적 서버는 `npx http-server -p 8765`로 대체 (동작 동일: 루트 서빙). README에 두 가지 명령 모두 명시.
@@ -304,7 +304,7 @@ kloser/
 **작업**:
 
 1. `server/README.md` 작성: 실행 방법, 포트, 구조, "이 코드는 Phase 1에서 재작성된다"는 경고
-2. 0.5에서 발견한 이슈를 `docs/PHASE_0_5_FINDINGS.md`로 정리:
+2. 0.5에서 발견한 이슈를 `docs/plan/PHASE_0_5_FINDINGS.md`로 정리:
    - Socket.io 사용감 (좋았던 점, 걸린 점)
    - native `ws`로 갈만한 이유가 있었는지
    - CORS, reconnect, ack timeout 동작
@@ -409,7 +409,7 @@ Phase 1 시작 시 **transcript text + suggestion title/body 전체에 sanitizat
 - [x] sentiment(`관심` → `망설임` → `재고려`)가 같은 타이밍에 갱신
 - [x] 수동 `text_chunk` 라운드트립 < 150ms (로컬) — 측정값 **1ms**
 - [x] 서버 재시작 후 페이지 reload만으로 동일 동작 (재연결 의존 X)
-- [x] `docs/PHASE_0_5_FINDINGS.md`에 Phase 1 후속 항목 정리됨 (9개 발견 + Phase 1 첫 5개 task 제안)
+- [x] `docs/plan/PHASE_0_5_FINDINGS.md`에 Phase 1 후속 항목 정리됨 (9개 발견 + Phase 1 첫 5개 task 제안)
 
 → Phase 1 (Auth + DB) 착수 가능.
 
