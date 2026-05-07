@@ -428,7 +428,7 @@ Step 5에서 발견·결정·미해결 인계. 최소 다음 항목:
 - [x] `npm --prefix server run typecheck` PASS
 - [x] `npm --prefix server test` PASS (37/37 그대로 — Step 5는 server src 변경 거의 없음)
 - [x] `node test/phase_0_5_e2e.mjs` 16/16 PASS (split-origin 회귀)
-- [ ] Caddy single-origin variant 16/16 PASS — **사용자 측 Caddy 설치 후 1회 검증** (본 작업 환경 caddy 미설치):
+- [x] Caddy single-origin variant 16/16 PASS — `caddy run --config ops/Caddyfile.dev` 사전 기동 후 다음 명령으로 검증됨:
   ```bash
   # bash / macOS / Linux
   KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs
@@ -439,9 +439,9 @@ Step 5에서 발견·결정·미해결 인계. 최소 다음 항목:
   node test/phase_0_5_e2e.mjs
   Remove-Item Env:KLOSER_E2E_BASE_URL
   ```
-- [ ] `caddy validate --config ops/Caddyfile.dev` ok — 사용자 측
-- [ ] `caddy run --config ops/Caddyfile.dev` + `curl -k https://localhost/health` → `{"ok":true}` — 사용자 측
-- [ ] 수동 smoke: 브라우저로 `https://localhost/platform/live.html` 진입 → login redirect → 데모 흐름 재생 — 사용자 측
+- [x] `caddy validate --config ops/Caddyfile.dev` ok
+- [x] `caddy run --config ops/Caddyfile.dev` + `curl -k https://localhost/health` → `{"ok":true}`
+- [x] 수동 smoke: 브라우저로 `https://localhost/platform/live.html` 진입 → login redirect → 데모 흐름 재생 (auto-detect 휴리스틱이 별도 HTML 변형 없이 동작 확인)
 - [x] `grep -n "call:" docs/decision/FASTIFY_GUIDE.md` 결과 0건
 - [x] `docs/plan/PHASE_1_STEP_5_FINDINGS.md` 작성
 - [x] `PHASE_1_MASTER.md` §3 Step 5 `[x]` + §7 게이트 9개 모두 `[x]`

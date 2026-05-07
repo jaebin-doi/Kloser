@@ -1,4 +1,4 @@
-# Kloser server (Phase 1 implementation complete; Caddy runtime verification pending)
+# Kloser server (Phase 1 complete)
 
 > **Status**:
 > - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
@@ -7,7 +7,7 @@
 > - **Phase 1 Step 3** complete: Argon2id + Bearer access JWT + HttpOnly refresh cookie (Path=/auth) + sessions rotation with family reuse detection + role guard + prod X-Org-Id strict reject. 29/29 unit (auth 19 + rls 7 + orgContext 3) + 14/14 e2e PASS. See `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md` / `docs/plan/PHASE_1_STEP_3_FINDINGS.md`.
 > - **Phase 1 Step 4** complete: `platform/api.js` fetch wrapper (memory access token + single in-flight refresh + retry-once + login redirect) + `platform/login.html` + `platform/live.html` auth gate + DOMPurify suggestion sanitize + WS handshake JWT auth (`auth.token` slot, `userId` query removed) + `text_chunk` before `start_call` invariant. 37/37 unit (29 + WS auth 8) + 16/16 e2e PASS (login pre-step + 14 prior + auth reject 2). See `docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md` / `docs/plan/PHASE_1_STEP_4_FINDINGS.md`.
 > - **Phase 1 Step 5** complete: Caddy single-origin reverse proxy (`ops/Caddyfile.dev`, `tls internal`) + client-side origin auto-detect in `platform/api.js` (`https + localhost → ""` relative URLs) + `KLOSER_E2E_BASE_URL` parameterization for the e2e + `FASTIFY_GUIDE.md` §8 snake_case sync (Phase 0.5 inheritance 7/7 closed). 37/37 unit + 16/16 split-origin e2e PASS; Caddy variant e2e left for the user's Caddy-installed machine. See `docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md` / `docs/plan/PHASE_1_STEP_5_FINDINGS.md`.
-> - **Phase 1 implementation complete** (code, tests, docs). The only outstanding Phase 1 gate is the Caddy single-origin runtime verification, which requires Caddy installed on the host machine — see "Run (Caddy single-origin variant)" below. Phase 2 (customers CRUD) entry recommended after that verification passes.
+> - **Phase 1 complete.** All 5 sub-steps done with code, tests, docs, and Caddy single-origin runtime verification (`caddy validate`, `curl -k https://localhost/health`, `KLOSER_E2E_BASE_URL=https://localhost` variant e2e 16/16) all PASS. Phase 2 (customers CRUD) is next.
 > - See `docs/plan/PHASE_0_5_LIVE_SPIKE.md`, `docs/plan/PHASE_1_MASTER.md`, `docs/plan/PHASE_1_STEP_1_DB_INFRA.md`, `docs/plan/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/plan/PHASE_1_STEP_2_FINDINGS.md`, `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/plan/PHASE_1_STEP_3_FINDINGS.md`, `docs/plan/PHASE_1_STEP_4_CLIENT_WIRING.md`, `docs/plan/PHASE_1_STEP_4_FINDINGS.md`, `docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md`, `docs/plan/PHASE_1_STEP_5_FINDINGS.md`.
 
 ## What this provides

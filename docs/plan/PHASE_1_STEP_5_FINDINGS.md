@@ -5,15 +5,15 @@
 
 ## 결론
 
-Step 5 **완료** (2026-05-07). `ops/Caddyfile.dev` 한 파일로 정적·REST·WS가 `https://localhost` 단일 origin (Caddy `tls internal` self-signed) 뒤에 묶이도록 라우팅됨. 클라이언트 (`api.js` / `ws.js`)는 page origin 기반 auto-detect로 split-origin과 single-origin 두 모드를 동일 코드 경로로 처리. e2e는 `KLOSER_E2E_BASE_URL` env로 두 모드 모두 자동화 가능. `FASTIFY_GUIDE.md` §8 snake_case 동기화로 Phase 0.5 인계 항목 마지막 1건 closed (7/7).
+Step 5 **완료** (2026-05-07). `ops/Caddyfile.dev` 한 파일로 정적·REST·WS가 `https://localhost` 단일 origin (Caddy `tls internal` self-signed) 뒤에 묶이도록 라우팅됨. 클라이언트 (`api.js` / `ws.js`)는 page origin 기반 auto-detect로 split-origin과 single-origin 두 모드를 동일 코드 경로로 처리. e2e는 `KLOSER_E2E_BASE_URL` env로 두 모드 모두 자동화. `FASTIFY_GUIDE.md` §8 snake_case 동기화로 Phase 0.5 인계 항목 마지막 1건 closed (7/7).
 
 - `npm --prefix server run typecheck` PASS
 - `npm --prefix server test` 37/37 PASS (Step 1~4 회귀, Step 5는 server src 변경 거의 없음 — CORS array 항목만)
 - `node test/phase_0_5_e2e.mjs` 16/16 PASS (split-origin 회귀)
-- `KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs` — Caddy variant. **본 작업 환경에는 Caddy 미설치로 자동 검증 미수행**. 사용자가 Caddy 설치 후 1회 실행 권장 (변경 없이 통과해야 함).
-- `grep -n "call:" docs/decision/FASTIFY_GUIDE.md` 결과 0건 — snake_case 통일 확인.
+- `caddy validate --config ops/Caddyfile.dev` PASS · `curl -k https://localhost/health` → `{"ok":true}` PASS · `KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs` 16/16 PASS (Caddy single-origin runtime 검증)
+- `grep -n "call:" docs/decision/FASTIFY_GUIDE.md` 결과 0건 — snake_case 통일 확인
 
-`PHASE_1_STEP_5_REVERSE_PROXY.md` §6 완료 기준 10개 중 9개 충족. 마지막 1개 (Caddy variant e2e)는 Caddy 설치 머신에서 사용자가 수동 검증.
+`PHASE_1_STEP_5_REVERSE_PROXY.md` §6 완료 기준 10/10 모두 PASS.
 
 ---
 
@@ -77,20 +77,22 @@ Step 5 **완료** (2026-05-07). `ops/Caddyfile.dev` 한 파일로 정적·REST·
 
 (3) 부수 정리: server→client 이벤트 목록에서 `checklist:update` 제거. spike 시점에 적힌 추정 이벤트로 코드에 한 번도 등장한 적 없음. Phase 4 (calls REST + dashboard)에서 새 이벤트가 생기면 그때 추가.
 
-### 9. Caddy 변형 자동 검증의 환경 제약
+### 9. Caddy 변형 runtime 검증 — 통과 (절차 기록)
 
-(1) 본 작업 환경에 caddy 바이너리 미설치 — `caddy validate --config ops/Caddyfile.dev`나 `KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs` 실행 불가. Caddyfile.dev 자체는 v2 표준 syntax + 충분히 단순한 라우팅이라 syntax 자신감은 있지만 실 동작 검증은 사용자 머신에 위임.
+(1) Step 5 닫기 전 Caddy 설치 후 다음 절차로 1회 실 동작 검증 완료. 결과 모두 PASS.
 
-(2) 사용자 측 1회 검증 절차 (Caddy 설치 후):
 ```
-caddy validate --config ops/Caddyfile.dev
+caddy validate --config ops/Caddyfile.dev   # ok
 $env:KLOSER_STATIC_ROOT = (Resolve-Path .).Path
-caddy run --config ops/Caddyfile.dev      # 별도 터미널
-caddy trust                                # 1회
+caddy run --config ops/Caddyfile.dev        # 별도 터미널 — listening on :443
+caddy trust                                  # 1회 — system CA install
+curl -k https://localhost/health             # {"ok":true,...}
 $env:KLOSER_E2E_BASE_URL = 'https://localhost'
-node test/phase_0_5_e2e.mjs                 # 16/16 PASS 기대
+node test/phase_0_5_e2e.mjs                  # 16/16 PASS (Caddy variant)
 Remove-Item Env:KLOSER_E2E_BASE_URL
 ```
+
+(2) auto-detect 휴리스틱 (api.js §4)이 `https://localhost` 도착만으로 same-origin 모드를 켜는지 시각 smoke로도 확인 — `live.html`을 수정하지 않은 상태에서 데모 시퀀스 정상 재생.
 
 (3) Phase 6+ CI 자동화 시점에 caddy를 build env에 추가하면 두 모드 e2e가 한 파이프라인에서 실행 가능. 본 step 범위 밖.
 
@@ -122,8 +124,7 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 
 ## 의도하지 않게 남긴 것 / 후속 작업
 
-- **Caddy variant 자동 검증** — 본 작업 환경 caddy 미설치로 사용자 측 1회 수행 권장 (위 finding §9).
-- **CI 자동화 — 두 origin 동시 e2e** — Phase 6+ infra 단계에서 caddy를 CI 환경에 추가.
+- **CI 자동화 — 두 origin 동시 e2e** — 현재는 split-origin과 Caddy variant 모두 수동 실행으로 검증. Phase 6+ infra 단계에서 caddy를 CI 환경에 추가하면 한 파이프라인에서 자동 회귀 가능.
 - **운영 도메인 + Let's Encrypt** — `Caddyfile.prod` 분기는 Phase 6+ 운영 진입 시점에. dev Caddyfile은 그 출발점으로 그대로 활용.
 - **Step 3 §7 `CommitAuthError` COMMIT 실패 시 client leak** — 미해결, Phase 2 시작 시점에.
 - **Step 3 §8 `listActiveMembershipsAcrossOrgs` O(orgs) scan** — 미해결, Phase 2 customers CRUD 시점에 SECURITY DEFINER 함수로 교체.

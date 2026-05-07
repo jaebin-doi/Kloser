@@ -143,7 +143,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 1 구현 완료** (Step 1~5 코드·테스트·문서) — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring + WS handshake JWT auth + DOMPurify + Caddy reverse proxy (`ops/Caddyfile.dev`, single-origin auto-detect)까지 작성. `npm test` 37/37 + Phase 0.5 e2e (split-origin) 16/16 PASS. **Caddy runtime 검증(`caddy validate`/`run` + variant e2e)은 사용자 머신에서 1회 수행 대기** — 작업 환경에 Caddy 미설치. 그 검증 후 Phase 2 (customers CRUD) 진입 권장.
+> **현재 단계**: **Phase 1 완료** (Step 1~5) — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring + WS handshake JWT auth + DOMPurify + Caddy single-origin reverse proxy (`ops/Caddyfile.dev`, auto-detect) 모두 동작. `npm test` 37/37 + Phase 0.5 e2e split-origin 16/16 + Caddy single-origin variant 16/16 PASS. 다음은 Phase 2 (customers CRUD).
 > 자세한 계획·결과: [`docs/plan/BACKEND_PLAN.md`](docs/plan/BACKEND_PLAN.md), [`docs/plan/PHASE_1_MASTER.md`](docs/plan/PHASE_1_MASTER.md), [`docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md`](docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md), [`docs/plan/PHASE_1_STEP_5_FINDINGS.md`](docs/plan/PHASE_1_STEP_5_FINDINGS.md).
 
 ---
@@ -316,7 +316,7 @@ npm run dev                  # tsx watch
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 1 구현 완료, Caddy runtime 검증 후 Phase 2 진입)
+### 백엔드 (`server/` — Phase 1 완료, Phase 2 진입 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)

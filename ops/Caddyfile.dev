@@ -1,8 +1,8 @@
-# Phase 1 Step 5 — single-origin reverse proxy (dev only)
+# Phase 1 Step 5 — single-origin reverse proxy (dev only).
 #
-# Goal: serve static + REST + WS from one origin (https://localhost)
-# behind self-signed TLS so the browser exercises the prod-equivalent
-# path (Secure cookies, same-origin fetch, no CORS preflight on auth).
+# Serves static + REST + WS from one origin (https://localhost) behind
+# self-signed TLS so the browser exercises the prod-equivalent path:
+# Secure cookies, same-origin fetch, no CORS preflight on /auth/*.
 #
 # Run from project root:
 #
@@ -13,28 +13,21 @@
 #   bash:
 #     KLOSER_STATIC_ROOT=$(pwd) caddy run --config ops/Caddyfile.dev
 #
-# Caddy's `{$VAR:default}` syntax means an unset KLOSER_STATIC_ROOT
-# falls back to "." — Caddy's working directory. Launching from
-# project root makes that fallback correct; launching from elsewhere
-# without setting the env yields predictable 404s on /platform/...
-# (clear failure mode, never silent wrong-content).
+# `{$KLOSER_STATIC_ROOT:.}` falls back to "." (caddy's working dir) when
+# the env is unset, so launching from project root works either way.
 #
 # Pre-req:
 #   - Fastify on 127.0.0.1:3001 (`npm --prefix server run dev`)
-#   - Browser must trust Caddy's local CA on first run (`caddy trust`)
-#     OR the e2e runs with ignoreHTTPSErrors when targeting https://.
+#   - Browser must trust Caddy's local CA on first run (`caddy trust`),
+#     or the e2e ignores HTTPS errors when target starts with https://.
 #
 # Routing decisions (PHASE_1_STEP_5_REVERSE_PROXY.md §1.4):
-#   - `handle` (prefix kept), NOT `handle_path` (prefix stripped),
-#     because Fastify and socket.io both expect their original path
-#     prefixes on the wire.
-#   - /api/* is forward-compat only; no Fastify route uses it today.
-#     Phase 4 (calls REST + dashboard) populates it. Pre-routing now
-#     keeps this Caddyfile stable across that transition.
+#   - `handle` (prefix kept), NOT `handle_path` (prefix stripped) —
+#     Fastify and socket.io expect their original prefixes on the wire.
+#   - /api/* is forward-compat. Phase 4 (calls REST + dashboard) will
+#     populate it; routing now keeps the file stable across that change.
 
 {
-	# Auto-HTTPS via Caddy's internal CA. The browser warns until the
-	# CA is trusted (`caddy trust`); that warning is expected in dev.
 	local_certs
 }
 
@@ -42,30 +35,18 @@ localhost {
 	handle /socket.io/* {
 		reverse_proxy 127.0.0.1:3001
 	}
-
 	handle /auth/* {
 		reverse_proxy 127.0.0.1:3001
 	}
-
 	handle /me {
 		reverse_proxy 127.0.0.1:3001
 	}
-
 	handle /api/* {
-		# Forward-compat. No /api/* route is wired in Fastify today
-		# (Step 1~4 surface is /auth/*, /me, /health). Phase 4+
-		# populates this prefix.
 		reverse_proxy 127.0.0.1:3001
 	}
-
 	handle /health {
 		reverse_proxy 127.0.0.1:3001
 	}
-
-	# Everything else — /, /index.html, /platform/*, /assets/*,
-	# /docs/*.html — falls through to the static project root.
-	# `{$KLOSER_STATIC_ROOT:.}` uses the env var when set, else
-	# the directory `caddy run` was invoked from.
 	handle {
 		root * {$KLOSER_STATIC_ROOT:.}
 		file_server
