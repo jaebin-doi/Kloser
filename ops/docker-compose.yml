@@ -16,8 +16,12 @@ services:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - kloser_pgdata:/var/lib/postgresql/data
-      # Extension activation (pgcrypto, citext) is done inside the migration
-      # so we don't need an init script here.
+      # Init scripts run on first volume creation only. For existing volumes
+      # the same scripts must be applied manually — see
+      # ops/postgres/init/01_app_role.sql header.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      # Extension activation (pgcrypto, citext) is done inside the migration,
+      # not as an init script.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kloser} -d ${POSTGRES_DB:-kloser_dev}"]
       interval: 5s
