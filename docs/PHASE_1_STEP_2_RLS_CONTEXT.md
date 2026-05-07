@@ -8,17 +8,17 @@
 
 ## 진행 상태
 
-- [ ] 1. `app` role 부트스트랩 (`ops/postgres/init/01_app_role.sql`) + docker-compose에 init 마운트 + 기존 volume 재실행 절차 문서화
-- [ ] 2. 환경 변수 분리: `DATABASE_URL`(=app) / `MIGRATE_DATABASE_URL`(=admin), `.env.example` 양쪽 갱신
-- [ ] 3. `node-pg-migrate` + `run-seed.mjs`가 `MIGRATE_DATABASE_URL`을 쓰도록 변경
-- [ ] 4. `server.ts` 상단에 `import "dotenv/config"` (findings §7)
-- [ ] 5. `pool.ts` — `DATABASE_URL`(app) 기반, dev fallback 제거
-- [ ] 6. `server/src/plugins/db.ts` — fastify decorator `app.pg` + `app.withOrgContext(orgId, fn)` 트랜잭션 헬퍼
-- [ ] 7. `server/src/middleware/orgContext.ts` — preHandler hook (dev-only `X-Org-Id` 헤더 + UUID 형식 검증, 실패 시 400/401)
-- [ ] 8. 최소 repository 3개: `memberships.ts`(getById, listForCurrentOrg) / `organizations.ts`(getCurrentOrg만) / `users.ts`(listForCurrentOrg, getByIdInCurrentOrg — JOIN 가드). 무가드 list/getById 금지
-- [ ] 9. `server/test/{orgContext,rls_isolation}.test.mjs` (`tsx --test`) — middleware 3 케이스 + RLS 격리/repository 7 케이스. (계획 시 `test/server/`로 적었으나 root `test/`에 server 의존성용 node_modules가 없어 `server/test/`로 이동 — findings에 기록)
-- [ ] 10. `npm test` 스크립트 등록 + e2e 회귀 (Phase 0.5 e2e 그대로 통과)
-- [ ] 11. `docs/PHASE_1_STEP_2_FINDINGS.md` 작성
+- [x] 1. `app` role 부트스트랩 (`ops/postgres/init/01_app_role.sql`) + docker-compose에 init 마운트 + 기존 volume 재실행 절차 문서화
+- [x] 2. 환경 변수 분리: `DATABASE_URL`(=app) / `MIGRATE_DATABASE_URL`(=admin), `.env.example` 양쪽 갱신
+- [x] 3. `node-pg-migrate` + `run-seed.mjs`가 `MIGRATE_DATABASE_URL`을 쓰도록 변경
+- [x] 4. `server.ts` 상단에 `import "dotenv/config"` (findings §7)
+- [x] 5. `pool.ts` — `DATABASE_URL`(app) 기반, dev fallback 제거
+- [x] 6. `server/src/plugins/db.ts` — fastify decorator `app.pg` + `app.withOrgContext(orgId, fn)` 트랜잭션 헬퍼
+- [x] 7. `server/src/middleware/orgContext.ts` — preHandler hook (dev-only `X-Org-Id` 헤더 + UUID 형식 검증, 실패 시 400/401)
+- [x] 8. 최소 repository 3개: `memberships.ts`(getById, listForCurrentOrg) / `organizations.ts`(getCurrentOrg만) / `users.ts`(listForCurrentOrg, getByIdInCurrentOrg — JOIN 가드). 무가드 list/getById 금지
+- [x] 9. `server/test/{orgContext,rls_isolation}.test.mjs` (`tsx --test`) — middleware 3 케이스 + RLS 격리/repository 7 케이스
+- [x] 10. `npm test` 스크립트 등록 + e2e 회귀 (Phase 0.5 e2e 14/14 PASS)
+- [x] 11. `docs/PHASE_1_STEP_2_FINDINGS.md` 작성
 
 ---
 
@@ -337,14 +337,14 @@ Step 2에서 발견한 함정·결정·미해결 사항 인계.
 
 ## 6. 완료 기준 (Step 2 — go/no-go)
 
-- [ ] `app` role 존재 (`rolsuper=f, rolbypassrls=f`), 기존·신규 volume 양쪽에서 재현 가능
-- [ ] `DATABASE_URL`(app), `MIGRATE_DATABASE_URL`(admin) 분리, 마이그레이션·시드는 admin URL로만 동작
-- [ ] `npm run db:migrate:up`, `npm run db:seed` 회귀 통과 (admin URL 경로)
-- [ ] `app.withOrgContext`가 트랜잭션 + GUC 주입 + ROLLBACK on error 모두 처리
-- [ ] `cd server && npx tsx --test test/*.test.mjs` 10/10 PASS — orgContext (missing/malformed/valid) + rls_isolation (no GUC, ACME, BETA, WITH CHECK violation, getCurrentOrg, listForCurrentOrg, getByIdInCurrentOrg)
-- [ ] Phase 0.5 e2e 회귀 14/14 PASS
-- [ ] `npm run typecheck` 통과
-- [ ] `docs/PHASE_1_STEP_2_FINDINGS.md` 작성
+- [x] `app` role 존재 (`rolsuper=f, rolbypassrls=f`), 기존·신규 volume 양쪽에서 재현 가능
+- [x] `DATABASE_URL`(app), `MIGRATE_DATABASE_URL`(admin) 분리, 마이그레이션·시드는 admin URL로만 동작
+- [x] `npm run db:migrate:up`, `npm run db:seed` 회귀 통과 (admin URL 경로)
+- [x] `app.withOrgContext`가 트랜잭션 + GUC 주입 + ROLLBACK on error 모두 처리
+- [x] `npm --prefix server test` 10/10 PASS — orgContext (missing/malformed/valid) + rls_isolation (no GUC, ACME, BETA, WITH CHECK violation, getCurrentOrg, listForCurrentOrg, getByIdInCurrentOrg)
+- [x] Phase 0.5 e2e 회귀 14/14 PASS (2026-05-07)
+- [x] `npm run typecheck` 통과
+- [x] `docs/PHASE_1_STEP_2_FINDINGS.md` 작성
 
 ---
 

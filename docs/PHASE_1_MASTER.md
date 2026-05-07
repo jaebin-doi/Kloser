@@ -12,7 +12,7 @@
 > 이 섹션은 sub-step 진행 시 갱신된다.
 
 - [x] **Step 1** — DB 인프라 (docker-compose + node-pg-migrate + 초기 스키마 + RLS FORCE ENABLE + seed) → `docs/PHASE_1_STEP_1_DB_INFRA.md` · 결과 `docs/PHASE_1_STEP_1_FINDINGS.md`. **완료** (2026-05-07 runtime 검증 통과)
-- [ ] **Step 2** — DB 연결/저장소 + RLS SET LOCAL + 격리 테스트
+- [x] **Step 2** — DB 연결/저장소 + RLS SET LOCAL + 격리 테스트 → `docs/PHASE_1_STEP_2_RLS_CONTEXT.md` · 결과 `docs/PHASE_1_STEP_2_FINDINGS.md`. **완료** (2026-05-07, 10/10 격리 + 14/14 e2e PASS)
 - [ ] **Step 3** — Auth 코어: Argon2id + sessions + signup/login/refresh/logout + GET /me + role middleware
 - [ ] **Step 4** — `platform/api.js` + WebSocket handshake auth + `live.html` 통합
 - [ ] **Step 5** — Reverse proxy (Nginx 또는 Caddy) 초안 + 운영 메모

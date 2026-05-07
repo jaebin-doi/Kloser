@@ -12,7 +12,8 @@
     "db:migrate:down": "node scripts/migrate.mjs down -m migrations -j sql",
     "db:migrate:create": "node scripts/migrate.mjs create -m migrations -j sql",
     "db:migrate:redo": "node scripts/migrate.mjs redo -m migrations -j sql",
-    "db:seed": "node scripts/run-seed.mjs"
+    "db:seed": "node scripts/run-seed.mjs",
+    "test": "tsx --test test/*.test.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
