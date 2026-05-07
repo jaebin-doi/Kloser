@@ -48,6 +48,6 @@ const io = new IOServer(app.server, {
     credentials: true,
   },
 });
-registerCallsNamespace(io);
+registerCallsNamespace(io, app);
 
 app.log.info({ port: PORT, staticOrigin: STATIC_ORIGIN }, "kloser-server listening");
