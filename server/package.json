@@ -13,7 +13,7 @@
     "db:migrate:create": "node scripts/migrate.mjs create -m migrations -j sql",
     "db:migrate:redo": "node scripts/migrate.mjs redo -m migrations -j sql",
     "db:seed": "node scripts/run-seed.mjs",
-    "test": "tsx --test test/*.test.mjs"
+    "test": "tsx --test --test-concurrency=1 test/*.test.mjs"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
