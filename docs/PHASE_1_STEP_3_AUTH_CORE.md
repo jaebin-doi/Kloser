@@ -343,10 +343,9 @@ Implementation note:
 
 Step 3에서 기존 `X-Org-Id` 동작을 바꾼다.
 
-- `request.user?.orgId`가 있으면 그 값을 `request.orgId`로 사용
-- prod에서 `X-Org-Id`가 오면 reject
-- dev/test에서만 `X-Org-Id` fallback 허용
-- fallback으로 받은 값도 UUID 검증
+- `request.user?.orgId`가 있으면 그 값을 `request.orgId`로 사용 (prod·dev 동일).
+- prod (`NODE_ENV=production`)에서 `X-Org-Id` 헤더가 오면 무조건 **400** (Bearer 동반 여부 무관). 헤더 존재 자체가 client bug.
+- dev/test에서만 `X-Org-Id` fallback 허용. fallback 값도 UUID 검증 (실패 시 400, 헤더 부재 시 401).
 
 ### `requireRole(...roles)`
 
@@ -382,7 +381,7 @@ Step 3에서 기존 `X-Org-Id` 동작을 바꾼다.
 - refresh가 새 access token에 session.org_id / session.membership_id를 박고, role은 memberships에서 재조회 (admin → viewer 강등 후 refresh 시 새 token에 viewer 반영)
 - logout revokes refresh session and clears cookie (Path=/auth)
 - logout idempotent — cookie 없는 상태에서도 204
-- prod env (`NODE_ENV=production`)에서 `X-Org-Id` fallback 차단 → 401
+- prod env (`NODE_ENV=production`)에서 `X-Org-Id` 헤더 존재 시 → **400** (Bearer 동반 여부 무관). 헤더 자체의 존재가 client bug라는 strict 해석. dev/test에선 그대로 fallback 허용.
 - dev env에서 `X-Org-Id` fallback 유지 (Step 2 격리 테스트 회귀)
 - role guard rejects viewer for admin-only handler (403)
 - 새 access token이 cookie path scoping 검증 — `/auth/refresh`/`/auth/logout`엔 cookie 동행, `/me`엔 미동행
