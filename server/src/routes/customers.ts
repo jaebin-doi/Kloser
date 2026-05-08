@@ -16,10 +16,11 @@
  *   - body / :id UUID → zod parse in route handler. Failure → ZodError →
  *     scoped errorHandler maps to 400 { error: "invalid_input", issues }.
  *   - GET /customers query → NOT pre-parsed in the route. service.normalizeListOptions
- *     is the single boundary parser, so invalid status/plan/assignedUserId
+ *     is the single boundary parser, so invalid status/assignedUserId
  *     surface as InvalidListOptionError → 400 { error: "invalid_<field>", value }.
  *     Pre-parsing in the route would emit ZodError and break the response
- *     contract (Step 4 plan §2-7, §11).
+ *     contract (Step 4 plan §2-7, §11; the original throwable trio
+ *     included `plan`, removed in 1715000003000_drop_customers_plan.sql).
  *
  * RLS isolation: a Bearer JWT for org A that targets a row in org B
  * receives 404 (RLS USING evaluates org_id = NULL → 0 rows → service
@@ -82,7 +83,7 @@ async function customersRoutes(app: FastifyInstance) {
     async (request, reply) => {
       // Pass req.query through unchanged. service.normalizeListOptions is
       // the single boundary parser; pre-parsing here would re-route
-      // status/plan/assignedUserId failures to ZodError and break the
+      // status/assignedUserId failures to ZodError and break the
       // `invalid_<field> + value` contract.
       const result = await listCustomers(app, request.orgId!, request.query);
       return reply.code(200).send(result);

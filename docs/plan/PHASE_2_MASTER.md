@@ -11,11 +11,11 @@
 
 > 이 섹션은 sub-step 진행 시 갱신된다. 본 plan은 master로, 각 sub-step은 별도 `PHASE_2_STEP_X_*.md` 문서에서 상세 설계.
 
-- [ ] **Step 1** — `customers` 스키마 + RLS 정책 + 시드 → `docs/plan/PHASE_2_STEP_1_SCHEMA.md`
-- [ ] **Step 2** — Repository + service + RLS 격리 단위 테스트 → `docs/plan/PHASE_2_STEP_2_REPO.md`
-- [ ] **Step 3** — Shared types 도입 + zod validation 패턴 (Phase 0.5 인계 deferred 처리) — `server/src/types/customers.ts` source-of-truth + `platform/types/customers.js` JSDoc 사본 + sync 테스트. **`zod` 의존성 추가** → `docs/plan/PHASE_2_STEP_3_SHARED_TYPES.md`
-- [ ] **Step 4** — REST routes (6 endpoints) + role 미들웨어 통합 + zod schema import + route 테스트 → `docs/plan/PHASE_2_STEP_4_ROUTES.md`
-- [ ] **Step 5** — `platform/customers.html` 실 API 연결 + new customer 모달 + 검색·필터·페이지네이션 → `docs/plan/PHASE_2_STEP_5_CLIENT.md`
+- [x] **Step 1** — `customers` 스키마 + RLS 정책 + 시드 → `docs/plan/PHASE_2_STEP_1_SCHEMA.md`
+- [x] **Step 2** — Repository + service + RLS 격리 단위 테스트 → `docs/plan/PHASE_2_STEP_2_REPO.md`
+- [x] **Step 3** — Shared types 도입 + zod validation 패턴 (Phase 0.5 인계 deferred 처리) — `server/src/types/customers.ts` source-of-truth + `platform/types/customers.js` JSDoc 사본 + sync 테스트. **`zod` 의존성 추가** → `docs/plan/PHASE_2_STEP_3_SHARED_TYPES.md`
+- [x] **Step 4** — REST routes (6 endpoints) + role 미들웨어 통합 + zod schema import + route 테스트 → `docs/plan/PHASE_2_STEP_4_ROUTES.md`
+- [x] **Step 5** — `platform/customers.html` 실 API 연결 + new customer 모달 + 검색·필터·정렬 + domain cleanup (`customers.plan` 제거) → `docs/plan/PHASE_2_STEP_5_CLIENT.md`, `docs/plan/PHASE_2_STEP_5_FINDINGS.md`
 - [ ] **Step 6** — Customers e2e + findings + master plan 동기화 → `docs/plan/PHASE_2_STEP_6_E2E.md`
 
 ---
