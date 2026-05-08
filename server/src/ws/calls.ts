@@ -1,6 +1,30 @@
+/* /calls Socket.io namespace.
+ *
+ * Phase 0.5 spike pumped the demo conversation via setTimeout. Phase 1
+ * step 4 attaches an authenticated identity to every connection by
+ * verifying a Bearer-equivalent JWT on the handshake. The `userId`
+ * query parameter from the spike is gone — the token is the only
+ * trust boundary now.
+ *
+ * Error contract (kept stable so the client can branch on `err.data.code`
+ * for handshake and emit `.code` for runtime):
+ *   handshake `connect_error`:
+ *     - "missing_token"  — auth.token absent or empty
+ *     - "expired_token"  — JWT exp passed
+ *     - "invalid_token"  — bad signature, malformed payload, etc.
+ *   runtime `error` event:
+ *     - "no_active_call" — text_chunk arrived before start_call
+ *     - "BAD_PAYLOAD"    — text_chunk shape mismatch (preserved from spike)
+ */
+import type { FastifyInstance } from "fastify";
 import type { Server, Socket } from "socket.io";
 import { randomUUID } from "node:crypto";
 import { conversation, aiSequence } from "../fixtures/demo-call.js";
+import {
+  toAuthenticatedUser,
+  validateAccessTokenPayload,
+  type AuthenticatedUser,
+} from "../services/auth.js";
 
 interface StartCallPayload {
   customerId?: string;
@@ -17,6 +41,8 @@ interface CallContext {
   timers: NodeJS.Timeout[];
 }
 
+// One in-flight call per socket. Presence in this map IS the
+// `callStarted` invariant — text_chunk requires a hit here.
 const calls = new WeakMap<Socket, CallContext>();
 
 function clearCall(socket: Socket): void {
@@ -25,6 +51,16 @@ function clearCall(socket: Socket): void {
   for (const t of ctx.timers) clearTimeout(t);
   ctx.timers.length = 0;
   calls.delete(socket);
+}
+
+class HandshakeAuthError extends Error {
+  // socket.io-client surfaces this on `connect_error` as `err.data`.
+  data: { code: string };
+  constructor(code: string) {
+    super(code);
+    this.name = "HandshakeAuthError";
+    this.data = { code };
+  }
 }
 
 function scheduleDemoReplay(socket: Socket, ctx: CallContext): void {
@@ -61,14 +97,38 @@ function scheduleDemoReplay(socket: Socket, ctx: CallContext): void {
   }
 }
 
-export function registerCallsNamespace(io: Server): void {
+export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
   const ns = io.of("/calls");
 
+  // Handshake auth — runs before any `connection` event. Failures pass
+  // a HandshakeAuthError to next(), which socket.io serialises onto the
+  // client's `connect_error` event with the embedded `data.code`.
+  ns.use(async (socket, next) => {
+    const raw = socket.handshake.auth?.token;
+    const token = typeof raw === "string" ? raw.trim() : "";
+    if (!token) {
+      next(new HandshakeAuthError("missing_token"));
+      return;
+    }
+    try {
+      const decoded = await app.jwt.verify(token);
+      const payload = validateAccessTokenPayload(decoded);
+      socket.data.user = toAuthenticatedUser(payload);
+      next();
+    } catch (err) {
+      const e = err as { code?: string; name?: string };
+      if (e?.code === "FAST_JWT_EXPIRED" || e?.name === "TokenExpiredError") {
+        next(new HandshakeAuthError("expired_token"));
+      } else {
+        next(new HandshakeAuthError("invalid_token"));
+      }
+    }
+  });
+
   ns.on("connection", (socket) => {
-    const userId = String(socket.handshake.query.userId ?? "anonymous");
-    socket.data.userId = userId;
+    const user = socket.data.user as AuthenticatedUser;
     socket.data.log = (msg: string, extra?: unknown) => {
-      const tag = `[ws/calls socket=${socket.id} user=${userId}]`;
+      const tag = `[ws/calls socket=${socket.id} user=${user.id} org=${user.orgId}]`;
       if (extra !== undefined) console.log(tag, msg, extra);
       else console.log(tag, msg);
     };
@@ -89,6 +149,16 @@ export function registerCallsNamespace(io: Server): void {
     });
 
     socket.on("text_chunk", (payload: TextChunkPayload | undefined) => {
+      // Invariant: a text_chunk only makes sense inside an active call.
+      // A normal client emits text_chunk only after the start_call ack,
+      // so this check protects against client bugs and probe scripts.
+      if (!calls.has(socket)) {
+        socket.emit("error", {
+          code: "no_active_call",
+          message: "text_chunk requires a prior start_call",
+        });
+        return;
+      }
       if (
         !payload ||
         typeof payload.seq !== "number" ||
@@ -101,8 +171,6 @@ export function registerCallsNamespace(io: Server): void {
         });
         return;
       }
-      // Phase 1 TODO: enforce that start_call ran first (require ctx in `calls`).
-      // Spike intentionally allows standalone echo for manual probes.
       const who: "agent" | "customer" = payload.seq % 2 === 0 ? "agent" : "customer";
       socket.emit("transcript", {
         seq: payload.seq,
@@ -126,5 +194,5 @@ export function registerCallsNamespace(io: Server): void {
     });
   });
 
-  console.log("[ws/calls] namespace registered at /calls");
+  console.log("[ws/calls] namespace registered at /calls (handshake auth ON)");
 }

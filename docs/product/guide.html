@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser 도입 가이드</title>
+  <meta name="description"
+    content="Kloser 실시간 AI 통화 어시스턴트 도입을 위한 사전 준비, 단계별 절차, 시스템 요구사항, 보안 정책, 자주 묻는 질문 안내." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@700;900&display=swap"
+    rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    html { scroll-padding-top: 90px; }
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+    }
+    .g-text {
+      background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .toc-link { transition: all .2s; }
+    .toc-link:hover { color: #2563eb; }
+    .toc-link.active {
+      color: #2563eb;
+      font-weight: 700;
+      border-left-color: #2563eb;
+    }
+    .prose-block h3 {
+      font-weight: 800;
+      letter-spacing: -.02em;
+      color: rgb(15 23 42);
+    }
+  </style>
+</head>
+
+<body class="bg-white text-slate-800">
+
+  <!-- ═══════ NAV ═══════ -->
+  <nav
+    class="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 md:px-8 h-[62px] border-b border-slate-200"
+    style="background:rgba(255,255,255,.85);backdrop-filter:blur(24px) saturate(180%)">
+    <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+      <img src="../../assets/logo.png" alt="Kloser" class="h-6 w-auto" />
+    </a>
+    <div class="hidden md:flex items-center gap-1 text-sm">
+      <a href="../../index.html#features"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">기능</a>
+      <a href="../../index.html#pricing"
+        class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all no-underline font-medium">가격</a>
+      <a href="guide.html"
+        class="px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 transition-all no-underline font-bold">도입 가이드</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="../../index.html#notify"
+        class="hidden md:flex items-center gap-1.5 px-5 py-2 text-sm font-bold text-white rounded-[9px] bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors no-underline">
+        구매 문의
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+          stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M5 12h14M13 5l7 7-7 7" />
+        </svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- ═══════ HEADER ═══════ -->
+  <header class="relative pt-32 pb-16 px-6 lg:px-8 border-b border-slate-100 overflow-hidden">
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full blur-[100px]"
+        style="background:radial-gradient(ellipse,rgba(59,130,246,.12),transparent 65%)"></div>
+      <div class="absolute inset-0"
+        style="background-image:linear-gradient(rgba(0,0,0,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.03) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 60% 60% at 50% 50%,black,transparent)">
+      </div>
+    </div>
+    <div class="relative max-w-[1200px] mx-auto text-center">
+      <nav aria-label="Breadcrumb"
+        class="inline-flex items-center gap-2 mb-5 text-[.78rem] font-medium text-slate-500">
+        <a href="../../index.html" class="hover:text-blue-600 no-underline">Kloser</a>
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+        <span class="text-slate-700 font-bold">도입 가이드</span>
+      </nav>
+      <p class="text-[.7rem] font-black tracking-[.22em] uppercase text-blue-600 mb-3">Deployment Guide</p>
+      <h1
+        class="text-[clamp(2.2rem,4.5vw,3.4rem)] font-black tracking-[-0.04em] text-slate-800 leading-[1.1] mb-5">
+        Kloser는<br /><span class="g-text">이렇게 도입됩니다</span>
+      </h1>
+      <p class="text-[1.02rem] text-slate-600 leading-relaxed max-w-[640px] mx-auto">
+        구매 문의부터 첫 통화까지 평균 1~2일. 도입 전 사전 준비, 단계별 절차, 시스템 요구사항, 보안 정책까지 한눈에 확인하세요.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 mt-8 text-[.78rem]">
+        <span
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 font-bold">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          평균 1~2일
+        </span>
+        <span
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+          </svg>
+          무료 도입 컨설팅
+        </span>
+        <span
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-100 text-amber-700 font-bold">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0110 0v4" />
+          </svg>
+          ISO 27001
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════ MAIN ═══════ -->
+  <main class="max-w-[1200px] mx-auto px-6 lg:px-8 py-14 lg:py-20">
+    <div class="grid lg:grid-cols-[220px_1fr] gap-10 lg:gap-16">
+
+      <!-- TOC sidebar -->
+      <aside class="hidden lg:block">
+        <nav class="sticky top-[90px]">
+          <p class="text-[.65rem] font-black tracking-[.22em] uppercase text-slate-400 mb-3">목차</p>
+          <ul class="flex flex-col gap-0.5 text-[.85rem] border-l border-slate-200">
+            <li><a href="#overview"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">1. 도입 개요</a>
+            </li>
+            <li><a href="#prerequisites"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">2. 사전 준비사항</a>
+            </li>
+            <li><a href="#timeline"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">3. 단계별 일정</a>
+            </li>
+            <li><a href="#requirements"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">4. 시스템 요구사항</a>
+            </li>
+            <li><a href="#security"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">5. 보안 & 개인정보</a>
+            </li>
+            <li><a href="#onboarding"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">6. 직원 온보딩</a>
+            </li>
+            <li><a href="#support"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">7. 지원 & SLA</a>
+            </li>
+            <li><a href="#faq"
+                class="toc-link block px-3 py-1.5 -ml-px border-l-2 border-transparent text-slate-600">8. 자주 묻는 질문</a>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <article class="prose-block min-w-0">
+
+        <!-- ─── 1. 도입 개요 ─── -->
+        <section id="overview" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">01</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">도입 개요</h2>
+          </div>
+          <p class="text-[.95rem] text-slate-600 leading-[1.8] mb-6">
+            Kloser는 <span class="font-bold text-slate-800">상담원 보조형 AI 어시스턴트</span>로,
+            전화망을 직접 대체하지 않고 통화 음성을 분석하여 응대 추천을 제공합니다. 도입 시 통화 환경 표준화가 필요하며, 평균 1~2일이면 첫 통화 분석을 시작할 수 있습니다.
+          </p>
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="rounded-xl border border-slate-200 p-5">
+              <div class="text-[2rem] font-black text-blue-600 tabular-nums tracking-tight">1~2일</div>
+              <div class="text-[.78rem] text-slate-500 mt-1">셋업 ~ 첫 통화</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5">
+              <div class="text-[2rem] font-black text-blue-600 tabular-nums tracking-tight">2~3초</div>
+              <div class="text-[.78rem] text-slate-500 mt-1">실시간 응답 지연</div>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5">
+              <div class="text-[2rem] font-black text-blue-600 tabular-nums tracking-tight">99.9%</div>
+              <div class="text-[.78rem] text-slate-500 mt-1">SLA 가동률 (Enterprise)</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── 2. 사전 준비사항 ─── -->
+        <section id="prerequisites" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">02</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">사전 준비사항</h2>
+          </div>
+          <p class="text-[.95rem] text-slate-600 leading-[1.8] mb-6">
+            도입 전 다음 환경이 갖춰져야 합니다. 한 가지라도 충족되지 않으면 정상 동작이 보장되지 않으니 반드시 확인해 주세요.
+          </p>
+
+          <!-- Critical requirement callout -->
+          <div class="rounded-xl border-2 border-amber-300 bg-amber-50/60 p-5 mb-6">
+            <div class="flex items-start gap-3">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"
+                class="text-amber-600 shrink-0 mt-0.5" viewBox="0 0 24 24">
+                <path
+                  d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+              <div>
+                <div class="text-[.95rem] font-black text-amber-900 mb-1">기업 인터넷전화 가입 필수</div>
+                <p class="text-[.84rem] text-amber-800 leading-relaxed m-0">
+                  Kloser는 PC 기반 인터넷전화의 통화 음성을 캡처하여 분석합니다. 일반 유선전화나 휴대전화만 사용하는 환경에서는 도입할 수 없습니다.
+                  KT·LG U+·SK브로드밴드 등 주요 통신사의 기업 인터넷전화 서비스에 가입되어 있어야 합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Checklist -->
+          <div class="rounded-xl border border-slate-200 overflow-hidden">
+            <div class="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
+              <div class="p-5">
+                <h3 class="text-[.78rem] font-black uppercase tracking-widest text-slate-500 mb-3">하드웨어 / 환경</h3>
+                <ul class="space-y-2.5 text-[.85rem]">
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>Windows 10/11 PC</li>
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>USB 헤드셋 (단일 표준 장비 권장)</li>
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>안정적 인터넷 회선 (10 Mbps↑)</li>
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>PC 기반 소프트폰 (또는 인터넷전화 앱)</li>
+                </ul>
+              </div>
+              <div class="p-5">
+                <h3 class="text-[.78rem] font-black uppercase tracking-widest text-slate-500 mb-3">권한 / 정책</h3>
+                <ul class="space-y-2.5 text-[.85rem]">
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>마이크 / 시스템 오디오 캡처 권한</li>
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>통화 녹음·분석 동의 고지 절차</li>
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>회사 가이드 / FAQ / 응대 매뉴얼</li>
+                  <li class="flex items-start gap-2"><span
+                      class="w-4 h-4 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center mt-0.5 shrink-0"><svg
+                        width="9" height="9" fill="none" stroke="currentColor" stroke-width="3"
+                        viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg></span>관리자 1인 + 직원 계정 명단</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── 3. 단계별 일정 ─── -->
+        <section id="timeline" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">03</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">단계별 일정</h2>
+          </div>
+          <p class="text-[.95rem] text-slate-600 leading-[1.8] mb-6">
+            구매 문의부터 첫 통화까지 5단계, 평균 1~2일에 완료됩니다. Enterprise는 현장 방문 셋팅 일정이 추가됩니다.
+          </p>
+
+          <ol class="relative border-l-2 border-slate-200 ml-3 space-y-7">
+            <li class="pl-6 relative">
+              <span class="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[.6rem] font-black">1</span>
+              <div class="text-[.7rem] font-bold uppercase tracking-widest text-blue-600 mb-1">D-Day</div>
+              <h3 class="text-[1rem] font-bold text-slate-800 mb-1.5 m-0">구매 문의 & 도입 컨설팅</h3>
+              <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">홈페이지에서 회사 이메일 등록 → 1영업일 내 담당자 연락 → 30분 도입 컨설팅으로 환경 점검.</p>
+            </li>
+            <li class="pl-6 relative">
+              <span class="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[.6rem] font-black">2</span>
+              <div class="text-[.7rem] font-bold uppercase tracking-widest text-blue-600 mb-1">D+1 오전</div>
+              <h3 class="text-[1rem] font-bold text-slate-800 mb-1.5 m-0">계약 & 결제</h3>
+              <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">플랜 선택, 계약서 서명, 세금계산서/카드 결제 완료. Enterprise는 별도 SOW 작성.</p>
+            </li>
+            <li class="pl-6 relative">
+              <span class="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[.6rem] font-black">3</span>
+              <div class="text-[.7rem] font-bold uppercase tracking-widest text-blue-600 mb-1">D+1 오후</div>
+              <h3 class="text-[1rem] font-bold text-slate-800 mb-1.5 m-0">관리자 계정 발급 & 가이드 업로드</h3>
+              <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">관리자 콘솔에 로그인 → 회사 정보 입력 → 상담 매뉴얼·FAQ 업로드. AI가 자료 학습 시작 (자동 처리, 약 30분).</p>
+            </li>
+            <li class="pl-6 relative">
+              <span class="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[.6rem] font-black">4</span>
+              <div class="text-[.7rem] font-bold uppercase tracking-widest text-blue-600 mb-1">D+2 오전</div>
+              <h3 class="text-[1rem] font-bold text-slate-800 mb-1.5 m-0">데스크톱 앱 배포 & 직원 온보딩</h3>
+              <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">관리자가 직원 서브 계정을 직접 발급 → 직원 PC에 Kloser 데스크톱 앱 설치 → 마이크/시스템 오디오 권한 부여 → 테스트 통화 1회.</p>
+            </li>
+            <li class="pl-6 relative">
+              <span class="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[.6rem] font-black">5</span>
+              <div class="text-[.7rem] font-bold uppercase tracking-widest text-emerald-600 mb-1">D+2 오후</div>
+              <h3 class="text-[1rem] font-bold text-slate-800 mb-1.5 m-0">실서비스 시작</h3>
+              <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">평소처럼 인바운드 상담 진행 → AI가 실시간 응대 추천 → 통화 후 자동 메모 생성 → 다음날 아침 일일 To-Do 자동 발송.</p>
+            </li>
+          </ol>
+        </section>
+
+        <!-- ─── 4. 시스템 요구사항 ─── -->
+        <section id="requirements" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">04</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">시스템 요구사항</h2>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-[.85rem]">
+              <thead class="bg-slate-50/70">
+                <tr class="border-b border-slate-200">
+                  <th class="text-left font-bold text-slate-700 px-5 py-3 w-40">항목</th>
+                  <th class="text-left font-bold text-slate-700 px-5 py-3">최소 사양</th>
+                  <th class="text-left font-bold text-slate-700 px-5 py-3">권장 사양</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">OS</td>
+                  <td class="px-5 py-3 text-slate-600">Windows 10 (64bit)</td>
+                  <td class="px-5 py-3 text-slate-600">Windows 11 (64bit)</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">CPU</td>
+                  <td class="px-5 py-3 text-slate-600">Intel i3 / AMD Ryzen 3</td>
+                  <td class="px-5 py-3 text-slate-600">Intel i5 / AMD Ryzen 5 이상</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">메모리</td>
+                  <td class="px-5 py-3 text-slate-600">8 GB</td>
+                  <td class="px-5 py-3 text-slate-600">16 GB</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">네트워크</td>
+                  <td class="px-5 py-3 text-slate-600">10 Mbps (다운/업)</td>
+                  <td class="px-5 py-3 text-slate-600">유선 50 Mbps↑</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">오디오</td>
+                  <td class="px-5 py-3 text-slate-600">USB 헤드셋 (마이크 포함)</td>
+                  <td class="px-5 py-3 text-slate-600">노이즈 캔슬 헤드셋 권장</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">통화 환경</td>
+                  <td class="px-5 py-3 text-slate-600">PC 기반 소프트폰</td>
+                  <td class="px-5 py-3 text-slate-600">기업 인터넷전화 + 표준 클라이언트</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">방화벽 / 포트</td>
+                  <td class="px-5 py-3 text-slate-600">443 (HTTPS) 허용</td>
+                  <td class="px-5 py-3 text-slate-600">WebSocket(443) + UDP 음성 포트</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ─── 5. 보안 & 개인정보 ─── -->
+        <section id="security" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">05</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">보안 & 개인정보</h2>
+          </div>
+          <p class="text-[.95rem] text-slate-600 leading-[1.8] mb-6">
+            통화 내용에는 민감정보가 포함될 수 있어, Kloser는 설계 단계부터 다음 보안 요구사항을 제품 요건으로 포함합니다.
+          </p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-slate-200 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="text-blue-600" viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0">암호화 & 격리</h3>
+              </div>
+              <ul class="text-[.82rem] text-slate-600 leading-[1.8] space-y-1 m-0">
+                <li>· 전송 구간 TLS 1.3 암호화</li>
+                <li>· 저장 구간 AES-256 암호화</li>
+                <li>· 조직(Tenant) 단위 데이터 격리</li>
+              </ul>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="text-blue-600" viewBox="0 0 24 24">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z" />
+                </svg>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0">접근 통제</h3>
+              </div>
+              <ul class="text-[.82rem] text-slate-600 leading-[1.8] space-y-1 m-0">
+                <li>· 관리자 / 직원 권한 분리</li>
+                <li>· 통화 세션별 접근 권한 검증</li>
+                <li>· 모든 관리 작업 감사 로그</li>
+              </ul>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="text-blue-600" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                </svg>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0">개인정보 보호</h3>
+              </div>
+              <ul class="text-[.82rem] text-slate-600 leading-[1.8] space-y-1 m-0">
+                <li>· 주민번호 / 카드번호 자동 마스킹</li>
+                <li>· 녹취 / 전사 저장 여부 설정</li>
+                <li>· 보관 기간 설정 + 즉시 삭제 요청 처리</li>
+              </ul>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5">
+              <div class="flex items-center gap-2 mb-3">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="text-blue-600" viewBox="0 0 24 24">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0">규정 준수</h3>
+              </div>
+              <ul class="text-[.82rem] text-slate-600 leading-[1.8] space-y-1 m-0">
+                <li>· 개인정보보호법 / 통신비밀보호법 준수</li>
+                <li>· 통화 분석 동의 고지 절차 제공</li>
+                <li>· ISO 27001 인증 (Enterprise)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── 6. 직원 온보딩 ─── -->
+        <section id="onboarding" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">06</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">직원 온보딩</h2>
+          </div>
+          <p class="text-[.95rem] text-slate-600 leading-[1.8] mb-6">
+            관리자가 직원 서브 계정을 발급한 뒤, 각 직원이 다음 절차로 자체 셋업을 진행합니다. 평균 10~15분이면 첫 통화를 시작할 수 있습니다.
+          </p>
+          <div class="space-y-3">
+            <div class="rounded-xl border border-slate-200 p-5 flex items-start gap-4">
+              <span
+                class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-black text-[.85rem] shrink-0">1</span>
+              <div>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0 mb-1">초대 메일 수신 & 비밀번호 설정</h3>
+                <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">관리자가 발급한 계정 안내 메일을 통해 비밀번호를 설정합니다.</p>
+              </div>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5 flex items-start gap-4">
+              <span
+                class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-black text-[.85rem] shrink-0">2</span>
+              <div>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0 mb-1">데스크톱 앱 다운로드 & 설치</h3>
+                <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">사내 배포 페이지에서 Kloser 데스크톱 앱을 다운로드해 설치합니다.</p>
+              </div>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5 flex items-start gap-4">
+              <span
+                class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-black text-[.85rem] shrink-0">3</span>
+              <div>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0 mb-1">로그인 & 오디오 권한 부여</h3>
+                <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">앱 첫 실행 시 마이크와 시스템 오디오 캡처 권한을 부여합니다.</p>
+              </div>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-5 flex items-start gap-4">
+              <span
+                class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-black text-[.85rem] shrink-0">4</span>
+              <div>
+                <h3 class="text-[.95rem] font-bold text-slate-800 m-0 mb-1">테스트 통화 1회</h3>
+                <p class="text-[.85rem] text-slate-600 leading-relaxed m-0">동료와 테스트 통화를 1회 진행해 양방향 음성 캡처와 실시간 분석이 정상 동작하는지 확인합니다.</p>
+              </div>
+            </div>
+            <div class="rounded-xl border border-blue-200 bg-blue-50/40 p-5 flex items-start gap-4">
+              <span
+                class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-[.85rem] shrink-0">✓</span>
+              <div>
+                <h3 class="text-[.95rem] font-bold text-blue-900 m-0 mb-1">실서비스 시작</h3>
+                <p class="text-[.85rem] text-blue-800 leading-relaxed m-0">평소처럼 인바운드 상담을 진행하면 AI가 자동으로 응대 추천을 표시합니다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ─── 7. 지원 & SLA ─── -->
+        <section id="support" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">07</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">지원 & SLA</h2>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-[.85rem]">
+              <thead class="bg-slate-50/70">
+                <tr class="border-b border-slate-200">
+                  <th class="text-left font-bold text-slate-700 px-5 py-3">항목</th>
+                  <th class="text-left font-bold text-slate-700 px-5 py-3">Starter</th>
+                  <th class="text-left font-bold text-slate-700 px-5 py-3">Pro</th>
+                  <th class="text-left font-bold text-slate-700 px-5 py-3">Enterprise</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">지원 채널</td>
+                  <td class="px-5 py-3 text-slate-600">이메일</td>
+                  <td class="px-5 py-3 text-slate-600">이메일 + 우선 채팅</td>
+                  <td class="px-5 py-3 text-slate-600">전담 매니저 + 전화</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">응답 시간</td>
+                  <td class="px-5 py-3 text-slate-600">1영업일</td>
+                  <td class="px-5 py-3 text-slate-600">1~2시간</td>
+                  <td class="px-5 py-3 text-slate-600">15분 이내 (P1)</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">SLA 가동률</td>
+                  <td class="px-5 py-3 text-slate-600">—</td>
+                  <td class="px-5 py-3 text-slate-600">—</td>
+                  <td class="px-5 py-3 text-slate-600">99.9% 보장</td>
+                </tr>
+                <tr>
+                  <td class="px-5 py-3 font-bold text-slate-700">온보딩 지원</td>
+                  <td class="px-5 py-3 text-slate-600">셀프 가이드</td>
+                  <td class="px-5 py-3 text-slate-600">화상 가이드 1회</td>
+                  <td class="px-5 py-3 text-slate-600">현장 방문 셋팅</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ─── 8. FAQ ─── -->
+        <section id="faq" class="mb-16">
+          <div class="flex items-center gap-3 mb-5">
+            <span
+              class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[.85rem]">08</span>
+            <h2 class="text-[1.65rem] font-black tracking-[-0.03em] text-slate-800 m-0">자주 묻는 질문</h2>
+          </div>
+          <div class="space-y-3">
+            <details
+              class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+              <summary
+                class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+                <span>일반 유선전화 / 휴대전화로도 도입할 수 있나요?</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </summary>
+              <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+                현재 버전은 PC 기반 인터넷전화 환경만 지원합니다. 일반 유선전화·휴대전화는 PC에서 통화 음성을 캡처할 수 없어 도입이 어렵습니다. 향후 별도 엔터프라이즈 연동 프로젝트로 PBX/CTI 연동을 검토할 수 있습니다.
+              </div>
+            </details>
+            <details
+              class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+              <summary
+                class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+                <span>통화 내용은 어디에 저장되며, 얼마 동안 보관되나요?</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </summary>
+              <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+                Pro까지는 AWS Seoul(ap-northeast-2) 리전에 저장됩니다. 기본 보관 기간은 90일이며 회사별로 7일~3년 사이에서 설정 가능합니다. Enterprise는 온프레미스 / VPC 배포 옵션이 있습니다.
+              </div>
+            </details>
+            <details
+              class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+              <summary
+                class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+                <span>실시간 응답 지연이 2~3초인 이유는?</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </summary>
+              <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+                음성 캡처(100~300ms 청크) → 스트리밍 STT 전사 → 회사 가이드 RAG 검색 → LLM 추론을 거치며, 안정적인 분석을 위해 발화 단위로 묶어 처리합니다. 이 수준은 동시통역형 응답이 아닌 상담원 보조 용도로 충분합니다.
+              </div>
+            </details>
+            <details
+              class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+              <summary
+                class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+                <span>고객에게 통화 분석 사실을 고지해야 하나요?</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </summary>
+              <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+                네, 통신비밀보호법에 따라 통화 녹취·분석 시 양 당사자 동의 고지가 필요합니다. Kloser는 통화 시작 시 자동 안내 멘트(예: "이 통화는 AI 품질 분석을 위해 녹음됩니다") 기능을 제공합니다.
+              </div>
+            </details>
+            <details
+              class="group rounded-xl border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+              <summary
+                class="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-800 text-[.92rem]">
+                <span>도입 컨설팅은 무료인가요?</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                  class="shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </summary>
+              <div class="px-5 pb-4 text-[.85rem] text-slate-600 leading-relaxed">
+                네. 30분 환경 점검 컨설팅과 도입 시연(데모)은 모든 플랜에 무료로 제공됩니다. Enterprise는 추가로 현장 방문 셋팅·온보딩이 포함됩니다.
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- CTA -->
+        <section
+          class="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50/40 p-8 lg:p-10 text-center">
+          <h2 class="text-[1.5rem] lg:text-[1.8rem] font-black tracking-[-0.03em] text-slate-800 mb-3 m-0">
+            도입 검토 중이신가요?
+          </h2>
+          <p class="text-[.95rem] text-slate-600 leading-relaxed mb-6 max-w-[480px] mx-auto">
+            회사 환경에 맞는 도입 방안을 30분 무료 컨설팅으로 안내드립니다. 1영업일 내 담당자가 연락드려요.
+          </p>
+          <a href="../../index.html#notify"
+            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[.92rem] shadow-md transition-colors no-underline">
+            구매 문의하기
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+              stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </a>
+        </section>
+
+      </article>
+    </div>
+  </main>
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <footer class="border-t border-slate-200 px-6 lg:px-8 py-10 bg-white">
+    <div
+      class="max-w-[1360px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="../../assets/logo.png" alt="Kloser" class="h-5 w-auto" />
+        <span class="text-[.78rem] text-slate-400">© 2026 Kloser. All rights reserved.</span>
+      </div>
+      <div class="flex items-center gap-5 text-[.8rem] text-slate-500">
+        <a href="../../index.html" class="hover:text-slate-900 transition-colors no-underline">홈으로</a>
+        <a href="../../index.html#features" class="hover:text-slate-900 transition-colors no-underline">기능</a>
+        <a href="../../index.html#pricing" class="hover:text-slate-900 transition-colors no-underline">가격</a>
+        <a href="../../index.html#notify" class="hover:text-slate-900 transition-colors no-underline">문의</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // TOC active section highlight
+    const sections = document.querySelectorAll('article section[id]');
+    const tocLinks = document.querySelectorAll('.toc-link');
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          tocLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+        }
+      });
+    }, { rootMargin: '-90px 0px -60% 0px' });
+    sections.forEach(s => obs.observe(s));
+
+    // Smooth anchor scroll with offset
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const id = a.getAttribute('href');
+        if (id === '#') return;
+        const t = document.querySelector(id);
+        if (t) {
+          e.preventDefault();
+          const y = t.getBoundingClientRect().top + window.scrollY - 80;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+          history.pushState(null, null, id);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

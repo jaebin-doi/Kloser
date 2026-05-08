@@ -1,0 +1,54 @@
+# Phase 1 Step 5 — single-origin reverse proxy (dev only).
+#
+# Serves static + REST + WS from one origin (https://localhost) behind
+# self-signed TLS so the browser exercises the prod-equivalent path:
+# Secure cookies, same-origin fetch, no CORS preflight on /auth/*.
+#
+# Run from project root:
+#
+#   PowerShell:
+#     $env:KLOSER_STATIC_ROOT = (Resolve-Path .).Path
+#     caddy run --config ops/Caddyfile.dev
+#
+#   bash:
+#     KLOSER_STATIC_ROOT=$(pwd) caddy run --config ops/Caddyfile.dev
+#
+# `{$KLOSER_STATIC_ROOT:.}` falls back to "." (caddy's working dir) when
+# the env is unset, so launching from project root works either way.
+#
+# Pre-req:
+#   - Fastify on 127.0.0.1:3001 (`npm --prefix server run dev`)
+#   - Browser must trust Caddy's local CA on first run (`caddy trust`),
+#     or the e2e ignores HTTPS errors when target starts with https://.
+#
+# Routing decisions (PHASE_1_STEP_5_REVERSE_PROXY.md §1.4):
+#   - `handle` (prefix kept), NOT `handle_path` (prefix stripped) —
+#     Fastify and socket.io expect their original prefixes on the wire.
+#   - /api/* is forward-compat. Phase 4 (calls REST + dashboard) will
+#     populate it; routing now keeps the file stable across that change.
+
+{
+	local_certs
+}
+
+localhost {
+	handle /socket.io/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle /auth/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle /me {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle /health {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle {
+		root * {$KLOSER_STATIC_ROOT:.}
+		file_server
+	}
+}

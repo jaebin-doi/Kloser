@@ -45,7 +45,7 @@ const SIDEBAR_HTML = `
     <a href="customers.html" data-page="customers" class="nav-item">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       고객
-      <span class="ml-auto text-[.62rem] text-slate-400 tnum">2,486</span>
+      <span id="sidebarCustomersCount" class="ml-auto text-[.62rem] text-slate-400 tnum">-</span>
     </a>
     <a href="newsletter.html" data-page="newsletter" class="nav-item">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
@@ -90,6 +90,37 @@ function toggleSidebar() {
   sb.classList.toggle('open');
   ov.classList.toggle('show');
 }
+
+/* ─────────────────────────────────────────────
+   formatRelativeTime — ISO 8601 string → Korean relative label
+   ─────────────────────────────────────────────
+   Used for `last_contacted_at` in customers list, and reusable
+   for transcript timestamps / call end times in later phases.
+
+   Inputs:  ISO 8601 string (server emits via Date.toJSON()), or null
+   Outputs: "방금 전" / "5분 전" / "2시간 전" / "어제" / "3일 전"
+            / "1주 전" / "M/D" (after 30 days, falls back to absolute)
+            / "-" if null or unparseable
+───────────────────────────────────────────── */
+function formatRelativeTime(iso) {
+  if (!iso) return '-';
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return '-';
+
+  const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (diffSec < 60)    return '방금 전';
+  if (diffSec < 3600)  return Math.floor(diffSec / 60) + '분 전';
+  if (diffSec < 86400) return Math.floor(diffSec / 3600) + '시간 전';
+
+  const diffDay = Math.floor(diffSec / 86400);
+  if (diffDay === 1)   return '어제';
+  if (diffDay < 7)     return diffDay + '일 전';
+  if (diffDay < 30)    return Math.floor(diffDay / 7) + '주 전';
+
+  const d = new Date(iso);
+  return (d.getMonth() + 1) + '/' + d.getDate();
+}
+window.formatRelativeTime = formatRelativeTime;
 
 /* ─────────────────────────────────────────────
    Notification panel (used in topbars)

@@ -8,6 +8,14 @@
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <!-- DOMPurify is used to sanitize suggestion HTML before innerHTML render.
+       If the CDN load fails, safeSuggestionHtml() returns an empty string
+       (fail-safe) rather than letting unsanitized markup through. -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"
+          crossorigin="anonymous"></script>
+  <!-- Order matters: api.js publishes window.kloserApi which ws.js reads
+       (apiBaseUrl + refreshAccessToken). Keep api.js BEFORE ws.js. -->
+  <script src="api.js"></script>
   <script src="ws.js"></script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" as="style" crossorigin
@@ -558,6 +566,23 @@
       kb: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>',
     };
 
+    // Sanitize HTML that ends up in innerHTML. DOMPurify is loaded in
+    // <head> as a CDN script. If the CDN was blocked or the script
+    // failed, return an empty string rather than letting raw HTML
+    // through — Phase 5 will eventually feed real LLM output through
+    // this same path, so failing safe matters now.
+    //
+    // Note: USE_PROFILES.html drops <svg> by design. We split rendering
+    // so that local trusted constants (toneIcon SVGs) bypass DOMPurify
+    // and only server-supplied strings (title, body) go through it.
+    function safeSuggestionHtml(html) {
+      if (!window.DOMPurify || typeof window.DOMPurify.sanitize !== 'function') {
+        console.warn('[live] DOMPurify missing; suppressing unsanitized suggestion HTML');
+        return '';
+      }
+      return window.DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    }
+
     function renderSuggestions(group) {
       // Smooth swap: fade out, then fade in
       aiSuggestionsEl.style.opacity = '0';
@@ -567,13 +592,31 @@
           const card = document.createElement('div');
           card.className = `sug-card rounded-lg border ${toneStyles[s.tone]} p-3 cursor-pointer`;
           card.style.animation = `msgIn .35s cubic-bezier(0.16,1,0.3,1) ${i*0.06}s both`;
-          card.innerHTML = `
-            <div class="flex items-center gap-1.5 mb-1.5 ${toneTitleColor[s.tone]}">
-              ${toneIcon[s.type] || ''}
-              <span class="text-[.65rem] font-black uppercase tracking-wider">${s.title}</span>
-            </div>
-            <p class="text-[.78rem] text-slate-700 leading-relaxed">${s.body}</p>
-          `;
+
+          const header = document.createElement('div');
+          header.className = `flex items-center gap-1.5 mb-1.5 ${toneTitleColor[s.tone] || ''}`;
+
+          // toneIcon[s.type] is a static local SVG string — trusted, no
+          // sanitize. Wrapping in a span keeps innerHTML scoped.
+          const iconWrap = document.createElement('span');
+          iconWrap.className = 'inline-flex shrink-0';
+          iconWrap.innerHTML = toneIcon[s.type] || '';
+          header.appendChild(iconWrap);
+
+          // Title comes from the server payload — DOMPurify on the way in.
+          const title = document.createElement('span');
+          title.className = 'text-[.65rem] font-black uppercase tracking-wider';
+          title.innerHTML = safeSuggestionHtml(String(s.title || ''));
+          header.appendChild(title);
+
+          // Body also from the server (the spike fixture uses <b>/<br>),
+          // sanitize for the same reason.
+          const body = document.createElement('p');
+          body.className = 'text-[.78rem] text-slate-700 leading-relaxed';
+          body.innerHTML = safeSuggestionHtml(String(s.body || ''));
+
+          card.appendChild(header);
+          card.appendChild(body);
           aiSuggestionsEl.appendChild(card);
         });
         aiSuggestionsEl.style.opacity = '1';
@@ -615,25 +658,41 @@
     }
 
     /* ────────────────────────────────────────────────
-       Live WebSocket 연결 (Phase 0.5)
-       — setTimeout mock은 모두 제거됨. 데이터는 서버 /calls 네임스페이스에서 푸시
+       Live WebSocket 연결 (Phase 1 step 4)
+       — Phase 0.5의 setTimeout mock 제거 + auth gate 추가.
+       — userId query는 폐기, JWT가 socket.handshake.auth.token으로 들어감.
+       — kloserWS 자체에서 __liveSocket을 localhost-only로 노출.
     ──────────────────────────────────────────────── */
-    const KLOSER_API = 'http://localhost:3001';
-
     (async () => {
+      // Auth gate: ensure an access token is in memory. On a fresh
+      // page load the memory is empty — try refreshAccessToken first,
+      // which uses the HttpOnly refresh cookie. If that fails, the
+      // user is not logged in and we bounce to login.html with the
+      // current path preserved as returnUrl.
+      if (!window.kloserApi) {
+        console.error('[live] kloserApi not loaded — api.js missing?');
+        return;
+      }
+      if (!window.kloserApi.getAccessToken()) {
+        try {
+          await window.kloserApi.refreshAccessToken();
+        } catch (err) {
+          console.warn('[live] no session; redirecting to login', err && err.status);
+          window.kloserApi.loginRedirect();
+          return;
+        }
+      }
+
       if (!window.kloserWS) {
         console.error('[live] kloserWS not loaded — ws.js missing?');
         return;
       }
 
       const socket = window.kloserWS.connectCallNamespace({
-        baseUrl: KLOSER_API,
-        userId: 'demo-user',
+        baseUrl: window.kloserApi.apiBaseUrl,
+        tokenProvider: () => window.kloserApi.getAccessToken(),
+        onAuthFailure: () => window.kloserApi.loginRedirect(),
       });
-      // Test-only handle so test/phase_0_5_e2e.mjs can drive sendTextChunk on
-      // the same socket the page renders into (otherwise the latency badge can't
-      // be observed from outside the IIFE). Phase 1: remove or guard with a flag.
-      window.__liveSocket = socket;
 
       // 리스너는 startCall 전에 등록 — 서버가 ack 직후 발사를 시작해도 첫 이벤트를 놓치지 않도록
       window.kloserWS.onTranscript(socket, (ev) => {

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>로그인 — Kloser</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    html, body {
+      min-height: 100%;
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(6, 182, 212, 0.08), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .field {
+      width: 100%;
+      padding: 11px 13px;
+      font-size: .9rem;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      transition: border-color .15s, box-shadow .15s;
+      letter-spacing: -0.005em;
+    }
+    .field::placeholder { color: rgb(148 163 184); }
+    .field:focus {
+      outline: none;
+      border-color: rgb(37 99 235);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgb(37 99 235);
+      color: white;
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: -0.005em;
+      transition: background .15s, box-shadow .15s, transform .15s;
+      box-shadow: 0 4px 12px -4px rgba(37, 99, 235, .4);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: rgb(29 78 216);
+      box-shadow: 0 6px 18px -6px rgba(37, 99, 235, .5);
+    }
+    .btn-primary:active:not(:disabled) { transform: translateY(1px); }
+    .btn-primary:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+  </style>
+  <!-- Order: api.js publishes window.kloserApi; the page script below
+       uses kloserApi.login(). -->
+  <script src="api.js"></script>
+</head>
+
+<body class="min-h-screen">
+  <main class="min-h-screen flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-md">
+
+      <!-- Brand header -->
+      <div class="flex items-center justify-center gap-2 mb-6">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.35rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </div>
+
+      <form id="login-form" class="card p-7 sm:p-8" novalidate>
+        <h1 class="text-[1.25rem] font-black tracking-tight">로그인</h1>
+        <p class="mt-1 text-[.82rem] text-slate-500">
+          영업팀 계정으로 로그인하면 통화 어시스턴트가 시작됩니다.
+        </p>
+
+        <div class="mt-6 space-y-4">
+          <div>
+            <label for="email" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">
+              이메일
+            </label>
+            <input id="email" name="email" type="email" autocomplete="email"
+                   class="field" placeholder="you@company.com" required>
+          </div>
+
+          <div>
+            <label for="password" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">
+              비밀번호
+            </label>
+            <input id="password" name="password" type="password" autocomplete="current-password"
+                   class="field" placeholder="••••••••" required>
+          </div>
+
+          <details class="group">
+            <summary class="cursor-pointer text-[.75rem] font-medium text-slate-500 hover:text-slate-700 select-none">
+              <span class="group-open:hidden">조직 ID 직접 입력 (멀티-org 사용자)</span>
+              <span class="hidden group-open:inline">조직 ID 직접 입력</span>
+            </summary>
+            <div class="mt-2">
+              <input id="orgId" name="orgId" type="text"
+                     class="field"
+                     placeholder="11111111-1111-1111-1111-111111111111">
+              <p class="mt-1.5 text-[.7rem] text-slate-500">
+                여러 조직에 가입돼 있을 때만 입력하세요. 한 조직만 있으면 비워둬도 됩니다.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <button id="submit" type="submit" class="btn-primary mt-6">
+          로그인
+        </button>
+
+        <!-- Inline alerts -->
+        <div id="error" hidden
+             class="mt-4 px-3 py-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[.8rem]">
+        </div>
+        <div id="org-list" hidden
+             class="mt-4 px-3 py-3 rounded-lg bg-blue-50 border border-blue-200 text-[.8rem] text-slate-700">
+          <div class="font-semibold text-blue-800 mb-1.5">여러 조직에 가입돼 있습니다</div>
+          <p class="text-[.75rem] text-slate-600 mb-1.5">아래 중 하나의 ID를 위 입력칸에 넣고 다시 로그인하세요.</p>
+          <ul id="org-list-items" class="list-disc pl-5 space-y-0.5 tnum"></ul>
+        </div>
+
+        <!-- Dev fixture (localhost only) -->
+        <div id="dev-fixture" hidden
+             class="mt-6 px-3 py-3 rounded-lg bg-amber-50 border border-amber-200 text-[.78rem] text-amber-900">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold">dev seed 자격증명</span>
+            <span class="text-[.65rem] font-medium uppercase tracking-wider text-amber-700">localhost only</span>
+          </div>
+          <ul class="space-y-0.5 font-mono text-[.72rem] leading-relaxed">
+            <li><span class="font-semibold">admin@acme.test</span> / acme-admin-1234</li>
+            <li><span class="font-semibold">emp@acme.test</span> / acme-emp-1234</li>
+            <li><span class="font-semibold">admin@beta.test</span> / beta-admin-1234</li>
+            <li><span class="font-semibold">emp@beta.test</span> / beta-emp-1234</li>
+          </ul>
+          <button type="button" id="fill-acme-admin"
+                  class="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md
+                         bg-white border border-amber-300 text-amber-800 text-[.72rem] font-medium
+                         hover:bg-amber-100 transition">
+            admin@acme.test 자동 채우기
+          </button>
+        </div>
+      </form>
+
+      <p class="mt-5 text-center text-[.72rem] text-slate-400">
+        Phase 1 step 4 dev login · Kloser
+      </p>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const form = document.getElementById('login-form');
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      const orgIdInput = document.getElementById('orgId');
+      const errorDiv = document.getElementById('error');
+      const orgListDiv = document.getElementById('org-list');
+      const orgListItems = document.getElementById('org-list-items');
+      const submitBtn = document.getElementById('submit');
+      const devFixture = document.getElementById('dev-fixture');
+
+      function isLocalhost() {
+        const h = window.location.hostname;
+        return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]';
+      }
+
+      // dev fixture hint — never on prod marketing.
+      if (isLocalhost()) {
+        devFixture.hidden = false;
+        document.getElementById('fill-acme-admin').addEventListener('click', () => {
+          emailInput.value = 'admin@acme.test';
+          passwordInput.value = 'acme-admin-1234';
+          orgIdInput.value = '';
+          emailInput.focus();
+        });
+      }
+
+      function getReturnUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('returnUrl');
+        // Same-origin path-only allow-list. Reject anything that smells
+        // like an absolute URL — open-redirect guard.
+        if (raw && raw.startsWith('/') && !raw.startsWith('//')) {
+          return raw;
+        }
+        return '/platform/live.html';
+      }
+
+      function showError(message) {
+        errorDiv.textContent = message;
+        errorDiv.hidden = false;
+      }
+      function hideError() {
+        errorDiv.hidden = true;
+        errorDiv.textContent = '';
+      }
+      function showOrgList(orgs) {
+        orgListItems.innerHTML = '';
+        for (const org of orgs) {
+          const li = document.createElement('li');
+          // textContent intentionally — keeps server data out of innerHTML.
+          li.textContent = `${org.name} (${org.role}) — ${org.id}`;
+          orgListItems.appendChild(li);
+        }
+        orgListDiv.hidden = false;
+      }
+      function hideOrgList() {
+        orgListDiv.hidden = true;
+        orgListItems.innerHTML = '';
+      }
+
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        hideError();
+        hideOrgList();
+        submitBtn.disabled = true;
+        submitBtn.textContent = '로그인 중…';
+        try {
+          const orgId = orgIdInput.value.trim();
+          await window.kloserApi.login({
+            email: emailInput.value.trim(),
+            password: passwordInput.value,
+            orgId: orgId.length > 0 ? orgId : undefined,
+          });
+          // Token is now in memory; refresh cookie set by Set-Cookie.
+          window.location.replace(getReturnUrl());
+        } catch (err) {
+          const status = err && err.status;
+          const body = err && err.body;
+          if (status === 400 && body && body.code === 'org_id_required' && Array.isArray(body.availableOrgs)) {
+            showOrgList(body.availableOrgs);
+            showError('가입된 조직이 여러 개입니다. 조직 ID를 지정해 주세요.');
+            // Auto-open the orgId disclosure if collapsed.
+            const det = document.querySelector('details');
+            if (det && !det.open) det.open = true;
+            orgIdInput.focus();
+          } else if (status === 401) {
+            showError('이메일 또는 비밀번호가 올바르지 않습니다.');
+          } else if (status === 400) {
+            showError('입력값을 다시 확인해 주세요.');
+          } else {
+            showError('로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            console.error('[login] unexpected error', err);
+          }
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '로그인';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

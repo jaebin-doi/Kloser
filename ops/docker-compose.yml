@@ -1,0 +1,49 @@
+# Phase 1 Step 1 — DB 인프라 dev compose
+# Run from project root: docker compose -f ops/docker-compose.yml up -d
+# Tear down (with volumes): docker compose -f ops/docker-compose.yml down -v
+
+name: kloser-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kloser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kloser_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-kloser_dev}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - kloser_pgdata:/var/lib/postgresql/data
+      # Init scripts run on first volume creation only. For existing volumes
+      # the same scripts must be applied manually — see
+      # ops/postgres/init/01_app_role.sql header.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      # Extension activation (pgcrypto, citext) is done inside the migration,
+      # not as an init script.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kloser} -d ${POSTGRES_DB:-kloser_dev}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - kloser_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+
+volumes:
+  kloser_pgdata:
+  kloser_redisdata:

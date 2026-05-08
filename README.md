@@ -7,7 +7,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 ```
 🚀 라이브 데모  →  platform/dashboard.html (회원가입 없이 바로 체험)
 🏠 마케팅 사이트 →  index.html
-📑 도입 가이드   →  docs/guide.html
+📑 도입 가이드   →  docs/product/guide.html
 ```
 
 ---
@@ -67,7 +67,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 | 📅 **오늘의 일** | [`platform/daily.html`](platform/daily.html) | 시장 트렌드 + 추천 To-Do + 경쟁사 동향 + **관심사 키워드 설정** + **5포맷 다운로드 (HTML/PDF/Word/Excel/PPT)** |
 | 📞 **실시간 통화** | [`platform/live.html`](platform/live.html) | 통화 타이머 · STT Transcript 자동 추가 · AI 추천 동적 갱신 · 감정 분석 단계 변화 · 알림 패널 |
 | 📚 **통화 기록** | [`platform/calls.html`](platform/calls.html) | 검색·필터 · 8건 mock 통화 · 클릭 시 우측 상세 패널 슬라이드 |
-| 👥 **고객 관리** | [`platform/customers.html`](platform/customers.html) | 통계 4종 · 6개 필터 · 12명 mock · 신규 추가 모달(실작동) |
+| 👥 **고객 관리** | [`platform/customers.html`](platform/customers.html) | 4 KPI · status/sort 2 그룹 필터 chip · 검색 + URL query sync · CRUD 모달 듀얼 모드 (실 API + 24명 seed). `phase_2_customers_e2e` 7 시나리오 회귀 |
 | ✉️ **뉴스레터** | [`platform/newsletter.html`](platform/newsletter.html) | 캠페인 5개 + 통계 · AI 챗봇으로 메일 초안 자동 생성 |
 | 🏢 **팀 & 계정** | [`platform/team.html`](platform/team.html) | 14명 구성원 + 우수 사례 랭킹 + 권한 매트릭스 + 직원 초대 모달 |
 | ⚙️ **설정** | [`platform/settings.html`](platform/settings.html) | 12개 카테고리 (프로필/회사/통화환경/AI/통합/알림/보안/데이터/플랜/API/언어/위험영역) + 스크롤스파이 TOC |
@@ -143,8 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 0.5 라이브 스트림 스파이크 완료** — `server/`(Fastify+Socket.io) ↔ `live.html` 사이 `/calls` 네임스페이스가 실제로 동작하고, 수동 RTT 1ms로 검증됨. STT/LLM 연동, Auth, DB, 영속성은 Phase 1+에서.
-> 자세한 계획·결과: [`docs/BACKEND_PLAN.md`](docs/BACKEND_PLAN.md), [`docs/PHASE_0_5_LIVE_SPIKE.md`](docs/PHASE_0_5_LIVE_SPIKE.md), [`docs/PHASE_0_5_FINDINGS.md`](docs/PHASE_0_5_FINDINGS.md).
+> **현재 단계**: **Phase 2 완료** (Step 1~6) — Phase 1 기반 위에 customers entity 정착. `customers` 테이블 + RLS 4정책 + 5 partial 인덱스 + 24명 seed, repository (7 함수) + service (6 함수) + 6 REST endpoint (`GET /customers`, `GET /customers/stats`, `GET /customers/:id`, `POST`, `PATCH`, `DELETE`), shared types (zod source-of-truth + JSDoc browser mirror + sync 검증), `platform/customers.html` 실 API CRUD (모달 듀얼 모드 + 2 그룹 필터 chip + URL query sync + `loadAll` 재조회 정책), customers e2e 7 시나리오 + cleanup. **`customers.plan`은 의도적으로 제거** — `organizations.plan` (Kloser 구독 단계)과 도메인 경계 충돌 회피. `npm test` 65/65 + `phase_0_5_e2e` 16/16 + `phase_2_customers_e2e` PASS + `sync_shared_types` PASS. 다음은 Phase 3 (회원가입/이메일/팀 초대).
+> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md`](docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md), [`docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md`](docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md).
 
 ---
 
@@ -169,38 +169,56 @@ kloser/
 │   ├── _shared.css           # 공통 스타일 (사이드바·테이블·뱃지·버튼)
 │   ├── _shared.js            # 공통 사이드바 + 알림 패널 렌더러
 │   ├── _daily.js             # daily.html 전용 로직 (4 포맷 export)
-│   └── ws.js                 # 🆕 Socket.io 클라이언트 wrapper (window.kloserWS)
+│   ├── login.html            # 🆕 Phase 1 Step 4 — dev 로그인 폼 + returnUrl
+│   ├── api.js                # 🆕 Phase 1 Step 4 — fetch wrapper (메모리 토큰 + auto-refresh)
+│   └── ws.js                 # Socket.io 클라이언트 wrapper (window.kloserWS, JWT handshake)
 │
-├── server/                   # 🆕 백엔드 (Phase 0.5 spike) — Fastify + Socket.io + TS
-│   ├── README.md             # 실행 방법, 이벤트/엔드포인트 레퍼런스
-│   ├── package.json          # fastify · socket.io · tsx · typescript
-│   ├── tsconfig.json
-│   └── src/
-│       ├── server.ts         # Fastify entry — /health + io.attach
-│       ├── ws/calls.ts       # /calls 네임스페이스 (start_call/text_chunk/end_call)
-│       ├── fixtures/demo-call.ts   # conversation + aiSequence + sentiment
-│       └── __test_client.ts        # Day 1 검증용 throwaway (Phase 1에서 삭제)
+├── server/                   # 백엔드 — Fastify + Socket.io + PostgreSQL/RLS + 자체 Auth
+│   ├── README.md             # 실행/검증/엔드포인트/RLS 가이드 (전체 트리는 여기 참고)
+│   ├── package.json          # fastify · socket.io · pg · @fastify/{jwt,cookie} · argon2
+│   ├── migrations/ · seeds/ · scripts/   # node-pg-migrate + Argon2id 시드
+│   ├── test/                 # tsx --test (auth · rls · orgContext · ws_auth = 37 cases)
+│   └── src/                  # config · db · plugins · middleware · services
+│                             # repositories · routes · ws · fixtures
 │
-├── docs/
-│   ├── guide.html                          # 도입 가이드 (고객용)
-│   ├── pricing.md                          # 가격 정책 (내부 SSOT)
-│   ├── realtime-call-assistant-guide.md    # 백엔드 구축 가이드 (개발)
-│   ├── BACKEND_PLAN.md                     # 🆕 v0.4 자체 온프레미스 + Phase별 로드맵
-│   ├── DESKTOP_APP_PLAN.md                 # 🆕 PC 앱 트랙
-│   ├── PHASE_0_5_LIVE_SPIKE.md             # 🆕 Phase 0.5 구체 실행 계획 + 진행 로그
-│   ├── PHASE_0_5_FINDINGS.md               # 🆕 spike 결과 + Phase 1 후속 task
-│   ├── FASTIFY_GUIDE.md                    # 🆕 Fastify 도입 근거
-│   ├── NODE_VS_PYTHON_BACKEND.md           # 🆕 Node vs Python 결정 트레일
-│   ├── SUPABASE_VS_ONPREM.md               # 🆕 Supabase managed 미채택 사유
-│   ├── SUPABASE_GUIDE.md                   #   (Supabase 이전 검토용 참고 문서)
-│   ├── R730xd_server_setup.md              # 🆕 자체 서버 용량 산정
-│   ├── SLA_99.9%_서버_구성_정리.md         # 🆕 HA 구성 (LB/app/PG/Redis)
-│   └── 운영_핵심_개선_정리.md              # 🆕 RLS/감사로그/마스킹 등 보안 베이스라인
+├── docs/                                   # 문서 인덱스: docs/README.md
+│   ├── README.md                           # 폴더 인덱스 + 빠른 진입표
+│   ├── USER_GUIDE_PHASE_1.md               # Phase 1 사용자/평가자용 텍스트 가이드
+│   ├── plan/                               # Phase별 실행 계획 + 결과 인계
+│   │   ├── README.md                       #   plan 폴더 색인
+│   │   ├── roadmap/                        #   BACKEND_PLAN / DESKTOP_APP_PLAN
+│   │   ├── phase-0.5/                      #   live spike 계획 + findings
+│   │   ├── phase-1/                        #   Phase 1 master + Step 1~5
+│   │   └── phase-2/                        #   Phase 2 master + Step 1~6
+│   ├── decision/                           # 기술 선택 트레일 (4)
+│   │   ├── FASTIFY_GUIDE.md                #   Fastify 도입 근거 + 패턴
+│   │   ├── NODE_VS_PYTHON_BACKEND.md       #   Node vs Python 결정
+│   │   ├── SUPABASE_VS_ONPREM.md           #   Supabase managed 미채택 사유
+│   │   └── SUPABASE_GUIDE.md               #   (검토 시점 참고, 이력 보존)
+│   ├── product/                            # 제품·마케팅·도입 가이드 (5)
+│   │   ├── USER_GUIDE.html                 #   🆕 시각 가이드 — 9개 화면 walkthrough
+│   │   ├── PHASE_1_FOUNDATIONS.html        #   🆕 Phase 1 기반 기능 시각 가이드 (6 기둥)
+│   │   ├── pricing.md                      #   가격 정책 (내부 SSOT)
+│   │   ├── guide.html                      #   도입 가이드 (고객용)
+│   │   └── realtime-call-assistant-guide.md #  제품·아키텍처 정의 SSOT
+│   ├── ops/                                # 운영·인프라 메모 (3)
+│   │   ├── R730xd_server_setup.md          #   자체 서버 용량 산정
+│   │   ├── SLA_99.9%_서버_구성_정리.md     #   HA 구성 (LB/app/PG/Redis)
+│   │   └── 운영_핵심_개선_정리.md          #   RLS/감사로그/마스킹 베이스라인
+│   └── research/                           # 시장·비용 분석 (2)
+│       ├── 실시간-STT-시장분석-2026.md     #   STT 시장 분석
+│       └── AZURE_SPEECH_COST_GUIDE_2026.md #   Azure Speech 비용 가이드
+│
+├── ops/                      # 인프라 설정 (Phase 1)
+│   ├── docker-compose.yml    # postgres 16 + redis 7 dev compose
+│   ├── postgres/init/        # 첫 실행 시 app 역할 부트스트랩
+│   └── Caddyfile.dev         # 🆕 Phase 1 Step 5 — single-origin reverse proxy (선택)
 │
 ├── assets/
-│   ├── logo.png / logo.svg / logo2.png
+│   ├── logo.png / logo.svg / logo_new.png / logo_old.png
 │   ├── favicon.svg / favicon.png
-│   └── landing_img/          # 히어로 시안 이미지
+│   ├── landing_img/          # 히어로 시안 이미지
+│   └── screenshots/user_guide/  # 🆕 USER_GUIDE.html 캡처 9장
 │
 ├── test/                     # 자동화 검증 스크립트
 │   ├── README.md             # 실행 방법
@@ -209,8 +227,10 @@ kloser/
 │   ├── smoke_daily.py        # daily.html 단독 검증 (Python)
 │   ├── test_features.py      # 알림/Word 등 기능 검증 (Python)
 │   ├── screenshots.py        # 스크린샷 자동 캡처 (Python)
-│   ├── phase_0_5_e2e.mjs     # 🆕 Phase 0.5 server↔live.html e2e (Node + Playwright)
-│   ├── phase_0_5_e2e.png     # 🆕 e2e 스크린샷 (검증 산출물)
+│   ├── phase_0_5_e2e.mjs     # Phase 0.5 server↔live.html e2e (Node + Playwright)
+│   │                         #   Phase 1 Step 5에서 KLOSER_E2E_BASE_URL env로 두 모드 지원
+│   ├── phase_0_5_e2e.png     # e2e 스크린샷 (검증 산출물)
+│   ├── capture_user_guide_screenshots.mjs  # 🆕 USER_GUIDE.html 캡처 재실행 스크립트
 │   └── screenshots/          # 캡처 결과 PNG
 │
 └── (admin.html · console.html — 별도 관리자 영역, 본 README 범위 외)
@@ -231,38 +251,106 @@ kloser/
 - Enterprise는 **연간 구독만 가능** + **현장 방문 초기 셋팅** 필수
 - 6명 이상은 Enterprise 맞춤 견적
 
-상세는 [`docs/pricing.md`](docs/pricing.md), [`docs/guide.html`](docs/guide.html) 참고.
+상세는 [`docs/product/pricing.md`](docs/product/pricing.md), [`docs/product/guide.html`](docs/product/guide.html) 참고.
 
 ---
 
 ## 🛠️ 로컬 실행
 
-### 마케팅 사이트 + 플랫폼 데모 (정적)
+> 현재 코드는 외부 서버에 자동 배포되는 구조가 아닙니다. 아래 절차는 로컬 PC에서 직접 서버를 켜고 브라우저로 접속하는 방법입니다.
 
-정적 HTML/JS/CSS만 사용하므로 빌드 없이 단순 HTTP 서버로 띄우면 됩니다.
+### 기본 실행 (`http://localhost:8765`)
 
-```bash
-# 프로젝트 루트에서
-python -m http.server 8765
-# (Python alias 미설치 시) npx http-server . -p 8765 --silent
+`live.html`까지 실제 로그인/API/WebSocket 흐름으로 보려면 터미널 3개가 필요합니다.
 
-# 브라우저에서:
-# 마케팅 사이트   →  http://localhost:8765/
-# 플랫폼 데모     →  http://localhost:8765/platform/
-# 도입 가이드     →  http://localhost:8765/docs/guide.html
+```powershell
+# 터미널 1: DB + Redis
+docker compose -f ops/docker-compose.yml up -d
 ```
 
-### 라이브 통화 백엔드 (`live.html` 실시간 흐름 보기)
-
-`platform/live.html`이 진짜 WebSocket 이벤트로 동작하는 걸 보려면 별도 터미널에서 백엔드를 띄웁니다 (Phase 0.5 spike 결과물).
-
-```bash
+```powershell
+# 터미널 2: 백엔드 API + WebSocket (:3001)
 cd server
-npm install        # 최초 1회
-npm run dev        # tsx watch — port 3001
+npm install                  # 최초 1회
+npm run db:migrate:up        # 최초 1회 또는 migration 변경 시
+npm run db:seed              # 최초 1회 또는 seed 재적재 시
+npm run dev
 ```
 
-이제 `http://localhost:8765/platform/live.html`을 열면 `server/`가 `start_call → transcript/suggestion/sentiment` 시퀀스를 자동으로 푸시합니다. 자세한 내용은 [`server/README.md`](server/README.md).
+```powershell
+# 터미널 3: 정적 HTML 서버 (:8765), 프로젝트 루트에서 실행
+python -m http.server 8765
+# Python이 없으면:
+# npx http-server . -p 8765 --silent
+```
+
+브라우저 접속 주소:
+
+| 목적 | URL |
+|---|---|
+| 마케팅 사이트 | <http://localhost:8765/> |
+| 로그인 | <http://localhost:8765/platform/login.html> |
+| 실시간 통화 데모 | <http://localhost:8765/platform/live.html> |
+| 플랫폼 데모 홈 | <http://localhost:8765/platform/> |
+| 도입 가이드 | <http://localhost:8765/docs/product/guide.html> |
+| Phase 1 사용자 가이드 | <http://localhost:8765/docs/product/USER_GUIDE.html> |
+| Phase 1 기반 기능 가이드 | <http://localhost:8765/docs/product/PHASE_1_FOUNDATIONS.html> |
+
+`platform/live.html`은 로그인 없이는 `login.html`로 자동 이동합니다. localhost에서는 로그인 화면에 dev 계정 자동 채우기 버튼이 보입니다.
+
+| 역할 | 이메일 | 비밀번호 |
+|---|---|---|
+| Acme admin | `admin@acme.test` | `acme-admin-1234` |
+| Acme employee | `emp@acme.test` | `acme-emp-1234` |
+| Beta admin | `admin@beta.test` | `beta-admin-1234` |
+| Beta employee | `emp@beta.test` | `beta-emp-1234` |
+
+로그인 후 `http://localhost:8765/platform/live.html`이 인증된 WS로 `start_call → transcript/suggestion/sentiment` 시퀀스를 푸시합니다. 자세한 실행/검증/엔드포인트는 [`server/README.md`](server/README.md).
+
+### Step 5 Caddy 실행 (`https://localhost`)
+
+운영 환경과 비슷하게 정적 파일, REST API, WebSocket을 모두 `https://localhost` 한 origin으로 묶어 보려면 Caddy 모드를 사용합니다. 이 모드에서는 위의 터미널 3 정적 서버가 필요 없고, Caddy가 정적 파일까지 직접 제공합니다.
+
+먼저 터미널 1(DB + Redis)과 터미널 2(백엔드 `npm run dev`)는 그대로 켜둡니다. 그 다음 프로젝트 루트에서 Caddy를 실행합니다.
+
+```powershell
+# Caddy 설치 확인
+caddy version
+
+# PATH에 caddy가 없으면 winget 설치 위치를 직접 확인
+where.exe caddy
+
+# Caddy 실행 (:443)
+$env:KLOSER_STATIC_ROOT = (Resolve-Path .).Path
+caddy run --config ops/Caddyfile.dev
+```
+
+Windows에서 `winget`으로 Caddy를 설치했는데 `caddy` 명령이 PATH에 없으면, 설치된 `caddy.exe` 경로를 직접 실행해도 됩니다.
+
+```powershell
+$caddy = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\CaddyServer.Caddy_Microsoft.Winget.Source_8wekyb3d8bbwe\caddy.exe"
+& $caddy run --config ops/Caddyfile.dev
+```
+
+Caddy 모드 브라우저 접속 주소:
+
+| 목적 | URL |
+|---|---|
+| 마케팅 사이트 | <https://localhost/> |
+| 로그인 | <https://localhost/platform/login.html> |
+| 실시간 통화 데모 | <https://localhost/platform/live.html> |
+| Health check | <https://localhost/health> |
+
+브라우저에서 인증서 경고가 뜨면 로컬 self-signed 인증서 때문입니다. 임시로는 "고급 → 계속 진행"으로 들어가면 되고, 경고를 없애려면 관리자 권한 터미널에서 한 번 `caddy trust`를 실행합니다.
+
+검증:
+
+```powershell
+curl.exe -k https://localhost/health
+$env:KLOSER_E2E_BASE_URL = 'https://localhost'
+node test/phase_0_5_e2e.mjs
+Remove-Item Env:KLOSER_E2E_BASE_URL
+```
 
 > **참고**: Tailwind CSS, Pretendard, socket.io-client는 CDN 로딩이라 첫 로드 시 인터넷 연결이 필요합니다.
 
@@ -287,10 +375,10 @@ npm run dev        # tsx watch — port 3001
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 0.5 spike 완료, Phase 1 착수 대기)
+### 백엔드 (`server/` — Phase 2 완료, Phase 3 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
-- **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/SUPABASE_VS_ONPREM.md`)
+- **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)
 - **DB**: 직접 운영 PostgreSQL + RLS default-deny (Phase 1부터)
 - **큐/캐시**: Redis + BullMQ (Phase 4+)
 - **Reverse proxy**: Nginx 또는 Caddy (Phase 1+)
@@ -299,7 +387,7 @@ npm run dev        # tsx watch — port 3001
 - **STT**: Naver Clova Speech (한국어 영업 도메인 정확도 우선)
 - **LLM**: Anthropic Claude / OpenAI GPT — 회사 가이드 RAG 기반
 - **벡터 검색**: pgvector
-- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/DESKTOP_APP_PLAN.md`
+- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/plan/roadmap/DESKTOP_APP_PLAN.md`
 
 ---
 
@@ -315,11 +403,12 @@ npm run dev        # tsx watch — port 3001
 - `/calls` 네임스페이스: `start_call`/`text_chunk`/`end_call` (snake_case)
 - `live.html`의 `setTimeout` mock을 WebSocket 이벤트로 교체
 - 수동 RTT 1ms · 자동 데모 재생 · sentiment 자동 전이 · 14/14 e2e PASS
-- 결과 정리: [`docs/PHASE_0_5_FINDINGS.md`](docs/PHASE_0_5_FINDINGS.md)
+- 결과 정리: [`docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md`](docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md)
 
 ### v1 — MVP (다음 단계, Phase 1~6)
-- **Phase 1**: 자체 Auth (JWT) + PostgreSQL 부트스트랩 + RLS default-deny + customers CRUD
-- **Phase 2~4**: Team/초대, Calls REST + Dashboard, 실시간 STT(Clova) + AI suggestion
+- **Phase 1**: PostgreSQL 부트스트랩 + RLS default-deny + 자체 Auth (Argon2id + JWT + refresh rotation) + 클라이언트 wiring + Caddy reverse proxy (Step 1~5)
+- **Phase 2**: Customers CRUD
+- **Phase 3~5**: Team/초대, Calls REST + Dashboard, 실시간 STT(Clova) + AI suggestion
 - Windows 데스크톱 앱 (오디오 캡처)
 - Claude RAG 기반 응대 추천 엔진
 - 단일 회사·1~5명 직원 기준 PoC
