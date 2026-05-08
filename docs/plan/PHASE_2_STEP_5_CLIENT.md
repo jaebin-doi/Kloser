@@ -134,9 +134,9 @@ window.kloserApi = {
 - 모달의 `memo` textarea (서버 schema 없음 — 사전 결정 §2-15)
 - 모달 이메일 라벨의 `<span class="text-rose-500">*</span>` 필수 표식 + `addCustomer()`의 `if (!name || !email)` 검증 — **이메일은 서버 schema에서 nullable/optional**. 필수는 `name`만 (사전 결정 §2-15)
 
-### HTML 구조 변경 — 필터 chip 3 그룹 분리 (사전 결정 §2-3)
+### HTML 구조 변경 — 필터 chip 2 그룹 분리 (사전 결정 §2-3)
 
-기존 `<div>` 한 줄에 단일 `.filter-chip` 7개 → 3 그룹 컨테이너로 분리. 클릭 핸들러도 그룹 단위 (active toggle은 같은 그룹 chip만):
+기존 `<div>` 한 줄에 단일 `.filter-chip` 그룹 (mock UI) → status/sort 2 그룹 컨테이너로 분리. 클릭 핸들러도 그룹 단위 (active toggle은 같은 그룹 chip만). (도입 시점에는 `plan` 포함 3 그룹이었으나 domain cleanup으로 2 그룹으로 축소.)
 
 ```html
 <div class="chip-group" data-group="status">
@@ -214,7 +214,7 @@ searchInput.addEventListener('input', (e) => {
   viewState.q = e.target.value || undefined;
   debouncedReload();
 });
-// chip click handler는 §4 위쪽 "HTML 구조 변경 — 필터 chip 3 그룹 분리"의
+// chip click handler는 §4 위쪽 "HTML 구조 변경 — 필터 chip 2 그룹 분리"의
 // `.chip-group` 기반 handler를 그대로 사용 (그룹 내 active toggle + viewState
 // 갱신 + syncUrl + loadAll). 단일 그룹 forEach 형태는 사용하지 않음.
 
