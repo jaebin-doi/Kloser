@@ -33,6 +33,9 @@ build/
 # Playwright MCP session artifacts
 .playwright-mcp/
 
+# Generated e2e screenshot artifact
+test/phase_0_5_e2e.png
+
 # Claude Code local settings
 .claude/settings.local.json
 
