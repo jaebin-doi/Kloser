@@ -67,7 +67,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 | 📅 **오늘의 일** | [`platform/daily.html`](platform/daily.html) | 시장 트렌드 + 추천 To-Do + 경쟁사 동향 + **관심사 키워드 설정** + **5포맷 다운로드 (HTML/PDF/Word/Excel/PPT)** |
 | 📞 **실시간 통화** | [`platform/live.html`](platform/live.html) | 통화 타이머 · STT Transcript 자동 추가 · AI 추천 동적 갱신 · 감정 분석 단계 변화 · 알림 패널 |
 | 📚 **통화 기록** | [`platform/calls.html`](platform/calls.html) | 검색·필터 · 8건 mock 통화 · 클릭 시 우측 상세 패널 슬라이드 |
-| 👥 **고객 관리** | [`platform/customers.html`](platform/customers.html) | 통계 4종 · 6개 필터 · 12명 mock · 신규 추가 모달(실작동) |
+| 👥 **고객 관리** | [`platform/customers.html`](platform/customers.html) | 4 KPI · status/sort 2 그룹 필터 chip · 검색 + URL query sync · CRUD 모달 듀얼 모드 (실 API + 24명 seed). `phase_2_customers_e2e` 7 시나리오 회귀 |
 | ✉️ **뉴스레터** | [`platform/newsletter.html`](platform/newsletter.html) | 캠페인 5개 + 통계 · AI 챗봇으로 메일 초안 자동 생성 |
 | 🏢 **팀 & 계정** | [`platform/team.html`](platform/team.html) | 14명 구성원 + 우수 사례 랭킹 + 권한 매트릭스 + 직원 초대 모달 |
 | ⚙️ **설정** | [`platform/settings.html`](platform/settings.html) | 12개 카테고리 (프로필/회사/통화환경/AI/통합/알림/보안/데이터/플랜/API/언어/위험영역) + 스크롤스파이 TOC |
@@ -143,8 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 1 완료** (Step 1~5) — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring + WS handshake JWT auth + DOMPurify + Caddy single-origin reverse proxy (`ops/Caddyfile.dev`, auto-detect) 모두 동작. `npm test` 37/37 + Phase 0.5 e2e split-origin 16/16 + Caddy single-origin variant 16/16 PASS. 다음은 Phase 2 (customers CRUD).
-> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-1/PHASE_1_STEP_5_REVERSE_PROXY.md`](docs/plan/phase-1/PHASE_1_STEP_5_REVERSE_PROXY.md), [`docs/plan/phase-1/PHASE_1_STEP_5_FINDINGS.md`](docs/plan/phase-1/PHASE_1_STEP_5_FINDINGS.md).
+> **현재 단계**: **Phase 2 완료** (Step 1~6) — Phase 1 기반 위에 customers entity 정착. `customers` 테이블 + RLS 4정책 + 5 partial 인덱스 + 24명 seed, repository (7 함수) + service (6 함수) + 6 REST endpoint (`GET /customers`, `GET /customers/stats`, `GET /customers/:id`, `POST`, `PATCH`, `DELETE`), shared types (zod source-of-truth + JSDoc browser mirror + sync 검증), `platform/customers.html` 실 API CRUD (모달 듀얼 모드 + 2 그룹 필터 chip + URL query sync + `loadAll` 재조회 정책), customers e2e 7 시나리오 + cleanup. **`customers.plan`은 의도적으로 제거** — `organizations.plan` (Kloser 구독 단계)과 도메인 경계 충돌 회피. `npm test` 65/65 + `phase_0_5_e2e` 16/16 + `phase_2_customers_e2e` PASS + `sync_shared_types` PASS. 다음은 Phase 3 (회원가입/이메일/팀 초대).
+> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md`](docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md), [`docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md`](docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md).
 
 ---
 
@@ -184,13 +184,12 @@ kloser/
 ├── docs/                                   # 문서 인덱스: docs/README.md
 │   ├── README.md                           # 폴더 인덱스 + 빠른 진입표
 │   ├── USER_GUIDE_PHASE_1.md               # Phase 1 사용자/평가자용 텍스트 가이드
-│   ├── plan/                               # Phase별 실행 계획 + 결과 인계 (14)
-│   │   ├── BACKEND_PLAN.md                 #   v0.4 자체 온프레미스 + Phase별 로드맵
-│   │   ├── DESKTOP_APP_PLAN.md             #   PC 앱 트랙 (보류)
-│   │   ├── PHASE_0_5_LIVE_SPIKE.md         #   spike 실행 계획
-│   │   ├── PHASE_0_5_FINDINGS.md           #   spike 결과
-│   │   ├── PHASE_1_MASTER.md               #   Phase 1 마스터 (5 sub-step 진행 상태)
-│   │   └── PHASE_1_STEP_{1..5}_*.md        #   각 sub-step 계획 + FINDINGS
+│   ├── plan/                               # Phase별 실행 계획 + 결과 인계
+│   │   ├── README.md                       #   plan 폴더 색인
+│   │   ├── roadmap/                        #   BACKEND_PLAN / DESKTOP_APP_PLAN
+│   │   ├── phase-0.5/                      #   live spike 계획 + findings
+│   │   ├── phase-1/                        #   Phase 1 master + Step 1~5
+│   │   └── phase-2/                        #   Phase 2 master + Step 1~6
 │   ├── decision/                           # 기술 선택 트레일 (4)
 │   │   ├── FASTIFY_GUIDE.md                #   Fastify 도입 근거 + 패턴
 │   │   ├── NODE_VS_PYTHON_BACKEND.md       #   Node vs Python 결정
@@ -376,7 +375,7 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 1 완료, Phase 2 진입 대기)
+### 백엔드 (`server/` — Phase 2 완료, Phase 3 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)

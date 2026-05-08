@@ -1,4 +1,4 @@
-# Kloser 백엔드 구현 계획 (v0.4, On-Premise)
+﻿# Kloser 백엔드 구현 계획 (v0.4, On-Premise)
 
 > **결정 변경**
 > - v0.3까지는 Supabase managed를 DB/Auth/Storage 인프라로 가정했다.
@@ -314,12 +314,13 @@ Phase 1부터 필수:
 
 ### Customers
 
-- `GET /customers?q=&status=&plan=&page=&limit=`
+- `GET /customers?q=&status=&sort=&dir=&limit=`
+- `GET /customers/stats`
 - `POST /customers`
 - `GET /customers/:id`
 - `PATCH /customers/:id`
 - `DELETE /customers/:id`
-- `POST /customers/:id/notes`
+- `POST /customers/:id/notes` (future)
 
 ### Team
 
@@ -393,31 +394,32 @@ v0.3의 endpoint 구조를 유지하되, 인증과 DB 접근은 자체 Auth/Post
 
 완료 기준: 텍스트 청크를 보내면 1~3초 안에 transcript/suggestion/sentiment가 live 화면에 표시된다. → **충족** (`test/phase_0_5_e2e.mjs` 12/12 PASS).
 
-### Phase 1 — 온프레미스 기반 + 자체 Auth (1.5~2주)
+### Phase 1 — 온프레미스 기반 + 자체 Auth (1.5~2주) ✅ 완료
 
-- [ ] `ops/docker-compose.yml`: postgres, redis, app
-- [ ] PostgreSQL migration 도구 적용
-- [ ] core schema: organizations, users, memberships, sessions, teams, invitations, activity_log
-- [ ] **모든 org-스코프 테이블 RLS default-deny ENABLE** (Phase 2 이후 추가되는 모든 테이블도 동일 정책 강제)
-- [ ] **auth 미들웨어에서 `SET LOCAL app.org_id` 트랜잭션 주입** + 워커 컨텍스트 동등 처리
-- [ ] **RLS 격리 단위 테스트**: 다른 org JWT로 타 org 데이터 조회/변경 차단 확인 (PR 머지 게이트)
-- [ ] Argon2id password hash
-- [ ] login/signup/refresh/logout
-- [ ] auth middleware + role middleware
-- [ ] `GET /me`
-- [ ] `platform/api.js`
-- [ ] seed 데이터 (org 2개 이상 — RLS 격리 자체 검증용)
-- [ ] Nginx/Caddy reverse proxy 초안
+- [x] `ops/docker-compose.yml`: postgres, redis, app
+- [x] PostgreSQL migration 도구 적용
+- [x] core schema: organizations, users, memberships, sessions, teams, invitations, activity_log
+- [x] **모든 org-스코프 테이블 RLS default-deny ENABLE** (Phase 2 이후 추가되는 모든 테이블도 동일 정책 강제)
+- [x] **auth 미들웨어에서 `SET LOCAL app.org_id` 트랜잭션 주입** + 워커 컨텍스트 동등 처리
+- [x] **RLS 격리 단위 테스트**: 다른 org JWT로 타 org 데이터 조회/변경 차단 확인 (PR 머지 게이트)
+- [x] Argon2id password hash
+- [x] login/signup/refresh/logout
+- [x] auth middleware + role middleware
+- [x] `GET /me`
+- [x] `platform/api.js`
+- [x] seed 데이터 (org 2개 이상 — RLS 격리 자체 검증용)
+- [x] Nginx/Caddy reverse proxy 초안 — Caddy dev reverse proxy (`ops/Caddyfile.dev`)
 
-### Phase 2 — Customers 첫 완성 CRUD (1주)
+### Phase 2 — Customers 첫 완성 CRUD (1주) ✅ 완료
 
-- [ ] customers schema
-- [ ] customers repository/service/routes
-- [ ] 검색/필터/페이지네이션
-- [ ] `customers.html` mock 제거
-- [ ] loading/empty/error 상태
-- [ ] activity_log 기록
-- [ ] org_id 누락 방지 테스트
+- [x] customers schema
+- [x] customers repository/service/routes
+- [x] 검색/필터/정렬
+- [x] `customers.html` mock 제거
+- [x] loading/empty/error 상태
+- [x] org_id 누락 방지 테스트
+
+Deferred: activity_log 기록은 Phase 3+ audit/activity 작업으로 이월.
 
 ### Phase 3 — Team + 초대 + 권한 (1~1.5주)
 
