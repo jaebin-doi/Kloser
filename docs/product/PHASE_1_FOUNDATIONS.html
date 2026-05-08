@@ -209,6 +209,14 @@
       font-weight: 600;
       white-space: nowrap;
     }
+    .timeline-tick-start {
+      transform: translateX(0);
+      text-align: left;
+    }
+    .timeline-tick-end {
+      transform: translateX(-100%);
+      text-align: right;
+    }
     .timeline-tick::after {
       content: '';
       position: absolute;
@@ -379,7 +387,7 @@
           </span>
           <div>
             <h3 class="text-[1rem] font-bold text-slate-900">4 · 세션 유지</h3>
-            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">짧은 접속 권한 + 안전한 갱신 절차로 분리. 로그아웃하면 즉시 종료.</p>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">15분 접속 권한 + 30일 로그인 유지. 로그아웃하면 즉시 종료.</p>
           </div>
         </div>
       </a>
@@ -607,7 +615,7 @@
       <div class="mt-5 card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
         <strong class="text-slate-900">권한 변경 반영:</strong>
         admin이 누군가의 권한을 바꿔도 그 사람의 현재 접속 권한은 즉시 무효화되지 않습니다.
-        다음 자동 갱신 시점에 새 권한이 반영됩니다 (보통 길지 않은 시간 안에).
+        다음 갱신 시점에 새 권한이 반영됩니다. 접속 권한은 기본 15분 동안만 유효하므로 최대 15분 안에 새 권한으로 바뀝니다.
         파괴적 작업(예: 결제 변경, 대량 삭제)은 그 시점에 한 번 더 권한을 재확인합니다.
       </div>
     </section>
@@ -617,29 +625,29 @@
       <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기둥 04</p>
       <h2 class="text-[1.7rem] font-black tracking-tight mb-3">세션 유지 — 안전과 편의가 분리됩니다</h2>
       <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
-        한 번 로그인하면 매번 다시 입력하지 않아도 일정 시간 사용이 이어집니다. 이 "이어짐"은
-        두 가지로 분리돼 있습니다.
+        한 번 로그인하면 매번 다시 입력하지 않아도 됩니다. 기본 설정에서는 30일 동안 세션을 유지할 수 있고,
+        그 안에서 실제 요청 권한은 15분 단위로 짧게 발급됩니다. 이 "이어짐"은 두 가지로 분리돼 있습니다.
       </p>
 
       <div class="grid lg:grid-cols-2 gap-4 mb-6">
         <div class="card p-5">
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-[.65rem] font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">SHORT</span>
+            <span class="text-[.65rem] font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">15분</span>
             <h3 class="text-[1rem] font-bold text-slate-900">짧은 접속 권한</h3>
           </div>
           <p class="text-[.85rem] text-slate-600 leading-relaxed">
-            매 요청에 함께 보내는 권한. 길지 않은 시간 안에 만료됩니다. 만료된 권한은 어떤 요청도
-            통과시키지 않습니다. 만에 하나 노출되어도 빠르게 무용지물이 됩니다.
+            실제 요청마다 함께 보내는 짧은 접속 권한입니다. 기본 유효 시간은 15분입니다.
+            브라우저 메모리에만 보관되며, 만료되면 어떤 요청도 통과시키지 않습니다.
           </p>
         </div>
         <div class="card p-5">
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-[.65rem] font-bold tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700">LONG</span>
+            <span class="text-[.65rem] font-bold tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700">30일</span>
             <h3 class="text-[1rem] font-bold text-slate-900">안전한 갱신 절차</h3>
           </div>
           <p class="text-[.85rem] text-slate-600 leading-relaxed">
-            짧은 권한이 만료될 때 자동으로 새 권한을 발급받는 절차. 보안이 강화된 형태로 보관되어
-            웹 페이지의 다른 부분에서 직접 읽을 수 없습니다.
+            접속 권한이 만료됐을 때 새 접속 권한을 받기 위한 로그인 유지 정보입니다.
+            기본 유효 시간은 30일이며, 일반 화면 코드가 직접 읽을 수 없는 안전한 쿠키로 보관됩니다.
           </p>
         </div>
       </div>
@@ -647,27 +655,25 @@
       <!-- Timeline visualization -->
       <div class="card p-6">
         <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">세션 수명 (예시)</p>
-        <p class="text-[.85rem] text-slate-600 mb-6">짧은 권한이 여러 번 갱신되며, 갱신 절차 자체는 더 오래 살아 있습니다.</p>
+        <p class="text-[.85rem] text-slate-600 mb-6">15분짜리 접속 권한은 필요할 때 다시 발급되고, 로그인 유지 정보는 기본 30일 동안 유지됩니다.</p>
 
         <div class="timeline mb-3">
           <div class="timeline-bar">
-            <!-- short access tokens (4 segments — 4 cycles) -->
-            <div class="timeline-segment" style="left:0%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
-            <div class="timeline-segment" style="left:25%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
-            <div class="timeline-segment" style="left:50%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
-            <div class="timeline-segment" style="left:75%;width:25%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+            <!-- short session windows (3 cycles) -->
+            <div class="timeline-segment" style="left:0%;width:33.333%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+            <div class="timeline-segment" style="left:33.333%;width:33.333%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+            <div class="timeline-segment" style="left:66.666%;width:33.334%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
           </div>
-          <span class="timeline-tick" style="left:0%">로그인</span>
-          <span class="timeline-tick" style="left:25%">↻ 갱신</span>
-          <span class="timeline-tick" style="left:50%">↻ 갱신</span>
-          <span class="timeline-tick" style="left:75%">↻ 갱신</span>
-          <span class="timeline-tick" style="left:100%">갱신 절차 만료 →<br>다시 로그인</span>
+          <span class="timeline-tick timeline-tick-start" style="left:0%">로그인</span>
+          <span class="timeline-tick" style="left:33.333%">15분 후<br>필요 시 갱신</span>
+          <span class="timeline-tick" style="left:66.666%">15분 후<br>필요 시 갱신</span>
+          <span class="timeline-tick timeline-tick-end" style="left:100%">30일 후<br>다시 로그인</span>
         </div>
 
         <div class="grid sm:grid-cols-3 gap-3 mt-8 text-[.82rem]">
           <div class="card-tight p-3">
             <p class="font-bold text-slate-900 mb-1">자동 유지</p>
-            <p class="text-slate-600 leading-relaxed">사용자가 신경 쓰지 않아도 갱신이 자연스럽게 동작합니다.</p>
+            <p class="text-slate-600 leading-relaxed">접속 권한이 만료되면 자동으로 새 권한을 받은 뒤 원래 요청을 한 번 다시 시도합니다.</p>
           </div>
           <div class="card-tight p-3">
             <p class="font-bold text-slate-900 mb-1">로그아웃 시 즉시 종료</p>
@@ -675,7 +681,7 @@
           </div>
           <div class="card-tight p-3">
             <p class="font-bold text-slate-900 mb-1">의심 활동 감지 시 차단</p>
-            <p class="text-slate-600 leading-relaxed">옛 권한을 다시 쓰려는 시도가 감지되면 관련 세션 계열 전체가 즉시 무효화됩니다.</p>
+            <p class="text-slate-600 leading-relaxed">교체된 로그인 유지 정보가 30초 예외 시간을 지나 다시 쓰이면 관련 세션 전체가 무효화됩니다.</p>
           </div>
         </div>
       </div>
@@ -745,7 +751,7 @@
             <div class="step-box step-box-fail">
               <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-1">STEP 3</p>
               <p class="font-bold text-slate-900 text-[.9rem]">연결 자체가 안 열림</p>
-              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">사용 도중 만료라면 자동 갱신 1회 시도. 실패 시 로그인 화면으로.</p>
+              <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">접속 권한이 만료되면 새 권한 발급을 한 번 시도합니다. 실패하면 로그인 화면으로 이동합니다.</p>
             </div>
           </div>
         </div>
@@ -805,8 +811,8 @@
         <div class="layer layer-4">
           <span class="layer-num">4</span>
           <div>
-            <p class="font-bold text-slate-900">의심 활동 시 토큰 계열 전체 즉시 무효화</p>
-            <p class="text-[.82rem] text-slate-700 leading-relaxed mt-0.5">이미 만료되거나 갱신된 옛 권한을 다시 쓰려는 시도가 감지되면, 안전을 위해 그 사용자의 관련 세션 계열 전체가 즉시 무효화됩니다.</p>
+            <p class="font-bold text-slate-900">의심 활동 시 관련 세션 전체 즉시 무효화</p>
+            <p class="text-[.82rem] text-slate-700 leading-relaxed mt-0.5">교체된 로그인 유지 정보가 30초 예외 시간을 지나 다시 쓰이면 탈취 가능성으로 보고, 관련 세션 전체가 즉시 무효화됩니다.</p>
           </div>
         </div>
       </div>
@@ -905,8 +911,8 @@
           <p class="text-slate-600 leading-relaxed">Argon2id 단방향 해싱.</p>
         </div>
         <div class="card-tight p-4">
-          <p class="font-bold text-slate-900 mb-1.5">인증 토큰</p>
-          <p class="text-slate-600 leading-relaxed">짧은 수명 access token (Bearer) + 별도 보관 refresh token (HttpOnly cookie). 갱신 시 회전(rotation), 의심 활동 발생 시 토큰 계열 전체 무효화 (token family revoke).</p>
+          <p class="font-bold text-slate-900 mb-1.5">인증 정보</p>
+          <p class="text-slate-600 leading-relaxed">기본 15분 접속 권한 + 기본 30일 로그인 유지 정보. 갱신 때마다 로그인 유지 정보를 새로 바꾸고, 30초 예외 시간 밖에서 옛 정보가 다시 쓰이면 관련 세션 전체를 무효화.</p>
         </div>
         <div class="card-tight p-4">
           <p class="font-bold text-slate-900 mb-1.5">조직 격리</p>
@@ -914,15 +920,15 @@
         </div>
         <div class="card-tight p-4">
           <p class="font-bold text-slate-900 mb-1.5">권한 시스템</p>
-          <p class="text-slate-600 leading-relaxed">admin / manager / employee / viewer 4단계가 토큰에 박혀 모든 요청에서 검증.</p>
+          <p class="text-slate-600 leading-relaxed">admin / manager / employee / viewer 4단계 권한이 모든 요청에서 검증.</p>
         </div>
         <div class="card-tight p-4">
           <p class="font-bold text-slate-900 mb-1.5">실시간 연결 인증</p>
-          <p class="text-slate-600 leading-relaxed">WebSocket 핸드셰이크 시점에 access token을 검증하고 사용자 정보를 연결 단위에 결합.</p>
+          <p class="text-slate-600 leading-relaxed">실시간 연결을 시작할 때 접속 권한을 검증하고 사용자 정보를 연결 단위에 결합.</p>
         </div>
         <div class="card-tight p-4">
           <p class="font-bold text-slate-900 mb-1.5">세션 보호</p>
-          <p class="text-slate-600 leading-relaxed">refresh rotation + grace window로 race 흡수, 옛 토큰 재사용 감지 시 family 전체 즉시 revoke.</p>
+          <p class="text-slate-600 leading-relaxed">로그인 유지 정보를 매번 새로 바꾸고, 30초 예외 시간 밖에서 옛 정보가 재사용되면 관련 세션 전체를 즉시 무효화.</p>
         </div>
       </div>
 
