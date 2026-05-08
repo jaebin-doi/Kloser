@@ -135,8 +135,12 @@
       </a>
       <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
         <a href="../../index.html" class="hover:text-slate-900 no-underline">마케팅 사이트</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1 시각</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-50 border border-cyan-100 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800 no-underline text-[.74rem] font-bold tracking-wide">
+          <span class="pulse-dot"></span>
+          Phase 2 →
+        </a>
         <a href="guide.html" class="hover:text-slate-900 no-underline">도입 가이드</a>
-        <a href="../README.md" class="hover:text-slate-900 no-underline">문서 인덱스</a>
       </nav>
     </div>
   </header>
@@ -144,17 +148,17 @@
   <!-- ═══════════════════════════ Hero ═══════════════════════════ -->
   <section class="max-w-6xl mx-auto px-6 pt-12 pb-10">
     <div class="max-w-3xl">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[.72rem] font-bold tracking-wider mb-5">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-100 text-cyan-700 text-[.72rem] font-bold tracking-wider mb-5">
         <span class="pulse-dot"></span>
-        PHASE 1 · USER GUIDE
+        PHASE 1 + 2 · USER GUIDE
       </div>
       <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
         화면으로 보는 <span class="g-text">Kloser 사용자 가이드</span>
       </h1>
       <p class="mt-5 text-[1.05rem] text-slate-600 leading-relaxed">
         영업팀이 매일 마주할 9개 화면을 차례로 둘러봅니다. 각 섹션엔 실제 화면 캡처와
-        주요 인터랙션, 그리고 <strong class="text-slate-900">현재(Phase 1)에 동작하는 부분</strong>과
-        <strong class="text-slate-900">아직 mock인 부분</strong>을 함께 표시했습니다.
+        주요 인터랙션, 그리고 <strong class="text-slate-900">현재 동작하는 부분(Phase 1·2 완료)</strong>과
+        <strong class="text-slate-900">아직 mock·미구현인 부분</strong>을 함께 표시했습니다.
         평가·검토 단계의 분께 권장.
       </p>
       <div class="mt-7 flex flex-wrap gap-3">
@@ -163,6 +167,10 @@
         </a>
         <a href="PHASE_1_FOUNDATIONS.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-[.85rem] font-medium no-underline transition">
           Phase 1 기반 기능 설명 →
+        </a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-50 border border-cyan-200 hover:border-cyan-300 hover:bg-cyan-100 text-cyan-800 text-[.85rem] font-medium no-underline transition">
+          <span class="pulse-dot"></span>
+          Phase 2 — 고객 관리 →
         </a>
       </div>
     </div>
@@ -230,7 +238,7 @@
                 <li>회원가입 UI (Phase 3, 이메일 인증과 함께)</li>
                 <li>비밀번호 재설정 / 마법 링크 (Phase 3)</li>
                 <li>SSO / SAML — Enterprise 단계</li>
-                <li>조직 picker UI — 현재는 ID 직접 입력 (Phase 2+)</li>
+                <li>조직 picker UI — 현재는 ID 직접 입력 (Phase 3+ 회원가입과 함께 도입 예정)</li>
               </ul>
             </div>
           </div>
@@ -406,12 +414,13 @@
             <h2 class="text-[1.6rem] font-black tracking-tight">고객 관리 — 통합 CRM</h2>
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
-            영업팀의 고객 마스터. 활성·검토중·대기 상태별 필터, 플랜 차원 분류,
-            마지막 연락 시점까지 한 화면에. Enterprise 플랜 식별도 즉시.
+            영업팀의 고객 마스터. 활성·검토중·대기 상태별 필터, 이름·회사·이메일 검색,
+            마지막 연락 시점까지 한 화면에. <strong class="text-slate-900">Phase 2에서 실 API CRUD로 전환 완료</strong> —
+            추가·수정·삭제가 영속 저장되고 조직별 격리(RLS)로 다른 회사 고객은 보이지 않습니다.
           </p>
 
           <div class="shot mb-5">
-            <img src="../../assets/screenshots/user_guide/customers.png" alt="고객 관리 — 2,486명 mock + 필터 + 신규 추가">
+            <img src="../../assets/screenshots/user_guide/customers.png" alt="고객 관리 — 4 KPI + 필터/검색 + 신규/수정/삭제 모달">
           </div>
 
           <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
@@ -420,9 +429,14 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>통계 4종 + 6개 필터 + 12명 mock 데이터</li>
-                <li>신규 추가 모달 (실작동 UI)</li>
-                <li>이름·회사·이메일 검색 인터랙션</li>
+                <li>실 API CRUD — 추가/수정/삭제 모두 영속 저장 (`/customers` 6 endpoints)</li>
+                <li>4 KPI (전체/활성/검토중/대기) — 조직 전체 기준 자동 갱신</li>
+                <li>2 그룹 chip 필터 (status / sort) + 이름·회사·이메일 검색</li>
+                <li>URL query string 동기화 — 새로고침·뒤로 가기·북마크 복원</li>
+                <li>듀얼 모드 모달 (신규 + 수정 + 삭제) · 24명 seed (Acme 12 / Beta 12)</li>
+                <li>조직별 격리 — DB RLS로 다른 회사 고객 비노출, viewer 쓰기 403</li>
+                <li>입력 검증 (zod 서버 + JSDoc 화면) · soft delete (보존)</li>
+                <li>자동 회귀 — `phase_2_customers_e2e` 7 시나리오 + cleanup sweep</li>
               </ul>
             </div>
             <div class="status-box-soon">
@@ -430,9 +444,12 @@
                 <span class="pill-soon">⌛ 아직 안 됨</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>DB 영속 customers CRUD — <strong>Phase 2 직접 진입 항목</strong></li>
-                <li>RLS 격리 검증 — Phase 1 인프라는 준비, Phase 2 라우트 도입 시 활성화</li>
+                <li>행 클릭 상세 패널 (통화 이력 결합) — Phase 4</li>
+                <li>팀 단위 권한 분기 ("매니저는 자기 팀만") — Phase 3</li>
+                <li>CSV 일괄 가져오기 — Phase 6+ enterprise</li>
                 <li>HubSpot / Salesforce 양방향 동기화 — Phase 6 (v2 베타)</li>
+                <li>고급 검색 (오타 허용·전문 검색) — Phase 5+</li>
+                <li>삭제 고객 복원 UI — Phase 4+ 관리자 콘솔</li>
               </ul>
             </div>
           </div>
@@ -558,11 +575,11 @@
         <section id="summary">
           <div class="flex items-baseline gap-3 mb-1">
             <span class="text-[.78rem] font-bold tracking-wider text-blue-600">10</span>
-            <h2 class="text-[1.6rem] font-black tracking-tight">Phase 1 종합 정리</h2>
+            <h2 class="text-[1.6rem] font-black tracking-tight">Phase 1 + 2 종합 정리</h2>
           </div>
           <p class="text-slate-600 mb-6 leading-relaxed">
             지금 시점에서 무엇이 진짜로 동작하고 무엇이 mock인지를 한 표로 정리.
-            Phase 2 진입(고객 CRUD) 시점에 이 표는 갱신됩니다.
+            Phase 1 기반(인증·격리·권한·세션·실시간) + Phase 2 첫 비즈니스 entity(고객 CRUD)가 모두 완료된 상태.
           </p>
 
           <div class="card overflow-hidden">
@@ -570,20 +587,35 @@
               <thead class="bg-slate-50 text-slate-600 text-[.75rem] font-bold uppercase tracking-wider">
                 <tr>
                   <th class="text-left px-4 py-3 border-b border-slate-200">영역</th>
-                  <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1)</th>
+                  <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1 + 2)</th>
                   <th class="text-left px-4 py-3 border-b border-slate-200">예정</th>
                 </tr>
               </thead>
               <tbody class="text-slate-700">
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">데이터 영속</td>
-                  <td class="px-4 py-3">PostgreSQL 16 + RLS default-deny + 7 tables</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 2~4 — customers / calls / transcripts CRUD</td>
+                  <td class="px-4 py-3">PostgreSQL 16 + RLS default-deny + 8 tables (customers 포함)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 4 — calls / transcripts CRUD</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">고객 관리 (CRM)</td>
+                  <td class="px-4 py-3"><strong class="text-slate-900">실 API CRUD 동작</strong> — 6 endpoints + 4 KPI + 검색·필터·정렬 (URL 동기화) + soft delete + 24명 seed</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 4 — 행 클릭 상세 패널 (통화 이력 결합)</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">인증</td>
                   <td class="px-4 py-3">자체 Auth — Argon2id + JWT + refresh rotation + role guard</td>
                   <td class="px-4 py-3 text-slate-500">Phase 3 — 회원가입/이메일 인증/비밀번호 재설정</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">조직별 격리 (RLS)</td>
+                  <td class="px-4 py-3">DB 차원 강제 (Phase 1 인프라 + Phase 2 customers 정책 4 + 테스트로 회귀 보호)</td>
+                  <td class="px-4 py-3 text-slate-500">새 entity 추가 시 같은 패턴</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">입력 검증 / 형식 동기화</td>
+                  <td class="px-4 py-3">zod 서버 + JSDoc 화면 + sync 테스트 (customer 형식 한 출처)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 3+ 새 entity도 동일 패턴</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">통화 어시스턴트</td>
@@ -592,7 +624,7 @@
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">대시보드 / KPI</td>
-                  <td class="px-4 py-3">UI 인터랙션 mock (실 데이터 없음)</td>
+                  <td class="px-4 py-3">고객 KPI는 실 데이터 (4종). 통화·매출 KPI는 mock</td>
                   <td class="px-4 py-3 text-slate-500">Phase 4 — calls REST + 실 KPI 집계</td>
                 </tr>
                 <tr class="border-b border-slate-100">
@@ -602,8 +634,13 @@
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">팀 / 권한</td>
-                  <td class="px-4 py-3">role 미들웨어 4단계 동작, UI mock</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 3 — 초대 메일 + 가입 완성</td>
+                  <td class="px-4 py-3">role 미들웨어 4단계 동작 (customers는 viewer 차단까지 e2e 검증). 팀 단위 분기는 미도입</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 3 — 초대 메일 + 가입 완성 + 팀 단위 권한</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">자동 회귀</td>
+                  <td class="px-4 py-3">서버 단위 65/65 + sync 형식 + Phase 0.5 e2e 16/16 + customers e2e 7 시나리오 + cleanup sweep</td>
+                  <td class="px-4 py-3 text-slate-500">새 entity마다 같은 패턴 추가</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">데스크톱 앱</td>
@@ -612,8 +649,8 @@
                 </tr>
                 <tr>
                   <td class="px-4 py-3 font-semibold">운영 / TLS</td>
-                  <td class="px-4 py-3 text-slate-500">localhost plaintext만 (dev)</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 1 Step 5 — Caddy reverse proxy 진입 예정</td>
+                  <td class="px-4 py-3 text-slate-500">localhost plaintext (dev). Caddy single-origin variant 검증 통과</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 6+ — 운영 도메인 / 결제 / 모니터링</td>
                 </tr>
               </tbody>
             </table>
@@ -621,8 +658,7 @@
 
           <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
             Phase 1 기반 기능 시각 가이드: <a href="PHASE_1_FOUNDATIONS.html" class="text-blue-600 hover:underline">PHASE_1_FOUNDATIONS.html</a> ·
-            Phase별 상세 로드맵: <a href="../plan/BACKEND_PLAN.md" class="text-blue-600 hover:underline">BACKEND_PLAN.md</a> ·
-            Phase 1 진행 상태: <a href="../plan/PHASE_1_MASTER.md" class="text-blue-600 hover:underline">PHASE_1_MASTER.md</a>
+            Phase 2 고객 관리 시각 가이드: <a href="PHASE_2_FOUNDATIONS.html" class="text-cyan-700 hover:underline font-semibold">PHASE_2_FOUNDATIONS.html</a>
           </p>
         </section>
 
@@ -644,6 +680,8 @@
         <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
         <a href="../../index.html#features" class="hover:text-slate-900 no-underline">기능</a>
         <a href="../../index.html#pricing" class="hover:text-slate-900 no-underline">가격</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1 시각</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="text-cyan-700 font-semibold hover:text-cyan-800 no-underline">Phase 2 →</a>
         <a href="guide.html" class="hover:text-slate-900 no-underline">도입 가이드</a>
       </nav>
     </div>

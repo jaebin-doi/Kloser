@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser Phase 2 — 첫 비즈니스 데이터, 고객 관리</title>
+  <meta name="description" content="Phase 2가 만든 5가지 약속 — 고객 입력 / 검색·필터·정렬 / 권한 분기 / 조직 격리 / 입력 검증·소프트 삭제 — 을 사용자 입장에서 풀어 보여주는 시각 가이드." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(37, 99, 235, 0.07), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(6, 182, 212, 0.07), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+
+    .card-tight {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .03);
+    }
+
+    .pillar-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    }
+    .pillar-card:hover {
+      transform: translateY(-2px);
+      border-color: rgb(191 219 254);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(37, 99, 235, .15);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(37 99 235);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    .icon-bubble {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .shot {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgb(226 232 240);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(15, 23, 42, .15);
+      background: white;
+    }
+    .shot img { display: block; width: 100%; height: auto; }
+    .shot-caption {
+      font-size: .78rem;
+      color: rgb(100 116 139);
+      margin-top: 10px;
+      text-align: center;
+      letter-spacing: -0.005em;
+    }
+    .shot-caption strong { color: rgb(15 23 42); font-weight: 700; }
+
+    /* === Pillar visualizations =================================== */
+
+    /* KPI cards (Phase 2 §1 customers entity) */
+    .kpi-card {
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgb(226 232 240);
+      background: white;
+      text-align: left;
+    }
+    .kpi-num {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1;
+    }
+    .kpi-label {
+      font-size: .72rem;
+      font-weight: 700;
+      color: rgb(100 116 139);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-top: 6px;
+      display: block;
+    }
+    .kpi-total   { background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); border-color: rgb(191 219 254); }
+    .kpi-active  { background: linear-gradient(180deg, #ecfeff 0%, #ffffff 100%); border-color: rgb(165 243 252); }
+    .kpi-review  { background: linear-gradient(180deg, #fefce8 0%, #ffffff 100%); border-color: rgb(254 240 138); }
+    .kpi-pending { background: linear-gradient(180deg, #f3f4f6 0%, #ffffff 100%); border-color: rgb(203 213 225); }
+
+    /* Status badges (활성 / 검토중 / 대기) */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: -.005em;
+    }
+    .status-active  { background: rgb(209 250 229); color: rgb(6 95 70); }
+    .status-review  { background: rgb(254 243 199); color: rgb(146 64 14); }
+    .status-pending { background: rgb(241 245 249); color: rgb(71 85 105); }
+
+    /* Filter chips (status + sort 2 그룹) */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 12px;
+      border-radius: 9999px;
+      border: 1px solid rgb(226 232 240);
+      background: white;
+      font-size: .78rem;
+      font-weight: 600;
+      color: rgb(71 85 105);
+    }
+    .chip-on {
+      background: rgb(37 99 235);
+      border-color: rgb(37 99 235);
+      color: white;
+    }
+
+    /* URL bar mock */
+    .url-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 8px;
+      background: rgb(248 250 252);
+      font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: .76rem;
+      color: rgb(71 85 105);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .url-bar .key   { color: rgb(8 145 178); }
+    .url-bar .value { color: rgb(15 23 42); font-weight: 600; }
+    .url-bar .amp   { color: rgb(148 163 184); }
+
+    /* Two silos (Phase 1 패턴 재사용) */
+    .silo {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 12px;
+      padding: 14px;
+      background: white;
+    }
+    .silo-org-a { background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); }
+    .silo-org-b { background: linear-gradient(180deg, #ecfeff 0%, #ffffff 100%); }
+    .barrier {
+      border: 2px dashed rgb(248 113 113);
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: rgb(254 242 242);
+      color: rgb(153 27 27);
+      font-size: .78rem;
+      font-weight: 700;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Permission matrix */
+    .perm-row {
+      display: grid;
+      grid-template-columns: 1fr 96px 96px;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 14px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      font-size: .85rem;
+    }
+    .perm-allow {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 3px 0;
+      border-radius: 6px;
+      background: rgb(209 250 229);
+      color: rgb(6 95 70);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .perm-deny {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 3px 0;
+      border-radius: 6px;
+      background: rgb(254 226 226);
+      color: rgb(153 27 27);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .role-pill {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      flex-shrink: 0;
+    }
+    .role-pill-admin    { background: rgb(124 58 237); color: white; }
+    .role-pill-manager  { background: rgb(37 99 235);  color: white; }
+    .role-pill-employee { background: rgb(8 145 178);  color: white; }
+    .role-pill-viewer   { background: rgb(100 116 139); color: white; }
+
+    /* Validation flow boxes (Phase 1 step-box 재사용) */
+    .step-box {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: white;
+      flex: 1;
+    }
+    .step-box-pass { border-color: rgb(110 231 183); background: rgb(240 253 244); }
+    .step-box-fail { border-color: rgb(252 165 165); background: rgb(254 242 242); }
+    .step-arrow {
+      display: inline-flex;
+      align-items: center;
+      color: rgb(148 163 184);
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    /* Soft-delete visual */
+    .row-strike {
+      text-decoration: line-through;
+      text-decoration-color: rgb(248 113 113);
+      color: rgb(148 163 184);
+    }
+
+    /* Status chips for limitations table */
+    .chip-can {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(209 250 229); color: rgb(6 95 70);
+      font-size: .7rem; font-weight: 700;
+    }
+    .chip-soon {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(254 243 199); color: rgb(146 64 14);
+      font-size: .7rem; font-weight: 700;
+    }
+    .chip-new {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(219 234 254); color: rgb(30 64 175);
+      font-size: .7rem; font-weight: 700;
+    }
+
+    section[id] { scroll-margin-top: 24px; }
+    @media (min-width: 1024px) {
+      .toc-sticky { position: sticky; top: 24px; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1 시각 가이드</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-100 text-cyan-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 2 · CUSTOMERS
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        예시 데이터를 걷어내고 <br>
+        <span class="g-text">진짜 고객 데이터</span>를 올리는 단계
+      </h1>
+      <p class="mt-6 text-[1.05rem] text-slate-600 leading-relaxed">
+        Phase 1이 만든 계정·조직·권한 기반 위에 첫 번째 실제 비즈니스 데이터인
+        <strong class="text-slate-900">고객(customers)</strong>이 올라갑니다.
+        평가자가 직접 입력·수정·삭제·검색·필터링한 데이터가 영속 저장되고, 다음에 다시 들어와도 그대로 남아 있습니다.
+      </p>
+      <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
+        <p class="text-[.9rem] text-slate-700 leading-relaxed">
+          <span class="text-blue-600 font-black mr-1">⌜</span>
+          Phase 2는 첫 번째 비즈니스 entity를 안전하게 올리는 단계입니다.
+          이전 단계에서 만든 분리·권한 약속이 그대로 적용된 채 진짜 데이터가 다뤄집니다.
+          <span class="text-blue-600 font-black ml-1">⌟</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Pillars overview -->
+  <section class="max-w-6xl mx-auto px-6 pb-16">
+    <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">Phase 2의 약속</p>
+    <h2 class="text-[1.6rem] font-black tracking-tight mb-6">평가자가 직접 확인할 수 있는 5가지 기둥</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="#crud" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-blue-50 text-blue-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">1 · 고객 입력 (CRUD)</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">추가·수정·삭제가 모달 한 곳에서 동작. 4가지 KPI 카드가 즉시 갱신.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#search" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-cyan-50 text-cyan-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">2 · 검색·필터·정렬</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">선택한 조건이 URL에 반영돼 새로고침·뒤로 가기·북마크에서도 그대로 복원.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#perm" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-violet-50 text-violet-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9-4.97 0-9-4.03-9-9 0-4.97 4.03-9 9-9 1.66 0 3.21.45 4.55 1.24"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">3 · 권한 분기</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">조회(Viewer) 권한은 추가·수정·삭제가 화면이 아닌 서버에서 차단됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#org" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-emerald-50 text-emerald-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">4 · 조직 격리</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">고객 데이터에도 Phase 1의 이중 분리(서버 + DB)가 그대로 적용.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#valid" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-amber-50 text-amber-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">5 · 입력 검증 + 안전한 삭제</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">화면 검증 + 서버 검증 이중. 삭제는 표시만 붙고 시스템 내부 보존(soft delete).</p>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Detail sections ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24 space-y-20">
+
+    <!-- ─────────── 1. CRUD ─────────── -->
+    <section id="crud">
+      <p class="text-[.78rem] font-bold tracking-wider text-blue-600 mb-2">기둥 01</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">고객 입력 — 추가·수정·삭제가 한 모달에서 동작합니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        고객을 추가할 때 쓰던 모달이 그대로 수정·삭제도 처리합니다. 행을 클릭하면 같은 모달이
+        기존 값을 미리 채운 채 열리고, 변경한 값만 반영됩니다. 삭제 버튼도 같은 모달 안에 있습니다 —
+        사용자에게는 한 가지 입력 흐름만 노출됩니다.
+      </p>
+
+      <!-- KPI cards -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">조직 전체 기준 4가지 지표</p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="kpi-card kpi-total">
+          <div class="kpi-num">12</div>
+          <span class="kpi-label">전체</span>
+        </div>
+        <div class="kpi-card kpi-active">
+          <div class="kpi-num">7</div>
+          <span class="kpi-label">활성</span>
+        </div>
+        <div class="kpi-card kpi-review">
+          <div class="kpi-num">3</div>
+          <span class="kpi-label">검토중</span>
+        </div>
+        <div class="kpi-card kpi-pending">
+          <div class="kpi-num">2</div>
+          <span class="kpi-label">대기</span>
+        </div>
+      </div>
+
+      <!-- CRUD flow -->
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">한 모달, 세 가지 동작</p>
+        <div class="flex flex-col lg:flex-row items-stretch gap-3">
+          <div class="step-box">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-blue-600 mb-1">추가</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">"고객 추가" 버튼</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">빈 모달 → 입력 → 저장. 목록 최상단에 새 행, KPI <strong>전체 +1</strong>·<strong>대기 +1</strong>.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="step-box">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-blue-600 mb-1">수정</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">행 클릭</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">같은 모달이 기존 값으로 채워져 열림 → 변경 → 저장. 목록 즉시 갱신, KPI 재계산.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="step-box">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-1">삭제</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">모달 안 "삭제" 버튼</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">확인 후 행이 사라지고 KPI 재계산. 데이터는 시스템 내부에 보존됨.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side info: customer fields -->
+      <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">한 명의 고객이 가질 수 있는 정보</p>
+          <ul class="text-[.82rem] text-slate-700 space-y-1.5 list-disc pl-4">
+            <li><strong>이름</strong> (필수)</li>
+            <li>회사 / 이메일 / 전화 (선택)</li>
+            <li>상태 — <span class="status-badge status-active">활성</span> <span class="status-badge status-review">검토중</span> <span class="status-badge status-pending">대기</span></li>
+            <li>담당자 (우리 조직 안 사용자)</li>
+            <li>마지막 연락 시각</li>
+          </ul>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">변경 후 화면 갱신 정책</p>
+          <p class="text-slate-600 leading-relaxed">
+            추가·수정·삭제 직후 목록을 <strong>전체 재조회</strong>합니다. 부분 갱신이 아니라
+            전체 재조회를 택한 이유는 검색·필터·정렬이 활성화된 상태에서도 KPI·정렬·페이지가
+            어긋나지 않게 하기 위함입니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- Real screenshot: customers page -->
+      <figure class="mt-10">
+        <div class="shot">
+          <img src="../../assets/screenshots/user_guide/customers.png" alt="실제 고객 관리 화면 — 4가지 KPI 카드, 검색·필터, 12명의 시드 고객 목록">
+        </div>
+        <figcaption class="shot-caption"><strong>실제 고객 관리 화면</strong> — 상단 4가지 KPI 카드, 좌측 사이드바의 고객 수 배지, 가운데 검색·필터 영역, 목록의 상태 뱃지가 모두 같은 진실값을 가리킵니다.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ─────────── 2. Search / Filter / Sort ─────────── -->
+    <section id="search">
+      <p class="text-[.78rem] font-bold tracking-wider text-cyan-600 mb-2">기둥 02</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">검색·필터·정렬 — 화면 상태가 URL에 그대로 반영됩니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        검색어·상태 필터·정렬 기준을 바꾸면 그 선택이 URL에 반영됩니다. 새로고침·뒤로 가기·북마크
+        모두에서 같은 화면이 그대로 복원됩니다. 동료에게 링크를 보내면 같은 결과가 그대로 열립니다.
+      </p>
+
+      <!-- Filter chips -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">상태 필터 (2 그룹 칩)</p>
+      <div class="flex flex-wrap gap-2 mb-5">
+        <span class="chip">전체</span>
+        <span class="chip chip-on">활성</span>
+        <span class="chip">검토중</span>
+        <span class="chip">대기</span>
+      </div>
+
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">정렬</p>
+      <div class="flex flex-wrap gap-2 mb-6">
+        <span class="chip">이름</span>
+        <span class="chip">마지막 연락</span>
+        <span class="chip chip-on">추가 시각 ↓</span>
+      </div>
+
+      <!-- URL bar mock -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">선택된 조건이 곧 URL</p>
+      <div class="url-bar mb-6 overflow-x-auto">
+        <span>/platform/customers.html</span>
+        <span class="amp">?</span>
+        <span><span class="key">q</span>=<span class="value">김</span></span>
+        <span class="amp">&amp;</span>
+        <span><span class="key">status</span>=<span class="value">active</span></span>
+        <span class="amp">&amp;</span>
+        <span><span class="key">sort</span>=<span class="value">created_at</span></span>
+        <span class="amp">&amp;</span>
+        <span><span class="key">dir</span>=<span class="value">desc</span></span>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">통계는 항상 조직 전체 기준</p>
+          <p class="text-slate-600 leading-relaxed">
+            상태=활성 필터로 7명만 보고 있어도 KPI는 "전체 12 / 활성 7 / 검토중 3 / 대기 2"를
+            그대로 표시합니다. <strong>필터는 보기에만 영향을 주고, 통계는 진실값</strong>입니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">검색 동작 범위</p>
+          <p class="text-slate-600 leading-relaxed">
+            이름 · 회사 · 이메일에서 부분 일치(대소문자 무시)로 찾습니다. 데이터가 늘어나면
+            오타 허용·동의어·전문 검색은 Phase 5+에서 강화됩니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. Permissions ─────────── -->
+    <section id="perm">
+      <p class="text-[.78rem] font-bold tracking-wider text-violet-600 mb-2">기둥 03</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">권한 분기 — 조회(Viewer)는 화면이 아닌 서버에서 차단</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 1의 4단계 권한이 고객 작업에 정확히 적용됩니다. 조회 권한은 추가·수정·삭제 시도가
+        <strong class="text-slate-900">화면 비활성화에만 의존하지 않고 서버에서 거부</strong>됩니다 —
+        직접 요청을 보내도 통과하지 않습니다.
+      </p>
+
+      <div class="space-y-2 mb-5">
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-admin">ADMIN</span>
+            <span class="font-semibold text-slate-900">관리자</span>
+          </div>
+          <span class="perm-allow">✓ 보기</span>
+          <span class="perm-allow">✓ 추가/수정/삭제</span>
+        </div>
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-manager">MANAGER</span>
+            <span class="font-semibold text-slate-900">매니저</span>
+          </div>
+          <span class="perm-allow">✓ 보기</span>
+          <span class="perm-allow">✓ 추가/수정/삭제</span>
+        </div>
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-employee">EMPLOYEE</span>
+            <span class="font-semibold text-slate-900">직원</span>
+          </div>
+          <span class="perm-allow">✓ 보기</span>
+          <span class="perm-allow">✓ 추가/수정/삭제</span>
+        </div>
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-viewer">VIEWER</span>
+            <span class="font-semibold text-slate-900">조회</span>
+          </div>
+          <span class="perm-allow">✓ 보기</span>
+          <span class="perm-deny">✗ 서버에서 403</span>
+        </div>
+      </div>
+
+      <div class="card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        <strong class="text-slate-900">팀 단위 권한 분기는 Phase 3:</strong>
+        Phase 2 시점에는 매니저/직원이 모두 조직 전체 고객을 작성·수정할 수 있도록 단순화했습니다.
+        "매니저는 자기 팀 고객만, 직원은 자기 담당 고객만" 정책은 Phase 3의 팀 초대 활성화와 함께
+        도입됩니다.
+      </div>
+    </section>
+
+    <!-- ─────────── 4. Organization isolation ─────────── -->
+    <section id="org">
+      <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기둥 04</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">조직 격리 — 다른 회사 고객은 보이지 않습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 1이 만든 이중 분리(서버 + 데이터베이스)가 고객 데이터에도 그대로 적용됩니다. URL을 바꾸거나
+        ID를 추측해도, 자기 조직에 새 고객을 만들 때 다른 조직 ID를 박아 넣으려 해도 모두 차단됩니다.
+      </p>
+
+      <div class="grid lg:grid-cols-[1fr_auto_1fr] gap-6 items-stretch">
+        <div class="silo silo-org-a">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-blue-600 mb-2">조직 A — Acme Corp</p>
+          <p class="text-[.85rem] text-slate-700 mb-3 leading-relaxed">사용자가 보고 있는 고객 12명</p>
+          <ul class="space-y-1.5 text-[.82rem] text-slate-600">
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>김민수 · 박지영 · 이수현</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>최영준 · 정하늘 · 강도윤</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>… 나머지 6명</li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col items-center justify-center gap-3 lg:py-2">
+          <div class="barrier">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            서버 + DB 양쪽 차단
+          </div>
+          <p class="text-[.72rem] text-slate-500 text-center max-w-[180px] leading-relaxed">
+            새 고객 작성 시점에도 다른 조직 ID를 박을 수 없습니다.
+          </p>
+        </div>
+
+        <div class="silo silo-org-b opacity-50">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider text-cyan-600 mb-2">조직 B — Beta LLC</p>
+          <p class="text-[.85rem] text-slate-700 mb-3 leading-relaxed">사용자에게 절대 보이지 않는 고객 12명</p>
+          <ul class="space-y-1.5 text-[.82rem] text-slate-600">
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>정승호 · 이채린 · 박재훈</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>김도윤 · 윤서아 · 한지유</li>
+            <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>… (이 화면에 절대 등장 안 함)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-6 card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        <strong class="text-slate-900">자동 회귀로 매번 검증:</strong>
+        고객 흐름 e2e 시나리오 5는 매번 Acme로 로그인 → 12명 확인 → 로그아웃 → Beta로 로그인 → 다른 12명 확인 →
+        다시 Acme로 복귀 시 원래 12명이 그대로인지를 자동 검사합니다.
+      </div>
+    </section>
+
+    <!-- ─────────── 5. Validation + soft delete ─────────── -->
+    <section id="valid">
+      <p class="text-[.78rem] font-bold tracking-wider text-amber-600 mb-2">기둥 05</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">입력 검증 + 안전한 삭제 — 두 단계 안전선과 즉시 사라지지 않는 데이터</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        잘못된 입력은 화면이 1차로 거르고, 그 뒤에도 서버가 한 번 더 거릅니다.
+        삭제는 화면에서 즉시 사라지지만 시스템 내부에서는 표시만 붙은 채 보존됩니다.
+      </p>
+
+      <!-- Validation flow -->
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-amber-600 mb-3">잘못된 입력 거부 흐름</p>
+        <div class="flex flex-col lg:flex-row items-stretch gap-3">
+          <div class="step-box">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-1">STEP 1 — 화면</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">즉시 표시</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">이름이 비어 있으면 저장 버튼 비활성. 이메일 형식 어긋나면 입력 직후 표시.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="step-box step-box-fail">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-1">STEP 2 — 서버</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">실제 안전선</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">화면을 우회해 직접 보낸 잘못된 요청도 거부. 항목 단위 사유와 함께 응답.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="step-box step-box-pass">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-1">STEP 3 — DB</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">제약 조건</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">조직 격리 + 상태 값 제한이 마지막 안전선. 한 곳이 뚫려도 다음이 막아냄.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Server reject examples -->
+      <div class="card-tight p-4 mb-7">
+        <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">서버가 명시 거부하는 예시</p>
+        <ul class="text-[.85rem] text-slate-700 space-y-1.5">
+          <li>· 이름이 빈 추가 요청 → <code class="text-rose-600 font-mono text-[.78rem]">400 invalid_input (name)</code></li>
+          <li>· 형식이 맞지 않는 이메일 → <code class="text-rose-600 font-mono text-[.78rem]">400 invalid_input (email)</code></li>
+          <li>· 알 수 없는 상태 값 → <code class="text-rose-600 font-mono text-[.78rem]">400 invalid_status</code></li>
+          <li>· 잘못된 정렬 컬럼 / 비정상 페이지 크기 → <code class="text-rose-600 font-mono text-[.78rem]">400 invalid_&lt;항목&gt;</code></li>
+          <li>· 다른 조직 고객 ID로 수정·삭제 → "찾을 수 없음" (존재 자체를 노출하지 않음)</li>
+        </ul>
+      </div>
+
+      <!-- Soft delete -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">삭제 — 사라지는 듯하지만 시스템 내부엔 보존</p>
+      <div class="card p-5">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between border border-slate-200 rounded-lg px-4 py-2.5 text-[.88rem]">
+            <span class="font-semibold text-slate-900">박지영 · ACME 컨설팅</span>
+            <span class="status-badge status-active">활성</span>
+          </div>
+          <div class="flex items-center justify-between border border-slate-200 rounded-lg px-4 py-2.5 text-[.88rem]">
+            <span class="font-semibold text-slate-900">최영준 · 한울 테크</span>
+            <span class="status-badge status-pending">대기</span>
+          </div>
+          <div class="flex items-center justify-between border-2 border-dashed border-rose-200 rounded-lg px-4 py-2.5 text-[.88rem] bg-rose-50/40">
+            <span class="row-strike">정하늘 · 새벽 트레이딩</span>
+            <span class="text-[.7rem] font-bold text-rose-600">삭제 표시</span>
+          </div>
+        </div>
+        <div class="mt-4 grid sm:grid-cols-3 gap-3 text-[.82rem]">
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">화면에서 사라짐</p>
+            <p class="text-slate-600 leading-relaxed">목록·검색·통계 어디에도 노출되지 않습니다.</p>
+          </div>
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">시스템 내부 보존</p>
+            <p class="text-slate-600 leading-relaxed">감사·복구를 위한 데이터는 그대로 남아 있습니다.</p>
+          </div>
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">중복 우려 없음</p>
+            <p class="text-slate-600 leading-relaxed">같은 이름의 고객을 다시 만들어도 별개 row로 시작합니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 제한사항 + 다음 Phase ─────────── -->
+    <section id="limits">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">SCOPE</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">Phase 2가 다루는 것 / 다루지 않는 것</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 2는 첫 번째 비즈니스 entity를 안전하게 올린 단계입니다. 평가자 화면에서 즉시 동작하는 부분과
+        다음 Phase로 미뤄둔 부분이 명확히 구분됩니다.
+      </p>
+
+      <div class="card overflow-hidden">
+        <table class="w-full text-[.88rem]">
+          <thead class="bg-slate-50 text-slate-600 text-[.72rem] font-bold uppercase tracking-wider">
+            <tr>
+              <th class="text-left px-4 py-3 border-b border-slate-200">영역</th>
+              <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 2)</th>
+              <th class="text-left px-4 py-3 border-b border-slate-200">예정</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-700">
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">고객 추가 / 수정 / 삭제</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 신규 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">검색 · 필터 · 정렬 (URL 동기화)</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 신규 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">조직별 고객 격리 (RLS)</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작 (DB 차원)</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">권한별 차등 (Viewer 차단)</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작 (서버에서 403)</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">입력 검증 (화면 + 서버 + DB)</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 신규 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">소프트 삭제 (보존)</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 신규 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">행 클릭 상세 패널 (통화 이력 결합)</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 미구현</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 4</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">자가 회원가입 / 비밀번호 재설정</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 미구현</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 3 — 이메일 인증과 함께</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">팀 단위 권한 분기</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 단순화</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 3 — 팀 초대와 함께</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">CSV 일괄 가져오기 / 외부 시스템 동기화</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 미구현</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 6+</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">고급 검색 (오타 허용 / 전문 검색)</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 부분 일치만</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 5+</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">변경 이력 / 감사 로그</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 테이블만 존재</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 4 — 통화 기록과 함께</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-semibold">삭제 고객 복원 UI</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 운영자만 가능</span></td>
+              <td class="px-4 py-3 text-slate-500">Phase 4+ 관리자 콘솔</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+        Phase 2가 만든 약속(고객 데이터 형식·검증·격리·권한·소프트 삭제)은 다음 Phase의 모든
+        새 entity에 그대로 재사용됩니다. 한 번 정한 패턴이 회귀 검사로 보호되므로 새 기능마다
+        같은 검증을 다시 만들 필요가 없습니다.
+      </p>
+    </section>
+
+    <!-- ─────────── 자동 회귀 ─────────── -->
+    <section id="regress">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">REGRESSION</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">자동 회귀 — 다음 변경이 위 약속을 깨지 않도록</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 2의 모든 약속은 자동 검사로 매번 검증됩니다. 다섯 종이 모두 통과해야만 합격으로 인정됩니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">65 / 65</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">서버 단위</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">인증 · 격리 · 저장소 · API · 실시간</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">16 / 16</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">고객 API</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">정상 + 모든 4xx 경로</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">7 / 7</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">고객 e2e</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">로그인 → CRUD → 격리 → 정리 검사</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">16 / 16</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">통화 e2e (회귀)</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">Phase 1 흐름 안 깨짐</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">PASS</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">형식 동기화</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">서버 ↔ 화면 정의 일치</p>
+        </div>
+      </div>
+
+      <div class="mt-5 card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        고객 e2e의 마지막 시나리오는 앞선 시나리오들이 만든 임시 데이터(<code class="font-mono text-[.78rem]">e2etest-</code> 접두사)가
+        모두 정리됐는지를 직접 검사합니다. 정리 약속을 코드 자체가 강제하므로, 회귀 누적이 시작되지 않습니다.
+      </div>
+    </section>
+
+    <!-- ─────────── 기술 요약 ─────────── -->
+    <section id="tech">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">참고</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">기술 요약</h2>
+      <p class="text-slate-600 mb-6 leading-relaxed max-w-3xl">
+        보안·아키텍처에 관심 있는 평가자가 핵심 결정 사항을 한눈에 보기 위한 짧은 요약. 본 가이드의
+        다른 섹션은 이 용어를 몰라도 이해할 수 있도록 작성했습니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">고객 저장 구조</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">customers</code> 테이블 + 4 RLS 정책 + 5 부분 인덱스
+            (<code class="font-mono text-[.78rem]">WHERE deleted_at IS NULL</code>). soft delete는
+            <code class="font-mono text-[.78rem]">deleted_at</code> 컬럼으로 표현.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">조직 격리</p>
+          <p class="text-slate-600 leading-relaxed">
+            Phase 1과 같은 <code class="font-mono text-[.78rem]">current_app_org_id()</code> helper 기반 4 RLS 정책. 새 row 작성 시점에도
+            <code class="font-mono text-[.78rem]">WITH CHECK</code>으로 다른 조직 ID 작성 차단.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">권한 분기</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">requireAuth + requireRole</code> 미들웨어 조합. viewer는 쓰기 endpoint에서
+            application 단계 403, 추가로 RLS가 두 번째 안전선.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">입력 검증</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">zod</code> 스키마가 서버 측 단일 진입점. ZodError → <code class="font-mono text-[.78rem]">400 invalid_input</code>,
+            정렬·페이지 위반은 <code class="font-mono text-[.78rem]">400 invalid_&lt;field&gt; + value</code>로 별도 매핑.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">양쪽 형식 동기화</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">server/src/types/customers.ts</code> (zod 원본) +
+            <code class="font-mono text-[.78rem]">platform/types/customers.js</code> (JSDoc 사본) +
+            <code class="font-mono text-[.78rem]">test/sync_shared_types.mjs</code> (정규식 diff 검사).
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">변경 후 화면 갱신</p>
+          <p class="text-slate-600 leading-relaxed">
+            추가·수정·삭제 직후 목록 전체 재조회 (<code class="font-mono text-[.78rem]">loadAll</code>). 검색·필터·정렬 활성화 상태에서도
+            통계·페이지 정합 유지.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">자동 회귀</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">npm --prefix server test</code> 65/65 +
+            <code class="font-mono text-[.78rem]">sync_shared_types</code> +
+            <code class="font-mono text-[.78rem]">phase_0_5_e2e</code> 16/16 +
+            <code class="font-mono text-[.78rem]">phase_2_customers_e2e</code> 7/7.
+          </p>
+        </div>
+      </div>
+
+      <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+        Phase 1의 기반(계정·조직·권한·세션·실시간)이 궁금하면
+        <a href="PHASE_1_FOUNDATIONS.html" class="text-blue-600 hover:underline font-semibold">PHASE_1_FOUNDATIONS.html</a>
+        에 있습니다.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">Phase 2 Customers</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1 시각</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>
