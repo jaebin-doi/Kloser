@@ -3,6 +3,8 @@
 > **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 3 + §2-9/10 사전 결정.
 > **선행**: Step 2 완료 — `docs/plan/PHASE_2_STEP_2_REPO.md`, `docs/plan/PHASE_2_STEP_2_FINDINGS.md`.
 > **기간**: 0.5일.
+>
+> ⚠️ **본 plan에 명시된 `CustomerPlan` enum 및 schema의 `plan` 필드는 Step 5에서 제거됐다** (도메인 경계 충돌). 최종 schema는 `server/src/types/customers.ts` + master plan / Step 5 findings 참조. sync 검증 대상 4종은 그대로 유지된다.
 
 ---
 

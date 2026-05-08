@@ -162,15 +162,17 @@ test("GET /customers?status=active → 200, every row status='active'", async ()
     }
 });
 
-test("GET /customers with invalid status/plan/assignedUserId → 400 invalid_<field> + value", async () => {
-    // Step 4 plan §2-7 / §6 contract: each of the three throwable fields
-    // surfaces as InvalidListOptionError → 400 invalid_<field> with the
-    // raw value preserved. q/sort/dir/limit/offset never throw (silent
-    // fallback) and aren't covered here.
+test("GET /customers with invalid status/assignedUserId → 400 invalid_<field> + value", async () => {
+    // Step 4 plan §2-7 / §6 contract: each throwable field surfaces as
+    // InvalidListOptionError → 400 invalid_<field> with the raw value
+    // preserved. q/sort/dir/limit/offset never throw (silent fallback)
+    // and aren't covered here.
+    //
+    // (`plan` was a throwable field originally — removed in
+    // 1715000003000_drop_customers_plan.sql alongside the column.)
     const token = await loginToken("admin@acme.test", "acme-admin-1234");
     const cases = [
         { qs: "status=bogus", field: "status", value: "bogus" },
-        { qs: "plan=Trial", field: "plan", value: "Trial" },
         { qs: "assignedUserId=not-a-uuid", field: "assignedUserId", value: "not-a-uuid" },
     ];
     for (const c of cases) {

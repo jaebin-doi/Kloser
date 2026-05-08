@@ -35,8 +35,10 @@ const UuidString = z.string().regex(UUID_RE, "invalid uuid");
 export const CustomerStatus = z.enum(["active", "review", "pending"]);
 export type CustomerStatus = z.infer<typeof CustomerStatus>;
 
-export const CustomerPlan = z.enum(["Starter", "Pro", "Enterprise"]);
-export type CustomerPlan = z.infer<typeof CustomerPlan>;
+// `CustomerPlan` (Starter/Pro/Enterprise) was removed in
+// migrations/1715000003000_drop_customers_plan.sql — it collided with
+// `organizations.plan` (the Kloser tenant subscription tier). Customer
+// rows no longer carry a Kloser plan attribute.
 
 export const CustomerSortKey = z.enum([
   "name",
@@ -75,7 +77,6 @@ export const CustomerCreateInput = z.object({
   email: z.string().email().nullable().optional(),
   phone: z.string().trim().max(40).nullable().optional(),
   status: CustomerStatus.optional(),
-  plan: CustomerPlan.nullable().optional(),
   assigned_user_id: UuidString.nullable().optional(),
   last_contacted_at: LastContactedAt.optional(),
 });
@@ -107,7 +108,6 @@ export const Customer = z.object({
   email: z.string().nullable(),
   phone: z.string().nullable(),
   status: CustomerStatus,
-  plan: CustomerPlan.nullable(),
   assigned_user_id: UuidString.nullable(),
   last_contacted_at: z.date().nullable(),
   created_at: z.date(),
@@ -119,13 +119,16 @@ export type Customer = z.infer<typeof Customer>;
 //
 // Step 2 invalid-input policy preserved exactly:
 //   q, sort, dir, limit, offset → preprocess/catch/default (silent fallback)
-//   status, plan, assignedUserId → reject on invalid (caller wraps to
-//                                  InvalidListOptionError)
+//   status, assignedUserId → reject on invalid (caller wraps to
+//                            InvalidListOptionError)
 //
 // Invariant: `CustomerListQuery.safeParse(...)` only fails with issues
-// whose path[0] is one of "status" | "plan" | "assignedUserId". Schema
-// changes that break this invariant violate the policy from
+// whose path[0] is one of "status" | "assignedUserId". Schema changes
+// that break this invariant violate the policy from
 // PHASE_2_STEP_3_SHARED_TYPES.md §8.
+//
+// (`plan` was removed in 1715000003000_drop_customers_plan.sql — see
+// note next to the CustomerStatus export.)
 
 const ListLimit = z.preprocess((v) => {
   if (v === undefined || v === null || v === "") return 20;
@@ -157,11 +160,6 @@ const ListStatus = z.preprocess((v) => {
   return v;
 }, CustomerStatus.optional());
 
-const ListPlan = z.preprocess((v) => {
-  if (v === undefined || v === null || v === "") return undefined;
-  return v;
-}, CustomerPlan.optional());
-
 const AssignedUserId = z.preprocess((v) => {
   if (v === undefined || v === "") return undefined;
   if (v === null || v === "null") return null;
@@ -171,7 +169,6 @@ const AssignedUserId = z.preprocess((v) => {
 export const CustomerListQuery = z.object({
   q: ListQ,
   status: ListStatus,
-  plan: ListPlan,
   assignedUserId: AssignedUserId,
   limit: ListLimit.default(20),
   offset: ListOffset.default(0),
@@ -199,5 +196,5 @@ export type CustomerStats = z.infer<typeof CustomerStats>;
 
 export type CustomerListFilters = Pick<
   CustomerListQuery,
-  "q" | "status" | "plan" | "assignedUserId"
+  "q" | "status" | "assignedUserId"
 >;

@@ -16,13 +16,14 @@
 //     server schema only. The mirror tracks **field names** so the sync
 //     test can diff both sides; type narrowing and defaults are out of
 //     scope for the mirror.
+//
+// Domain note (2026-05-08): the `plan` field (Starter/Pro/Enterprise)
+// was removed because it collided with `organizations.plan` (the Kloser
+// tenant subscription tier). Customer rows describe the tenant's
+// leads/contacts; they do not carry a Kloser plan.
 
 /**
  * @typedef {"active" | "review" | "pending"} CustomerStatus
- */
-
-/**
- * @typedef {"Starter" | "Pro" | "Enterprise"} CustomerPlan
  */
 
 /**
@@ -34,7 +35,6 @@
  * @property {string|null} email
  * @property {string|null} phone
  * @property {CustomerStatus} status
- * @property {CustomerPlan|null} plan
  * @property {string|null} assigned_user_id
  * @property {string|null} last_contacted_at
  * @property {string} created_at
@@ -48,7 +48,6 @@
  * @property {string|null} [email]
  * @property {string|null} [phone]
  * @property {CustomerStatus} [status]
- * @property {CustomerPlan|null} [plan]
  * @property {string|null} [assigned_user_id]
  * @property {string|null} [last_contacted_at]
  */
@@ -61,7 +60,6 @@
  * @typedef {Object} CustomerListQuery
  * @property {string} [q]
  * @property {CustomerStatus} [status]
- * @property {CustomerPlan} [plan]
  * @property {string|"null"|null} [assignedUserId]
  * @property {number} [limit]
  * @property {number} [offset]

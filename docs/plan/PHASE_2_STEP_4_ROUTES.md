@@ -3,6 +3,8 @@
 > **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 4 + §1 (6 endpoint 표).
 > **선행**: Step 3 완료 — `PHASE_2_STEP_3_SHARED_TYPES.md`, `PHASE_2_STEP_3_FINDINGS.md`.
 > **기간**: 1.5일.
+>
+> ⚠️ **invalid query 400 매핑 표·테스트의 `plan` 필드는 Step 5에서 제거됐다.** 본 plan은 도입 시점 (status/plan/assignedUserId 3종 throwable) 기준이고, 최종은 status/assignedUserId 2종이다. Step 5 findings 참조.
 
 ---
 

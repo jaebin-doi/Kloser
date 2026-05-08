@@ -3,6 +3,8 @@
 > **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 1 + §4 데이터 모델.
 > **선행**: Phase 1 완료 — `docs/plan/PHASE_1_MASTER.md`.
 > **기간**: 1일.
+>
+> ⚠️ **본 문서는 도입 시점 (1715000002000_customers.sql) 기준이다.** Step 5 findings의 domain cleanup record가 적용된 **최종 모델은 master / Step 5 findings 참조**. 본 plan에서 명시한 `plan text + CHECK ('Starter','Pro','Enterprise')` 컬럼·`customers_org_plan_idx` 인덱스는 1715000003000_drop_customers_plan.sql에서 drop 됐다.
 
 ---
 

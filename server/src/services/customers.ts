@@ -42,11 +42,13 @@ export class InvalidListOptionError extends Error {
 }
 
 // CustomerListQuery is constructed so that q/sort/dir/limit/offset never
-// throw: preprocess + .catch + .default normalize them. Only status,
-// plan, and assignedUserId can produce ZodIssues. If a ZodError surfaces
-// with any other path[0], the schema invariant has been broken — better
-// to crash loudly in dev than to silently swallow it.
-const THROWABLE_FIELDS = new Set(["status", "plan", "assignedUserId"]);
+// throw: preprocess + .catch + .default normalize them. Only status and
+// assignedUserId can produce ZodIssues. If a ZodError surfaces with any
+// other path[0], the schema invariant has been broken — better to crash
+// loudly in dev than to silently swallow it.
+//
+// (`plan` was removed in 1715000003000_drop_customers_plan.sql.)
+const THROWABLE_FIELDS = new Set(["status", "assignedUserId"]);
 
 export function normalizeListOptions(raw: unknown): CustomerListQueryType {
   // Step 2 behavior: any non-plain-object raw input (string, number,

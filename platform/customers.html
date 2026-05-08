@@ -101,12 +101,6 @@
               <button class="filter-chip" data-value="review">검토중</button>
               <button class="filter-chip" data-value="pending">대기</button>
             </div>
-            <div class="chip-group" data-group="plan">
-              <button class="filter-chip active" data-value="">전체 플랜</button>
-              <button class="filter-chip" data-value="Enterprise">Enterprise</button>
-              <button class="filter-chip" data-value="Pro">Pro</button>
-              <button class="filter-chip" data-value="Starter">Starter</button>
-            </div>
             <div class="chip-group" data-group="sort">
               <button class="filter-chip active" data-value="created_at">최신순</button>
               <button class="filter-chip" data-value="last_contacted_at">최근 연락순</button>
@@ -124,7 +118,6 @@
                 <th class="hidden sm:table-cell">회사</th>
                 <th class="hidden md:table-cell">이메일</th>
                 <th>상태</th>
-                <th class="hidden lg:table-cell">플랜</th>
                 <th class="hidden xl:table-cell">마지막 연락</th>
               </tr>
             </thead>
@@ -174,15 +167,6 @@
               <option value="pending" selected>대기</option>
             </select>
           </div>
-        </div>
-        <div>
-          <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">플랜</label>
-          <select id="newPlan" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] bg-white">
-            <option value="">- (미할당)</option>
-            <option value="Starter">Starter</option>
-            <option value="Pro">Pro</option>
-            <option value="Enterprise">Enterprise</option>
-          </select>
         </div>
       </div>
       <div class="px-6 py-4 border-t border-slate-200 flex gap-2 justify-between">
@@ -236,7 +220,6 @@
       const state = {
         q:       p.get('q')      || undefined,
         status:  p.get('status') || undefined,
-        plan:    p.get('plan')   || undefined,
         sort:    p.get('sort')   || undefined,
         dir:     p.get('dir')    || undefined,
       };
@@ -249,7 +232,6 @@
       const p = new URLSearchParams();
       if (state.q)      p.set('q', state.q);
       if (state.status) p.set('status', state.status);
-      if (state.plan)   p.set('plan', state.plan);
       if (state.sort)   p.set('sort', state.sort);
       if (state.dir)    p.set('dir', state.dir);
       return p.toString();
@@ -313,11 +295,6 @@
     // ──────────────────────────────────────────────
     //  Render
     // ──────────────────────────────────────────────
-    const planColors = {
-      Enterprise: 'badge-violet',
-      Pro: 'badge-blue',
-      Starter: 'badge-slate',
-    };
     const statusColors = {
       active:  { c: 'badge-emerald', l: '활성' },
       review:  { c: 'badge-amber',   l: '검토중' },
@@ -346,7 +323,7 @@
       el.innerHTML = '';
 
       if (customers.length === 0) {
-        el.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-12 text-[.85rem]">고객이 없습니다. "고객 추가"로 시작해 보세요.</td></tr>';
+        el.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-12 text-[.85rem]">고객이 없습니다. "고객 추가"로 시작해 보세요.</td></tr>';
         return;
       }
 
@@ -355,8 +332,6 @@
         tr.className = 'customer-row';
         tr.dataset.customerId = c.id;
         const st = statusColors[c.status] || { c: 'badge-slate', l: c.status };
-        const planCls = c.plan ? (planColors[c.plan] || 'badge-slate') : 'badge-slate';
-        const planLbl = c.plan || '-';
         const company = c.company || '';
         const email = c.email || '';
         const initial = (c.name || '?').slice(0, 1);
@@ -374,7 +349,6 @@
           '<td class="hidden sm:table-cell text-slate-700 text-[.82rem]">' + escapeHtml(company) + '</td>' +
           '<td class="hidden md:table-cell text-slate-600 text-[.78rem] truncate">' + escapeHtml(email) + '</td>' +
           '<td><span class="badge ' + st.c + '">' + escapeHtml(st.l) + '</span></td>' +
-          '<td class="hidden lg:table-cell"><span class="badge ' + planCls + '">' + escapeHtml(planLbl) + '</span></td>' +
           '<td class="hidden xl:table-cell text-slate-500 text-[.78rem]">' + escapeHtml(formatRelativeTime(c.last_contacted_at)) + '</td>';
         tr.addEventListener('click', () => openEditModal(c));
         el.appendChild(tr);
@@ -404,7 +378,7 @@
     function bindFilterChips() {
       // Restore active state from URL on load.
       document.querySelectorAll('.chip-group').forEach((group) => {
-        const dim = group.dataset.group; // 'status' | 'plan' | 'sort'
+        const dim = group.dataset.group; // 'status' | 'sort'
         const current =
           dim === 'sort' ? (viewState.sort || 'created_at') :
           (viewState[dim] || '');
@@ -486,7 +460,6 @@
       document.getElementById('newEmail').value    = customer.email || '';
       document.getElementById('newPhone').value    = customer.phone || '';
       document.getElementById('newStatus').value   = customer.status || 'pending';
-      document.getElementById('newPlan').value     = customer.plan || '';
       document.getElementById('modal').classList.add('show');
     }
 
@@ -500,7 +473,6 @@
       document.getElementById('newEmail').value = '';
       document.getElementById('newPhone').value = '';
       document.getElementById('newStatus').value = 'pending';
-      document.getElementById('newPlan').value = '';
     }
 
     function showFormError(msg) {
@@ -513,14 +485,12 @@
     }
 
     function readModalForm() {
-      const planValue = document.getElementById('newPlan').value;
       return {
         name:    document.getElementById('newName').value.trim(),
         company: document.getElementById('newCompany').value.trim() || null,
         email:   document.getElementById('newEmail').value.trim()   || null,
         phone:   document.getElementById('newPhone').value.trim()   || null,
         status:  document.getElementById('newStatus').value,
-        plan:    planValue === '' ? null : planValue,
       };
     }
 
@@ -547,7 +517,7 @@
 
     async function onDeleteClick() {
       if (!editingId) return;
-      if (!confirm('정말 삭제하시겠습니까? (복구 불가)')) return;
+      if (!confirm('정말 삭제하시겠습니까? 목록에서 삭제됩니다.')) return;
       const res = await window.kloserApi.apiDelete('/customers/' + editingId);
       if (!res.ok && res.status !== 204) {
         showFormError(await parseApiError(res));

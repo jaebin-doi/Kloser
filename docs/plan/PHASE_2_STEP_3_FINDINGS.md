@@ -2,6 +2,8 @@
 
 > Audience: Phase 2 Step 4 작성자 (또는 미래의 나).
 > Format: each finding has **(1) 관찰**, **(2) Step 4 또는 이후로의 의미**.
+>
+> ⚠️ **`CustomerPlan` enum + schema/JSDoc 사본의 `plan` 필드는 Step 5에서 제거됐다.** 도입 시점 schema는 본 finding 그대로지만 최종 형태는 Step 5 findings 참조.
 
 ## 결론
 

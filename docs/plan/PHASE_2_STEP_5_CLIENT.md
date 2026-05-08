@@ -3,6 +3,8 @@
 > **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 5 + §1.
 > **선행**: Step 4 완료 — `PHASE_2_STEP_4_ROUTES.md`, `PHASE_2_STEP_4_FINDINGS.md`.
 > **기간**: 1.5일.
+>
+> ⚠️ **본 plan에 명시된 plan chip group / plan 모달 select / plan 컬럼 / planColors는 별도 domain cleanup 커밋에서 제거됐다.** 본 plan은 도입 시점의 mock UI 변환 기준이고, 최종 customers.html은 status/sort 2 그룹 chip + plan UI 0이다. 이유와 영향은 Step 5 findings 참조.
 
 ---
 

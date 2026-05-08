@@ -45,7 +45,7 @@ export type {
 };
 
 const CUSTOMER_COLUMNS =
-  "id, org_id, name, company, email, phone, status, plan," +
+  "id, org_id, name, company, email, phone, status," +
   " assigned_user_id, last_contacted_at, created_at, updated_at";
 
 const SORT_EXPR: Record<CustomerSortKey, string> = {
@@ -92,12 +92,6 @@ function buildFilterClauses(
   if (filters.status !== undefined) {
     clauses.push(`status = $${i}`);
     values.push(filters.status);
-    i += 1;
-  }
-
-  if (filters.plan !== undefined) {
-    clauses.push(`plan = $${i}`);
-    values.push(filters.plan);
     i += 1;
   }
 
@@ -184,12 +178,12 @@ export async function insertInCurrentOrg(
 ): Promise<Customer> {
   const r = await client.query<Customer>(
     `INSERT INTO customers (
-        org_id, name, company, email, phone, status, plan,
+        org_id, name, company, email, phone, status,
         assigned_user_id, last_contacted_at
      ) VALUES (
         $1, $2, $3, $4, $5,
         COALESCE($6, 'pending'),
-        $7, $8, $9
+        $7, $8
      )
      RETURNING ${CUSTOMER_COLUMNS}`,
     [
@@ -199,7 +193,6 @@ export async function insertInCurrentOrg(
       input.email ?? null,
       input.phone ?? null,
       input.status ?? null,
-      input.plan ?? null,
       input.assigned_user_id ?? null,
       input.last_contacted_at ?? null,
     ],
@@ -227,7 +220,6 @@ export async function updateByIdInCurrentOrg(
   if (patch.email !== undefined) push("email", patch.email);
   if (patch.phone !== undefined) push("phone", patch.phone);
   if (patch.status !== undefined) push("status", patch.status);
-  if (patch.plan !== undefined) push("plan", patch.plan);
   if (patch.assigned_user_id !== undefined)
     push("assigned_user_id", patch.assigned_user_id);
   if (patch.last_contacted_at !== undefined)

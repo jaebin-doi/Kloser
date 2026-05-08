@@ -2,6 +2,8 @@
 
 > Audience: Phase 2 Step 5 작성자 (또는 미래의 나).
 > Format: each finding has **(1) 관찰**, **(2) Step 5 또는 이후로의 의미**.
+>
+> ⚠️ **invalid query throwable 필드는 Step 5에서 status/assignedUserId 2종으로 축소됐다** (`plan` 컬럼 제거 동반). 본 finding의 `invalid_plan + value` 사례는 도입 시점 기준. 최종은 Step 5 findings 참조.
 
 ## 결론
 

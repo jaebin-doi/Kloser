@@ -2,6 +2,8 @@
 
 > Audience: Phase 2 Step 2 작성자 (또는 미래의 나).
 > Format: each finding has **(1) 관찰**, **(2) Step 2 또는 이후로의 의미**.
+>
+> ⚠️ **`plan` 컬럼·`customers_org_plan_idx` 인덱스는 Step 5에서 제거됐다** (도메인 경계 충돌 — `organizations.plan`과 단어 겹침). 최종 모델은 master plan / Step 5 findings 참조.
 
 ## 결론
 
