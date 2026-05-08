@@ -5,7 +5,7 @@
  *   - platform/types/<entity>.js            (JSDoc browser mirror)
  *
  * Sync target schemas must keep the convention from
- * `docs/plan/PHASE_2_STEP_3_SHARED_TYPES.md` §6:
+ * `docs/plan/phase-2/PHASE_2_STEP_3_SHARED_TYPES.md` §6:
  *   `export const <TypeName> = z.object({ ... });` — top-level literal,
  *   no `.extend / .merge / .partial / satisfies`.
  *

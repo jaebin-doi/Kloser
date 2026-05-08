@@ -1,7 +1,7 @@
-# Phase 1 Step 2 — DB 연결/저장소 + RLS SET LOCAL + 격리 테스트
+﻿# Phase 1 Step 2 — DB 연결/저장소 + RLS SET LOCAL + 격리 테스트
 
-> **상위 계획**: `docs/plan/PHASE_1_MASTER.md` §3 Step 2.
-> **선행**: Step 1 (DB 인프라) 완료 — `docs/plan/PHASE_1_STEP_1_DB_INFRA.md`, `docs/plan/PHASE_1_STEP_1_FINDINGS.md`.
+> **상위 계획**: `docs/plan/phase-1/PHASE_1_MASTER.md` §3 Step 2.
+> **선행**: Step 1 (DB 인프라) 완료 — `docs/plan/phase-1/PHASE_1_STEP_1_DB_INFRA.md`, `docs/plan/phase-1/PHASE_1_STEP_1_FINDINGS.md`.
 > **기간**: 1~2일.
 
 ---
@@ -18,7 +18,7 @@
 - [x] 8. 최소 repository 3개: `memberships.ts`(getById, listForCurrentOrg) / `organizations.ts`(getCurrentOrg만) / `users.ts`(listForCurrentOrg, getByIdInCurrentOrg — JOIN 가드). 무가드 list/getById 금지
 - [x] 9. `server/test/{orgContext,rls_isolation}.test.mjs` (`tsx --test`) — middleware 3 케이스 + RLS 격리/repository 7 케이스
 - [x] 10. `npm test` 스크립트 등록 + e2e 회귀 (Phase 0.5 e2e 14/14 PASS)
-- [x] 11. `docs/plan/PHASE_1_STEP_2_FINDINGS.md` 작성
+- [x] 11. `docs/plan/phase-1/PHASE_1_STEP_2_FINDINGS.md` 작성
 
 ---
 
@@ -314,7 +314,7 @@ fastify preHandler hook. 동작:
 - `npm --prefix server test` → 10/10 PASS (orgContext 3 + rls_isolation 7)
 - `node test/phase_0_5_e2e.mjs` → 14/14 PASS
 
-### 11. `docs/plan/PHASE_1_STEP_2_FINDINGS.md`
+### 11. `docs/plan/phase-1/PHASE_1_STEP_2_FINDINGS.md`
 
 Step 2에서 발견한 함정·결정·미해결 사항 인계.
 
@@ -344,7 +344,7 @@ Step 2에서 발견한 함정·결정·미해결 사항 인계.
 - [x] `npm --prefix server test` 10/10 PASS — orgContext (missing/malformed/valid) + rls_isolation (no GUC, ACME, BETA, WITH CHECK violation, getCurrentOrg, listForCurrentOrg, getByIdInCurrentOrg)
 - [x] Phase 0.5 e2e 회귀 14/14 PASS (2026-05-07)
 - [x] `npm run typecheck` 통과
-- [x] `docs/plan/PHASE_1_STEP_2_FINDINGS.md` 작성
+- [x] `docs/plan/phase-1/PHASE_1_STEP_2_FINDINGS.md` 작성
 
 ---
 

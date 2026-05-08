@@ -1,7 +1,7 @@
-# Phase 1 Step 4 — Client wiring + WS handshake auth
+﻿# Phase 1 Step 4 — Client wiring + WS handshake auth
 
-> **상위 계획**: `docs/plan/PHASE_1_MASTER.md` §3 Step 4.
-> **선행**: Step 3 완료 — `docs/plan/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/plan/PHASE_1_STEP_3_FINDINGS.md`.
+> **상위 계획**: `docs/plan/phase-1/PHASE_1_MASTER.md` §3 Step 4.
+> **선행**: Step 3 완료 — `docs/plan/phase-1/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/plan/phase-1/PHASE_1_STEP_3_FINDINGS.md`.
 > **기간**: 2일.
 
 ---
@@ -16,7 +16,7 @@
 - [x] 6. `platform/ws.js` — `auth: { token }` 사용, `connect_error` 시 refresh + reconnect, **`__liveSocket`는 localhost 계열(`localhost`/`127.0.0.1`/`::1`/`[::1]`)에서만 노출** + first-only 소유권 (§1.8 도중 발견된 보조 socket clobber 방지)
 - [x] 7. `server/test/ws_auth.test.mjs` — 8 케이스 (handshake 5 + runtime invariant 1 + happy path 2). socket.io-client + 실제 fastify random port
 - [x] 8. `test/phase_0_5_e2e.mjs` 갱신 — login pre-step + auth reject 2 케이스 (16/16)
-- [x] 9. `docs/plan/PHASE_1_STEP_4_FINDINGS.md` 작성 + 마스터 plan §6의 shared types 항목을 Phase 2 deferral로 갱신
+- [x] 9. `docs/plan/phase-1/PHASE_1_STEP_4_FINDINGS.md` 작성 + 마스터 plan §6의 shared types 항목을 Phase 2 deferral로 갱신
 
 ---
 
@@ -382,7 +382,7 @@ await page.waitForURL(/live\.html/);
 
 검증: `node test/phase_0_5_e2e.mjs` 16/16.
 
-### 9. `docs/plan/PHASE_1_STEP_4_FINDINGS.md`
+### 9. `docs/plan/phase-1/PHASE_1_STEP_4_FINDINGS.md`
 
 Step 4에서 발견·결정·미해결 인계. 최소 다음 항목:
 
@@ -424,7 +424,7 @@ Step 4에서 발견·결정·미해결 인계. 최소 다음 항목:
 - [x] `__liveSocket`이 prod 도메인 (예: `127.0.0.1`이 아닌 임의 호스트)에서 미노출 — 코드 리뷰
 - [x] `text_chunk` before `start_call` → server가 `error: { code: "no_active_call" }` emit + 무시
 - [x] `userId` query param 흔적이 server / client 양쪽에서 사라짐
-- [x] `docs/plan/PHASE_1_STEP_4_FINDINGS.md` 작성
+- [x] `docs/plan/phase-1/PHASE_1_STEP_4_FINDINGS.md` 작성
 
 ---
 

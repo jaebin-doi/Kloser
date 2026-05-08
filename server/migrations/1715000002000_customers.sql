@@ -1,7 +1,7 @@
 -- Phase 2 Step 1 — customers table.
 --
 -- First business entity beyond the auth/membership scaffolding from Phase 1.
--- Plan: docs/plan/PHASE_2_STEP_1_SCHEMA.md.
+-- Plan: docs/plan/phase-2/PHASE_2_STEP_1_SCHEMA.md.
 --
 -- Highlights:
 --   - FORCE ROW LEVEL SECURITY with four policies built on the

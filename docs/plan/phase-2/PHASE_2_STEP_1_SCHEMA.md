@@ -1,7 +1,7 @@
-# Phase 2 Step 1 — Customers schema + RLS + seed
+﻿# Phase 2 Step 1 — Customers schema + RLS + seed
 
-> **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 1 + §4 데이터 모델.
-> **선행**: Phase 1 완료 — `docs/plan/PHASE_1_MASTER.md`.
+> **상위 계획**: `docs/plan/phase-2/PHASE_2_MASTER.md` §3 Step 1 + §4 데이터 모델.
+> **선행**: Phase 1 완료 — `docs/plan/phase-1/PHASE_1_MASTER.md`.
 > **기간**: 1일.
 >
 > ⚠️ **본 문서는 도입 시점 (1715000002000_customers.sql) 기준이다.** Step 5 findings의 domain cleanup record가 적용된 **최종 모델은 master / Step 5 findings 참조**. 본 plan에서 명시한 `plan text + CHECK ('Starter','Pro','Enterprise')` 컬럼·`customers_org_plan_idx` 인덱스는 1715000003000_drop_customers_plan.sql에서 drop 됐다.
@@ -20,7 +20,7 @@
 - [ ] 8. `npm run db:migrate:up` + `npm run db:seed` 통과 — seed가 0001 + 0002 둘 다 실행됨
 - [ ] 9. RLS 격리 수동 검증 (app role + GUC swap → org A 12 / org B 12)
 - [ ] 10. Down 마이그레이션 검증 — `npm run db:migrate:redo`로 1715000002000만 down→up 왕복, Phase 1 테이블 영향 없음 확인
-- [ ] 11. `docs/plan/PHASE_2_STEP_1_FINDINGS.md` 작성
+- [ ] 11. `docs/plan/phase-2/PHASE_2_STEP_1_FINDINGS.md` 작성
 
 ---
 
@@ -397,7 +397,7 @@ node test/phase_0_5_e2e.mjs
 - [ ] Down 마이그레이션 검증 — **`npm --prefix server run db:migrate:redo`** 사용 (down 1 + up 1을 자동 왕복하는 node-pg-migrate 단축 명령). 단순 `db:migrate:down`은 인자 없을 시 default count=1이지만 의도가 묻혀서 `redo`가 명시적. 결과:
   - `customers` 테이블·trigger·`touch_updated_at()` 함수가 한 번 사라졌다가 같은 명령 끝에 복원됨
   - Phase 1 테이블(`organizations`, `users`, `memberships`, `sessions`, `teams`, `invitations`, `activity_log`)은 **단 한 줄도 영향 없음** — `pgmigrations` 테이블 inspect로 1715000002000만 down 대상이었는지 확인
-- [ ] `docs/plan/PHASE_2_STEP_1_FINDINGS.md` 작성
+- [ ] `docs/plan/phase-2/PHASE_2_STEP_1_FINDINGS.md` 작성
 
 ---
 

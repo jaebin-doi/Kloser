@@ -418,5 +418,5 @@ Fastify는 Kloser에서 **가볍지만 구조를 잡을 수 있는 서버 프레
 - Fastify Docs: https://fastify.dev/docs/latest/
 - Fastify TypeScript: https://fastify.dev/docs/latest/Reference/TypeScript/
 - Fastify Validation and Serialization: https://fastify.dev/docs/latest/Reference/Validation-and-Serialization/
-- Kloser Backend Plan: `docs/plan/BACKEND_PLAN.md`
+- Kloser Backend Plan: `docs/plan/roadmap/BACKEND_PLAN.md`
 - Kloser Supabase vs On-Premise: `docs/decision/SUPABASE_VS_ONPREM.md`

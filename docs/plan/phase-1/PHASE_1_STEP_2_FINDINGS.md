@@ -1,4 +1,4 @@
-# Phase 1 Step 2 Findings — DB 연결/저장소 + RLS SET LOCAL + 격리 테스트
+﻿# Phase 1 Step 2 Findings — DB 연결/저장소 + RLS SET LOCAL + 격리 테스트
 
 > Audience: Phase 1 Step 3 작성자 (또는 미래의 나).
 > Format: each finding has **(1) 관찰**, **(2) Step 3 또는 이후로의 의미**.
@@ -164,7 +164,7 @@ DB 플러그인 추가가 기존 라이브 흐름(transcript / sentiment / sugge
 
 ## Step 3 진입 시 가장 먼저 봐야 할 것
 
-1. `docs/plan/PHASE_1_STEP_2_RLS_CONTEXT.md` §1 + 본 findings §6 — `X-Org-Id` 헤더의 prod 차단 가드를 가장 먼저
+1. `docs/plan/phase-1/PHASE_1_STEP_2_RLS_CONTEXT.md` §1 + 본 findings §6 — `X-Org-Id` 헤더의 prod 차단 가드를 가장 먼저
 2. `server/src/middleware/auth.ts` 신설 — `@fastify/jwt` 등록 + `request.user` 데코레이터
 3. `server/src/services/auth.ts` — Argon2id, JWT 발급, refresh rotation
 4. `server/src/routes/auth.ts` — signup / login / refresh / logout + GET /me

@@ -144,7 +144,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 ```
 
 > **현재 단계**: **Phase 1 완료** (Step 1~5) — DB 인프라 + RLS SET LOCAL 격리 + 자체 Auth 코어 (Argon2id + Bearer JWT + HttpOnly refresh cookie + sessions rotation/reuse detection + role guard) + 브라우저 wiring + WS handshake JWT auth + DOMPurify + Caddy single-origin reverse proxy (`ops/Caddyfile.dev`, auto-detect) 모두 동작. `npm test` 37/37 + Phase 0.5 e2e split-origin 16/16 + Caddy single-origin variant 16/16 PASS. 다음은 Phase 2 (customers CRUD).
-> 자세한 계획·결과: [`docs/plan/BACKEND_PLAN.md`](docs/plan/BACKEND_PLAN.md), [`docs/plan/PHASE_1_MASTER.md`](docs/plan/PHASE_1_MASTER.md), [`docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md`](docs/plan/PHASE_1_STEP_5_REVERSE_PROXY.md), [`docs/plan/PHASE_1_STEP_5_FINDINGS.md`](docs/plan/PHASE_1_STEP_5_FINDINGS.md).
+> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-1/PHASE_1_STEP_5_REVERSE_PROXY.md`](docs/plan/phase-1/PHASE_1_STEP_5_REVERSE_PROXY.md), [`docs/plan/phase-1/PHASE_1_STEP_5_FINDINGS.md`](docs/plan/phase-1/PHASE_1_STEP_5_FINDINGS.md).
 
 ---
 
@@ -388,7 +388,7 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **STT**: Naver Clova Speech (한국어 영업 도메인 정확도 우선)
 - **LLM**: Anthropic Claude / OpenAI GPT — 회사 가이드 RAG 기반
 - **벡터 검색**: pgvector
-- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/plan/DESKTOP_APP_PLAN.md`
+- **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/plan/roadmap/DESKTOP_APP_PLAN.md`
 
 ---
 
@@ -404,7 +404,7 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - `/calls` 네임스페이스: `start_call`/`text_chunk`/`end_call` (snake_case)
 - `live.html`의 `setTimeout` mock을 WebSocket 이벤트로 교체
 - 수동 RTT 1ms · 자동 데모 재생 · sentiment 자동 전이 · 14/14 e2e PASS
-- 결과 정리: [`docs/plan/PHASE_0_5_FINDINGS.md`](docs/plan/PHASE_0_5_FINDINGS.md)
+- 결과 정리: [`docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md`](docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md)
 
 ### v1 — MVP (다음 단계, Phase 1~6)
 - **Phase 1**: PostgreSQL 부트스트랩 + RLS default-deny + 자체 Auth (Argon2id + JWT + refresh rotation) + 클라이언트 wiring + Caddy reverse proxy (Step 1~5)

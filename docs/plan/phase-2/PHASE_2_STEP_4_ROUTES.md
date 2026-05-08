@@ -1,6 +1,6 @@
-# Phase 2 Step 4 — REST routes + role middleware + route 테스트
+﻿# Phase 2 Step 4 — REST routes + role middleware + route 테스트
 
-> **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 4 + §1 (6 endpoint 표).
+> **상위 계획**: `docs/plan/phase-2/PHASE_2_MASTER.md` §3 Step 4 + §1 (6 endpoint 표).
 > **선행**: Step 3 완료 — `PHASE_2_STEP_3_SHARED_TYPES.md`, `PHASE_2_STEP_3_FINDINGS.md`.
 > **기간**: 1.5일.
 >
@@ -25,7 +25,7 @@
 - [ ] 13. `node test/phase_0_5_e2e.mjs` 16/16 회귀 PASS
 - [ ] 14. `curl` 수동 검증 — 6개 endpoint 모두 200/4xx 정확
 - [ ] 15. viewer JWT로 POST/PATCH/DELETE 호출 → 403 시각 확인
-- [ ] 16. `docs/plan/PHASE_2_STEP_4_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
+- [ ] 16. `docs/plan/phase-2/PHASE_2_STEP_4_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
 
 ---
 
@@ -457,7 +457,7 @@ app.get("/health", ...);
 - [ ] **PATCH 빈 body 거부** — `CustomerPatch.refine` 동작 1 case
 - [ ] `curl` 수동 검증 — 6 endpoint 모두 200/4xx 정확 (login → access token → 6 호출)
 - [ ] viewer JWT로 POST/PATCH/DELETE 호출 → 403 시각 확인 (수동)
-- [ ] `docs/plan/PHASE_2_STEP_4_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
+- [ ] `docs/plan/phase-2/PHASE_2_STEP_4_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
 
 ---
 

@@ -1,7 +1,7 @@
-# Phase 2 Step 2 — Repository + service + RLS 격리 단위 테스트
+﻿# Phase 2 Step 2 — Repository + service + RLS 격리 단위 테스트
 
-> **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 2.
-> **선행**: Step 1 완료 — `docs/plan/PHASE_2_STEP_1_SCHEMA.md`, `docs/plan/PHASE_2_STEP_1_FINDINGS.md`.
+> **상위 계획**: `docs/plan/phase-2/PHASE_2_MASTER.md` §3 Step 2.
+> **선행**: Step 1 완료 — `docs/plan/phase-2/PHASE_2_STEP_1_SCHEMA.md`, `docs/plan/phase-2/PHASE_2_STEP_1_FINDINGS.md`.
 > **기간**: 1일.
 
 ---
@@ -20,7 +20,7 @@
 - [ ] 10. `npm --prefix server test` → 49/49 (37 + 12) PASS
 - [ ] 11. `npm --prefix server run typecheck` PASS
 - [ ] 12. e2e 16/16 (split-origin) 회귀 PASS
-- [ ] 13. `docs/plan/PHASE_2_STEP_2_FINDINGS.md` 작성 (구현 검증 후 별도 커밋)
+- [ ] 13. `docs/plan/phase-2/PHASE_2_STEP_2_FINDINGS.md` 작성 (구현 검증 후 별도 커밋)
 
 ---
 
@@ -417,7 +417,7 @@ function buildOrderBy(sort: CustomerSortKey, dir: "asc" | "desc"): string {
 - [ ] **CRUD case 8** (PATCH 후 `updated_at > created_at`) 통과 — touch_updated_at trigger 동작 확인
 - [ ] **CRUD case 9/10** (soft-delete 후 invisible + idempotency false) 통과 — `deleted_at IS NULL` 강제 패턴 검증
 - [ ] **mutation cleanup**: 각 mutation case가 `try/finally`로 자체 unwind. INSERT한 row는 admin URL 또는 별도 `withOrgContext` + 테스트 전용 hard DELETE SQL helper로 제거 (repository에는 hard delete 함수 추가 금지), soft-delete한 row는 `deleted_at = NULL` 복원. 다음 case로 이어지는 누적 mutation 없음
-- [ ] `docs/plan/PHASE_2_STEP_2_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
+- [ ] `docs/plan/phase-2/PHASE_2_STEP_2_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
 
 ---
 

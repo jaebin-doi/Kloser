@@ -380,7 +380,7 @@ v0.3의 endpoint 구조를 유지하되, 인증과 DB 접근은 자체 Auth/Post
 
 ### Phase 0.5 — Live 스트림 스파이크 (3~5일) ✅ 완료
 
-목표: Auth/DB보다 먼저 Kloser 핵심인 실시간 이벤트 파이프라인을 확인한다. (구체 실행 계획: `docs/plan/PHASE_0_5_LIVE_SPIKE.md`. 결과 정리: `docs/plan/PHASE_0_5_FINDINGS.md`.)
+목표: Auth/DB보다 먼저 Kloser 핵심인 실시간 이벤트 파이프라인을 확인한다. (구체 실행 계획: `docs/plan/phase-0.5/PHASE_0_5_LIVE_SPIKE.md`. 결과 정리: `docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md`.)
 
 - [x] `server/` Fastify + TypeScript 부트스트랩
 - [x] Socket.io 또는 native WebSocket 적용 — Socket.io 4.7 채택

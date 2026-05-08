@@ -97,7 +97,7 @@ python -m http.server 8765
 - Plan files are both design record and handoff material. If implementation changes a contract, update the relevant plan/findings document in the same commit or a follow-up cleanup commit.
 - For completed work, update checkboxes only when the implementation and verification are actually done.
 - Preserve historical notes when useful, but make the current model unambiguous.
-- For Phase 2, the final source of truth for `customers.plan` removal is `docs/plan/PHASE_2_STEP_5_FINDINGS.md`.
+- For Phase 2, the final source of truth for `customers.plan` removal is `docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md`.
 
 ## Commit/Push Discipline
 

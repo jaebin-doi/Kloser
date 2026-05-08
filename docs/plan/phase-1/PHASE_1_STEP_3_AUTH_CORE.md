@@ -1,7 +1,7 @@
-# Phase 1 Step 3 — Auth 코어
+﻿# Phase 1 Step 3 — Auth 코어
 
-> **상위 계획**: `docs/plan/PHASE_1_MASTER.md` §3 Step 3.
-> **선행**: Step 2 완료 — `docs/plan/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/plan/PHASE_1_STEP_2_FINDINGS.md`.
+> **상위 계획**: `docs/plan/phase-1/PHASE_1_MASTER.md` §3 Step 3.
+> **선행**: Step 2 완료 — `docs/plan/phase-1/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/plan/phase-1/PHASE_1_STEP_2_FINDINGS.md`.
 > **기간**: 3~4일.
 
 ---
@@ -19,7 +19,7 @@
 - [x] 9. `orgContext`를 JWT 우선으로 전환하고 prod에서 `X-Org-Id` 차단
 - [x] 10. auth 테스트 작성 (login/refresh/logout/me/role/RLS)
 - [x] 11. Phase 0.5 e2e 회귀 영향 정리 (2026-05-07, 14/14 PASS, RTT 1~2ms — DB+auth가 라이브 흐름을 깨지 않음)
-- [x] 12. `docs/plan/PHASE_1_STEP_3_FINDINGS.md` 작성
+- [x] 12. `docs/plan/phase-1/PHASE_1_STEP_3_FINDINGS.md` 작성
 
 ---
 
@@ -426,7 +426,7 @@ Regression:
 - [ ] cookie `Path=/auth` 검증 — `/auth/refresh`, `/auth/logout`엔 cookie 동행, `/me`엔 미동행
 - [ ] sessions row에 `org_id` / `membership_id`가 박히고 refresh가 그 값들로 새 access token 발급 (multi-org refresh 모호성 차단)
 - [ ] **수용된 staleness 정책 명시**: Step 3는 access TTL(15분) 이내 role 변경 미반영을 받아들임. `requireFreshRole` opt-in 헬퍼는 미구현, Phase 2 destructive endpoint 도입 시 신설 — findings에 명시
-- [ ] `docs/plan/PHASE_1_STEP_3_FINDINGS.md` 작성
+- [ ] `docs/plan/phase-1/PHASE_1_STEP_3_FINDINGS.md` 작성
 
 ---
 

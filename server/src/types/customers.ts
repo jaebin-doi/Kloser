@@ -8,7 +8,7 @@
  *
  * The browser keeps a JSDoc-only mirror at `platform/types/customers.js`.
  * `test/sync_shared_types.mjs` diffs the two field sets at the top-level
- * z.object literals listed in §6 of `docs/plan/PHASE_2_STEP_3_SHARED_TYPES.md`.
+ * z.object literals listed in §6 of `docs/plan/phase-2/PHASE_2_STEP_3_SHARED_TYPES.md`.
  *
  * Sync target schemas (must keep top-level `export const X = z.object({ ... })`
  * literal form — no .extend / .merge / .partial / satisfies on these):

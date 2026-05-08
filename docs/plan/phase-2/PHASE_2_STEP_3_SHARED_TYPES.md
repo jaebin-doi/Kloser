@@ -1,7 +1,7 @@
-# Phase 2 Step 3 — Shared Types + zod validation 패턴
+﻿# Phase 2 Step 3 — Shared Types + zod validation 패턴
 
-> **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 3 + §2-9/10 사전 결정.
-> **선행**: Step 2 완료 — `docs/plan/PHASE_2_STEP_2_REPO.md`, `docs/plan/PHASE_2_STEP_2_FINDINGS.md`.
+> **상위 계획**: `docs/plan/phase-2/PHASE_2_MASTER.md` §3 Step 3 + §2-9/10 사전 결정.
+> **선행**: Step 2 완료 — `docs/plan/phase-2/PHASE_2_STEP_2_REPO.md`, `docs/plan/phase-2/PHASE_2_STEP_2_FINDINGS.md`.
 > **기간**: 0.5일.
 >
 > ⚠️ **본 plan에 명시된 `CustomerPlan` enum 및 schema의 `plan` 필드는 Step 5에서 제거됐다** (도메인 경계 충돌). 최종 schema는 `server/src/types/customers.ts` + master plan / Step 5 findings 참조. sync 검증 대상 4종은 그대로 유지된다.
@@ -25,7 +25,7 @@
 - [ ] 13. `npm --prefix server test` 49/49 회귀 PASS (refactor 후에도)
 - [ ] 14. `node test/sync_shared_types.mjs` PASS — customers 양쪽 필드 동일
 - [ ] 15. `node test/phase_0_5_e2e.mjs` 16/16 회귀 PASS
-- [ ] 16. `docs/plan/PHASE_2_STEP_3_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
+- [ ] 16. `docs/plan/phase-2/PHASE_2_STEP_3_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
 
 ---
 
@@ -617,7 +617,7 @@ app.post("/customers", { preHandler: [requireAuth, requireRole("admin","manager"
 - [ ] `server/src/services/customers.ts`의 `normalizeListOptions` 내부가 zod parse로 교체됨 (ad-hoc `if`/whitelist Set 모두 제거). `InvalidListOptionError` 및 service 시그니처 (`(app, actorOrgId, rawOpts: unknown)`)는 유지
 - [ ] **`CustomerListQuery` 불변조건 4개 (§8) 충족** — `safeParse`가 status/plan/assignedUserId 외 필드로 실패하지 않음 / q·sort·dir·limit·offset은 항상 정규화 / status·plan·assignedUserId만 invalid 시 reject / `normalizeListOptions`가 issue path로 field 판별해 `InvalidListOptionError`로 wrap
 - [ ] `server/src/repositories/customers.ts`, `server/src/services/customers.ts`가 `../types/customers.js`에서 type을 import (ad-hoc 정의 제거)
-- [ ] `docs/plan/PHASE_2_STEP_3_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
+- [ ] `docs/plan/phase-2/PHASE_2_STEP_3_FINDINGS.md` 작성 (구현 + 검증 후 별도 커밋)
 
 ---
 

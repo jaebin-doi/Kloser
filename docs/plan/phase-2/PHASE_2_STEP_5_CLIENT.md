@@ -1,6 +1,6 @@
-# Phase 2 Step 5 — `customers.html` 실 API 연결
+﻿# Phase 2 Step 5 — `customers.html` 실 API 연결
 
-> **상위 계획**: `docs/plan/PHASE_2_MASTER.md` §3 Step 5 + §1.
+> **상위 계획**: `docs/plan/phase-2/PHASE_2_MASTER.md` §3 Step 5 + §1.
 > **선행**: Step 4 완료 — `PHASE_2_STEP_4_ROUTES.md`, `PHASE_2_STEP_4_FINDINGS.md`.
 > **기간**: 1.5일.
 >
@@ -22,7 +22,7 @@
 - [x] 10. `node test/sync_shared_types.mjs` PASS (회귀)
 - [x] 11. `npm --prefix server test` 65/65 회귀 PASS (서버 무변경)
 - [x] 12. `node test/phase_0_5_e2e.mjs` 16/16 회귀 PASS
-- [x] 13. `docs/plan/PHASE_2_STEP_5_FINDINGS.md` 작성 (domain cleanup record 포함, 별도 커밋으로 push 됨)
+- [x] 13. `docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md` 작성 (domain cleanup record 포함, 별도 커밋으로 push 됨)
 
 ---
 
@@ -561,7 +561,7 @@ async function parseApiError(response) {
 - [x] `node test/sync_shared_types.mjs` PASS
 - [x] `npm --prefix server test` 65/65 회귀 PASS
 - [x] `node test/phase_0_5_e2e.mjs` 16/16 회귀 PASS
-- [x] `docs/plan/PHASE_2_STEP_5_FINDINGS.md` 작성 (domain cleanup record 포함, 별도 커밋)
+- [x] `docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md` 작성 (domain cleanup record 포함, 별도 커밋)
 
 ---
 

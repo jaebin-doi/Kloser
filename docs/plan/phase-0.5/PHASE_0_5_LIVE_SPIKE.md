@@ -1,4 +1,4 @@
-# Phase 0.5 — Live 스트림 스파이크 구축 설계
+﻿# Phase 0.5 — Live 스트림 스파이크 구축 설계
 
 > **목적**: `BACKEND_PLAN.md` v0.4 §8 Phase 0.5의 구체 실행 계획.
 > Auth/DB/STT 없이 **실시간 이벤트 파이프라인이 동작한다**는 사실만 먼저 증명한다.
@@ -18,7 +18,7 @@
 - [x] Day 3 — `live.html` mock 제거 + textContent 전환 + async IIFE init (Playwright로 connect/start_call ack/RTT 1ms 확인)
 - [x] Day 4 — `fixtures/demo-call.ts` + start_call 자동 재생 + 타이머 정리 (sentiment 그룹별로 합쳐 emit)
 - [x] Playwright 검증 — 자동 재생 흐름 + RTT < 150ms (test/phase_0_5_e2e.mjs, 12/12 PASS, 수동 RTT 1ms)
-- [x] Day 4-5 — `server/README.md` + `docs/plan/PHASE_0_5_FINDINGS.md` + `BACKEND_PLAN.md` §8 체크박스 갱신
+- [x] Day 4-5 — `server/README.md` + `docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md` + `BACKEND_PLAN.md` §8 체크박스 갱신
 
 **환경 노트**:
 - Windows 11에 Python alias 미설치 → 정적 서버는 `npx http-server -p 8765`로 대체 (동작 동일: 루트 서빙). README에 두 가지 명령 모두 명시.
@@ -107,7 +107,9 @@ kloser/
 │       └── fixtures/
 │           └── demo-call.ts  # live.html에서 옮긴 conversation + aiSequence
 └── docs/
-    └── PHASE_0_5_LIVE_SPIKE.md  # 이 문서
+    └── plan/
+        └── phase-0.5/
+            └── PHASE_0_5_LIVE_SPIKE.md  # 이 문서
 ```
 
 `shared/types/`는 0.5에서는 만들지 않는다. 이벤트 타입은 `server/src/ws/calls.ts`와 `platform/ws.js`에 각각 정의한다(중복). Phase 1에서 `shared/types/calls.ts`로 통합한다. 지금 통합하면 monorepo build 도구 결정까지 끌려와서 spike 흐름이 깨진다.
@@ -304,7 +306,7 @@ kloser/
 **작업**:
 
 1. `server/README.md` 작성: 실행 방법, 포트, 구조, "이 코드는 Phase 1에서 재작성된다"는 경고
-2. 0.5에서 발견한 이슈를 `docs/plan/PHASE_0_5_FINDINGS.md`로 정리:
+2. 0.5에서 발견한 이슈를 `docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md`로 정리:
    - Socket.io 사용감 (좋았던 점, 걸린 점)
    - native `ws`로 갈만한 이유가 있었는지
    - CORS, reconnect, ack timeout 동작
@@ -409,7 +411,7 @@ Phase 1 시작 시 **transcript text + suggestion title/body 전체에 sanitizat
 - [x] sentiment(`관심` → `망설임` → `재고려`)가 같은 타이밍에 갱신
 - [x] 수동 `text_chunk` 라운드트립 < 150ms (로컬) — 측정값 **1ms**
 - [x] 서버 재시작 후 페이지 reload만으로 동일 동작 (재연결 의존 X)
-- [x] `docs/plan/PHASE_0_5_FINDINGS.md`에 Phase 1 후속 항목 정리됨 (9개 발견 + Phase 1 첫 5개 task 제안)
+- [x] `docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md`에 Phase 1 후속 항목 정리됨 (9개 발견 + Phase 1 첫 5개 task 제안)
 
 → Phase 1 (Auth + DB) 착수 가능.
 

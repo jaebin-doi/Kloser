@@ -185,5 +185,5 @@ Supabase managed는 다음 조건일 때만 재검토한다.
 
 Supabase의 장점은 빠른 Auth/DB/Storage 구축이다. 하지만 Kloser는 자체 서버를 보유하고 있고, 비용 통제와 데이터 통제가 더 중요하다. 따라서 Fastify + PostgreSQL + 자체 Auth + Redis + 자체 Storage로 구현한다.
 
-관련 구현 계획은 `docs/plan/BACKEND_PLAN.md` v0.4를 따른다.
+관련 구현 계획은 `docs/plan/roadmap/BACKEND_PLAN.md` v0.4를 따른다.
 

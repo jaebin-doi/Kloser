@@ -1,7 +1,7 @@
-# PC 데스크톱 앱 트랙 — 보류
+﻿# PC 데스크톱 앱 트랙 — 보류
 
 > **상태**: 보류 (Deferred). 본 트랙은 `docs/product/realtime-call-assistant-guide.md` 4절·13절을 기반으로 별도 일정에 진행.
-> 통화 백엔드(WebSocket 세션·이벤트 스키마·STT 어댑터·`live.html`/`calls.html` 백엔드)는 메인 트랙(`docs/plan/BACKEND_PLAN.md` Phase 0.5/4/5)에 포함됨. 본 문서는 **PC 앱 자체**에만 집중.
+> 통화 백엔드(WebSocket 세션·이벤트 스키마·STT 어댑터·`live.html`/`calls.html` 백엔드)는 메인 트랙(`docs/plan/roadmap/BACKEND_PLAN.md` Phase 0.5/4/5)에 포함됨. 본 문서는 **PC 앱 자체**에만 집중.
 
 ---
 
@@ -71,4 +71,4 @@
 
 ## 참고 문서
 - `docs/product/realtime-call-assistant-guide.md` — 제품·아키텍처 정의 (단일 진실원, 4절·13절·14절 1~2단계가 본 트랙)
-- `docs/plan/BACKEND_PLAN.md` — 메인 백엔드 트랙 (섹션 6 "Live WebSocket" 이벤트 = 본 트랙과의 계약)
+- `docs/plan/roadmap/BACKEND_PLAN.md` — 메인 백엔드 트랙 (섹션 6 "Live WebSocket" 이벤트 = 본 트랙과의 계약)

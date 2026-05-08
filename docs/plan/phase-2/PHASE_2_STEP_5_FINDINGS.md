@@ -1,4 +1,4 @@
-# Phase 2 Step 5 Findings — customers page real API integration + domain cleanup
+﻿# Phase 2 Step 5 Findings — customers page real API integration + domain cleanup
 
 > Audience: Phase 2 Step 6 작성자 (또는 미래의 나).
 > Format: each finding has **(1) 관찰**, **(2) Step 6 또는 이후로의 의미**.
@@ -124,7 +124,7 @@ Step 6 (`phase_2_customers_e2e.mjs` + Phase 2 종합 findings) 작성자가 본 
 
 ### 3. **Phase 2 종합 findings — domain cleanup이 master record**
 
-`docs/plan/PHASE_2_STEP_6_FINDINGS.md` 작성 시 본 step의 domain cleanup record를 cross-reference. Phase 2 전체 결정 흐름에서 "customers.plan 도입 → 5 step 후 제거"가 가장 큰 변경이므로 별도 항목으로 명시.
+`docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md` 작성 시 본 step의 domain cleanup record를 cross-reference. Phase 2 전체 결정 흐름에서 "customers.plan 도입 → 5 step 후 제거"가 가장 큰 변경이므로 별도 항목으로 명시.
 
 ### 4. **서버 무변경 확인** — Step 6은 e2e 추가만
 

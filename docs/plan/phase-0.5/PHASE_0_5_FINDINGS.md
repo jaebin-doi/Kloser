@@ -1,4 +1,4 @@
-# Phase 0.5 Findings — what the spike actually showed
+﻿# Phase 0.5 Findings — what the spike actually showed
 
 > Audience: future me / the Phase 1 author.
 > Format: every finding has **(1) what we observed**, **(2) what it means
@@ -6,7 +6,7 @@
 
 ## Outcome
 
-`docs/plan/PHASE_0_5_LIVE_SPIKE.md` §7의 go/no-go gate **모두 통과**:
+`docs/plan/phase-0.5/PHASE_0_5_LIVE_SPIKE.md` §7의 go/no-go gate **모두 통과**:
 
 - `/health` 응답 OK
 - `live.html`의 `setTimeout(appendMessage)` / `setTimeout(renderSuggestions)` = 0개

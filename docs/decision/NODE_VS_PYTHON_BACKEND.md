@@ -597,7 +597,7 @@ Python은 나중에 자체 AI/음성/분석 worker가 필요해질 때 부분적
 
 ## 11. 관련 문서
 
-- `docs/plan/BACKEND_PLAN.md`
+- `docs/plan/roadmap/BACKEND_PLAN.md`
 - `docs/decision/FASTIFY_GUIDE.md`
-- `docs/plan/DESKTOP_APP_PLAN.md`
+- `docs/plan/roadmap/DESKTOP_APP_PLAN.md`
 - `docs/product/realtime-call-assistant-guide.md`

@@ -5,7 +5,7 @@
  * imports this module (early, after dotenv) so a missing JWT_SECRET
  * fails the process before any request is served.
  *
- * Plan: docs/plan/PHASE_1_STEP_3_AUTH_CORE.md §1 sub-step 3.
+ * Plan: docs/plan/phase-1/PHASE_1_STEP_3_AUTH_CORE.md §1 sub-step 3.
  *
  * Decisions that show up in this file:
  *   - HS256 with a single JWT_SECRET (Step 3 risk table).

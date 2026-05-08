@@ -1,4 +1,4 @@
-# Phase 1 Step 5 Findings — Reverse proxy (Caddy) + 운영 메모
+﻿# Phase 1 Step 5 Findings — Reverse proxy (Caddy) + 운영 메모
 
 > Audience: Phase 2 작성자 (또는 미래의 나).
 > Format: each finding has **(1) 관찰**, **(2) Phase 2 또는 이후로의 의미**.
@@ -137,8 +137,8 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 
 ## Phase 2 진입 시 가장 먼저 봐야 할 것
 
-1. `plan/PHASE_1_MASTER.md` §7 — Phase 1 종료 게이트 9개 모두 충족 확인.
-2. `plan/PHASE_1_STEP_3_FINDINGS.md` §6~§9 — Phase 2의 destructive endpoint (customers CRUD) 도입 시 먼저 처리할 staleness / SECURITY DEFINER / `requireFreshRole` 항목들.
-3. `plan/PHASE_1_STEP_4_FINDINGS.md` §10 — shared types 도입 패턴 결정 (bundler vs JSDoc 사본).
+1. `plan/phase-1/PHASE_1_MASTER.md` §7 — Phase 1 종료 게이트 9개 모두 충족 확인.
+2. `plan/phase-1/PHASE_1_STEP_3_FINDINGS.md` §6~§9 — Phase 2의 destructive endpoint (customers CRUD) 도입 시 먼저 처리할 staleness / SECURITY DEFINER / `requireFreshRole` 항목들.
+3. `plan/phase-1/PHASE_1_STEP_4_FINDINGS.md` §10 — shared types 도입 패턴 결정 (bundler vs JSDoc 사본).
 4. 본 finding §6 + §7 — Phase 4 (calls REST) 진입 시 socket 추가가 동일 origin contract를 따라야 함.
 5. `server/README.md` "Run (Caddy single-origin variant)" — Phase 2 진입 후 dev 환경 안정성 확인 시점에 1회 수동 검증.
