@@ -222,6 +222,27 @@
     });
   }
 
+  function apiPatch(path, body, opts) {
+    const optsLocal = opts || {};
+    const headers = Object.assign(
+      { 'Content-Type': 'application/json' },
+      optsLocal.headers || {},
+    );
+    return authFetch(path, {
+      method: 'PATCH',
+      headers: headers,
+      body: typeof body === 'string' ? body : JSON.stringify(body || {}),
+    });
+  }
+
+  function apiDelete(path, opts) {
+    const optsLocal = opts || {};
+    return authFetch(path, {
+      method: 'DELETE',
+      headers: optsLocal.headers,
+    });
+  }
+
   function loginRedirect() {
     const here = window.location.pathname + window.location.search;
     const url = LOGIN_PATH + '?returnUrl=' + encodeURIComponent(here);
@@ -242,6 +263,8 @@
     // Authenticated requests.
     apiGet: apiGet,
     apiPost: apiPost,
+    apiPatch: apiPatch,
+    apiDelete: apiDelete,
 
     // Utility.
     loginRedirect: loginRedirect,

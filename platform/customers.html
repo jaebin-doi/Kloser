@@ -19,10 +19,17 @@
     .filter-chip { padding: 6px 11px; border-radius: 7px; font-size: .76rem; font-weight: 600; color: rgb(71 85 105); border: 1px solid rgb(226 232 240); background: white; cursor: pointer; transition: all .15s; }
     .filter-chip.active { background: rgb(37 99 235); color: white; border-color: rgb(37 99 235); }
     .filter-chip:hover:not(.active) { background: rgb(248 250 252); }
+    .chip-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .chip-group + .chip-group { padding-left: 8px; border-left: 1px solid rgb(226 232 240); }
 
     .modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
     .modal-bg.show { display: flex; }
     .modal-card { background: white; border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px -12px rgba(15,23,42,.25); }
+    .form-error { background: rgb(254 242 242); border: 1px solid rgb(252 165 165); color: rgb(153 27 27); padding: 8px 12px; border-radius: 8px; font-size: .8rem; }
+    .form-error.hidden { display: none; }
+
+    tbody tr.customer-row { cursor: pointer; }
+    tbody tr.customer-row:hover { background: rgb(248 250 252); }
   </style>
 </head>
 
@@ -40,14 +47,14 @@
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <h1 class="text-[1rem] font-black tracking-tight text-slate-800 truncate">고객 관리</h1>
-          <span class="text-[.7rem] text-slate-400 tnum hidden sm:inline">총 <span id="totalCount">2,486</span>명</span>
+          <span class="text-[.7rem] text-slate-400 tnum hidden sm:inline">총 <span id="totalCount">-</span>명</span>
         </div>
         <div class="flex items-center gap-2">
           <button class="btn-secondary hidden sm:inline-flex">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             내보내기
           </button>
-          <button onclick="openModal()" class="btn-primary">
+          <button onclick="openCreateModal()" class="btn-primary">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             고객 추가
           </button>
@@ -60,40 +67,50 @@
         <section class="grid grid-cols-2 sm:grid-cols-4 gap-0 bg-white border-b border-slate-200 flex-shrink-0">
           <div class="p-4 lg:p-5 border-r border-slate-200">
             <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">전체 고객</div>
-            <div class="text-[1.4rem] font-black tnum tracking-tight text-slate-800">2,486</div>
-            <div class="text-[.68rem] text-emerald-600 font-bold tnum mt-0.5">+ 24 이번 주</div>
+            <div id="kpiTotal" class="text-[1.4rem] font-black tnum tracking-tight text-slate-800">-</div>
+            <div class="text-[.68rem] text-slate-500 tnum mt-0.5">&nbsp;</div>
           </div>
           <div class="p-4 lg:p-5 border-r border-slate-200">
             <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">활성</div>
-            <div class="text-[1.4rem] font-black tnum tracking-tight text-emerald-600">1,892</div>
-            <div class="text-[.68rem] text-slate-500 tnum mt-0.5">76.1%</div>
+            <div id="kpiActive" class="text-[1.4rem] font-black tnum tracking-tight text-emerald-600">-</div>
+            <div id="kpiActiveRatio" class="text-[.68rem] text-slate-500 tnum mt-0.5">&nbsp;</div>
           </div>
           <div class="p-4 lg:p-5 sm:border-r border-slate-200">
             <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">검토중</div>
-            <div class="text-[1.4rem] font-black tnum tracking-tight text-amber-600">312</div>
-            <div class="text-[.68rem] text-slate-500 tnum mt-0.5">12.6%</div>
+            <div id="kpiReview" class="text-[1.4rem] font-black tnum tracking-tight text-amber-600">-</div>
+            <div id="kpiReviewRatio" class="text-[.68rem] text-slate-500 tnum mt-0.5">&nbsp;</div>
           </div>
           <div class="p-4 lg:p-5">
             <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">대기</div>
-            <div class="text-[1.4rem] font-black tnum tracking-tight text-slate-700">282</div>
-            <div class="text-[.68rem] text-slate-500 tnum mt-0.5">11.3%</div>
+            <div id="kpiPending" class="text-[1.4rem] font-black tnum tracking-tight text-slate-700">-</div>
+            <div id="kpiPendingRatio" class="text-[.68rem] text-slate-500 tnum mt-0.5">&nbsp;</div>
           </div>
         </section>
 
         <!-- Filters -->
-        <div class="px-4 lg:px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-2 flex-wrap lg:justify-between flex-shrink-0">
+        <div class="px-4 lg:px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-3 flex-wrap lg:justify-between flex-shrink-0">
           <div class="relative w-full lg:w-auto lg:max-w-xs">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input type="text" id="searchInput" placeholder="이름, 회사, 이메일 검색"
               class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-white text-[.82rem] outline-none focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)] transition-all" />
           </div>
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <button class="filter-chip active" data-filter="all">전체</button>
-            <button class="filter-chip" data-filter="active">활성</button>
-            <button class="filter-chip" data-filter="review">검토중</button>
-            <button class="filter-chip" data-filter="pending">대기</button>
-            <button class="filter-chip" data-filter="enterprise">Enterprise</button>
-            <button class="filter-chip" data-filter="recent">최근 연락</button>
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="chip-group" data-group="status">
+              <button class="filter-chip active" data-value="">전체</button>
+              <button class="filter-chip" data-value="active">활성</button>
+              <button class="filter-chip" data-value="review">검토중</button>
+              <button class="filter-chip" data-value="pending">대기</button>
+            </div>
+            <div class="chip-group" data-group="plan">
+              <button class="filter-chip active" data-value="">전체 플랜</button>
+              <button class="filter-chip" data-value="Enterprise">Enterprise</button>
+              <button class="filter-chip" data-value="Pro">Pro</button>
+              <button class="filter-chip" data-value="Starter">Starter</button>
+            </div>
+            <div class="chip-group" data-group="sort">
+              <button class="filter-chip active" data-value="created_at">최신순</button>
+              <button class="filter-chip" data-value="last_contacted_at">최근 연락순</button>
+            </div>
           </div>
         </div>
 
@@ -109,7 +126,6 @@
                 <th>상태</th>
                 <th class="hidden lg:table-cell">플랜</th>
                 <th class="hidden xl:table-cell">마지막 연락</th>
-                <th class="w-12"></th>
               </tr>
             </thead>
             <tbody id="customersTable"></tbody>
@@ -120,16 +136,17 @@
     </div>
   </div>
 
-  <!-- Add customer modal -->
+  <!-- Customer modal (create + edit dual mode) -->
   <div id="modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
     <div class="modal-card">
       <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
-        <h2 class="text-[1.05rem] font-black tracking-tight text-slate-800">새 고객 추가</h2>
+        <h2 id="modalTitle" class="text-[1.05rem] font-black tracking-tight text-slate-800">새 고객 추가</h2>
         <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
       <div class="p-6 space-y-4">
+        <div id="formError" class="form-error hidden"></div>
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
             <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">이름 <span class="text-rose-500">*</span></label>
@@ -141,7 +158,7 @@
           </div>
         </div>
         <div>
-          <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">이메일 <span class="text-rose-500">*</span></label>
+          <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">이메일</label>
           <input id="newEmail" type="email" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem]" placeholder="name@company.com" />
         </div>
         <div class="grid sm:grid-cols-2 gap-4">
@@ -154,137 +171,405 @@
             <select id="newStatus" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] bg-white">
               <option value="active">활성</option>
               <option value="review">검토중</option>
-              <option value="pending">대기</option>
+              <option value="pending" selected>대기</option>
             </select>
           </div>
         </div>
         <div>
-          <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">메모</label>
-          <textarea id="newMemo" rows="3" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] resize-none" placeholder="관심 플랜, 특이사항 등"></textarea>
+          <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">플랜</label>
+          <select id="newPlan" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] bg-white">
+            <option value="">- (미할당)</option>
+            <option value="Starter">Starter</option>
+            <option value="Pro">Pro</option>
+            <option value="Enterprise">Enterprise</option>
+          </select>
         </div>
       </div>
-      <div class="px-6 py-4 border-t border-slate-200 flex gap-2 justify-end">
-        <button onclick="closeModal()" class="btn-secondary">취소</button>
-        <button onclick="addCustomer()" class="btn-primary">고객 추가</button>
+      <div class="px-6 py-4 border-t border-slate-200 flex gap-2 justify-between">
+        <button id="modalDeleteBtn" onclick="onDeleteClick()" class="btn-secondary hidden" style="color:rgb(225 29 72);border-color:rgb(254 205 211);">삭제</button>
+        <div class="flex gap-2 ml-auto">
+          <button onclick="closeModal()" class="btn-secondary">취소</button>
+          <button id="modalSaveBtn" onclick="onSaveClick()" class="btn-primary">고객 추가</button>
+        </div>
       </div>
     </div>
   </div>
 
+  <script src="api.js"></script>
   <script src="_shared.js"></script>
   <script>
     renderSidebar('customers');
 
+    // ──────────────────────────────────────────────
+    //  Auth gate — refresh access token on cold load,
+    //  redirect to login if refresh fails.
+    // ──────────────────────────────────────────────
+    (async function ensureAuth() {
+      if (!window.kloserApi) {
+        console.error('[customers] kloserApi missing — api.js failed to load');
+        return;
+      }
+      if (!window.kloserApi.getAccessToken()) {
+        try {
+          await window.kloserApi.refreshAccessToken();
+        } catch (_) {
+          window.kloserApi.loginRedirect();
+          return;
+        }
+      }
+      bindFilterChips();
+      bindSearchInput();
+      bindModalEsc();
+      await loadAll();
+    })();
+
+    // ──────────────────────────────────────────────
+    //  View state ↔ URL query string
+    //  viewState carries only the fields the server understands.
+    // ──────────────────────────────────────────────
+    let viewState = readViewStateFromUrl();
+    let customers = [];
+    let stats = { total: 0, active: 0, review: 0, pending: 0 };
+
+    function readViewStateFromUrl() {
+      const p = new URLSearchParams(window.location.search);
+      const state = {
+        q:       p.get('q')      || undefined,
+        status:  p.get('status') || undefined,
+        plan:    p.get('plan')   || undefined,
+        sort:    p.get('sort')   || undefined,
+        dir:     p.get('dir')    || undefined,
+      };
+      // sort=last_contacted_at implies dir=desc unless explicit
+      if (state.sort === 'last_contacted_at' && !state.dir) state.dir = 'desc';
+      return state;
+    }
+
+    function buildQueryString(state) {
+      const p = new URLSearchParams();
+      if (state.q)      p.set('q', state.q);
+      if (state.status) p.set('status', state.status);
+      if (state.plan)   p.set('plan', state.plan);
+      if (state.sort)   p.set('sort', state.sort);
+      if (state.dir)    p.set('dir', state.dir);
+      return p.toString();
+    }
+
+    function syncUrl() {
+      const qs = buildQueryString(viewState);
+      const newUrl = window.location.pathname + (qs ? '?' + qs : '');
+      window.history.replaceState(null, '', newUrl);
+    }
+
+    // ──────────────────────────────────────────────
+    //  Error helper — server returns two shapes:
+    //   - GET list query: { error: "invalid_<field>", value }
+    //   - body/params:    { error: "invalid_input", issues }
+    //   - 404/403/401:    { error: "<keyword>" }
+    // ──────────────────────────────────────────────
+    async function parseApiError(response) {
+      let body = null;
+      try { body = await response.json(); } catch (_) { /* */ }
+      const code = (body && body.error) || ('http_' + response.status);
+
+      if (code === 'invalid_input') return '입력값이 올바르지 않습니다.';
+      if (code.startsWith('invalid_')) {
+        const field = code.replace('invalid_', '');
+        return '필터 값이 올바르지 않습니다 (' + field + ').';
+      }
+      if (code === 'not_found')  return '고객을 찾을 수 없습니다.';
+      if (code === 'forbidden')  return '권한이 없습니다.';
+      if (response.status === 401) return '로그인이 필요합니다.';
+      return '요청 처리 중 오류가 발생했습니다 (' + response.status + ').';
+    }
+
+    // ──────────────────────────────────────────────
+    //  Data load — list + stats in parallel, then render.
+    // ──────────────────────────────────────────────
+    async function loadAll() {
+      const qs = buildQueryString(viewState);
+      const listPath = '/customers?' + (qs ? qs + '&' : '') + 'limit=100';
+      const [listRes, statsRes] = await Promise.all([
+        window.kloserApi.apiGet(listPath),
+        window.kloserApi.apiGet('/customers/stats'),
+      ]);
+
+      if (!listRes.ok) {
+        alert(await parseApiError(listRes));
+        return;
+      }
+      if (!statsRes.ok) {
+        alert(await parseApiError(statsRes));
+        return;
+      }
+
+      const listBody = await listRes.json();
+      customers = Array.isArray(listBody.items) ? listBody.items : [];
+      stats = await statsRes.json();
+      renderTable();
+      renderStats();
+    }
+
+    // ──────────────────────────────────────────────
+    //  Render
+    // ──────────────────────────────────────────────
     const planColors = {
       Enterprise: 'badge-violet',
       Pro: 'badge-blue',
       Starter: 'badge-slate',
-      '-': 'badge-slate',
     };
     const statusColors = {
-      active: { c: 'badge-emerald', l: '활성' },
-      review: { c: 'badge-amber', l: '검토중' },
-      pending: { c: 'badge-slate', l: '대기' },
+      active:  { c: 'badge-emerald', l: '활성' },
+      review:  { c: 'badge-amber',   l: '검토중' },
+      pending: { c: 'badge-slate',   l: '대기' },
     };
     const avatars = ['bg-violet-500','bg-rose-500','bg-emerald-500','bg-amber-500','bg-blue-500','bg-cyan-500','bg-pink-500','bg-teal-500'];
 
-    let customers = [
-      { name: '김민수', company: 'Kloser Inc.', email: 'kim@kloser.com', phone: '010-1234-5678', status: 'active', plan: 'Pro', last: '2시간 전' },
-      { name: '이지은', company: 'DesignCo.', email: 'lee@designco.kr', phone: '010-2345-6789', status: 'review', plan: 'Pro', last: '오늘 09:48' },
-      { name: '박서준', company: 'Nexus Lab', email: 'park@nexuslab.io', phone: '010-3456-7890', status: 'active', plan: 'Enterprise', last: '오늘 09:12' },
-      { name: '정유진', company: 'TerraBase', email: 'jung@terrabase.kr', phone: '010-4567-8901', status: 'active', plan: 'Enterprise', last: '오늘 08:55' },
-      { name: '최서연', company: 'OrbitLab', email: 'choi@orbitlab.com', phone: '010-5678-9012', status: 'pending', plan: '-', last: '어제' },
-      { name: '강지훈', company: 'SkyNode', email: 'kang@skynode.kr', phone: '010-6789-0123', status: 'active', plan: 'Pro', last: '어제' },
-      { name: '한수민', company: 'GridWorks', email: 'han@gridworks.io', phone: '010-7890-1234', status: 'review', plan: '-', last: '2일 전' },
-      { name: '윤서아', company: 'MapCore', email: 'yoon@mapcore.kr', phone: '010-8901-2345', status: 'active', plan: 'Enterprise', last: '2일 전' },
-      { name: '조성훈', company: 'DOI', email: 'cjb@doi-kr.com', phone: '010-9012-3456', status: 'active', plan: 'Pro', last: '3일 전' },
-      { name: '신예린', company: 'DataFlow', email: 'shin@dataflow.kr', phone: '010-0123-4567', status: 'pending', plan: '-', last: '1주 전' },
-      { name: '오민재', company: 'Pulsar', email: 'oh@pulsar.io', phone: '010-1357-2468', status: 'review', plan: 'Pro', last: '1주 전' },
-      { name: '임채영', company: 'Helix Group', email: 'lim@helix.co', phone: '010-2468-1357', status: 'active', plan: 'Enterprise', last: '2주 전' },
-    ];
-
-    let activeFilter = 'all';
-    let activeSearch = '';
-
     function avatarFor(name) {
-      const idx = (name.charCodeAt(0) + name.charCodeAt(name.length-1)) % avatars.length;
+      const safe = name && name.length > 0 ? name : '?';
+      const idx = (safe.charCodeAt(0) + safe.charCodeAt(safe.length-1)) % avatars.length;
       return avatars[idx];
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     function renderTable() {
       const el = document.getElementById('customersTable');
       el.innerHTML = '';
-      const q = activeSearch.toLowerCase();
-      const filtered = customers.filter(c => {
-        if (q && !(c.name.toLowerCase().includes(q) || c.company.toLowerCase().includes(q) || c.email.toLowerCase().includes(q))) return false;
-        if (activeFilter === 'active' && c.status !== 'active') return false;
-        if (activeFilter === 'review' && c.status !== 'review') return false;
-        if (activeFilter === 'pending' && c.status !== 'pending') return false;
-        if (activeFilter === 'enterprise' && c.plan !== 'Enterprise') return false;
-        return true;
-      });
-      if (filtered.length === 0) {
-        el.innerHTML = `<tr><td colspan="8" class="text-center text-slate-400 py-12 text-[.85rem]">검색 결과가 없습니다.</td></tr>`;
+
+      if (customers.length === 0) {
+        el.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-12 text-[.85rem]">고객이 없습니다. "고객 추가"로 시작해 보세요.</td></tr>';
         return;
       }
-      filtered.forEach(c => {
+
+      customers.forEach((c) => {
         const tr = document.createElement('tr');
-        const st = statusColors[c.status];
-        tr.innerHTML = `
-          <td onclick="event.stopPropagation()"><input type="checkbox" class="rounded accent-blue-600"/></td>
-          <td>
-            <div class="flex items-center gap-2.5 min-w-0">
-              <div class="w-8 h-8 rounded-full ${avatarFor(c.name)} flex items-center justify-center text-[.7rem] font-black text-white shrink-0">${c.name.slice(0,1)}</div>
-              <div class="min-w-0">
-                <div class="font-bold text-slate-800 text-[.85rem] truncate">${c.name}</div>
-                <div class="text-[.68rem] text-slate-400 truncate sm:hidden">${c.company}</div>
-              </div>
-            </div>
-          </td>
-          <td class="hidden sm:table-cell text-slate-700 text-[.82rem]">${c.company}</td>
-          <td class="hidden md:table-cell text-slate-600 text-[.78rem] truncate">${c.email}</td>
-          <td><span class="badge ${st.c}">${st.l}</span></td>
-          <td class="hidden lg:table-cell"><span class="badge ${planColors[c.plan]}">${c.plan}</span></td>
-          <td class="hidden xl:table-cell text-slate-500 text-[.78rem]">${c.last}</td>
-          <td onclick="event.stopPropagation()" class="text-right">
-            <button class="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
-              <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
-            </button>
-          </td>
-        `;
+        tr.className = 'customer-row';
+        tr.dataset.customerId = c.id;
+        const st = statusColors[c.status] || { c: 'badge-slate', l: c.status };
+        const planCls = c.plan ? (planColors[c.plan] || 'badge-slate') : 'badge-slate';
+        const planLbl = c.plan || '-';
+        const company = c.company || '';
+        const email = c.email || '';
+        const initial = (c.name || '?').slice(0, 1);
+        tr.innerHTML =
+          '<td onclick="event.stopPropagation()"><input type="checkbox" class="rounded accent-blue-600"/></td>' +
+          '<td>' +
+            '<div class="flex items-center gap-2.5 min-w-0">' +
+              '<div class="w-8 h-8 rounded-full ' + avatarFor(c.name) + ' flex items-center justify-center text-[.7rem] font-black text-white shrink-0">' + escapeHtml(initial) + '</div>' +
+              '<div class="min-w-0">' +
+                '<div class="font-bold text-slate-800 text-[.85rem] truncate">' + escapeHtml(c.name) + '</div>' +
+                '<div class="text-[.68rem] text-slate-400 truncate sm:hidden">' + escapeHtml(company) + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</td>' +
+          '<td class="hidden sm:table-cell text-slate-700 text-[.82rem]">' + escapeHtml(company) + '</td>' +
+          '<td class="hidden md:table-cell text-slate-600 text-[.78rem] truncate">' + escapeHtml(email) + '</td>' +
+          '<td><span class="badge ' + st.c + '">' + escapeHtml(st.l) + '</span></td>' +
+          '<td class="hidden lg:table-cell"><span class="badge ' + planCls + '">' + escapeHtml(planLbl) + '</span></td>' +
+          '<td class="hidden xl:table-cell text-slate-500 text-[.78rem]">' + escapeHtml(formatRelativeTime(c.last_contacted_at)) + '</td>';
+        tr.addEventListener('click', () => openEditModal(c));
         el.appendChild(tr);
       });
     }
-    renderTable();
 
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      activeSearch = e.target.value; renderTable();
-    });
-    document.querySelectorAll('.filter-chip').forEach(b => {
-      b.addEventListener('click', () => {
-        document.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('active'));
-        b.classList.add('active');
-        activeFilter = b.dataset.filter;
-        renderTable();
-      });
-    });
-
-    function openModal() { document.getElementById('modal').classList.add('show'); }
-    function closeModal() { document.getElementById('modal').classList.remove('show'); }
-    function addCustomer() {
-      const name = document.getElementById('newName').value.trim();
-      const email = document.getElementById('newEmail').value.trim();
-      if (!name || !email) { alert('이름과 이메일은 필수 입력입니다.'); return; }
-      const company = document.getElementById('newCompany').value.trim() || '-';
-      const phone = document.getElementById('newPhone').value.trim();
-      const status = document.getElementById('newStatus').value;
-      customers.unshift({ name, company, email, phone, status, plan: '-', last: '방금 전' });
-      const total = parseInt(document.getElementById('totalCount').textContent.replace(/,/g, '')) + 1;
-      document.getElementById('totalCount').textContent = total.toLocaleString();
-      ['newName','newCompany','newEmail','newPhone','newMemo'].forEach(id => document.getElementById(id).value = '');
-      closeModal();
-      renderTable();
+    function renderStats() {
+      const total = stats.total.toLocaleString();
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('kpiActive').textContent = stats.active.toLocaleString();
+      document.getElementById('kpiReview').textContent = stats.review.toLocaleString();
+      document.getElementById('kpiPending').textContent = stats.pending.toLocaleString();
+      const ratio = (n) => stats.total > 0 ? (n / stats.total * 100).toFixed(1) + '%' : '-';
+      document.getElementById('kpiActiveRatio').textContent  = ratio(stats.active);
+      document.getElementById('kpiReviewRatio').textContent  = ratio(stats.review);
+      document.getElementById('kpiPendingRatio').textContent = ratio(stats.pending);
+      // Keep the sidebar nav count in sync with the API total — otherwise
+      // the same screen shows two different "customer count" numbers.
+      const sidebarCount = document.getElementById('sidebarCustomersCount');
+      if (sidebarCount) sidebarCount.textContent = total;
     }
-    window.openModal = openModal; window.closeModal = closeModal; window.addCustomer = addCustomer;
+
+    // ──────────────────────────────────────────────
+    //  Filter chips (3 groups, independent active toggle)
+    // ──────────────────────────────────────────────
+    function bindFilterChips() {
+      // Restore active state from URL on load.
+      document.querySelectorAll('.chip-group').forEach((group) => {
+        const dim = group.dataset.group; // 'status' | 'plan' | 'sort'
+        const current =
+          dim === 'sort' ? (viewState.sort || 'created_at') :
+          (viewState[dim] || '');
+        group.querySelectorAll('.filter-chip').forEach((chip) => {
+          chip.classList.toggle('active', chip.dataset.value === current);
+          chip.addEventListener('click', () => {
+            group.querySelectorAll('.filter-chip').forEach((x) => x.classList.remove('active'));
+            chip.classList.add('active');
+            const v = chip.dataset.value;
+            if (dim === 'sort') {
+              if (v === 'last_contacted_at') {
+                viewState.sort = 'last_contacted_at';
+                viewState.dir = 'desc';
+              } else {
+                // 'created_at' is the server default — keep URL clean by
+                // dropping both keys.
+                viewState.sort = undefined;
+                viewState.dir = undefined;
+              }
+            } else {
+              viewState[dim] = v || undefined;
+            }
+            syncUrl();
+            loadAll();
+          });
+        });
+      });
+    }
+
+    // ──────────────────────────────────────────────
+    //  Search input — debounced
+    // ──────────────────────────────────────────────
+    function debounce(fn, ms) {
+      let h = null;
+      return function () {
+        if (h) clearTimeout(h);
+        h = setTimeout(fn, ms);
+      };
+    }
+
+    function bindSearchInput() {
+      const input = document.getElementById('searchInput');
+      input.value = viewState.q || '';
+      const debounced = debounce(() => { syncUrl(); loadAll(); }, 300);
+      input.addEventListener('input', (e) => {
+        const v = (e.target.value || '').trim();
+        viewState.q = v.length > 0 ? v : undefined;
+        debounced();
+      });
+    }
+
+    // ──────────────────────────────────────────────
+    //  Modal — create + edit dual mode
+    // ──────────────────────────────────────────────
+    let modalMode = 'create';
+    let editingId = null;
+
+    function openCreateModal() {
+      modalMode = 'create';
+      editingId = null;
+      document.getElementById('modalTitle').textContent = '새 고객 추가';
+      document.getElementById('modalSaveBtn').textContent = '고객 추가';
+      document.getElementById('modalDeleteBtn').classList.add('hidden');
+      resetModalForm();
+      hideFormError();
+      document.getElementById('modal').classList.add('show');
+      setTimeout(() => document.getElementById('newName').focus(), 0);
+    }
+
+    function openEditModal(customer) {
+      modalMode = 'edit';
+      editingId = customer.id;
+      document.getElementById('modalTitle').textContent = '고객 정보 수정';
+      document.getElementById('modalSaveBtn').textContent = '저장';
+      document.getElementById('modalDeleteBtn').classList.remove('hidden');
+      hideFormError();
+      document.getElementById('newName').value     = customer.name || '';
+      document.getElementById('newCompany').value  = customer.company || '';
+      document.getElementById('newEmail').value    = customer.email || '';
+      document.getElementById('newPhone').value    = customer.phone || '';
+      document.getElementById('newStatus').value   = customer.status || 'pending';
+      document.getElementById('newPlan').value     = customer.plan || '';
+      document.getElementById('modal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('show');
+    }
+
+    function resetModalForm() {
+      document.getElementById('newName').value = '';
+      document.getElementById('newCompany').value = '';
+      document.getElementById('newEmail').value = '';
+      document.getElementById('newPhone').value = '';
+      document.getElementById('newStatus').value = 'pending';
+      document.getElementById('newPlan').value = '';
+    }
+
+    function showFormError(msg) {
+      const el = document.getElementById('formError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+    function hideFormError() {
+      document.getElementById('formError').classList.add('hidden');
+    }
+
+    function readModalForm() {
+      const planValue = document.getElementById('newPlan').value;
+      return {
+        name:    document.getElementById('newName').value.trim(),
+        company: document.getElementById('newCompany').value.trim() || null,
+        email:   document.getElementById('newEmail').value.trim()   || null,
+        phone:   document.getElementById('newPhone').value.trim()   || null,
+        status:  document.getElementById('newStatus').value,
+        plan:    planValue === '' ? null : planValue,
+      };
+    }
+
+    async function onSaveClick() {
+      hideFormError();
+      const payload = readModalForm();
+      if (!payload.name) {
+        showFormError('이름은 필수 입력입니다.');
+        return;
+      }
+      if (modalMode === 'create') {
+        const res = await window.kloserApi.apiPost('/customers', payload);
+        if (!res.ok) { showFormError(await parseApiError(res)); return; }
+        closeModal();
+        await loadAll();
+        return;
+      }
+      // edit mode
+      const res = await window.kloserApi.apiPatch('/customers/' + editingId, payload);
+      if (!res.ok) { showFormError(await parseApiError(res)); return; }
+      closeModal();
+      await loadAll();
+    }
+
+    async function onDeleteClick() {
+      if (!editingId) return;
+      if (!confirm('정말 삭제하시겠습니까? (복구 불가)')) return;
+      const res = await window.kloserApi.apiDelete('/customers/' + editingId);
+      if (!res.ok && res.status !== 204) {
+        showFormError(await parseApiError(res));
+        return;
+      }
+      closeModal();
+      await loadAll();
+    }
+
+    function bindModalEsc() {
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('modal').classList.contains('show')) {
+          closeModal();
+        }
+      });
+    }
+
+    // Expose for inline onclick attributes.
+    window.openCreateModal = openCreateModal;
+    window.closeModal = closeModal;
+    window.onSaveClick = onSaveClick;
+    window.onDeleteClick = onDeleteClick;
   </script>
 </body>
 </html>
