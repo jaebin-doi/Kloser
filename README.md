@@ -258,40 +258,100 @@ kloser/
 
 ## 🛠️ 로컬 실행
 
-### 마케팅 사이트 + 플랫폼 데모 (정적)
+> 현재 코드는 외부 서버에 자동 배포되는 구조가 아닙니다. 아래 절차는 로컬 PC에서 직접 서버를 켜고 브라우저로 접속하는 방법입니다.
 
-정적 HTML/JS/CSS만 사용하므로 빌드 없이 단순 HTTP 서버로 띄우면 됩니다.
+### 기본 실행 (`http://localhost:8765`)
 
-```bash
-# 프로젝트 루트에서
-python -m http.server 8765
-# (Python alias 미설치 시) npx http-server . -p 8765 --silent
+`live.html`까지 실제 로그인/API/WebSocket 흐름으로 보려면 터미널 3개가 필요합니다.
 
-# 브라우저에서:
-# 마케팅 사이트   →  http://localhost:8765/
-# 플랫폼 데모     →  http://localhost:8765/platform/
-# 도입 가이드     →  http://localhost:8765/docs/product/guide.html
+```powershell
+# 터미널 1: DB + Redis
+docker compose -f ops/docker-compose.yml up -d
 ```
 
-### 라이브 통화 백엔드 (`live.html` 실시간 흐름 보기)
-
-`platform/live.html`이 진짜 WebSocket 이벤트로 동작하는 걸 보려면 별도 터미널에서 백엔드를 띄웁니다. Phase 1 Step 4부터는 자체 auth + JWT 핸드셰이크가 들어와서, 처음 진입하면 `login.html`로 자동 redirect 됩니다 (dev seed 자격증명: `admin@acme.test` / `acme-admin-1234`).
-
-```bash
-# 1. infra (docker compose — postgres + redis)
-docker compose -f ops/docker-compose.yml up -d
-
-# 2. backend (Fastify on :3001)
+```powershell
+# 터미널 2: 백엔드 API + WebSocket (:3001)
 cd server
 npm install                  # 최초 1회
-npm run db:migrate:up        # 7 tables + RLS + sessions enrichment
-npm run db:seed              # 2 orgs × (admin + employee) Argon2id 해시
-npm run dev                  # tsx watch
+npm run db:migrate:up        # 최초 1회 또는 migration 변경 시
+npm run db:seed              # 최초 1회 또는 seed 재적재 시
+npm run dev
 ```
+
+```powershell
+# 터미널 3: 정적 HTML 서버 (:8765), 프로젝트 루트에서 실행
+python -m http.server 8765
+# Python이 없으면:
+# npx http-server . -p 8765 --silent
+```
+
+브라우저 접속 주소:
+
+| 목적 | URL |
+|---|---|
+| 마케팅 사이트 | <http://localhost:8765/> |
+| 로그인 | <http://localhost:8765/platform/login.html> |
+| 실시간 통화 데모 | <http://localhost:8765/platform/live.html> |
+| 플랫폼 데모 홈 | <http://localhost:8765/platform/> |
+| 도입 가이드 | <http://localhost:8765/docs/product/guide.html> |
+| Phase 1 사용자 가이드 | <http://localhost:8765/docs/product/USER_GUIDE.html> |
+| Phase 1 기반 기능 가이드 | <http://localhost:8765/docs/product/PHASE_1_FOUNDATIONS.html> |
+
+`platform/live.html`은 로그인 없이는 `login.html`로 자동 이동합니다. localhost에서는 로그인 화면에 dev 계정 자동 채우기 버튼이 보입니다.
+
+| 역할 | 이메일 | 비밀번호 |
+|---|---|---|
+| Acme admin | `admin@acme.test` | `acme-admin-1234` |
+| Acme employee | `emp@acme.test` | `acme-emp-1234` |
+| Beta admin | `admin@beta.test` | `beta-admin-1234` |
+| Beta employee | `emp@beta.test` | `beta-emp-1234` |
 
 로그인 후 `http://localhost:8765/platform/live.html`이 인증된 WS로 `start_call → transcript/suggestion/sentiment` 시퀀스를 푸시합니다. 자세한 실행/검증/엔드포인트는 [`server/README.md`](server/README.md).
 
-> **선택**: prod 등가 검증(HTTPS, single-origin)이 필요하면 Phase 1 Step 5의 Caddy 모드를 사용합니다. `caddy run --config ops/Caddyfile.dev`로 띄우면 정적·REST·WS가 모두 `https://localhost` 한 도메인에 모이고, `platform/api.js`가 origin 기반 auto-detect로 별도 HTML 수정 없이 동작합니다. 자세한 절차는 [`server/README.md`](server/README.md)의 "Run (Caddy single-origin variant)" 섹션.
+### Step 5 Caddy 실행 (`https://localhost`)
+
+운영 환경과 비슷하게 정적 파일, REST API, WebSocket을 모두 `https://localhost` 한 origin으로 묶어 보려면 Caddy 모드를 사용합니다. 이 모드에서는 위의 터미널 3 정적 서버가 필요 없고, Caddy가 정적 파일까지 직접 제공합니다.
+
+먼저 터미널 1(DB + Redis)과 터미널 2(백엔드 `npm run dev`)는 그대로 켜둡니다. 그 다음 프로젝트 루트에서 Caddy를 실행합니다.
+
+```powershell
+# Caddy 설치 확인
+caddy version
+
+# PATH에 caddy가 없으면 winget 설치 위치를 직접 확인
+where.exe caddy
+
+# Caddy 실행 (:443)
+$env:KLOSER_STATIC_ROOT = (Resolve-Path .).Path
+caddy run --config ops/Caddyfile.dev
+```
+
+Windows에서 `winget`으로 Caddy를 설치했는데 `caddy` 명령이 PATH에 없으면, 설치된 `caddy.exe` 경로를 직접 실행해도 됩니다.
+
+```powershell
+$caddy = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\CaddyServer.Caddy_Microsoft.Winget.Source_8wekyb3d8bbwe\caddy.exe"
+& $caddy run --config ops/Caddyfile.dev
+```
+
+Caddy 모드 브라우저 접속 주소:
+
+| 목적 | URL |
+|---|---|
+| 마케팅 사이트 | <https://localhost/> |
+| 로그인 | <https://localhost/platform/login.html> |
+| 실시간 통화 데모 | <https://localhost/platform/live.html> |
+| Health check | <https://localhost/health> |
+
+브라우저에서 인증서 경고가 뜨면 로컬 self-signed 인증서 때문입니다. 임시로는 "고급 → 계속 진행"으로 들어가면 되고, 경고를 없애려면 관리자 권한 터미널에서 한 번 `caddy trust`를 실행합니다.
+
+검증:
+
+```powershell
+curl.exe -k https://localhost/health
+$env:KLOSER_E2E_BASE_URL = 'https://localhost'
+node test/phase_0_5_e2e.mjs
+Remove-Item Env:KLOSER_E2E_BASE_URL
+```
 
 > **참고**: Tailwind CSS, Pretendard, socket.io-client는 CDN 로딩이라 첫 로드 시 인터넷 연결이 필요합니다.
 
