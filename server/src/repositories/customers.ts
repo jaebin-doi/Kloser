@@ -19,60 +19,30 @@
  * RETURNING when the row is missing/deleted, which Step 4 routes map to 404.
  */
 import type { PoolClient } from "pg";
+import type {
+  Customer,
+  CustomerCreateInput,
+  CustomerListFilters,
+  CustomerListQuery,
+  CustomerPatch,
+  CustomerSortKey,
+  CustomerStats,
+  SortDirection,
+} from "../types/customers.js";
 
-export type CustomerStatus = "active" | "review" | "pending";
-export type CustomerPlan = "Starter" | "Pro" | "Enterprise";
-export type CustomerSortKey = "name" | "created_at" | "last_contacted_at";
-export type SortDirection = "asc" | "desc";
-
-export interface Customer {
-  id: string;
-  org_id: string;
-  name: string;
-  company: string | null;
-  email: string | null;
-  phone: string | null;
-  status: CustomerStatus;
-  plan: CustomerPlan | null;
-  assigned_user_id: string | null;
-  last_contacted_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface CustomerListFilters {
-  q?: string;
-  status?: CustomerStatus;
-  plan?: CustomerPlan;
-  assignedUserId?: string | null;
-}
-
-export interface CustomerListOptions extends CustomerListFilters {
-  limit: number;
-  offset: number;
-  sort: CustomerSortKey;
-  dir: SortDirection;
-}
-
-export interface CustomerCreateInput {
-  name: string;
-  company?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  status?: CustomerStatus;
-  plan?: CustomerPlan | null;
-  assigned_user_id?: string | null;
-  last_contacted_at?: Date | null;
-}
-
-export type CustomerPatch = Partial<CustomerCreateInput>;
-
-export interface CustomerStats {
-  total: number;
-  active: number;
-  review: number;
-  pending: number;
-}
+// Repository accepts the parsed list query directly. CustomerListQuery
+// from shared types carries limit/offset/sort/dir as required (defaults
+// applied by zod) plus the optional filter fields.
+export type CustomerListOptions = CustomerListQuery;
+export type {
+  Customer,
+  CustomerCreateInput,
+  CustomerListFilters,
+  CustomerPatch,
+  CustomerSortKey,
+  CustomerStats,
+  SortDirection,
+};
 
 const CUSTOMER_COLUMNS =
   "id, org_id, name, company, email, phone, status, plan," +
