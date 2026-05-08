@@ -21,6 +21,15 @@
  */
 import { z } from "zod";
 
+// UUID regex matching Phase 1 convention (Phase 1 services/auth.ts UUID_RE).
+// Permissive 32-hex-with-dashes — does NOT enforce RFC 4122 version/variant
+// bits because seed UUIDs (e.g. "eeeeeeee-1111-0001-0001-eeeeeeeeeeee") use
+// deterministic patterns that fail zod 4.x `.uuid()` strict validation.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const UuidString = z.string().regex(UUID_RE, "invalid uuid");
+
 // ---------- enums ---------- //
 
 export const CustomerStatus = z.enum(["active", "review", "pending"]);
@@ -67,7 +76,7 @@ export const CustomerCreateInput = z.object({
   phone: z.string().trim().max(40).nullable().optional(),
   status: CustomerStatus.optional(),
   plan: CustomerPlan.nullable().optional(),
-  assigned_user_id: z.string().uuid().nullable().optional(),
+  assigned_user_id: UuidString.nullable().optional(),
   last_contacted_at: LastContactedAt.optional(),
 });
 export type CustomerCreateInput = z.infer<typeof CustomerCreateInput>;
@@ -91,15 +100,15 @@ export type CustomerPatch = z.infer<typeof CustomerPatch>;
 // when emitting JSON.
 
 export const Customer = z.object({
-  id: z.string().uuid(),
-  org_id: z.string().uuid(),
+  id: UuidString,
+  org_id: UuidString,
   name: z.string(),
   company: z.string().nullable(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
   status: CustomerStatus,
   plan: CustomerPlan.nullable(),
-  assigned_user_id: z.string().uuid().nullable(),
+  assigned_user_id: UuidString.nullable(),
   last_contacted_at: z.date().nullable(),
   created_at: z.date(),
   updated_at: z.date(),
@@ -157,7 +166,7 @@ const AssignedUserId = z.preprocess((v) => {
   if (v === undefined || v === "") return undefined;
   if (v === null || v === "null") return null;
   return v;
-}, z.union([z.string().uuid(), z.null()]).optional());
+}, z.union([UuidString, z.null()]).optional());
 
 export const CustomerListQuery = z.object({
   q: ListQ,

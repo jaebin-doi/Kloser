@@ -13,6 +13,7 @@ import { registerCallsNamespace } from "./ws/calls.js";
 import authPlugin from "./plugins/auth.js";
 import dbPlugin from "./plugins/db.js";
 import authRoutes from "./routes/auth.js";
+import customersRoutes from "./routes/customers.js";
 import meRoutes from "./routes/me.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -49,6 +50,7 @@ await app.register(dbPlugin);
 
 await app.register(authRoutes);
 await app.register(meRoutes);
+await app.register(customersRoutes);
 
 app.get("/health", async () => ({
   ok: true,
