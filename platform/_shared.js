@@ -64,23 +64,41 @@ const SIDEBAR_HTML = `
   </nav>
 
   <div class="border-t border-slate-100 p-2">
-    <button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg">
-      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[.78rem] font-black text-white shrink-0">김</div>
-      <div class="flex-1 text-left min-w-0">
-        <div class="text-[.85rem] font-bold text-slate-800 truncate">김민수</div>
-        <div class="text-[.65rem] text-slate-500 truncate">영업1팀 · 대리</div>
+    <div id="sidebarUserMenu" class="relative">
+      <button id="sidebarUserBtn" type="button" aria-haspopup="menu" aria-expanded="false"
+              class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[.78rem] font-black text-white shrink-0">김</div>
+        <div class="flex-1 text-left min-w-0">
+          <div class="text-[.85rem] font-bold text-slate-800 truncate">김민수</div>
+          <div class="text-[.65rem] text-slate-500 truncate">영업1팀 · 대리</div>
+        </div>
+        <svg width="14" height="14" class="text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polyline points="8 9 12 5 16 9"/>
+          <polyline points="16 15 12 19 8 15"/>
+        </svg>
+      </button>
+      <div id="sidebarUserPopover" role="menu"
+           class="hidden absolute bottom-full left-0 right-0 mb-2 p-1 rounded-xl border border-slate-200 bg-white shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] z-50">
+        <a href="settings.html" role="menuitem"
+           class="flex items-center gap-2.5 px-3 py-2 rounded-md text-[.78rem] font-semibold text-slate-700 hover:bg-slate-50 transition no-underline">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          설정
+        </a>
+        <div class="my-1 border-t border-slate-100"></div>
+        <button id="sidebarLogoutBtn" role="menuitem" type="button"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[.78rem] font-semibold text-rose-600 hover:bg-rose-50 transition">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          로그아웃
+        </button>
       </div>
-    </button>
-    <button id="sidebarLogoutBtn" type="button"
-            class="mt-1 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md
-                   text-[.72rem] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-        <polyline points="16 17 21 12 16 7"/>
-        <line x1="21" y1="12" x2="9" y2="12"/>
-      </svg>
-      로그아웃
-    </button>
+    </div>
   </div>
 </aside>
 <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -92,9 +110,40 @@ function renderSidebar(activePage) {
     const el = document.querySelector(`.nav-item[data-page="${activePage}"]`);
     if (el) el.classList.add('active');
   }
+  wireSidebarUserMenu();
+}
+
+function wireSidebarUserMenu() {
+  const wrap = document.getElementById('sidebarUserMenu');
+  const btn = document.getElementById('sidebarUserBtn');
+  const pop = document.getElementById('sidebarUserPopover');
+  const logoutBtn = document.getElementById('sidebarLogoutBtn');
+  if (!wrap || !btn || !pop) return;
+
+  function open() {
+    pop.classList.remove('hidden');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  function close() {
+    pop.classList.add('hidden');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (pop.classList.contains('hidden')) open(); else close();
+  });
+  document.addEventListener('click', e => {
+    if (!wrap.contains(e.target)) close();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !pop.classList.contains('hidden')) {
+      close();
+      btn.focus();
+    }
+  });
+
   // Wire logout — server logout failure must not strand the user on a
   // protected page, so we always navigate to login.html regardless.
-  const logoutBtn = document.getElementById('sidebarLogoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
       logoutBtn.disabled = true;

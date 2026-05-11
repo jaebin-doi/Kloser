@@ -660,6 +660,15 @@
                   <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
                 </div>
 
+                <div class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">로그아웃</div>
+                    <div class="set-row-desc">현재 브라우저 세션을 종료하고 로그인 페이지로 이동합니다.</div>
+                  </div>
+                  <button id="settingsLogoutBtn" type="button" class="btn-secondary"
+                          style="color: rgb(190 18 60); border-color: rgb(254 205 211);">로그아웃</button>
+                </div>
+
                 <div class="set-card-divider pt-5 mt-2">
                   <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">개인정보 마스킹</div>
                   <div class="set-row">
@@ -995,9 +1004,28 @@
   <!-- Save toast -->
   <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-3 rounded-xl bg-slate-900 text-white text-[.82rem] font-bold shadow-2xl opacity-0 pointer-events-none transition-all z-[200]"></div>
 
+  <script src="api.js"></script>
   <script src="_shared.js"></script>
   <script>
     renderSidebar('settings');
+
+    // Logout from the security section — same contract as the sidebar:
+    // always navigate to login.html regardless of server outcome.
+    const settingsLogoutBtn = document.getElementById('settingsLogoutBtn');
+    if (settingsLogoutBtn) {
+      settingsLogoutBtn.addEventListener('click', async () => {
+        settingsLogoutBtn.disabled = true;
+        try {
+          if (window.kloserApi && typeof window.kloserApi.logout === 'function') {
+            await window.kloserApi.logout();
+          }
+        } catch (err) {
+          console.warn('[logout] server call failed; clearing client anyway', err);
+        } finally {
+          window.location.replace('/platform/login.html');
+        }
+      });
+    }
 
     // TOC scroll spy
     const sections = document.querySelectorAll('main section[id]');
