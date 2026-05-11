@@ -850,12 +850,32 @@
         </ul>
       </div>
 
+      <!-- Sidebar identity callout -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-2">사이드바 프로필이 실제 계정 정보로 채워집니다</p>
+      <div class="card p-5 mb-6">
+        <p class="text-[.85rem] text-slate-700 leading-relaxed mb-3">
+          모든 로그인 페이지의 좌측 사이드바는 정적 데모 이름이 아니라 본인의 현재 세션 기준으로 채워집니다 —
+          상단 카드는 <strong>소속 조직 이름 + 플랜 라벨</strong>, 하단 버튼은 <strong>본인 이름 + 한국어 역할 라벨</strong>.
+          다른 조직으로 다시 로그인하면 즉시 그 조직 정보로 바뀝니다.
+        </p>
+        <div class="grid sm:grid-cols-2 gap-3 text-[.82rem]">
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">상단 카드</p>
+            <p class="text-slate-600 leading-relaxed">조직 이름 + <code class="font-mono text-[.75rem]">Starter</code> / <code class="font-mono text-[.75rem]">Pro</code> / <code class="font-mono text-[.75rem]">Enterprise</code> 중 하나의 플랜 라벨.</p>
+          </div>
+          <div class="card-tight p-3">
+            <p class="font-bold text-slate-900 mb-1">하단 버튼</p>
+            <p class="text-slate-600 leading-relaxed">본인 이름 + <code class="font-mono text-[.75rem]">관리자 / 매니저 / 직원 / 조회</code> 중 하나의 한국어 역할 라벨. 이름이 비어 있으면 이메일 앞부분이 fallback.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Real screenshot: team page -->
       <figure class="mt-8">
         <div class="shot">
           <img src="../../assets/screenshots/user_guide/team.png" alt="실제 팀 관리 화면 — 멤버 목록, 역할 뱃지, 활성 초대 목록, 초대 보내기 모달">
         </div>
-        <figcaption class="shot-caption"><strong>실제 팀 관리 화면</strong> — 멤버 목록과 보낸 초대가 같은 페이지에서 운영됩니다. 역할 표시, 계정 잠금 토글, 다시 보내기/취소가 한 화면에 모여 있고, 위에서 설명한 안전장치들이 그 뒤에서 자동으로 동작합니다.</figcaption>
+        <figcaption class="shot-caption"><strong>실제 팀 관리 화면</strong> — 멤버 목록과 보낸 초대가 같은 페이지에서 운영됩니다. 역할 표시, 계정 잠금 토글, 다시 보내기/취소가 한 화면에 모여 있고, 좌측 사이드바 프로필도 본인 세션 기준으로 채워집니다. (스크린샷의 김민수·Kloser Inc.는 캡처 당시 데모 표시 — 현재는 실제 계정·조직 정보가 노출됩니다.)</figcaption>
       </figure>
     </section>
 
