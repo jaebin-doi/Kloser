@@ -14,6 +14,7 @@
 | **이 레포를 받아서 로컬에서 띄우고 싶다 (개발자)** | [`server/README.md`](../server/README.md) — 실행·검증·엔드포인트 |
 | **상위 백엔드 로드맵이 궁금하다** | [`plan/roadmap/BACKEND_PLAN.md`](plan/roadmap/BACKEND_PLAN.md) |
 | **Phase 1 / 2 / 3의 결과 인계가 궁금하다** | [`plan/phase-1/PHASE_1_MASTER.md`](plan/phase-1/PHASE_1_MASTER.md), [`plan/phase-2/PHASE_2_MASTER.md`](plan/phase-2/PHASE_2_MASTER.md), [`plan/phase-3/PHASE_3_MASTER.md`](plan/phase-3/PHASE_3_MASTER.md) (3개 모두 완료) |
+| **Phase 4 (calls/dashboard 영속화) 진행 상태가 궁금하다** | [`plan/phase-4/PHASE_4_MASTER.md`](plan/phase-4/PHASE_4_MASTER.md) (계획 단계 — Step 1 schema plan 작성됨, 구현 진입 전) |
 | **특정 sub-step의 결정과 결과를 보고 싶다** | `plan/phase-{n}/PHASE_*_STEP_*` (계획) + `*_FINDINGS` (결과) |
 | **마케팅/도입/요금 관련 자료** | [`product/`](product/) |
 
@@ -30,6 +31,7 @@
 | [`plan/phase-1/`](plan/phase-1/) | 온프레미스 기반 + 자체 Auth 계획/결과 |
 | [`plan/phase-2/`](plan/phase-2/) | Customers CRUD 계획/결과 |
 | [`plan/phase-3/`](plan/phase-3/) | 회원가입 · 이메일 인증 · 비밀번호 재설정 · 팀/초대 계획/결과 |
+| [`plan/phase-4/`](plan/phase-4/) | calls / transcripts 영속화 + dashboard 실 KPI 전환 계획 (구현 진입 전) |
 
 ### `decision/` — 기술 선택 트레일 (총 4개)
 
