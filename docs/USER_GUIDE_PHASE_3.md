@@ -203,7 +203,6 @@ Phase 3은 self-service 흐름을 연 단계입니다. 다음은 다음 Phase로
 - **manager/employee 권한 다층화** — "매니저는 자기 팀만, 직원은 자기 담당만" 정책. 현재 admin-only mutation. Phase 4+.
 - **MFA / 2FA / WebAuthn** — Phase 6+ 운영 진입.
 - **bulk invitation (CSV 일괄)** — Phase 6+ enterprise.
-- **사이드바 사용자 정보의 실제 데이터화** — 현재 김민수·Kloser Inc. 같은 표시는 정적. `/me` wiring은 Phase 4 진입 시 처리 예정.
 - **미인증 배너 — 모든 보호 페이지** — 현재 live.html / team.html에만 wired. dashboard / customers / calls / daily / settings / newsletter는 1줄 추가 작업이 Phase 4+에 남음.
 
 ---

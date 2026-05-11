@@ -11,10 +11,10 @@ const SIDEBAR_HTML = `
 
   <div class="border-b border-slate-100">
     <button class="w-full flex items-center gap-2.5 px-5 py-2.5">
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[.65rem] font-black text-white shadow-sm shrink-0">K</div>
+      <div id="sidebarOrgAvatar" class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[.65rem] font-black text-white shadow-sm shrink-0">·</div>
       <div class="flex-1 text-left min-w-0">
-        <div class="text-[.78rem] font-bold text-slate-800 truncate">Kloser Inc.</div>
-        <div class="text-[.62rem] text-slate-400 truncate">Pro · 14명</div>
+        <div id="sidebarOrgName" class="text-[.78rem] font-bold text-slate-800 truncate opacity-60">계정 확인 중…</div>
+        <div id="sidebarOrgPlan" class="text-[.62rem] text-slate-400 truncate">—</div>
       </div>
     </button>
   </div>
@@ -67,10 +67,10 @@ const SIDEBAR_HTML = `
     <div id="sidebarUserMenu" class="relative">
       <button id="sidebarUserBtn" type="button" aria-haspopup="menu" aria-expanded="false"
               class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition">
-        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[.78rem] font-black text-white shrink-0">김</div>
+        <div id="sidebarUserAvatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[.78rem] font-black text-white shrink-0">·</div>
         <div class="flex-1 text-left min-w-0">
-          <div class="text-[.85rem] font-bold text-slate-800 truncate">김민수</div>
-          <div class="text-[.65rem] text-slate-500 truncate">영업1팀 · 대리</div>
+          <div id="sidebarUserName" class="text-[.85rem] font-bold text-slate-800 truncate opacity-60">계정 확인 중…</div>
+          <div id="sidebarUserRole" class="text-[.65rem] text-slate-500 truncate">—</div>
         </div>
         <svg width="14" height="14" class="text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <polyline points="8 9 12 5 16 9"/>
@@ -111,6 +111,107 @@ function renderSidebar(activePage) {
     if (el) el.classList.add('active');
   }
   wireSidebarUserMenu();
+  loadSidebarProfile();
+}
+
+// Role / plan label maps — server stores the lowercased enum, sidebar
+// shows the Korean / title-cased label.
+const SIDEBAR_ROLE_LABELS = {
+  admin:    '관리자',
+  manager:  '매니저',
+  employee: '직원',
+  viewer:   '조회',
+};
+const SIDEBAR_PLAN_LABELS = {
+  starter:    'Starter',
+  pro:        'Pro',
+  enterprise: 'Enterprise',
+};
+
+// In-flight /me dedupe — renderSidebar can be called once per page, but
+// guard against repeated injects (notification panel etc. re-rendering
+// the sidebar slot would otherwise fire /me twice).
+let _sidebarProfilePromise = null;
+
+/* Fill the sidebar profile (top org card + bottom user button) from
+ * /me. This is fire-and-forget: on any failure we leave the loading
+ * placeholders untouched and let the page-level auth guard handle the
+ * redirect. Calling pages must not redirect on /me failure themselves
+ * for the sidebar's sake — the sidebar is decoupled.
+ */
+async function loadSidebarProfile() {
+  if (_sidebarProfilePromise) return _sidebarProfilePromise;
+
+  _sidebarProfilePromise = (async () => {
+    if (!window.kloserApi || typeof window.kloserApi.apiGet !== 'function') {
+      // api.js not loaded — page is anonymous or misconfigured. Leave
+      // the placeholders.
+      return;
+    }
+    // Gate the /me request behind a valid access token. Without this
+    // guard, an unauthenticated page load would fire GET /me which the
+    // server answers 401 — the browser surfaces that as a "Failed to
+    // load resource" console error even when the JS handles it (caught
+    // by the Phase 3 e2e "no console errors" check). live.html uses
+    // the same pre-flight pattern.
+    if (typeof window.kloserApi.getAccessToken !== 'function') return;
+    if (!window.kloserApi.getAccessToken()) {
+      try {
+        if (typeof window.kloserApi.refreshAccessToken === 'function') {
+          await window.kloserApi.refreshAccessToken();
+        }
+      } catch (_err) {
+        // No session at all. Page-level auth guard owns the redirect;
+        // sidebar stays in loading state.
+        return;
+      }
+      if (!window.kloserApi.getAccessToken()) return;
+    }
+    try {
+      const res = await window.kloserApi.apiGet('/me');
+      if (!res.ok) return;
+      const body = await res.json();
+      applySidebarProfile(body);
+    } catch (err) {
+      console.warn('[sidebar] /me load failed', err);
+    }
+  })();
+  return _sidebarProfilePromise;
+}
+
+function applySidebarProfile(me) {
+  if (!me || !me.user || !me.organization || !me.membership) return;
+
+  // Name fallback: empty user.name → local part of email.
+  const rawName = (me.user.name || '').trim();
+  const emailPrefix = (me.user.email || '').split('@')[0] || '';
+  const displayName = rawName || emailPrefix || 'unknown';
+
+  const orgName = me.organization.name || '';
+  const planLabel = SIDEBAR_PLAN_LABELS[me.organization.plan] || me.organization.plan || '';
+  const roleLabel = SIDEBAR_ROLE_LABELS[me.membership.role] || me.membership.role || '';
+
+  // Avatar initials. Use the first character of the display name / org
+  // name as the visible initial. Uppercase for Latin so "a" → "A"; CJK
+  // characters render unchanged.
+  const userInitial = (displayName.charAt(0) || '·').toUpperCase();
+  const orgInitial = (orgName.charAt(0) || '·').toUpperCase();
+
+  // textContent everywhere — server-supplied strings never reach
+  // innerHTML (AGENTS.md innerHTML XSS gate).
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = text;
+      el.classList.remove('opacity-60');
+    }
+  };
+  set('sidebarUserName',   displayName);
+  set('sidebarUserRole',   roleLabel);
+  set('sidebarOrgName',    orgName);
+  set('sidebarOrgPlan',    planLabel);
+  set('sidebarUserAvatar', userInitial);
+  set('sidebarOrgAvatar',  orgInitial);
 }
 
 function wireSidebarUserMenu() {
