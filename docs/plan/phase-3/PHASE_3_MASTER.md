@@ -11,7 +11,7 @@
 
 > 이 섹션은 sub-step 진행 시 갱신된다. 본 plan은 master로, 각 sub-step은 별도 `PHASE_3_STEP_X_*.md` 문서에서 상세 설계.
 
-- [ ] **Step 1** — Schema 보강(auth_tokens, email_outbox, invitations 보강, memberships.status) + RLS + 시드 → `PHASE_3_STEP_1_SCHEMA.md`
+- [x] **Step 1** — Schema 보강(auth_tokens, email_outbox, invitations 보강, memberships.status) + RLS + 시드 → `PHASE_3_STEP_1_SCHEMA.md` + `PHASE_3_STEP_1_FINDINGS.md` (2026-05-11)
 - [ ] **Step 2** — 회원가입 + 이메일 인증 service/route + 단위 테스트 → `PHASE_3_STEP_2_SIGNUP_VERIFY.md`
 - [ ] **Step 3** — 비밀번호 재설정 service/route + 단위 테스트 → `PHASE_3_STEP_3_PASSWORD_RESET.md`
 - [ ] **Step 4** — Team / Member API + 마지막 admin 보호 + 권한 단위 테스트 → `PHASE_3_STEP_4_TEAM_MEMBER.md`

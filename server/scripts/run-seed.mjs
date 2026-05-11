@@ -68,6 +68,8 @@ try {
         ["users",          4],
         ["memberships",    4],
         ["customers",     24],
+        ["invitations",    2],   // Phase 3: live 1 + expired 1 (Acme)
+        ["email_outbox",   1],   // Phase 3: invitation sample 1 (Acme)
     ];
     for (const [table, expected] of checks) {
         const { rows } = await client.query(`SELECT count(*)::int AS n FROM ${table}`);
