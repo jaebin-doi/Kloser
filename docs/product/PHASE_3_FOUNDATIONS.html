@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser Phase 3 — 자가 가입, 이메일 인증, 동료 초대</title>
+  <meta name="description" content="Phase 3가 만든 5가지 약속 — 자가 회원가입 / 이메일 인증 / 비밀번호 재설정 / 동료 초대 / 팀·멤버 운영 + 마지막 admin 보호 — 을 사용자 입장에서 풀어 보여주는 시각 가이드." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(124, 58, 237, 0.07), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(37, 99, 235, 0.07), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #7c3aed 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+
+    .card-tight {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .03);
+    }
+
+    .pillar-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    }
+    .pillar-card:hover {
+      transform: translateY(-2px);
+      border-color: rgb(196 181 253);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(124, 58, 237, .15);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(124 58 237); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(124 58 237);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    .icon-bubble {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .shot {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgb(226 232 240);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(15, 23, 42, .15);
+      background: white;
+    }
+    .shot img { display: block; width: 100%; height: auto; }
+    .shot-caption {
+      font-size: .78rem;
+      color: rgb(100 116 139);
+      margin-top: 10px;
+      text-align: center;
+      letter-spacing: -0.005em;
+    }
+    .shot-caption strong { color: rgb(15 23 42); font-weight: 700; }
+
+    /* === Phase 3 specific visualizations =================================== */
+
+    /* Token lifecycle */
+    .token-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      font-size: .82rem;
+    }
+    .token-step-num {
+      width: 22px; height: 22px;
+      border-radius: 9999px;
+      background: rgb(243 232 255);
+      color: rgb(91 33 182);
+      font-weight: 800;
+      font-size: .72rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .token-hash {
+      font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: .72rem;
+      color: rgb(71 85 105);
+      background: rgb(241 245 249);
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: -.005em;
+    }
+    .token-raw   { color: rgb(190 18 60); background: rgb(255 228 230); }
+    .token-store { color: rgb(15 118 110); background: rgb(204 251 241); }
+    .token-strip { color: rgb(146 64 14); background: rgb(254 243 199); }
+
+    /* URL bar mock */
+    .url-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 8px;
+      background: rgb(248 250 252);
+      font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: .76rem;
+      color: rgb(71 85 105);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .url-bar .key   { color: rgb(8 145 178); }
+    .url-bar .value { color: rgb(15 23 42); font-weight: 600; }
+    .url-bar .amp   { color: rgb(148 163 184); }
+    .url-bar .strip { text-decoration: line-through; color: rgb(248 113 113); }
+
+    /* Invite flow boxes */
+    .invite-card {
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgb(226 232 240);
+      background: white;
+      flex: 1;
+    }
+    .invite-card-admin     { background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%); border-color: rgb(196 181 253); }
+    .invite-card-outbox    { background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); border-color: rgb(191 219 254); }
+    .invite-card-anonymous { background: linear-gradient(180deg, #ecfeff 0%, #ffffff 100%); border-color: rgb(165 243 252); }
+    .invite-card-joined    { background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%); border-color: rgb(167 243 208); }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: -.005em;
+    }
+    .status-active   { background: rgb(209 250 229); color: rgb(6 95 70); }
+    .status-pending  { background: rgb(254 243 199); color: rgb(146 64 14); }
+    .status-expired  { background: rgb(254 226 226); color: rgb(153 27 27); }
+    .status-disabled { background: rgb(241 245 249); color: rgb(71 85 105); }
+
+    /* Permission matrix */
+    .perm-row {
+      display: grid;
+      grid-template-columns: 1fr 80px 80px 80px 80px;
+      gap: 6px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      font-size: .82rem;
+    }
+    @media (max-width: 640px) {
+      .perm-row { grid-template-columns: 1fr 60px 60px; }
+      .perm-row .perm-hide-mobile { display: none; }
+    }
+    .perm-allow {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 0;
+      border-radius: 6px;
+      background: rgb(209 250 229);
+      color: rgb(6 95 70);
+      font-size: .7rem;
+      font-weight: 700;
+    }
+    .perm-deny {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 0;
+      border-radius: 6px;
+      background: rgb(254 226 226);
+      color: rgb(153 27 27);
+      font-size: .7rem;
+      font-weight: 700;
+    }
+    .role-pill {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      flex-shrink: 0;
+    }
+    .role-pill-admin    { background: rgb(124 58 237); color: white; }
+    .role-pill-manager  { background: rgb(37 99 235);  color: white; }
+    .role-pill-employee { background: rgb(8 145 178);  color: white; }
+    .role-pill-viewer   { background: rgb(100 116 139); color: white; }
+
+    /* Last-admin protection diagram */
+    .admin-slot {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: white;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .85rem;
+    }
+    .admin-slot-locked {
+      border-color: rgb(252 165 165);
+      background: rgb(254 242 242);
+    }
+
+    /* Step boxes */
+    .step-box {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: white;
+      flex: 1;
+    }
+    .step-box-pass { border-color: rgb(110 231 183); background: rgb(240 253 244); }
+    .step-box-fail { border-color: rgb(252 165 165); background: rgb(254 242 242); }
+    .step-arrow {
+      display: inline-flex;
+      align-items: center;
+      color: rgb(148 163 184);
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    /* Banner mock */
+    .banner-mock {
+      background: rgb(254 252 232);
+      border: 1px solid rgb(252 211 77);
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: rgb(120 53 15);
+      font-size: .82rem;
+    }
+    .banner-mock-btn {
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: white;
+      border: 1px solid rgb(252 211 77);
+      color: rgb(146 64 14);
+      font-size: .72rem;
+      font-weight: 700;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* Status chips for limitations table */
+    .chip-can {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(209 250 229); color: rgb(6 95 70);
+      font-size: .7rem; font-weight: 700;
+    }
+    .chip-soon {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(254 243 199); color: rgb(146 64 14);
+      font-size: .7rem; font-weight: 700;
+    }
+    .chip-new {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 9999px;
+      background: rgb(243 232 255); color: rgb(91 33 182);
+      font-size: .7rem; font-weight: 700;
+    }
+
+    section[id] { scroll-margin-top: 24px; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 3 · SELF-SERVICE
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        미리 받은 계정 없이도 <br>
+        <span class="g-text">직접 가입하고 동료를 초대</span>할 수 있습니다
+      </h1>
+      <p class="mt-6 text-[1.05rem] text-slate-600 leading-relaxed">
+        Phase 3에서는 다섯 가지가 새로 가능해집니다 —
+        <strong class="text-slate-900">직접 회원가입, 이메일 인증, 비밀번호 분실 시 본인이 복구, 동료에게 초대 메일 보내기, 멤버 역할 관리</strong>.
+        이제 누군가 미리 만들어 준 계정을 받지 않고도, 본인이 직접 흐름을 끝까지 돌려볼 수 있습니다.
+      </p>
+      <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
+        <p class="text-[.9rem] text-slate-700 leading-relaxed">
+          <span class="text-violet-600 font-black mr-1">⌜</span>
+          Phase 3은 "관리자가 미리 만들어 준 계정으로만 들어오는 데모"에서 "누구나 가입해서 팀을 꾸려 쓰는 진짜 서비스"로 넘어가는 분기점입니다.
+          이전 단계가 보장하던 회사별 분리·권한·입력 검증은 그대로 유지된 채, 이 새 흐름들이 그 위에 올라갑니다.
+          <span class="text-violet-600 font-black ml-1">⌟</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Pillars overview -->
+  <section class="max-w-6xl mx-auto px-6 pb-16">
+    <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">Phase 3의 약속</p>
+    <h2 class="text-[1.6rem] font-black tracking-tight mb-6">평가자가 직접 확인할 수 있는 5가지 기둥</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="#signup" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-violet-50 text-violet-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">1 · 직접 회원가입</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">회사·계정·관리자 자격이 한 번에 만들어지고 바로 로그인됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#verify" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-cyan-50 text-cyan-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">2 · 이메일 인증</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">아직 인증 안 됐을 땐 화면 위에 노란 띠로 알려주고, 링크 누르면 자동으로 확인됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#reset" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-amber-50 text-amber-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">3 · 비밀번호 분실 복구</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">메일로 받은 링크에서 새 비밀번호로 바꾸면, 다른 기기 로그인은 모두 끊어집니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#invite" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-blue-50 text-blue-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">4 · 동료 초대</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">관리자가 메일로 초대하면, 받은 사람은 로그인 없이 링크 한 번으로 합류합니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#team" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-emerald-50 text-emerald-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">5 · 멤버·역할 관리</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">역할 바꾸기·계정 잠금이 가능하지만, 관리자가 0명이 되는 사고는 시스템이 막습니다.</p>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Detail sections ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24 space-y-20">
+
+    <!-- ─────────── 1. Signup ─────────── -->
+    <section id="signup">
+      <p class="text-[.78rem] font-bold tracking-wider text-violet-600 mb-2">기둥 01</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">직접 회원가입 — 네 가지가 한 번에 만들어집니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        가입 화면에서 이름·이메일·비밀번호·회사 이름을 입력하면 아래 네 가지가 <strong>한꺼번에</strong> 만들어집니다.
+        하나라도 실패하면 모두 없던 일이 되어 절반만 만들어지는 상태가 생기지 않습니다.
+        가입이 끝나면 본인 회사의 첫 관리자 자격으로 곧바로 로그인된 상태가 됩니다.
+      </p>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">한 번의 가입으로 생기는 네 가지</p>
+        <div class="flex flex-col lg:flex-row items-stretch gap-3">
+          <div class="step-box">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-violet-600 mb-1">1</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">회사 생성</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">입력한 이름으로 새 회사 공간이 만들어집니다.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="step-box">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-violet-600 mb-1">2</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">계정 생성</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">비밀번호는 다시 읽을 수 없는 형태로 변환되어 저장됩니다.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="step-box">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-violet-600 mb-1">3</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">관리자 자격 부여</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">가입한 사람이 이 회사의 첫 관리자가 됩니다.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="step-box step-box-pass">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-1">4</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">인증 메일 발송</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">이메일 인증용 링크를 메일로 보냅니다 (24시간 안에 클릭).</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">가입 직후 바로 사용 가능</p>
+          <p class="text-slate-600 leading-relaxed">
+            가입이 끝나면 별도 로그인 없이 곧장 서비스 화면으로 이동합니다.
+            이메일 인증이 아직 안 됐을 땐 화면 위 노란 띠로 알려주며, 동료 초대 같은 작업의 실제 차단은 다음 Phase에서 켜질 예정입니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">이미 가입된 이메일이면</p>
+          <p class="text-slate-600 leading-relaxed">
+            "이미 가입돼 있는 이메일이에요" 안내가 뜨고 가입이 진행되지 않습니다.
+            의도된 안내입니다 — 사용자가 헷갈리지 않고 바로 로그인 화면으로 가도록 돕습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. Email verification ─────────── -->
+    <section id="verify">
+      <p class="text-[.78rem] font-bold tracking-wider text-cyan-600 mb-2">기둥 02</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">이메일 인증 — 링크 한 번이면 끝, 코드는 주소창에 안 남습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        받은 메일 안의 링크를 누르면 인증 페이지가 열립니다. 페이지가 열리는 <strong>그 순간</strong> 주소창에 있던 인증 코드가 자동으로 지워집니다 —
+        북마크에 저장하거나 다른 사이트로 이동해도 그 코드는 따라가지 않습니다.
+        인증이 끝나면 화면 위 노란 띠도 사라집니다.
+      </p>
+
+      <!-- URL strip visualization -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">메일 링크를 누른 직후 주소창 변화</p>
+      <div class="url-bar mb-2">
+        <span>/platform/verify.html</span>
+        <span class="amp">?</span>
+        <span><span class="key">code</span>=<span class="value">9f3a2c…(긴 무작위 문자열)</span></span>
+      </div>
+      <div class="text-[.68rem] text-slate-400 text-center mb-2">⬇ 페이지가 뜨자마자 주소창에서 코드 부분만 즉시 제거</div>
+      <div class="url-bar mb-6">
+        <span>/platform/verify.html</span>
+        <span class="strip">&nbsp;?code=9f3a2c…&nbsp;</span>
+      </div>
+
+      <!-- Unverified banner mock -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">아직 인증 안 됐을 때 보이는 상단 띠</p>
+      <div class="banner-mock mb-6">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+        <span><strong>이메일 인증이 완료되지 않았습니다.</strong> 받은 메일함을 확인해주세요.</span>
+        <button class="banner-mock-btn">인증 메일 재발송</button>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">코드가 새 나가지 않게</p>
+          <p class="text-slate-600 leading-relaxed">
+            주소창에서 즉시 지워지고, 다른 사이트로 이동할 때도 그 코드가 따라가지 않도록 막혀 있습니다. 북마크나 채팅에 잘못 붙여 넣어도 위험이 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">한 번 쓰면 끝</p>
+          <p class="text-slate-600 leading-relaxed">
+            같은 링크를 다시 눌러도 두 번째부터는 안 됩니다. 24시간 안에 사용하지 않은 링크도 마찬가지로 만료됩니다 — 그 경우 메일을 재발송 받으면 됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">이미 인증된 경우</p>
+          <p class="text-slate-600 leading-relaxed">
+            다른 탭에서 이미 인증을 끝낸 뒤 재발송 버튼을 눌렀다면, "이미 인증된 계정이에요" 안내가 잠깐 뜨고 상단 띠도 같이 사라집니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. Password reset ─────────── -->
+    <section id="reset">
+      <p class="text-[.78rem] font-bold tracking-wider text-amber-600 mb-2">기둥 03</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">비밀번호를 잊었다면 — 본인이 직접 다시 설정합니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        로그인 화면의 "비밀번호 분실?"을 누르고 이메일을 입력하면, 메일로 다시 설정용 링크가 옵니다.
+        링크 안에서 새 비밀번호를 정하는 순간, <strong>같은 계정으로 다른 기기·다른 탭에 로그인돼 있던 모든 세션이 자동으로 끊깁니다.</strong>
+        만약 다른 사람이 몰래 로그인해 있었다면 그 사람도 이 순간 튕겨 나갑니다.
+      </p>
+
+      <!-- Enumeration -->
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-amber-600 mb-3">이메일이 가입돼 있는지 외부에서 알 수 없습니다</p>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div class="step-box step-box-pass">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-1">가입된 이메일</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">"메일을 보냈어요"</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">실제로 다시 설정용 링크가 발송됩니다.</p>
+          </div>
+          <div class="step-box step-box-pass">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-1">가입되지 않은 이메일</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">"메일을 보냈어요"</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">실제로는 아무 메일도 안 가지만, 화면 안내는 정확히 같습니다.</p>
+          </div>
+        </div>
+        <p class="text-[.78rem] text-slate-500 leading-relaxed mt-3">
+          두 경우에 화면·응답·기다리는 시간이 모두 같으므로, "이 이메일이 우리 회사에 가입돼 있나?"를 외부에서 추측하는 것이 불가능합니다.
+        </p>
+      </div>
+
+      <!-- Reset effect -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">새 비밀번호를 정한 직후 일어나는 일</p>
+      <div class="card p-5">
+        <ul class="space-y-2.5 text-[.88rem] text-slate-700">
+          <li class="flex items-start gap-2.5">
+            <span class="status-badge status-active mt-0.5">즉시</span>
+            <span><strong class="text-slate-900">새 비밀번호가 저장됩니다.</strong> 가입 때와 똑같이 다시 읽을 수 없는 형태로 변환되어 보관됩니다.</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="status-badge status-active mt-0.5">즉시</span>
+            <span><strong class="text-slate-900">다른 기기·다른 탭의 로그인이 모두 끊깁니다.</strong> 그 화면에서 다음 동작을 하려고 하면 다시 로그인을 요구합니다.</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="status-badge status-active mt-0.5">즉시</span>
+            <span><strong class="text-slate-900">메일 링크는 더 이상 안 됩니다.</strong> 한 번 쓴 링크를 다시 누르거나 1시간 안에 안 쓴 링크는 모두 만료입니다.</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="status-badge status-pending mt-0.5">~15분</span>
+            <span><strong class="text-slate-900">이미 진행 중인 화면 작업은 최대 15분 안에 끊깁니다.</strong> 다른 기기에 띄워 둔 화면이 곧장 다음 요청에서 막히지는 않지만, 짧은 시간 안에 자동으로 차단됩니다.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────── 4. Invitations ─────────── -->
+    <section id="invite">
+      <p class="text-[.78rem] font-bold tracking-wider text-blue-600 mb-2">기둥 04</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">동료 초대 — 메일 한 통이면 합류 끝</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        관리자가 팀 화면에서 이메일·이름·역할(필요하면 팀)을 정해 초대를 보내면, 받은 사람에게 메일이 갑니다.
+        받은 사람은 <strong>먼저 로그인하지 않고도</strong> 메일 안의 링크 한 번으로 가입을 끝냅니다.
+        초대 링크는 7일 동안 유효합니다.
+      </p>
+
+      <!-- Invite flow 4 cards -->
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-blue-600 mb-3">초대 보내기 → 메일 도착 → 받은 사람 클릭 → 멤버 합류</p>
+        <div class="flex flex-col lg:flex-row items-stretch gap-3">
+          <div class="invite-card invite-card-admin">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-violet-700 mb-1">1 · 관리자</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">초대 보내기</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">받을 사람의 이메일·역할·소속 팀(선택)을 입력하고 "보내기".</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="invite-card invite-card-outbox">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-blue-700 mb-1">2 · 메일 도착</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">초대 메일 발송</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">"○○회사에 합류하시려면 여기를 누르세요" 형식의 링크가 포함된 메일이 갑니다.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="invite-card invite-card-anonymous">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-cyan-700 mb-1">3 · 받은 사람</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">링크 클릭</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">로그인 없이 페이지가 열리고, 이름·비밀번호만 입력하면 끝.</p>
+          </div>
+          <div class="step-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="invite-card invite-card-joined">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-700 mb-1">4 · 합류 완료</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">멤버 목록에 등장</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">받은 사람은 자동 로그인되어 화면이 열리고, 관리자 쪽 멤버 목록에도 새 이름이 나타납니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Same email special handling -->
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem] mb-6">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">이미 다른 회사에 계정이 있어도 OK</p>
+          <p class="text-slate-600 leading-relaxed">
+            받은 사람이 이미 Kloser를 다른 회사 계정으로 쓰고 있다면, 새 계정을 또 만들지 않고
+            <strong>기존 계정에 새 회사 소속만 추가</strong>합니다. 다음 로그인 때 어느 회사로 들어갈지 묻는 화면이 나옵니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">이메일 인증 처리</p>
+          <p class="text-slate-600 leading-relaxed">
+            <strong>처음 가입하는 사람</strong>은 자동으로 인증 완료 처리됩니다 — 메일이 실제로 닿았고 토큰을 통과한 것 자체가 이메일 소유 증명이므로.
+            <strong>이미 다른 회사 계정이 있는 사람</strong>은 기존 인증 상태가 그대로 유지됩니다 (인증돼 있었으면 그대로, 안 돼 있었으면 안 된 상태로).
+          </p>
+        </div>
+      </div>
+
+      <!-- Same email conflict -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">같은 사람에게 초대를 두 번 보내려고 하면</p>
+      <div class="card p-5">
+        <div class="space-y-2 mb-4">
+          <div class="flex items-center justify-between border border-slate-200 rounded-lg px-4 py-2.5 text-[.88rem]">
+            <span class="font-semibold text-slate-900">john@example.com · 직원으로 초대됨</span>
+            <span class="status-badge status-pending">대기 중</span>
+          </div>
+          <div class="flex items-center justify-between border-2 border-dashed border-rose-200 rounded-lg px-4 py-2.5 text-[.88rem] bg-rose-50/40">
+            <span class="text-slate-500">같은 사람에게 매니저로 다시 보내기 시도</span>
+            <span class="text-[.7rem] font-bold text-rose-600">"이미 보낸 초대가 있어요"</span>
+          </div>
+        </div>
+        <div class="card-tight p-3 text-[.82rem] text-slate-600 leading-relaxed">
+          기존 초대를 먼저 취소해야 새로 보낼 수 있습니다. 두 통이 동시에 떠 있어 어느 쪽이 진짜인지 모호한 상황을 만들지 않기 위한 안전장치입니다.
+          단, <strong>이미 7일이 지나 만료된 초대</strong>가 남아 있는 경우엔, 새 초대를 보내면 자동으로 옛 초대를 정리하고 다시 보냅니다.
+        </div>
+      </div>
+
+      <!-- Resend / cancel -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2 mt-6">초대를 다시 보내거나 취소할 때</p>
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">다시 보내기</p>
+          <p class="text-slate-600 leading-relaxed">
+            새 링크가 발송됩니다. 이전 메일의 옛 링크는 그 즉시 작동을 멈추므로, 받은 사람이 옛 메일을 잘못 누를 일이 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">취소</p>
+          <p class="text-slate-600 leading-relaxed">
+            취소 즉시 그 링크는 더 이상 작동하지 않습니다. 화면 목록에서는 사라지지만 이력은 시스템 내부에 보존됩니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. Team / Member ops + Last admin protection ─────────── -->
+    <section id="team">
+      <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기둥 05</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">멤버·역할 관리 — 바꾸고 잠그되, 관리자 0명은 막습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        관리자는 멤버의 역할을 바꾸거나 계정을 잠글 수 있습니다. 잠그는 것은 <strong>완전 삭제가 아닌 "사용 중지"</strong>라서
+        그 사람이 이전에 만들어둔 자료(고객·통화 기록 등)는 그대로 남고 이력도 보존됩니다.
+        그리고 회사에 관리자가 0명이 되는 일은 시스템이 직접 막습니다.
+      </p>
+
+      <!-- Permission matrix -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">역할별로 가능한 일 (Phase 3 시점)</p>
+      <div class="space-y-2 mb-6">
+        <div class="perm-row" style="background: rgb(248 250 252); font-weight: 700; font-size: .72rem; color: rgb(100 116 139); text-transform: uppercase;">
+          <span>역할</span>
+          <span class="text-center">멤버 보기</span>
+          <span class="text-center">고객 관리</span>
+          <span class="text-center perm-hide-mobile">역할 변경</span>
+          <span class="text-center perm-hide-mobile">초대 발송</span>
+        </div>
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-admin">ADMIN</span>
+            <span class="font-semibold text-slate-900">관리자</span>
+          </div>
+          <span class="perm-allow">✓</span>
+          <span class="perm-allow">✓</span>
+          <span class="perm-allow perm-hide-mobile">✓</span>
+          <span class="perm-allow perm-hide-mobile">✓</span>
+        </div>
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-manager">MANAGER</span>
+            <span class="font-semibold text-slate-900">매니저</span>
+          </div>
+          <span class="perm-allow">✓</span>
+          <span class="perm-allow">✓</span>
+          <span class="perm-deny perm-hide-mobile">✗</span>
+          <span class="perm-deny perm-hide-mobile">✗</span>
+        </div>
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-employee">EMPLOYEE</span>
+            <span class="font-semibold text-slate-900">직원</span>
+          </div>
+          <span class="perm-allow">✓</span>
+          <span class="perm-allow">✓</span>
+          <span class="perm-deny perm-hide-mobile">✗</span>
+          <span class="perm-deny perm-hide-mobile">✗</span>
+        </div>
+        <div class="perm-row">
+          <div class="flex items-center gap-3">
+            <span class="role-pill role-pill-viewer">VIEWER</span>
+            <span class="font-semibold text-slate-900">조회</span>
+          </div>
+          <span class="perm-allow">✓</span>
+          <span class="perm-allow">read</span>
+          <span class="perm-deny perm-hide-mobile">✗</span>
+          <span class="perm-deny perm-hide-mobile">✗</span>
+        </div>
+      </div>
+
+      <div class="card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed mb-7">
+        <strong class="text-slate-900">매니저·직원의 세밀한 권한 분리는 다음 단계에서:</strong>
+        지금은 멤버 관리·초대 발송 같은 회사 운영 동작이 모두 관리자에게만 열려 있습니다.
+        "매니저는 자기 팀 데이터만, 직원은 자기 담당만"처럼 더 세분화된 권한은 다음 Phase에서 도입됩니다.
+      </div>
+
+      <!-- Last admin protection -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-2">관리자 0명 사고 방지</p>
+      <div class="card p-5 mb-6">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <p class="text-[.78rem] font-bold text-slate-700 mb-2">회사에 관리자가 1명만 남은 상태</p>
+            <div class="space-y-2">
+              <div class="admin-slot admin-slot-locked">
+                <span class="role-pill role-pill-admin">관리자</span>
+                <span class="font-semibold text-slate-900">김민수</span>
+                <span class="ml-auto text-[.7rem] text-rose-600 font-bold">보호됨</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="text-[.78rem] font-bold text-slate-700 mb-2">본인을 강등하거나 잠그려 하면</p>
+            <div class="space-y-1.5 text-[.82rem] text-slate-700">
+              <div class="flex items-start gap-2">
+                <span class="text-rose-600 font-bold">→</span>
+                <span>자기 자신을 "직원"으로 바꾸려고 시도</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-rose-600 font-bold">→</span>
+                <span>"관리자가 0명이 되어 변경할 수 없어요" 안내</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-rose-600 font-bold">→</span>
+                <span>그 변경은 적용되지 않고 상태가 그대로 유지됩니다.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 card-tight p-3 text-[.82rem] text-slate-700 leading-relaxed">
+          이 검사는 화면의 안내에만 의존하지 않고 시스템 내부에서 한 번 더 막힙니다.
+          여러 관리자가 동시에 본인을 강등하려는 흔치 않은 상황에서도 결과적으로 관리자가 한 명은 남아 있도록 보장합니다.
+          다시 다른 사람을 관리자로 올린 다음에는 자유롭게 본인 역할을 바꿀 수 있습니다.
+        </div>
+      </div>
+
+      <!-- requireFreshRole -->
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-violet-600 mb-2">방금 권한이 바뀐 사람의 옛 화면도 자동으로 차단</p>
+      <div class="card p-5 mb-6">
+        <p class="text-[.85rem] text-slate-700 leading-relaxed mb-3">
+          어떤 관리자의 권한이 방금 바뀌었는데 그 사람이 다른 탭에 옛 화면을 띄워 두고 명령을 보내려고 하면,
+          시스템이 그 명령을 받기 전에 "권한이 바뀌었으니 다시 로그인해 주세요"로 막습니다.
+          관리자만 할 수 있는 작업(역할 변경 / 계정 잠금 / 팀 관리 / 초대 발송·재발송·취소)에 적용됩니다.
+        </p>
+        <ul class="text-[.82rem] text-slate-600 space-y-1.5 list-disc pl-5">
+          <li>"방금 강등됐는데 옛 화면으로 명령을 보내는" 경우를 막습니다.</li>
+          <li>비밀번호 분실 복구·초대 수락처럼 로그인 없이 진행되는 흐름은 이 검사 대상이 아닙니다 (애초에 옛 권한 정보가 따라오지 않으므로).</li>
+        </ul>
+      </div>
+
+      <!-- Real screenshot: team page -->
+      <figure class="mt-8">
+        <div class="shot">
+          <img src="../../assets/screenshots/user_guide/team.png" alt="실제 팀 관리 화면 — 멤버 목록, 역할 뱃지, 활성 초대 목록, 초대 보내기 모달">
+        </div>
+        <figcaption class="shot-caption"><strong>실제 팀 관리 화면</strong> — 멤버 목록과 보낸 초대가 같은 페이지에서 운영됩니다. 역할 표시, 계정 잠금 토글, 다시 보내기/취소가 한 화면에 모여 있고, 위에서 설명한 안전장치들이 그 뒤에서 자동으로 동작합니다.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ─────────── Token security ─────────── -->
+    <section id="token">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">보안</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">메일에 들어가는 코드는 시스템에 그대로 저장되지 않습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        이메일 인증·비밀번호 분실·초대 — 이 세 흐름 모두 메일에 긴 무작위 코드가 담긴 링크를 보냅니다.
+        이 코드는 <strong>한 방향으로 변환된 형태로만 보관</strong>되기 때문에, 만약 시스템 자료가 통째로 유출되어도 그 코드가 그대로 도용되지는 않습니다.
+        그리고 한 번 사용된 코드는 다시 쓰지 못합니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">메일 코드의 일생</p>
+        <div class="space-y-2">
+          <div class="token-row">
+            <span class="token-step-num">1</span>
+            <span><strong>발급</strong> — 추측 불가능한 무작위 코드가 만들어집니다.</span>
+            <span class="token-hash token-raw ml-auto">9f3a2c…</span>
+          </div>
+          <div class="token-row">
+            <span class="token-step-num">2</span>
+            <span><strong>메일에는 원본, 시스템에는 변환된 형태</strong>로 동시에 기록됩니다.</span>
+            <span class="token-hash token-store ml-auto">변환된 형태</span>
+          </div>
+          <div class="token-row">
+            <span class="token-step-num">3</span>
+            <span><strong>메일 발송 직후 원본 코드는 시스템에서 사라집니다</strong> — 메모리에도 남지 않습니다.</span>
+            <span class="token-hash token-strip ml-auto">(폐기)</span>
+          </div>
+          <div class="token-row">
+            <span class="token-step-num">4</span>
+            <span><strong>사용자가 메일 링크 클릭</strong> — 주소창에 코드가 잠깐 나타나지만 페이지가 열리는 순간 즉시 지워집니다.</span>
+          </div>
+          <div class="token-row">
+            <span class="token-step-num">5</span>
+            <span><strong>시스템이 코드 확인</strong> — 사용자가 가져온 코드를 같은 방법으로 변환해 보관된 값과 맞춰 봅니다.</span>
+          </div>
+          <div class="token-row">
+            <span class="token-step-num">6</span>
+            <span><strong>한 번 쓰면 끝</strong> — 같은 링크를 다시 누르거나 유효 기간이 지나면 더 이상 작동하지 않습니다.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">이메일 인증 링크</p>
+          <p class="text-slate-600 leading-relaxed"><strong>24시간</strong> 안에 클릭 — 가입 직후 곧장 누른다고 가정한 시간입니다.</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">비밀번호 분실 링크</p>
+          <p class="text-slate-600 leading-relaxed"><strong>1시간</strong> 안에 사용 — 분실은 보통 즉시 처리하는 흐름입니다.</p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">초대 링크</p>
+          <p class="text-slate-600 leading-relaxed"><strong>7일</strong> 안에 합류 — 휴가·주말을 고려한 시간입니다.</p>
+        </div>
+      </div>
+
+      <div class="mt-5 card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        <strong class="text-slate-900">지금은 평가용 환경:</strong>
+        실제 외부 메일 발송 서비스(Gmail·Outlook 등으로 가는 진짜 메일) 연동은 운영 진입 단계에서 붙입니다.
+        지금은 발송한 메일을 시스템 내부 임시 보관함에만 적어 두고 검증용으로 확인할 수 있게 해 둔 상태입니다.
+      </div>
+    </section>
+
+    <!-- ─────────── 제한사항 + 다음 Phase ─────────── -->
+    <section id="limits">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">범위</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">지금 되는 것 / 아직 안 되는 것</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 3은 직접 가입·초대 흐름을 연 단계입니다. 화면에서 즉시 동작하는 부분과 다음 Phase로 미뤄둔 부분을 명확히 구분합니다.
+      </p>
+
+      <div class="card overflow-hidden">
+        <table class="w-full text-[.88rem]">
+          <thead class="bg-slate-50 text-slate-600 text-[.72rem] font-bold uppercase tracking-wider">
+            <tr>
+              <th class="text-left px-4 py-3 border-b border-slate-200">기능</th>
+              <th class="text-left px-4 py-3 border-b border-slate-200">현재</th>
+              <th class="text-left px-4 py-3 border-b border-slate-200">예정</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-700">
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">직접 회원가입 (새 회사 + 관리자)</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 새 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">이메일 인증 · 재발송 · 상단 알림 띠</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 새 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">모든 화면에 띠 적용은 다음 Phase</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">비밀번호 분실 복구 + 다른 기기 자동 로그아웃</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 새 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">동료 초대 (보내기 / 수락 / 다시 보내기 / 취소)</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 새 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">멤버 역할 변경 · 계정 잠금</td>
+              <td class="px-4 py-3"><span class="chip-new">✓ 새 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">관리자 0명 사고 방지</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">—</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">이메일 가입 여부 외부 추측 불가</td>
+              <td class="px-4 py-3"><span class="chip-can">✓ 동작</span></td>
+              <td class="px-4 py-3 text-slate-500">발송량 제한은 운영 진입 단계</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">실제 외부 메일 발송 (Gmail·Outlook으로)</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 평가용 보관함</span></td>
+              <td class="px-4 py-3 text-slate-500">운영 진입 단계</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">미인증 사용자가 동료 초대를 못 보내게 막기</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 알림만</span></td>
+              <td class="px-4 py-3 text-slate-500">다음 Phase에서 실제 차단</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">화면에서 직접 팀 만들기·수정·삭제</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 일부만</span></td>
+              <td class="px-4 py-3 text-slate-500">다음 Phase</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">매니저·직원의 세분화된 권한</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 관리자만</span></td>
+              <td class="px-4 py-3 text-slate-500">다음 Phase</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">2단계 인증 (OTP / 생체 인증)</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 미구현</span></td>
+              <td class="px-4 py-3 text-slate-500">운영 진입 단계</td>
+            </tr>
+            <tr class="border-b border-slate-100">
+              <td class="px-4 py-3 font-semibold">엑셀 파일로 한 번에 여러 명 초대</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 미구현</span></td>
+              <td class="px-4 py-3 text-slate-500">엔터프라이즈 단계</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-semibold">사이드바의 사용자 정보를 실제 계정 정보로 표시</td>
+              <td class="px-4 py-3"><span class="chip-soon">⌛ 임시 표시</span></td>
+              <td class="px-4 py-3 text-slate-500">다음 Phase</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+        Phase 3이 만든 약속들(직접 가입·인증·복구·초대·역할 관리·관리자 보호·코드 안전 보관·외부 추측 차단)은
+        다음 Phase에서 추가될 기능들에도 그대로 적용됩니다.
+      </p>
+    </section>
+
+    <!-- ─────────── 자동 회귀 ─────────── -->
+    <section id="regress">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">자동 검사</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">다음 변경이 위 약속을 깨지 않도록 — 자동으로 매번 확인</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 3에서 만든 약속들은 코드 변경이 있을 때마다 자동으로 검사됩니다. 아래 다섯 가지가 모두 통과해야만 합격으로 인정됩니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">155 / 155</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">서버 기능 검사</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">로그인 · 토큰 · 팀 · 초대 · 회사별 분리 · 권한</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">33 / 33</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">전체 흐름 검사</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">가입 → 인증 → 초대 → 수락 → 역할 변경 → 잠금</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">7 / 7</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">고객 흐름 (회귀)</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">Phase 2의 약속이 깨지지 않았는지</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">16 / 16</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">통화 흐름 (회귀)</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">Phase 1의 약속이 깨지지 않았는지</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">PASS</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">입력 형식 일치</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">화면과 서버가 같은 입력 규칙을 따르는지</p>
+        </div>
+      </div>
+
+      <div class="mt-5 card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        전체 흐름 검사의 마지막 단계는 검사 도중 임시로 만들어진 사용자·소속·초대·메일이 모두 깨끗이 정리됐는지를 확인합니다.
+        정리되지 않은 잔재가 있으면 검사 자체가 실패하므로 데이터가 쌓이지 않습니다.
+      </div>
+    </section>
+
+    <!-- ─────────── 기술 요약 ─────────── -->
+    <section id="tech">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">참고 — 기술 관심자용</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">기술 요약</h2>
+      <p class="text-slate-600 mb-6 leading-relaxed max-w-3xl">
+        이 섹션은 보안·아키텍처에 관심 있는 분이 핵심 결정 사항을 한눈에 보기 위한 부분입니다.
+        앞 섹션들은 이 용어를 몰라도 이해할 수 있도록 작성했으니, 이 부분은 가볍게 건너뛰셔도 됩니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">신규 스키마 5 migration</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">auth_tokens</code> (purpose enum 통합) +
+            <code class="font-mono text-[.78rem]">email_outbox</code> +
+            <code class="font-mono text-[.78rem]">invitations</code> enrich +
+            <code class="font-mono text-[.78rem]">memberships.status</code> CHECK + grant 보강. forward-only.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">토큰 보관 정책</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">token_hash</code>는 sha256(hex)만. raw는 mint 시점 1회 반환 후 폐기.
+            <code class="font-mono text-[.78rem]">email_outbox</code>에는 dev 한정으로 raw가 본문에 포함 (e2e 추출용).
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">익명 흐름 service role</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">kloser_service</code> (BYPASSRLS, SELECT/INSERT/UPDATE만 - DELETE 없음).
+            verify / reset / accept 3 endpoint가 사용. 일상 흐름 <code class="font-mono text-[.78rem]">app</code> role과 분리.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">lock 순서</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">invitations → auth_tokens</code> 통일.
+            accept 트랜잭션: <code class="font-mono text-[.78rem]">findTokenByRaw</code> → <code class="font-mono text-[.78rem]">invitations FOR UPDATE</code> →
+            <code class="font-mono text-[.78rem]">lockAndValidateTokenById</code> → ... → <code class="font-mono text-[.78rem]">markTokenConsumed</code>.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">마지막 admin 보호</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">lockActiveAdminIds(client)</code> — active admin row 집합 lock + 변경 시뮬레이션.
+            <code class="font-mono text-[.78rem]">ORDER BY id</code>로 동시 mutator 직렬화 + deadlock 방지.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5"><code class="font-mono text-[.78rem]">requireFreshRole</code></p>
+          <p class="text-slate-600 leading-relaxed">
+            admin-only mutation 4종(role / status / team CRUD / 초대 생성·재발송·취소)에 적용.
+            DB 현재 role + JWT claim 비교 → 불일치 시 <code class="font-mono text-[.78rem]">401 stale_role</code>.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">client URL 누출 차단</p>
+          <p class="text-slate-600 leading-relaxed">
+            verify / reset / accept 3 page 진입 즉시 <code class="font-mono text-[.78rem]">history.replaceState(null,'',pathname)</code> +
+            <code class="font-mono text-[.78rem]">&lt;meta name="referrer" content="no-referrer"&gt;</code>.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">자동 회귀</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="font-mono text-[.78rem]">npm --prefix server test</code> 155/155 +
+            <code class="font-mono text-[.78rem]">sync_shared_types</code> (5 entity) +
+            <code class="font-mono text-[.78rem]">phase_0_5_e2e</code> 16/16 +
+            <code class="font-mono text-[.78rem]">phase_2_customers_e2e</code> 7/7 +
+            <code class="font-mono text-[.78rem]">phase_3_e2e</code> 33/33.
+          </p>
+        </div>
+      </div>
+
+      <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+        Phase 1·2 기반이 궁금하면
+        <a href="PHASE_1_FOUNDATIONS.html" class="text-violet-600 hover:underline font-semibold">PHASE_1_FOUNDATIONS</a> /
+        <a href="PHASE_2_FOUNDATIONS.html" class="text-violet-600 hover:underline font-semibold">PHASE_2_FOUNDATIONS</a>
+        에 있습니다.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">Phase 3 Self-Service</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>
