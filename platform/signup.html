@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>회원가입 — Kloser</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    html, body {
+      min-height: 100%;
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(6, 182, 212, 0.08), transparent 60%),
+        #f8fafc;
+    }
+    .g-text {
+      background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .field {
+      width: 100%;
+      padding: 11px 13px;
+      font-size: .9rem;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      transition: border-color .15s, box-shadow .15s;
+      letter-spacing: -0.005em;
+    }
+    .field::placeholder { color: rgb(148 163 184); }
+    .field:focus {
+      outline: none;
+      border-color: rgb(37 99 235);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 12px 16px;
+      border-radius: 10px; background: rgb(37 99 235); color: white;
+      font-size: .9rem; font-weight: 700; letter-spacing: -0.005em;
+      transition: background .15s, box-shadow .15s, transform .15s;
+      box-shadow: 0 4px 12px -4px rgba(37, 99, 235, .4);
+    }
+    .btn-primary:hover:not(:disabled) { background: rgb(29 78 216); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .card { background: white; border: 1px solid rgb(226 232 240); border-radius: 16px;
+            box-shadow: 0 1px 3px 0 rgba(15,23,42,0.04), 0 12px 32px -16px rgba(15,23,42,0.08); }
+  </style>
+</head>
+
+<body>
+  <main class="min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md">
+      <div class="flex items-center justify-center gap-2 mb-6">
+        <span class="text-[1.35rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </div>
+
+      <form id="signup-form" class="card p-7 sm:p-8" novalidate>
+        <h1 class="text-[1.25rem] font-black tracking-tight">회원가입</h1>
+        <p class="mt-1 text-[.82rem] text-slate-500">
+          조직과 어드민 계정을 동시에 생성합니다. 이메일 인증 메일이 발송됩니다.
+        </p>
+
+        <div class="mt-6 space-y-4">
+          <div>
+            <label for="organizationName" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">조직 이름</label>
+            <input id="organizationName" name="organizationName" type="text" required
+                   class="field" placeholder="Acme Inc." maxlength="200" autocomplete="organization">
+          </div>
+          <div>
+            <label for="name" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">이름</label>
+            <input id="name" name="name" type="text" required
+                   class="field" placeholder="홍길동" maxlength="200" autocomplete="name">
+          </div>
+          <div>
+            <label for="email" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">이메일</label>
+            <input id="email" name="email" type="email" required
+                   class="field" placeholder="you@company.com" maxlength="320" autocomplete="email">
+          </div>
+          <div>
+            <label for="password" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">비밀번호</label>
+            <input id="password" name="password" type="password" required minlength="8" maxlength="1024"
+                   class="field" placeholder="8자 이상" autocomplete="new-password">
+            <p class="mt-1 text-[.68rem] text-slate-500">8자 이상 입력해주세요.</p>
+          </div>
+        </div>
+
+        <button id="submit" type="submit" class="btn-primary mt-6">계정 만들기</button>
+
+        <div id="error" hidden
+             class="mt-4 px-3 py-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[.8rem]"></div>
+      </form>
+
+      <p class="mt-5 text-center text-[.78rem] text-slate-500">
+        이미 계정이 있나요?
+        <a href="login.html" class="font-bold text-blue-600 hover:underline">로그인</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="api.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      const form = document.getElementById('signup-form');
+      const orgInput = document.getElementById('organizationName');
+      const nameInput = document.getElementById('name');
+      const emailInput = document.getElementById('email');
+      const pwInput = document.getElementById('password');
+      const submitBtn = document.getElementById('submit');
+      const errorDiv = document.getElementById('error');
+
+      function showError(msg, html) {
+        if (html) errorDiv.innerHTML = msg; else errorDiv.textContent = msg;
+        errorDiv.hidden = false;
+      }
+      function hideError() { errorDiv.hidden = true; errorDiv.textContent = ''; }
+
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        hideError();
+        submitBtn.disabled = true;
+        submitBtn.textContent = '계정 생성 중…';
+        try {
+          const { status, body } = await window.kloserApi.signup({
+            organizationName: orgInput.value.trim(),
+            name: nameInput.value.trim(),
+            email: emailInput.value.trim().toLowerCase(),
+            password: pwInput.value,
+          });
+          if (status === 201) {
+            // accessToken already stored by helper; refresh cookie set by server.
+            window.location.replace('/platform/live.html');
+            return;
+          }
+          if (status === 409 && body && body.code === 'email_conflict') {
+            showError(
+              '이미 가입된 이메일입니다. <a href="login.html" class="font-bold underline">로그인</a>으로 이동하세요.',
+              true,
+            );
+          } else if (status === 400) {
+            showError('입력값을 확인해주세요.');
+          } else {
+            showError('일시적인 오류입니다. 잠시 후 다시 시도해주세요.');
+          }
+        } catch (err) {
+          console.error('[signup]', err);
+          showError('네트워크 오류로 가입할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '계정 만들기';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

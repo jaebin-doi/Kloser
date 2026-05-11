@@ -243,3 +243,93 @@ function renderNotification(notifBtnId) {
     if (!wrap.contains(e.target)) panel.classList.add('hidden');
   });
 }
+
+/* ─────────────────────────────────────────────
+   Unverified email banner (Phase 3 Step 6).
+
+   Shows a top-of-page banner when the logged-in user's
+   `email_verified_at` is null. Resend button calls
+   POST /auth/verify/resend and reports the result via
+   a transient inline toast.
+
+   Idempotent: re-calling does NOT inject a second banner.
+   The banner self-removes when the server confirms the
+   account is already verified (409 already_verified —
+   classic race: user clicked verify URL in another tab).
+───────────────────────────────────────────── */
+function renderUnverifiedBanner(user) {
+  if (!user || user.email_verified_at) return;
+  if (document.getElementById('unverified-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'unverified-banner';
+  banner.style.cssText =
+    'position:fixed;top:0;left:0;right:0;z-index:300;' +
+    'background:rgb(254 252 232);border-bottom:1px solid rgb(252 211 77);' +
+    'color:rgb(120 53 15);font-size:.78rem;padding:8px 16px;' +
+    'display:flex;align-items:center;justify-content:center;gap:12px;' +
+    "font-family:'Pretendard Variable',Pretendard,Inter,system-ui,sans-serif;";
+  banner.innerHTML =
+    '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+    '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>' +
+    '<path d="m22 6-10 7L2 6"/></svg>' +
+    '<span><b>이메일 인증이 완료되지 않았습니다.</b> 받은 메일함을 확인해주세요.</span>' +
+    '<button id="unverified-resend-btn" type="button" ' +
+    'style="padding:4px 12px;border-radius:6px;background:white;' +
+    'border:1px solid rgb(252 211 77);color:rgb(146 64 14);' +
+    'font-size:.72rem;font-weight:600;cursor:pointer;">' +
+    '인증 메일 재발송</button>';
+  document.body.prepend(banner);
+
+  // Push page content down so the banner doesn't overlap a fixed header.
+  const original = document.body.style.paddingTop;
+  document.body.dataset.originalPaddingTop = original;
+  document.body.style.paddingTop = '40px';
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText =
+      'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);' +
+      'background:rgb(15 23 42);color:white;padding:10px 16px;' +
+      'border-radius:10px;font-size:.78rem;font-weight:600;' +
+      'box-shadow:0 8px 24px -8px rgba(15,23,42,.4);z-index:350;' +
+      "font-family:'Pretendard Variable',Pretendard,Inter,system-ui,sans-serif;";
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2400);
+  }
+
+  function removeBanner() {
+    banner.remove();
+    document.body.style.paddingTop = document.body.dataset.originalPaddingTop || '';
+    delete document.body.dataset.originalPaddingTop;
+  }
+
+  const btn = document.getElementById('unverified-resend-btn');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = '발송 중…';
+    try {
+      const res = await window.kloserApi.apiPost('/auth/verify/resend', {});
+      const body = await res.json().catch(() => null);
+      if (res.status === 200) {
+        toast('인증 메일을 다시 보냈습니다.');
+      } else if (res.status === 409 && body && body.code === 'already_verified') {
+        toast('이미 인증된 계정입니다.');
+        removeBanner();
+      } else if (res.status === 401) {
+        // authFetch already redirected to login on terminal 401;
+        // nothing to do here.
+      } else {
+        toast('재발송에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('[unverified-banner]', err);
+      toast('재발송에 실패했습니다.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '인증 메일 재발송';
+    }
+  });
+}
+window.renderUnverifiedBanner = renderUnverifiedBanner;

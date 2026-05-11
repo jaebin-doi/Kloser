@@ -188,6 +188,80 @@
     return body;
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 3 Step 6 — anonymous endpoint helpers.
+  //
+  // All five return { status, body } (no throw). Pages branch on status
+  // and read body.code for the 4xx detail message. Accept needs status
+  // to distinguish 201 (new user) vs 200 (existing-user multi-org) —
+  // body shape is identical AuthResult, only status differs.
+  //
+  // signup / acceptInvitation: success body has accessToken — auto-store
+  // it via setAccessToken so the caller can redirect into a protected
+  // page without another /auth/refresh round-trip.
+  //
+  // verifyEmail / requestPasswordReset / resetPassword: no token issued
+  // on success. Caller does not need to setAccessToken.
+  // ─────────────────────────────────────────────
+  async function parseJsonResponse(res) {
+    const text = await res.text();
+    if (text.length === 0) return null;
+    try { return JSON.parse(text); } catch (_) { return null; }
+  }
+
+  async function signup(input) {
+    const res = await rawFetch('/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input || {}),
+    });
+    const body = await parseJsonResponse(res);
+    if (res.ok && body && typeof body.accessToken === 'string') {
+      setAccessToken(body.accessToken);
+    }
+    return { status: res.status, body: body };
+  }
+
+  async function acceptInvitation(input) {
+    const res = await rawFetch('/invitations/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input || {}),
+    });
+    const body = await parseJsonResponse(res);
+    if (res.ok && body && typeof body.accessToken === 'string') {
+      setAccessToken(body.accessToken);
+    }
+    return { status: res.status, body: body };
+  }
+
+  async function verifyEmail(token) {
+    const res = await rawFetch('/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token }),
+    });
+    return { status: res.status, body: await parseJsonResponse(res) };
+  }
+
+  async function requestPasswordReset(email) {
+    const res = await rawFetch('/auth/password/forgot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email }),
+    });
+    return { status: res.status, body: await parseJsonResponse(res) };
+  }
+
+  async function resetPassword(token, newPassword) {
+    const res = await rawFetch('/auth/password/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, newPassword: newPassword }),
+    });
+    return { status: res.status, body: await parseJsonResponse(res) };
+  }
+
   async function logout() {
     try {
       await rawFetch('/auth/logout', { method: 'POST' });
@@ -259,6 +333,14 @@
     login: login,
     logout: logout,
     refreshAccessToken: refreshAccessToken,
+
+    // Phase 3 Step 6 — anonymous endpoint wrappers, all return
+    // { status, body } so pages can branch without a try/catch.
+    signup: signup,
+    acceptInvitation: acceptInvitation,
+    verifyEmail: verifyEmail,
+    requestPasswordReset: requestPasswordReset,
+    resetPassword: resetPassword,
 
     // Authenticated requests.
     apiGet: apiGet,

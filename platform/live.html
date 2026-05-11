@@ -683,6 +683,18 @@
         }
       }
 
+      // Unverified email banner (Phase 3 Step 6). /me responds with the
+      // public user shape including email_verified_at.
+      try {
+        const meRes = await window.kloserApi.apiGet('/me');
+        if (meRes.ok && typeof window.renderUnverifiedBanner === 'function') {
+          const meBody = await meRes.json();
+          window.renderUnverifiedBanner(meBody.user);
+        }
+      } catch (err) {
+        console.warn('[live] /me failed', err);
+      }
+
       if (!window.kloserWS) {
         console.error('[live] kloserWS not loaded — ws.js missing?');
         return;

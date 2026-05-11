@@ -16,7 +16,7 @@
 - [x] **Step 3** — 비밀번호 재설정 service/route + 단위 테스트 → `PHASE_3_STEP_3_PASSWORD_RESET.md` + `PHASE_3_STEP_3_FINDINGS.md` (2026-05-11)
 - [x] **Step 4** — Team / Member API + 마지막 admin 보호 + 권한 단위 테스트 → `PHASE_3_STEP_4_TEAM_MEMBER_API.md` + `PHASE_3_STEP_4_FINDINGS.md` (2026-05-11)
 - [x] **Step 5** — Invitation API (생성/재발송/취소/수락) + route 테스트 → `PHASE_3_STEP_5_INVITATION_API.md` + `PHASE_3_STEP_5_FINDINGS.md` (2026-05-11)
-- [ ] **Step 6** — 클라이언트 wiring (signup / forgot / reset / accept / team.html 실 API) → `PHASE_3_STEP_6_CLIENT.md`
+- [x] **Step 6** — 클라이언트 wiring (signup / forgot / reset / accept / team.html 실 API) → `PHASE_3_STEP_6_CLIENT.md` + `PHASE_3_STEP_6_FINDINGS.md` (2026-05-11)
 - [ ] **Step 7** — Phase 3 e2e + Phase 3 종합 findings → `PHASE_3_STEP_7_E2E.md`, `PHASE_3_STEP_7_FINDINGS.md`
 
 ---

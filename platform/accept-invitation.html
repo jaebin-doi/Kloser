@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <title>초대 수락 — Kloser</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: {
+      sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'] } } } };
+  </script>
+  <style>
+    html, body {
+      min-height: 100%;
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(6, 182, 212, 0.08), transparent 60%),
+        #f8fafc;
+    }
+    .g-text { background: linear-gradient(120deg, #2563eb 0%, #06b6d4 100%);
+              -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .field {
+      width: 100%; padding: 11px 13px; font-size: .9rem;
+      border: 1px solid rgb(226 232 240); border-radius: 10px; background: white;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field:focus { outline: none; border-color: rgb(37 99 235);
+                   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12); }
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 100%; padding: 12px 16px;
+      border-radius: 10px; background: rgb(37 99 235); color: white;
+      font-size: .9rem; font-weight: 700;
+      box-shadow: 0 4px 12px -4px rgba(37, 99, 235, .4);
+    }
+    .btn-primary:hover:not(:disabled) { background: rgb(29 78 216); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .card { background: white; border: 1px solid rgb(226 232 240); border-radius: 16px;
+            box-shadow: 0 1px 3px 0 rgba(15,23,42,0.04), 0 12px 32px -16px rgba(15,23,42,0.08); }
+  </style>
+</head>
+
+<body>
+  <main class="min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md">
+      <div class="flex items-center justify-center gap-2 mb-6">
+        <span class="text-[1.35rem] font-black tracking-tight"><span class="g-text">Kloser</span></span>
+      </div>
+
+      <!-- Form -->
+      <form id="accept-form" class="card p-7 sm:p-8" novalidate>
+        <h1 class="text-[1.25rem] font-black tracking-tight">초대 수락</h1>
+        <p class="mt-1 text-[.82rem] text-slate-500">
+          이름과 비밀번호를 입력해 가입을 완료하세요.
+        </p>
+        <div class="mt-6 space-y-4">
+          <div>
+            <label for="name" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">이름</label>
+            <input id="name" type="text" required minlength="1" maxlength="200"
+                   class="field" placeholder="홍길동" autocomplete="name">
+            <p class="mt-1 text-[.68rem] text-slate-500">
+              이미 가입된 계정이면 이 이름은 사용되지 않습니다.
+            </p>
+          </div>
+          <div>
+            <label for="password" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">비밀번호</label>
+            <input id="password" type="password" required minlength="8" maxlength="1024"
+                   class="field" placeholder="8자 이상" autocomplete="new-password">
+          </div>
+          <div>
+            <label for="passwordConfirm" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">비밀번호 확인</label>
+            <input id="passwordConfirm" type="password" required minlength="8" maxlength="1024"
+                   class="field" placeholder="다시 입력" autocomplete="new-password">
+            <p class="mt-1 text-[.68rem] text-slate-500">
+              기존 계정으로 참여하는 경우, 기존 비밀번호로 로그인하시면 됩니다.
+            </p>
+          </div>
+        </div>
+        <button id="submit" type="submit" class="btn-primary mt-6" disabled>초대 수락</button>
+        <div id="error" hidden
+             class="mt-4 px-3 py-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[.8rem]"></div>
+      </form>
+
+      <!-- Failure (no retry — 410 / 409 disabled / 409 already_member) -->
+      <div id="failure" hidden class="card p-7 sm:p-8 text-center">
+        <div class="mx-auto w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center mb-4">
+          <svg width="28" height="28" fill="none" stroke="rgb(225 29 72)" stroke-width="2.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <h2 class="text-[1.05rem] font-black tracking-tight mb-2" id="failure-title">초대를 수락할 수 없습니다</h2>
+        <p class="text-[.85rem] text-slate-500 mb-6" id="failure-desc"></p>
+        <a id="failure-cta" href="login.html" class="btn-primary">로그인으로 이동</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="api.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // Read token immediately, then strip from history so the raw
+      // invitation token cannot leak via referer / back button / screenshot.
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      window.history.replaceState(null, '', window.location.pathname);
+
+      const form = document.getElementById('accept-form');
+      const failure = document.getElementById('failure');
+      const failureTitle = document.getElementById('failure-title');
+      const failureDesc = document.getElementById('failure-desc');
+      const failureCta = document.getElementById('failure-cta');
+      const nameInput = document.getElementById('name');
+      const pwInput = document.getElementById('password');
+      const confirmInput = document.getElementById('passwordConfirm');
+      const submitBtn = document.getElementById('submit');
+      const errorDiv = document.getElementById('error');
+
+      function showFailure(title, desc, ctaHref, ctaLabel) {
+        form.hidden = true;
+        failureTitle.textContent = title;
+        failureDesc.textContent = desc;
+        failureCta.href = ctaHref || 'login.html';
+        failureCta.textContent = ctaLabel || '로그인으로 이동';
+        failure.hidden = false;
+      }
+
+      if (!token) {
+        showFailure(
+          '유효하지 않은 링크',
+          '토큰이 없습니다. 초대자에게 새 메일을 요청하세요.',
+        );
+        return;
+      }
+
+      function validate() {
+        const ok = nameInput.value.trim().length >= 1 &&
+                   pwInput.value.length >= 8 &&
+                   pwInput.value === confirmInput.value;
+        submitBtn.disabled = !ok;
+      }
+      nameInput.addEventListener('input', validate);
+      pwInput.addEventListener('input', validate);
+      confirmInput.addEventListener('input', validate);
+
+      function showError(msg) { errorDiv.textContent = msg; errorDiv.hidden = false; }
+      function hideError() { errorDiv.hidden = true; errorDiv.textContent = ''; }
+
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        hideError();
+        if (pwInput.value !== confirmInput.value) {
+          showError('비밀번호와 확인이 일치하지 않습니다.');
+          return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = '처리 중…';
+        try {
+          const { status, body } = await window.kloserApi.acceptInvitation({
+            token: token,
+            name: nameInput.value.trim(),
+            password: pwInput.value,
+          });
+          if (status === 201 || status === 200) {
+            // helper already set accessToken + cookie set by server.
+            // Hand-off to the live page.
+            window.location.replace('/platform/live.html');
+            return;
+          }
+          if (status === 410) {
+            showFailure(
+              '초대 링크가 만료되었습니다',
+              '초대 링크가 만료되었거나 취소되었습니다. 초대자에게 새 메일을 요청해주세요.',
+            );
+            return;
+          }
+          if (status === 409 && body && body.code === 'account_disabled') {
+            showFailure(
+              '비활성화된 계정입니다',
+              '이 계정은 비활성화되어 있습니다. 관리자에게 문의해주세요.',
+            );
+            return;
+          }
+          if (status === 409 && body && body.code === 'already_member') {
+            showFailure(
+              '이미 멤버입니다',
+              '이 계정은 이 조직의 멤버입니다. 로그인하여 사용하세요.',
+              'login.html',
+              '로그인하기',
+            );
+            return;
+          }
+          if (status === 400) {
+            showError('입력값을 확인해주세요.');
+          } else {
+            showError('일시적인 오류입니다. 잠시 후 다시 시도해주세요.');
+          }
+        } catch (err) {
+          console.error('[accept]', err);
+          showError('네트워크 오류입니다.');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '초대 수락';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

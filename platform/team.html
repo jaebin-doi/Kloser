@@ -42,7 +42,7 @@
           </button>
           <h1 class="text-[1rem] font-black tracking-tight text-slate-800 truncate">팀 & 계정</h1>
         </div>
-        <button onclick="openInvite()" class="btn-primary">
+        <button id="inviteHeaderBtn" onclick="openInvite()" class="btn-primary" style="display:none">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
           직원 초대
         </button>
@@ -57,10 +57,10 @@
               <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[1.3rem] font-black text-white shadow-md flex-shrink-0">K</div>
               <div class="min-w-0">
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
-                  <h2 class="text-[1.15rem] font-black tracking-tight text-slate-800">Kloser Inc.</h2>
-                  <span class="badge badge-blue">Pro 플랜</span>
+                  <h2 id="orgNameLabel" class="text-[1.15rem] font-black tracking-tight text-slate-800">—</h2>
+                  <span id="orgPlanBadge" class="badge badge-blue">—</span>
                 </div>
-                <div class="text-[.78rem] text-slate-500">14명 · 3개 팀 · 가입일 2026.03.15</div>
+                <div id="orgSubtext" class="text-[.78rem] text-slate-500">—</div>
               </div>
             </div>
             <div class="flex gap-2 flex-wrap">
@@ -73,20 +73,45 @@
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-slate-200">
             <div class="p-4 lg:p-5 border-r border-b sm:border-b-0 border-slate-200">
               <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">관리자</div>
-              <div class="text-[1.3rem] font-black tnum tracking-tight text-slate-800">1</div>
+              <div id="stat-admin" class="text-[1.3rem] font-black tnum tracking-tight text-slate-800">—</div>
             </div>
             <div class="p-4 lg:p-5 border-b sm:border-b-0 sm:border-r border-slate-200">
               <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">활성 직원</div>
-              <div class="text-[1.3rem] font-black tnum tracking-tight text-emerald-600">11</div>
+              <div id="stat-active" class="text-[1.3rem] font-black tnum tracking-tight text-emerald-600">—</div>
             </div>
             <div class="p-4 lg:p-5 border-r border-slate-200">
               <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">초대 대기</div>
-              <div class="text-[1.3rem] font-black tnum tracking-tight text-amber-600">2</div>
+              <div id="stat-pending" class="text-[1.3rem] font-black tnum tracking-tight text-amber-600">—</div>
             </div>
             <div class="p-4 lg:p-5">
               <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">잔여 슬롯</div>
               <div class="text-[1.3rem] font-black tnum tracking-tight text-slate-700">∞</div>
             </div>
+          </div>
+        </section>
+
+        <!-- Pending invitations (admin only — hidden for employee/viewer) -->
+        <section id="pendingSection" class="rounded-2xl border border-amber-200 bg-amber-50/40 overflow-hidden" style="display:none">
+          <div class="px-5 py-4 border-b border-amber-200 flex items-center justify-between">
+            <div>
+              <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">초대 대기</h3>
+              <p id="pendingSubtext" class="text-[.7rem] text-slate-500 mt-0.5">—</p>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>이메일</th>
+                  <th class="hidden sm:table-cell">팀</th>
+                  <th>역할</th>
+                  <th class="hidden md:table-cell">초대자 · 최근 발송</th>
+                  <th class="hidden md:table-cell">만료</th>
+                  <th class="w-32 text-right">동작</th>
+                </tr>
+              </thead>
+              <tbody id="pendingTable"></tbody>
+            </table>
           </div>
         </section>
 
@@ -98,7 +123,7 @@
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
               <div>
                 <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">구성원</h3>
-                <p class="text-[.7rem] text-slate-500 mt-0.5">관리자 1명 + 직원 13명</p>
+                <p id="membersSubtext" class="text-[.7rem] text-slate-500 mt-0.5">—</p>
               </div>
               <div class="flex items-center gap-1.5">
                 <button class="btn-secondary text-[.72rem] py-1.5">필터</button>
@@ -238,26 +263,26 @@
         <div>
           <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">역할</label>
           <select id="invRole" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] bg-white">
-            <option value="employee">직원</option>
+            <option value="admin">관리자</option>
             <option value="manager">매니저</option>
+            <option value="employee" selected>직원</option>
             <option value="viewer">관전자</option>
           </select>
         </div>
         <div>
           <label class="text-[.72rem] font-bold text-slate-600 mb-1.5 block">팀</label>
           <select id="invTeam" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-400 text-[.85rem] bg-white">
-            <option>영업1팀</option>
-            <option>영업2팀</option>
-            <option>CS팀</option>
+            <option value="">팀 없음</option>
           </select>
         </div>
+        <div id="invError" hidden class="rounded-lg bg-rose-50 border border-rose-200 p-3 text-[.74rem] text-rose-700 leading-relaxed"></div>
         <div class="rounded-lg bg-blue-50/60 border border-blue-100 p-3 text-[.74rem] text-blue-700 leading-relaxed">
-          초대 메일이 발송되면, 받은 사람이 비밀번호를 설정한 뒤 데스크톱 앱을 설치해 사용을 시작할 수 있어요.
+          초대 메일이 발송되면, 받은 사람이 비밀번호를 설정하고 즉시 로그인할 수 있습니다. 만료까지 7일.
         </div>
       </div>
       <div class="px-6 py-4 border-t border-slate-200 flex gap-2 justify-end">
         <button onclick="closeInvite()" class="btn-secondary">취소</button>
-        <button onclick="sendInvite()" class="btn-primary">초대 메일 발송</button>
+        <button id="invSubmitBtn" onclick="sendInvite()" class="btn-primary">초대 메일 발송</button>
       </div>
     </div>
   </div>
@@ -265,79 +290,555 @@
   <!-- Toast -->
   <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-3 rounded-xl bg-slate-900 text-white text-[.82rem] font-bold shadow-2xl opacity-0 pointer-events-none transition-all z-[200]"></div>
 
+  <script src="api.js"></script>
   <script src="_shared.js"></script>
   <script>
+    'use strict';
+
     renderSidebar('team');
 
-    const members = [
-      { name: '조성훈', email: 'cjb@doi-kr.com', team: '경영', role: 'admin', avatar: 'bg-gradient-to-br from-blue-500 to-violet-500', last: '방금 전', status: 'active' },
-      { name: '김민수', email: 'kim@kloser.com', team: '영업1팀', role: 'employee', avatar: 'bg-emerald-500', last: '5분 전', status: 'active' },
-      { name: '이지은', email: 'lee@kloser.com', team: '영업2팀', role: 'manager', avatar: 'bg-rose-500', last: '12분 전', status: 'active' },
-      { name: '박서준', email: 'park@kloser.com', team: 'CS팀', role: 'employee', avatar: 'bg-blue-500', last: '32분 전', status: 'active' },
-      { name: '정유진', email: 'jung@kloser.com', team: '영업1팀', role: 'employee', avatar: 'bg-amber-500', last: '1시간 전', status: 'active' },
-      { name: '한수민', email: 'han@kloser.com', team: '영업2팀', role: 'employee', avatar: 'bg-cyan-500', last: '2시간 전', status: 'active' },
-      { name: '강지훈', email: 'kang@kloser.com', team: '영업1팀', role: 'employee', avatar: 'bg-violet-500', last: '오늘 오전', status: 'active' },
-      { name: '윤서아', email: 'yoon@kloser.com', team: 'CS팀', role: 'employee', avatar: 'bg-pink-500', last: '어제', status: 'active' },
-      { name: '최서연', email: 'choi@kloser.com', team: '영업2팀', role: 'viewer', avatar: 'bg-teal-500', last: '2일 전', status: 'active' },
-      { name: '오민재', email: 'oh@kloser.com', team: '영업1팀', role: 'employee', avatar: 'bg-emerald-500', last: '3일 전', status: 'active' },
-      { name: '신예린', email: 'shin@kloser.com', team: 'CS팀', role: 'employee', avatar: 'bg-rose-500', last: '4일 전', status: 'active' },
-      { name: '임채영', email: 'lim@kloser.com', team: '영업2팀', role: 'employee', avatar: 'bg-blue-500', last: '1주 전', status: 'active' },
-      { name: '— 초대 대기 —', email: 'newbie@kloser.com', team: '영업1팀', role: 'employee', avatar: 'bg-slate-300', last: '오늘', status: 'pending' },
-      { name: '— 초대 대기 —', email: 'newbie2@kloser.com', team: 'CS팀', role: 'employee', avatar: 'bg-slate-300', last: '어제', status: 'pending' },
+    // ──────────────────────────────────────────────
+    // Lookups + constants
+    // ──────────────────────────────────────────────
+    const ROLE_LABELS = {
+      admin:    { ko: '관리자', cls: 'role-pill bg-blue-600 text-white' },
+      manager:  { ko: '매니저', cls: 'role-pill bg-violet-100 text-violet-700' },
+      employee: { ko: '직원',  cls: 'role-pill bg-slate-100 text-slate-600' },
+      viewer:   { ko: '관전자', cls: 'role-pill bg-amber-100 text-amber-700' },
+    };
+    const AVATAR_PALETTE = [
+      'bg-blue-500', 'bg-rose-500', 'bg-emerald-500', 'bg-amber-500',
+      'bg-violet-500', 'bg-cyan-500', 'bg-pink-500', 'bg-teal-500',
     ];
+    function avatarColor(seedStr) {
+      let h = 0;
+      for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) | 0;
+      return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length];
+    }
+    function initial(str) {
+      const s = (str || '').trim();
+      return s ? s.slice(0, 1).toUpperCase() : '?';
+    }
+    function escapeHtml(s) {
+      return (s == null ? '' : String(s))
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function fmtExpires(iso) {
+      if (!iso) return '-';
+      const ms = new Date(iso).getTime() - Date.now();
+      if (Number.isNaN(ms)) return '-';
+      if (ms <= 0) return '만료됨';
+      const days = Math.floor(ms / 86400000);
+      if (days >= 1) return days + '일 남음';
+      const hours = Math.floor(ms / 3600000);
+      if (hours >= 1) return hours + '시간 남음';
+      return '곧 만료';
+    }
 
-    const roleLabels = {
-      admin: { l: 'ADMIN', c: 'role-pill bg-blue-600 text-white' },
-      manager: { l: 'MANAGER', c: 'role-pill bg-violet-100 text-violet-700' },
-      employee: { l: 'EMPLOYEE', c: 'role-pill bg-slate-100 text-slate-600' },
-      viewer: { l: 'VIEWER', c: 'role-pill bg-amber-100 text-amber-700' },
+    // ──────────────────────────────────────────────
+    // Page state
+    // ──────────────────────────────────────────────
+    let me = null;           // /me response (user, organization, membership)
+    let members = [];        // /team/members
+    let teams = [];          // /teams
+    let invitations = [];    // /invitations (admin only — [] when 403)
+    let isAdmin = false;
+
+    const els = {
+      header: {
+        inviteBtn: document.getElementById('inviteHeaderBtn'),
+      },
+      org: {
+        name: document.getElementById('orgNameLabel'),
+        plan: document.getElementById('orgPlanBadge'),
+        sub:  document.getElementById('orgSubtext'),
+        statAdmin:   document.getElementById('stat-admin'),
+        statActive:  document.getElementById('stat-active'),
+        statPending: document.getElementById('stat-pending'),
+      },
+      members: {
+        body: document.getElementById('memberTable'),
+        subtext: document.getElementById('membersSubtext'),
+      },
+      pending: {
+        section: document.getElementById('pendingSection'),
+        body:    document.getElementById('pendingTable'),
+        subtext: document.getElementById('pendingSubtext'),
+      },
+      modal: {
+        root:   document.getElementById('inviteModal'),
+        email:  document.getElementById('invEmail'),
+        role:   document.getElementById('invRole'),
+        team:   document.getElementById('invTeam'),
+        error:  document.getElementById('invError'),
+        submit: document.getElementById('invSubmitBtn'),
+      },
     };
 
-    const tbl = document.getElementById('memberTable');
-    members.forEach(m => {
-      const tr = document.createElement('tr');
-      const r = roleLabels[m.role];
-      const isPending = m.status === 'pending';
-      tr.innerHTML = `
-        <td>
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-8 h-8 rounded-full ${m.avatar} flex items-center justify-center text-[.7rem] font-black text-white shrink-0">${isPending ? '?' : m.name.slice(0,1)}</div>
-            <div class="min-w-0">
-              <div class="font-bold text-slate-800 text-[.85rem] truncate">${m.name}</div>
-              <div class="text-[.68rem] text-slate-400 truncate">${m.email}</div>
-            </div>
-          </div>
-        </td>
-        <td class="hidden sm:table-cell text-slate-600 text-[.78rem]">${m.team}</td>
-        <td><span class="${r.c}">${r.l}</span></td>
-        <td class="hidden md:table-cell text-slate-500 text-[.78rem]">${m.last}</td>
-        <td>${isPending ? '<span class="badge badge-amber">초대 대기</span>' : '<span class="badge badge-emerald">활성</span>'}</td>
-        <td class="text-right">
-          <button class="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center text-slate-400">
-            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
-          </button>
-        </td>
-      `;
-      tbl.appendChild(tr);
-    });
-
-    function openInvite() { document.getElementById('inviteModal').classList.add('show'); }
-    function closeInvite() { document.getElementById('inviteModal').classList.remove('show'); }
+    // ──────────────────────────────────────────────
+    // Toast (page-local)
+    // ──────────────────────────────────────────────
     function showToast(text) {
       const t = document.getElementById('toast');
       t.textContent = text;
-      t.classList.remove('opacity-0');
-      t.classList.add('opacity-100');
+      t.classList.remove('opacity-0'); t.classList.add('opacity-100');
       setTimeout(() => { t.classList.remove('opacity-100'); t.classList.add('opacity-0'); }, 2400);
     }
-    function sendInvite() {
-      const email = document.getElementById('invEmail').value.trim();
-      if (!email) { alert('이메일을 입력해 주세요.'); return; }
-      closeInvite();
-      document.getElementById('invEmail').value = '';
-      showToast(`✓ ${email} 으로 초대 메일을 발송했어요`);
+
+    // ──────────────────────────────────────────────
+    // Auth gate
+    // ──────────────────────────────────────────────
+    (async function bootstrap() {
+      if (!window.kloserApi) {
+        console.error('[team] kloserApi missing');
+        return;
+      }
+      if (!window.kloserApi.getAccessToken()) {
+        try { await window.kloserApi.refreshAccessToken(); }
+        catch (_) { window.kloserApi.loginRedirect(); return; }
+      }
+      await loadAll();
+    })();
+
+    // ──────────────────────────────────────────────
+    // loadAll — parallel fetch + render
+    // ──────────────────────────────────────────────
+    async function loadAll() {
+      try {
+        const [meRes, membersRes, teamsRes, invitationsRes] = await Promise.all([
+          window.kloserApi.apiGet('/me'),
+          window.kloserApi.apiGet('/team/members'),
+          window.kloserApi.apiGet('/teams'),
+          window.kloserApi.apiGet('/invitations'),  // admin → 200, others → 403 (silent fallback)
+        ]);
+
+        if (!meRes.ok) { window.kloserApi.loginRedirect(); return; }
+        me = await meRes.json();
+        isAdmin = me.membership && me.membership.role === 'admin';
+
+        // Unverified email banner — shared helper.
+        if (typeof window.renderUnverifiedBanner === 'function') {
+          window.renderUnverifiedBanner(me.user);
+        }
+
+        if (membersRes.ok) members = (await membersRes.json()).members || [];
+        if (teamsRes.ok)   teams   = (await teamsRes.json()).teams   || [];
+        if (invitationsRes.ok && isAdmin) {
+          invitations = (await invitationsRes.json()).invitations || [];
+        } else {
+          invitations = [];
+        }
+
+        renderOrg();
+        renderMembers();
+        renderPending();
+        renderInviteHeader();
+        populateInviteTeams();
+      } catch (err) {
+        console.error('[team] load failed', err);
+      }
     }
-    window.openInvite = openInvite; window.closeInvite = closeInvite; window.sendInvite = sendInvite;
+
+    // ──────────────────────────────────────────────
+    // Renderers
+    // ──────────────────────────────────────────────
+    function renderInviteHeader() {
+      els.header.inviteBtn.style.display = isAdmin ? '' : 'none';
+    }
+
+    function renderOrg() {
+      const org = me.organization || {};
+      els.org.name.textContent = org.name || '—';
+      els.org.plan.textContent = (org.plan ? (org.plan.charAt(0).toUpperCase() + org.plan.slice(1)) : '—') + ' 플랜';
+
+      const adminCount  = members.filter(m => m.role === 'admin'  && m.status === 'active').length;
+      const activeCount = members.filter(m => m.role !== 'admin' && m.status === 'active').length;
+      const disabledCount = members.filter(m => m.status === 'disabled').length;
+      els.org.statAdmin.textContent  = adminCount;
+      els.org.statActive.textContent = activeCount;
+      els.org.statPending.textContent = invitations.length;
+
+      const memberLine = members.length + '명';
+      const teamLine = teams.length + '개 팀';
+      const disabledLine = disabledCount > 0 ? ` · 비활성 ${disabledCount}명` : '';
+      els.org.sub.textContent = `${memberLine} · ${teamLine}${disabledLine}`;
+      els.members.subtext.textContent =
+        `관리자 ${adminCount}명 + 직원 ${activeCount}명` +
+        (disabledCount > 0 ? ` · 비활성 ${disabledCount}명` : '');
+    }
+
+    function renderMembers() {
+      const body = els.members.body;
+      body.innerHTML = '';
+      members.forEach(m => {
+        const tr = document.createElement('tr');
+        const role = ROLE_LABELS[m.role] || { ko: m.role, cls: 'role-pill bg-slate-100 text-slate-600' };
+        const teamLabel = m.team_name
+          ? escapeHtml(m.team_name)
+          : '<span class="text-slate-400">미배정</span>';
+        const isSelf = me && me.user && m.user_id === me.user.id;
+        const statusBadge = m.status === 'active'
+          ? '<span class="badge badge-emerald">활성</span>'
+          : '<span class="badge badge-slate">비활성</span>';
+        const verifyDot = m.user_email_verified_at
+          ? ''
+          : ' <span title="이메일 미인증" class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 align-middle"></span>';
+        const kebab = (isAdmin && !isSelf)
+          ? `<button class="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center text-slate-400 ml-auto" data-action="kebab" data-id="${m.id}">
+               <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
+             </button>`
+          : '';
+        tr.innerHTML = `
+          <td>
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-full ${avatarColor(m.user_email)} flex items-center justify-center text-[.7rem] font-black text-white shrink-0">${escapeHtml(initial(m.user_name))}</div>
+              <div class="min-w-0">
+                <div class="font-bold text-slate-800 text-[.85rem] truncate">${escapeHtml(m.user_name)}</div>
+                <div class="text-[.68rem] text-slate-400 truncate">${escapeHtml(m.user_email)}${verifyDot}</div>
+              </div>
+            </div>
+          </td>
+          <td class="hidden sm:table-cell text-slate-600 text-[.78rem]">${teamLabel}</td>
+          <td><span class="${role.cls}">${escapeHtml(role.ko)}</span></td>
+          <td class="hidden md:table-cell text-slate-500 text-[.78rem]">${escapeHtml(window.formatRelativeTime ? window.formatRelativeTime(m.updated_at) : '-')}</td>
+          <td>${statusBadge}</td>
+          <td class="text-right">${kebab}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderPending() {
+      if (!isAdmin) {
+        els.pending.section.style.display = 'none';
+        return;
+      }
+      els.pending.section.style.display = '';
+      els.pending.subtext.textContent = invitations.length === 0
+        ? '대기 중인 초대가 없습니다'
+        : `${invitations.length}건의 초대 메일이 발송 대기 중입니다`;
+      els.pending.body.innerHTML = '';
+      if (invitations.length === 0) {
+        els.pending.body.innerHTML =
+          '<tr><td colspan="6" class="text-center text-slate-400 text-[.78rem] py-6">초대 대기 없음</td></tr>';
+        return;
+      }
+      invitations.forEach(inv => {
+        const tr = document.createElement('tr');
+        const role = ROLE_LABELS[inv.role] || { ko: inv.role, cls: 'role-pill bg-slate-100 text-slate-600' };
+        const teamLabel = inv.team_name
+          ? escapeHtml(inv.team_name)
+          : '<span class="text-slate-400">미배정</span>';
+        const inviter = inv.invited_by_name || '(알 수 없음)';
+        const lastSent = window.formatRelativeTime ? window.formatRelativeTime(inv.last_sent_at) : '-';
+        tr.innerHTML = `
+          <td class="text-slate-800 text-[.85rem]">${escapeHtml(inv.email)}</td>
+          <td class="hidden sm:table-cell text-slate-600 text-[.78rem]">${teamLabel}</td>
+          <td><span class="${role.cls}">${escapeHtml(role.ko)}</span></td>
+          <td class="hidden md:table-cell text-slate-500 text-[.72rem]">
+            <div>${escapeHtml(inviter)}</div>
+            <div class="text-slate-400">${escapeHtml(lastSent)}</div>
+          </td>
+          <td class="hidden md:table-cell text-slate-500 text-[.78rem]">${escapeHtml(fmtExpires(inv.token_expires_at))}</td>
+          <td class="text-right">
+            <div class="inline-flex items-center gap-1.5">
+              <button data-action="resend" data-id="${inv.id}"
+                      class="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-[.7rem] font-semibold hover:bg-slate-50">
+                재발송
+              </button>
+              <button data-action="cancel" data-id="${inv.id}"
+                      class="px-2.5 py-1 rounded-md bg-white border border-rose-200 text-rose-700 text-[.7rem] font-semibold hover:bg-rose-50">
+                취소
+              </button>
+            </div>
+          </td>
+        `;
+        els.pending.body.appendChild(tr);
+      });
+    }
+
+    // ──────────────────────────────────────────────
+    // Invite modal
+    // ──────────────────────────────────────────────
+    function populateInviteTeams() {
+      const select = els.modal.team;
+      // Reset to "팀 없음" + active teams.
+      select.innerHTML = '<option value="">팀 없음</option>';
+      teams.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        select.appendChild(opt);
+      });
+    }
+
+    function openInvite() {
+      if (!isAdmin) return;
+      els.modal.email.value = '';
+      els.modal.role.value = 'employee';
+      els.modal.team.value = '';
+      els.modal.error.hidden = true;
+      els.modal.error.textContent = '';
+      els.modal.root.classList.add('show');
+    }
+    function closeInvite() { els.modal.root.classList.remove('show'); }
+
+    async function sendInvite() {
+      const email = els.modal.email.value.trim().toLowerCase();
+      const role = els.modal.role.value;
+      const teamId = els.modal.team.value || null;
+      if (!email) { showInvError('이메일을 입력해주세요.'); return; }
+      els.modal.error.hidden = true;
+      els.modal.submit.disabled = true;
+      els.modal.submit.textContent = '발송 중…';
+      try {
+        const res = await window.kloserApi.apiPost('/invitations', {
+          email, role, teamId,
+        });
+        const body = await res.json().catch(() => null);
+        if (res.status === 201) {
+          closeInvite();
+          showToast(`✓ ${email} 으로 초대 메일을 발송했어요`);
+          if (body && body.invitation) {
+            invitations.unshift(body.invitation);
+            renderPending();
+            renderOrg();
+          }
+          return;
+        }
+        if (res.status === 409 && body && body.code === 'invitation_already_pending') {
+          showInvError('이 이메일로 이미 초대 메일을 보냈습니다.');
+        } else if (res.status === 409 && body && body.code === 'already_member') {
+          showInvError('이 이메일은 이미 멤버입니다.');
+        } else if (res.status === 400 && body && body.code === 'invalid_team') {
+          showInvError('유효하지 않은 팀입니다.');
+        } else if (res.status === 400) {
+          showInvError('입력값을 확인해주세요.');
+        } else if (res.status === 401 && body && body.code === 'stale_role') {
+          showInvError('권한이 변경됐습니다. 다시 로그인하세요.');
+          setTimeout(() => window.kloserApi.loginRedirect(), 1500);
+        } else if (res.status === 403) {
+          showInvError('권한이 없습니다.');
+        } else {
+          showInvError('초대 발송에 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('[invite]', err);
+        showInvError('네트워크 오류로 발송할 수 없습니다.');
+      } finally {
+        els.modal.submit.disabled = false;
+        els.modal.submit.textContent = '초대 메일 발송';
+      }
+    }
+    function showInvError(msg) {
+      els.modal.error.textContent = msg;
+      els.modal.error.hidden = false;
+    }
+
+    // ──────────────────────────────────────────────
+    // Pending row actions (event delegation)
+    // ──────────────────────────────────────────────
+    els.pending.body.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      if (action === 'resend') await resendInvite(id);
+      else if (action === 'cancel') await cancelInvite(id);
+    });
+
+    async function resendInvite(id) {
+      try {
+        const res = await window.kloserApi.apiPost('/invitations/' + id + '/resend', {});
+        const body = await res.json().catch(() => null);
+        if (res.status === 200) {
+          showToast('초대 메일을 다시 보냈습니다.');
+          await refreshInvitations();
+        } else if (res.status === 409) {
+          showToast('이미 처리된 초대입니다.');
+          await refreshInvitations();
+        } else if (res.status === 401 && body && body.code === 'stale_role') {
+          showToast('권한이 변경됐습니다. 다시 로그인하세요.');
+          setTimeout(() => window.kloserApi.loginRedirect(), 1500);
+        } else if (res.status === 404) {
+          showToast('초대를 찾을 수 없습니다.');
+          await refreshInvitations();
+        } else {
+          showToast('재발송에 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('[resend]', err);
+        showToast('재발송에 실패했습니다.');
+      }
+    }
+
+    async function cancelInvite(id) {
+      if (!confirm('이 초대를 취소하시겠습니까?')) return;
+      try {
+        const res = await window.kloserApi.apiDelete('/invitations/' + id);
+        if (res.status === 204) {
+          invitations = invitations.filter(i => i.id !== id);
+          renderPending();
+          renderOrg();
+          showToast('초대를 취소했습니다.');
+        } else if (res.status === 409) {
+          showToast('이미 처리된 초대입니다.');
+          await refreshInvitations();
+        } else if (res.status === 401) {
+          const body = await res.json().catch(() => null);
+          if (body && body.code === 'stale_role') {
+            showToast('권한이 변경됐습니다. 다시 로그인하세요.');
+            setTimeout(() => window.kloserApi.loginRedirect(), 1500);
+          }
+        } else if (res.status === 404) {
+          showToast('초대를 찾을 수 없습니다.');
+          await refreshInvitations();
+        } else {
+          showToast('취소에 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('[cancel]', err);
+        showToast('취소에 실패했습니다.');
+      }
+    }
+
+    async function refreshInvitations() {
+      const res = await window.kloserApi.apiGet('/invitations');
+      if (res.ok) {
+        invitations = (await res.json()).invitations || [];
+        renderPending();
+        renderOrg();
+      }
+    }
+
+    // ──────────────────────────────────────────────
+    // Member kebab — role change / status toggle.
+    // Build a tiny ad-hoc menu near the click target.
+    // ──────────────────────────────────────────────
+    let openKebabMenu = null;
+    els.members.body.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('button[data-action="kebab"]');
+      if (!btn) return;
+      ev.stopPropagation();
+      if (openKebabMenu) { openKebabMenu.remove(); openKebabMenu = null; }
+      const id = btn.dataset.id;
+      const m = members.find(x => x.id === id);
+      if (!m) return;
+      openKebabMenu = buildKebabMenu(m, btn);
+    });
+    document.addEventListener('click', () => {
+      if (openKebabMenu) { openKebabMenu.remove(); openKebabMenu = null; }
+    });
+
+    function buildKebabMenu(m, anchor) {
+      const menu = document.createElement('div');
+      menu.style.cssText =
+        'position:absolute;z-index:200;background:white;border:1px solid rgb(226 232 240);' +
+        'border-radius:10px;box-shadow:0 12px 32px -8px rgba(15,23,42,.18);' +
+        'min-width:180px;padding:6px;';
+      const rect = anchor.getBoundingClientRect();
+      menu.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+      menu.style.left = (rect.right + window.scrollX - 180) + 'px';
+
+      // Role submenu — explicit buttons per role (skip current).
+      const roleHeader = document.createElement('div');
+      roleHeader.className = 'text-[.62rem] font-bold tracking-wider uppercase text-slate-400 px-2 pt-1 pb-1';
+      roleHeader.textContent = '역할 변경';
+      menu.appendChild(roleHeader);
+      ['admin', 'manager', 'employee', 'viewer'].forEach(r => {
+        if (r === m.role) return;
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'w-full text-left px-2.5 py-1.5 rounded-md hover:bg-slate-100 text-[.78rem] text-slate-700';
+        item.textContent = ROLE_LABELS[r].ko + '로 변경';
+        item.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          menu.remove(); openKebabMenu = null;
+          await patchMembership(m.id, { role: r });
+        });
+        menu.appendChild(item);
+      });
+
+      const sep = document.createElement('div');
+      sep.style.cssText = 'height:1px;background:rgb(241 245 249);margin:6px 4px;';
+      menu.appendChild(sep);
+
+      // Status toggle — "삭제" label is intentionally never offered.
+      const statusItem = document.createElement('button');
+      statusItem.type = 'button';
+      statusItem.className = 'w-full text-left px-2.5 py-1.5 rounded-md hover:bg-rose-50 text-[.78rem] text-rose-700 font-semibold';
+      if (m.status === 'active') {
+        statusItem.textContent = '비활성화';
+        statusItem.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          menu.remove(); openKebabMenu = null;
+          if (!confirm(`${m.user_name}님을 비활성화하시겠습니까?\n현재 세션이 모두 만료됩니다.`)) return;
+          await patchMembership(m.id, { status: 'disabled' });
+        });
+      } else {
+        statusItem.className = 'w-full text-left px-2.5 py-1.5 rounded-md hover:bg-emerald-50 text-[.78rem] text-emerald-700 font-semibold';
+        statusItem.textContent = '활성화';
+        statusItem.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          menu.remove(); openKebabMenu = null;
+          await patchMembership(m.id, { status: 'active' });
+        });
+      }
+      menu.appendChild(statusItem);
+
+      document.body.appendChild(menu);
+      return menu;
+    }
+
+    async function patchMembership(id, patch) {
+      try {
+        const res = await window.kloserApi.apiPatch('/memberships/' + id, patch);
+        const body = await res.json().catch(() => null);
+        if (res.status === 200) {
+          const updated = body && body.membership;
+          if (updated) {
+            const idx = members.findIndex(x => x.id === id);
+            if (idx >= 0) {
+              members[idx] = Object.assign({}, members[idx], {
+                role: updated.role,
+                status: updated.status,
+                updated_at: new Date().toISOString(),
+              });
+            }
+          }
+          renderMembers();
+          renderOrg();
+          showToast(patch.status === 'disabled' ? '비활성화했습니다.'
+                 : patch.status === 'active'   ? '활성화했습니다.'
+                 : '역할을 변경했습니다.');
+          return;
+        }
+        if (res.status === 409 && body && body.code === 'last_admin_protected') {
+          showToast('마지막 관리자는 변경할 수 없습니다.');
+        } else if (res.status === 401 && body && body.code === 'stale_role') {
+          showToast('권한이 변경됐습니다. 다시 로그인하세요.');
+          setTimeout(() => window.kloserApi.loginRedirect(), 1500);
+        } else if (res.status === 401 && body && body.code === 'stale_session') {
+          showToast('세션이 만료됐습니다.');
+          setTimeout(() => window.kloserApi.loginRedirect(), 800);
+        } else if (res.status === 403) {
+          showToast('권한이 없습니다.');
+        } else if (res.status === 404) {
+          showToast('멤버를 찾을 수 없습니다.');
+        } else {
+          showToast('변경에 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('[patchMembership]', err);
+        showToast('변경에 실패했습니다.');
+      }
+    }
+
+    // Expose for inline onclick handlers.
+    window.openInvite = openInvite;
+    window.closeInvite = closeInvite;
+    window.sendInvite = sendInvite;
   </script>
 </body>
 </html>
