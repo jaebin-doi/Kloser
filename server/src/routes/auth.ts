@@ -15,12 +15,15 @@
  */
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { authEnv } from "../config/authEnv.js";
+import { requireAuth } from "../middleware/auth.js";
 import {
   AuthError,
   login,
   logout,
   refresh,
+  resendVerificationEmail,
   signup,
+  verifyEmail,
   type AuthResult,
 } from "../services/auth.js";
 
@@ -98,6 +101,28 @@ function sendAuthError(reply: FastifyReply, err: unknown): FastifyReply {
   throw err;
 }
 
+// /auth/verify collapses every distinct token-failure reason into one
+// generic 410. Internally the service throws AuthError with a precise
+// code (token_not_found / token_already_used / token_invalidated /
+// token_expired) so tests and logs can keep the granularity; the wire
+// shape stays opaque to defeat timing / enumeration. Plan §7.
+const VERIFY_TOKEN_REASON_CODES = new Set([
+  "token_not_found",
+  "token_already_used",
+  "token_invalidated",
+  "token_expired",
+]);
+
+function sendVerifyError(reply: FastifyReply, err: unknown): FastifyReply {
+  if (err instanceof AuthError && VERIFY_TOKEN_REASON_CODES.has(err.code)) {
+    return reply.code(410).send({
+      error: "token_invalid_or_expired",
+      code:  "token_invalid_or_expired",
+    });
+  }
+  return sendAuthError(reply, err);
+}
+
 const SIGNUP_BODY = {
   type: "object",
   required: ["organizationName", "name", "email", "password"],
@@ -108,6 +133,18 @@ const SIGNUP_BODY = {
     password:         { type: "string", minLength: 8, maxLength: 1024 },
   },
 } as const;
+
+const VERIFY_BODY = {
+  type: "object",
+  required: ["token"],
+  properties: {
+    token: { type: "string", minLength: 1, maxLength: 512 },
+  },
+} as const;
+
+interface VerifyBody {
+  token: string;
+}
 
 const LOGIN_BODY = {
   type: "object",
@@ -217,6 +254,49 @@ async function authRoutes(app: FastifyInstance) {
     reply.clearCookie(REFRESH_COOKIE_NAME, clearRefreshCookieOpts());
     return reply.code(204).send();
   });
+
+  // POST /auth/verify — anonymous. Body { token }. The service owns one
+  // servicePool transaction that consumes the token AND sets the user's
+  // email_verified_at, so the two writes commit together or roll back
+  // together. All token-failure reasons collapse to a generic 410 here
+  // (plan §7).
+  app.post<{ Body: VerifyBody }>(
+    "/auth/verify",
+    { schema: { body: VERIFY_BODY } },
+    async (request, reply) => {
+      try {
+        await verifyEmail(request.body.token);
+        return reply.code(200).send({ ok: true });
+      } catch (err) {
+        return sendVerifyError(reply, err);
+      }
+    },
+  );
+
+  // POST /auth/verify/resend — authenticated. No body. Invalidates the
+  // caller's active verification token (if any), mints a fresh 24h one,
+  // and writes a new outbox row. 409 if the user is already verified —
+  // we never spam an outbox row for a verified account.
+  app.post(
+    "/auth/verify/resend",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      if (!request.user) {
+        return reply
+          .code(401)
+          .send({ error: "authentication required", code: "auth_required" });
+      }
+      try {
+        await resendVerificationEmail({
+          userId: request.user.id,
+          orgId:  request.user.orgId,
+        });
+        return reply.code(200).send({ ok: true });
+      } catch (err) {
+        return sendAuthError(reply, err);
+      }
+    },
+  );
 }
 
 export default authRoutes;

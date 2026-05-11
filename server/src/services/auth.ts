@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import argon2 from "argon2";
 import type { PoolClient } from "pg";
 import { pool } from "../db/pool.js";
+import { getServicePool } from "../db/servicePool.js";
 import { authEnv } from "../config/authEnv.js";
 import type { MembershipRole } from "../repositories/memberships.js";
 import {
@@ -19,6 +20,13 @@ import {
   touchLastUsed,
   type AuthSession,
 } from "../repositories/sessions.js";
+import {
+  consumeToken,
+  invalidateActiveTokens,
+  mintToken,
+  TTL_EMAIL_VERIFICATION_MS,
+} from "./auth-tokens.js";
+import { buildVerifyUrl, emailProvider } from "./email.js";
 
 export interface AccessTokenPayload {
   sub: string;
@@ -415,6 +423,26 @@ export async function signup(input: {
     );
     const membership = membershipResult.rows[0]!;
 
+    // Mint the email-verification token + write its outbox row in the same
+    // transaction as the org/user/membership inserts. If anything throws
+    // between here and COMMIT, all six writes roll back together — no row
+    // in email_outbox can point at a user that doesn't exist.
+    const verification = await mintToken({
+      client,
+      orgId:    organization.id,
+      userId:   user.id,
+      purpose:  "email_verification",
+      ttlMs:    TTL_EMAIL_VERIFICATION_MS,
+    });
+    await emailProvider.sendVerificationEmail({
+      client,
+      orgId:     organization.id,
+      toEmail:   user.email,
+      toName:    user.name,
+      verifyUrl: buildVerifyUrl(verification.rawToken),
+      rawToken:  verification.rawToken,
+    });
+
     const { session, refreshToken } = await createSessionWithToken(client, {
       userId: user.id,
       orgId: organization.id,
@@ -431,6 +459,108 @@ export async function signup(input: {
       accessPayload: buildAccessPayload(session, membership.role),
       refreshToken,
     };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Email verification (Phase 3 Step 2)
+// ---------------------------------------------------------------------------
+
+/** Anonymous /auth/verify flow.
+ *
+ * Owns ONE servicePool transaction so consumeToken + the users update are
+ * atomic: a successfully consumed token always corresponds to a verified
+ * user, and a thrown error rolls both back. Plan §2.6.
+ *
+ * Throws AuthError(404 'token_not_found' | 410 token_already_used |
+ * token_invalidated | token_expired) — the route layer collapses all four
+ * to a single generic 410 response. */
+export async function verifyEmail(rawToken: string): Promise<void> {
+  const client = await getServicePool().connect();
+  try {
+    await client.query("BEGIN");
+    const consumed = await consumeToken(client, rawToken, "email_verification");
+    if (!consumed.userId) {
+      // CHECK auth_tokens_invitation_purpose_check guarantees non-invitation
+      // purposes have user_id NOT NULL. Defensive — should be unreachable.
+      throw new AuthError(500, "verify_internal_inconsistency",
+        "verification token missing user_id");
+    }
+    await client.query(
+      `UPDATE users SET email_verified_at = now() WHERE id = $1`,
+      [consumed.userId],
+    );
+    await client.query("COMMIT");
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackErr) {
+      client.release(rollbackErr as Error);
+      throw err;
+    }
+    client.release();
+    throw err;
+  }
+  client.release();
+}
+
+/** Authenticated /auth/verify/resend flow.
+ *
+ * Uses the regular app pool because the caller is authenticated — JWT
+ * gives us the user/org context. Invalidates the user's currently active
+ * verification token (if any) and mints a fresh one, then writes a new
+ * outbox row. Already-verified users get a 409 rather than spam.
+ *
+ * Throws AuthError(409 'already_verified') if the user has email_verified_at
+ * set; the route layer surfaces the code unchanged. */
+export async function resendVerificationEmail(input: {
+  userId: string;
+  orgId: string;
+}): Promise<void> {
+  await withTransaction(async (client) => {
+    await setOrgContext(client, input.orgId);
+
+    // Re-read the user inside the transaction so an already-verified state
+    // race (e.g. user verified in another tab) is detected with FOR UPDATE.
+    const userResult = await client.query<{
+      email: string;
+      name: string;
+      email_verified_at: Date | null;
+    }>(
+      `SELECT email, name, email_verified_at
+         FROM users
+        WHERE id = $1
+        FOR UPDATE`,
+      [input.userId],
+    );
+    const userRow = userResult.rows[0];
+    if (!userRow) {
+      throw new AuthError(404, "user_not_found", "user not found");
+    }
+    if (userRow.email_verified_at) {
+      throw new AuthError(409, "already_verified", "email already verified");
+    }
+
+    await invalidateActiveTokens({
+      client,
+      userId:  input.userId,
+      purpose: "email_verification",
+    });
+    const fresh = await mintToken({
+      client,
+      orgId:   input.orgId,
+      userId:  input.userId,
+      purpose: "email_verification",
+      ttlMs:   TTL_EMAIL_VERIFICATION_MS,
+    });
+    await emailProvider.sendVerificationEmail({
+      client,
+      orgId:     input.orgId,
+      toEmail:   userRow.email,
+      toName:    userRow.name,
+      verifyUrl: buildVerifyUrl(fresh.rawToken),
+      rawToken:  fresh.rawToken,
+    });
   });
 }
 

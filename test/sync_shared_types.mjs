@@ -39,6 +39,12 @@ const ENTITY_REGISTRY = [
         // (.partial(), .refine()) and intentionally out of scope.
         types: ["Customer", "CustomerCreateInput", "CustomerListQuery", "CustomerStats"],
     },
+    {
+        name: "signup",
+        server: "server/src/types/signup.ts",
+        browser: "platform/types/signup.js",
+        types: ["SignupInput", "VerifyEmailInput"],
+    },
 ];
 
 // ---------- parsers ---------- //

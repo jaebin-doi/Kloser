@@ -22,6 +22,7 @@ export interface PublicAuthUser {
   email: string;
   name: string;
   avatar_url: string | null;
+  email_verified_at: Date | null;
 }
 
 export async function getByEmailWithPasswordHash(
@@ -58,5 +59,6 @@ export function toPublicAuthUser(user: AuthUser): PublicAuthUser {
     email: user.email,
     name: user.name,
     avatar_url: user.avatar_url,
+    email_verified_at: user.email_verified_at,
   };
 }

@@ -49,10 +49,11 @@ async function meRoutes(app: FastifyInstance) {
 
       return reply.code(200).send({
         user: {
-          id:         result.user.id,
-          email:      result.user.email,
-          name:       result.user.name,
-          avatar_url: result.user.avatar_url,
+          id:                result.user.id,
+          email:             result.user.email,
+          name:              result.user.name,
+          avatar_url:        result.user.avatar_url,
+          email_verified_at: result.user.email_verified_at,
         },
         organization: {
           id:   result.organization.id,
