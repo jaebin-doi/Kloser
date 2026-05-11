@@ -14,6 +14,7 @@ import authPlugin from "./plugins/auth.js";
 import dbPlugin from "./plugins/db.js";
 import authRoutes from "./routes/auth.js";
 import customersRoutes from "./routes/customers.js";
+import invitationsRoutes from "./routes/invitations.js";
 import meRoutes from "./routes/me.js";
 import teamRoutes from "./routes/team.js";
 
@@ -53,6 +54,7 @@ await app.register(authRoutes);
 await app.register(meRoutes);
 await app.register(customersRoutes);
 await app.register(teamRoutes);
+await app.register(invitationsRoutes);
 
 app.get("/health", async () => ({
   ok: true,

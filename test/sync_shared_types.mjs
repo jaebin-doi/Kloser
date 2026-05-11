@@ -59,6 +59,12 @@ const ENTITY_REGISTRY = [
         // of sync scope (same convention as customers' CustomerPatch).
         types: ["Team", "TeamCreateInput", "TeamPatchInput", "Member"],
     },
+    {
+        name: "invitation",
+        server: "server/src/types/invitation.ts",
+        browser: "platform/types/invitation.js",
+        types: ["Invitation", "InvitationCreateInput", "InvitationAcceptInput"],
+    },
 ];
 
 // ---------- parsers ---------- //

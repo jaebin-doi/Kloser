@@ -187,6 +187,119 @@ export async function consumeToken(
 }
 
 // ---------------------------------------------------------------------------
+// Split helpers for invitation accept (Phase 3 Step 5)
+// ---------------------------------------------------------------------------
+//
+// acceptInvitation needs the lock and the UPDATE separated so the mark
+// (`consumed_at = now()`) only happens on the happy path. Mid-flow 409s
+// (account_disabled / already_member) ROLLBACK the whole tx, leaving the
+// token untouched — so retrying the same token yields the same 409 until
+// the underlying condition is resolved. See plan §6.1.
+//
+// Lock order across all invitation flows is `invitations → auth_tokens`
+// (cancel/resend serialize the same way). accept therefore reads the
+// token row WITHOUT a lock first to discover invitation_id, locks the
+// invitation row, and only then locks + validates the token row.
+//
+// verifyEmail / resetPassword keep using `consumeToken` (no post-consume
+// 409 branches → simpler atomic helper is fine).
+
+export interface RawTokenLookup {
+  tokenId: string;
+  invitationId: string | null;
+  userId: string | null;
+  orgId: string;
+}
+
+/** Read an auth_tokens row by sha256(raw) + purpose without any locking.
+ *  Returns the row identifiers used by acceptInvitation to lock the
+ *  invitation row first (lock order: invitations → auth_tokens). Returns
+ *  null if no row matches — the caller decides whether to throw 410
+ *  (token_not_found) or treat as silent no-op (Step 3 forgot uses neither
+ *  — it owns its own lookup). */
+export async function findTokenByRaw(
+  client: PoolClient,
+  rawToken: string,
+  purpose: TokenPurpose,
+): Promise<RawTokenLookup | null> {
+  const tokenHash = sha256Hex(rawToken);
+  const r = await client.query<{
+    id: string;
+    org_id: string;
+    user_id: string | null;
+    invitation_id: string | null;
+  }>(
+    `SELECT id, org_id, user_id, invitation_id
+       FROM auth_tokens
+      WHERE token_hash = $1
+        AND purpose    = $2`,
+    [tokenHash, purpose],
+  );
+  if (r.rows.length === 0) return null;
+  const row = r.rows[0]!;
+  return {
+    tokenId: row.id,
+    invitationId: row.invitation_id,
+    userId: row.user_id,
+    orgId: row.org_id,
+  };
+}
+
+/** SELECT … FOR UPDATE on an auth_tokens row by id, plus validity check
+ *  (consumed_at / invalidated_at / expires_at). Throws the same AuthError
+ *  codes as consumeToken so sendTokenError can collapse them to 410.
+ *  Does NOT update consumed_at — that's markTokenConsumed at the end. */
+export async function lockAndValidateTokenById(
+  client: PoolClient,
+  tokenId: string,
+  purpose: TokenPurpose,
+): Promise<void> {
+  const r = await client.query<{
+    expires_at: Date;
+    consumed_at: Date | null;
+    invalidated_at: Date | null;
+  }>(
+    `SELECT expires_at, consumed_at, invalidated_at
+       FROM auth_tokens
+      WHERE id      = $1
+        AND purpose = $2
+      FOR UPDATE`,
+    [tokenId, purpose],
+  );
+  if (r.rows.length === 0) {
+    // findTokenByRaw said the row existed but it's now gone — extremely
+    // narrow race (the row's referenced invitation was deleted between
+    // the two queries, cascading the token away). Surface as not_found.
+    throw new AuthError(404, "token_not_found", "token not found");
+  }
+  const row = r.rows[0]!;
+  if (row.consumed_at) {
+    throw new AuthError(410, "token_already_used", "token already used");
+  }
+  if (row.invalidated_at) {
+    throw new AuthError(410, "token_invalidated", "token invalidated");
+  }
+  if (row.expires_at < new Date()) {
+    throw new AuthError(410, "token_expired", "token expired");
+  }
+}
+
+/** Set consumed_at = now() on a token already locked by
+ *  lockAndValidateTokenById. Called as the final mutation in
+ *  acceptInvitation's happy path so a mid-flow throw + ROLLBACK leaves
+ *  the token untouched (retry yields the same 409 until the underlying
+ *  condition is resolved). */
+export async function markTokenConsumed(
+  client: PoolClient,
+  tokenId: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE auth_tokens SET consumed_at = now() WHERE id = $1`,
+    [tokenId],
+  );
+}
+
+// ---------------------------------------------------------------------------
 // TTL constants (per Master §2-5/6/7)
 // ---------------------------------------------------------------------------
 

@@ -341,7 +341,7 @@ async function resolveMembershipForLogin(
   return memberships[0]!;
 }
 
-function buildAccessPayload(
+export function buildAccessPayload(
   session: AuthSession,
   role: MembershipRole,
 ): AccessTokenPayload {
@@ -369,7 +369,7 @@ async function getSessionMembershipRole(
   return found.membership.role;
 }
 
-async function createSessionWithToken(
+export async function createSessionWithToken(
   client: PoolClient,
   input: {
     userId: string;

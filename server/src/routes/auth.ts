@@ -28,6 +28,7 @@ import {
   verifyEmail,
   type AuthResult,
 } from "../services/auth.js";
+import { sendAuthError, sendTokenError } from "./_tokenErrorMap.js";
 
 const REFRESH_COOKIE_NAME = "kloser_refresh";
 
@@ -82,48 +83,6 @@ function sendAuthResult(
     organization: result.organization,
     membership: { id: result.membership.id, role: result.membership.role },
   });
-}
-
-function sendAuthError(reply: FastifyReply, err: unknown): FastifyReply {
-  if (err instanceof AuthError) {
-    const body: Record<string, unknown> = {
-      error: err.message,
-      code: err.code,
-    };
-    // AuthError.details may carry e.g. `availableOrgs` for the
-    // multi-membership login case — spread it onto the body so the
-    // contract documented in the plan (top-level `availableOrgs`)
-    // is preserved.
-    if (err.details && typeof err.details === "object") {
-      Object.assign(body, err.details as Record<string, unknown>);
-    }
-    return reply.code(err.statusCode).send(body);
-  }
-  // Unknown errors: let fastify's default error handler log + 500.
-  throw err;
-}
-
-// Both /auth/verify and /auth/password/reset collapse every distinct
-// token-failure reason into one generic 410. Internally the service
-// throws AuthError with a precise code (token_not_found /
-// token_already_used / token_invalidated / token_expired) so tests and
-// logs can keep the granularity; the wire shape stays opaque to defeat
-// timing / enumeration. Step 2 plan §7 / Step 3 plan §3.2.
-const TOKEN_REASON_CODES = new Set([
-  "token_not_found",
-  "token_already_used",
-  "token_invalidated",
-  "token_expired",
-]);
-
-function sendTokenError(reply: FastifyReply, err: unknown): FastifyReply {
-  if (err instanceof AuthError && TOKEN_REASON_CODES.has(err.code)) {
-    return reply.code(410).send({
-      error: "token_invalid_or_expired",
-      code:  "token_invalid_or_expired",
-    });
-  }
-  return sendAuthError(reply, err);
 }
 
 const SIGNUP_BODY = {
