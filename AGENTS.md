@@ -22,13 +22,7 @@ Kloser is a static HTML frontend plus a Fastify/PostgreSQL backend.
 - Seed data lives in `server/seeds/`.
 - Phase plans and findings live in `docs/plan/`.
 
-Important current branch context:
-
-- Branch: `feature/phase-2-customers-crud`
-- Phase 1 is complete.
-- Phase 2 Step 1-5 are complete.
-- Phase 2 Step 6 is pending: customers e2e + final Phase 2 findings.
-- `customers.plan` was intentionally removed. Do not reintroduce a customer-level `plan` field. `organizations.plan` is the Kloser subscription tier; customers are tenant-owned leads/contacts.
+Per-phase status (current branch, what's done, what's next) is intentionally NOT tracked here — it rots too fast. Check `git status`, the most recent `docs/plan/phase-*/PHASE_*_MASTER.md`, and the latest findings file instead.
 
 ## Safety Rules
 
@@ -83,6 +77,20 @@ python -m http.server 8765
 - Runtime code should use the app role; migrations and seeds use the admin migration URL.
 - Keep RLS behavior opaque to callers: cross-org row access should look like `404 not_found`, not `403 exists elsewhere`.
 - Customer UUID validation currently uses the repository's permissive 8-4-4-4-12 hex regex. Do not replace it with strict `z.string().uuid()` unless seed UUIDs and tests are migrated too.
+- `customers.plan` was intentionally removed and must not be reintroduced. `organizations.plan` is the Kloser subscription tier; customers are tenant-owned leads/contacts.
+
+## Phase Workflow
+
+Each new phase closes in this order. Do not skip ahead.
+
+1. **Schema migration** — table, columns, FKs, RLS policies, indexes. Standalone commit.
+2. **Repo + unit tests** — typed accessors, RLS scoping via `app.withOrgContext`, cross-org isolation proven in `server/test/`. Standalone commit.
+3. **Route layer** — Fastify handlers, request/response schemas, shared types (`server/src/types/<entity>.ts` zod source + `platform/types/<entity>.js` JSDoc mirror + `test/sync_shared_types.mjs` registry entry), route tests.
+4. **Frontend** — the matching `platform/<page>.html` is touched only after 1-3 are green.
+
+Reason: backend (RLS, withOrgContext, edge cases) is the part the project has trained itself to do tightly; starting from UI invites ad-hoc API shapes that don't survive RLS, and demo data that papers over missing columns. Schema-first front-loads the unknowns.
+
+If the user asks to "start Phase N" without specifying the layer, default to step 1 (migration) and confirm before going further.
 
 ## Frontend Conventions
 
@@ -92,12 +100,30 @@ python -m http.server 8765
 - After customer POST/PATCH/DELETE, prefer reloading list + stats from the server (`loadAll`) over optimistic local mutation. This keeps filters, sorting, and stats consistent.
 - Keep UI changes consistent with existing dense SaaS dashboard styling.
 
+### Mock vs real data
+
+Frontend is mid-migration from static prototype to real multi-tenant SaaS. Some pages are wired to live API, others still render demo fixtures, and the sidebar user block is currently hard-coded. When working in any frontend file:
+
+- Identify each data field as `(API)` or `(demo)` before editing. If replacing demo with real, say so; if leaving demo, say so.
+- In status reports, label any user-facing value mentioned with `(API)` or `(demo)` so the reader doesn't have to ask.
+- The demo→real boundary should shrink each phase, not stay flat. Prefer wiring `/me` + real endpoints over copying static names when seeding a new page.
+
+### innerHTML XSS gate
+
+Every `.innerHTML = ...`, `insertAdjacentHTML`, or template literal assigned to `.innerHTML` is an XSS gate. For each interpolation, classify:
+
+- **Constant** (SVG paths, layout chrome, page-author strings): safe.
+- **Server-returned field** (customer name, email, transcript text, invite display_name, org name): not safe — escape, use `textContent`, or DOMPurify-sanitize. Server values can carry malicious HTML from upstream imports (CSV uploads, CRM sync) even when they look "internal".
+- **User-typed input** (form values, search terms): same — escape or `textContent`.
+
+When adding or touching such a construction, do the check before submitting. `customers.html` and `team.html` already define a local `escapeHtml(str)` — reuse it within those files, or copy the same shape into a new page. Critical paths in team / customers / live are defended; the demo pages (dashboard / calls / newsletter / daily) have not been audited yet and should be treated as pre-flagged risk.
+
 ## Documentation Rules
 
 - Plan files are both design record and handoff material. If implementation changes a contract, update the relevant plan/findings document in the same commit or a follow-up cleanup commit.
 - For completed work, update checkboxes only when the implementation and verification are actually done.
 - Preserve historical notes when useful, but make the current model unambiguous.
-- For Phase 2, the final source of truth for `customers.plan` removal is `docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md`.
+- Older `PHASE_*_STEP_*.md` plan files with stale `[ ]` checkboxes are historical drafts. The current source of truth for each phase is its `PHASE_*_MASTER.md` plus the latest findings file — don't try to "complete" the old step plans retroactively.
 
 ## Commit/Push Discipline
 
