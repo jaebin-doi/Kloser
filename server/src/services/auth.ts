@@ -25,8 +25,13 @@ import {
   invalidateActiveTokens,
   mintToken,
   TTL_EMAIL_VERIFICATION_MS,
+  TTL_PASSWORD_RESET_MS,
 } from "./auth-tokens.js";
-import { buildVerifyUrl, emailProvider } from "./email.js";
+import {
+  buildResetUrl,
+  buildVerifyUrl,
+  emailProvider,
+} from "./email.js";
 
 export interface AccessTokenPayload {
   sub: string;
@@ -257,7 +262,11 @@ async function getActiveMembershipInCurrentOrg(
   };
 }
 
-async function listActiveMembershipsAcrossOrgs(
+// Exported so Phase 3 Step 3 (password reset) can pick an org for an
+// otherwise-unauthenticated user without re-implementing the RLS-safe org
+// probe. The function sets the GUC on `client` as a side effect (last loop
+// iteration's setOrgContext lingers) — callers that care must reset it.
+export async function listActiveMembershipsAcrossOrgs(
   client: PoolClient,
   userId: string,
 ): Promise<Array<{ membership: AuthMembership; organization: AuthOrganization }>> {
@@ -562,6 +571,137 @@ export async function resendVerificationEmail(input: {
       rawToken:  fresh.rawToken,
     });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Password reset (Phase 3 Step 3)
+// ---------------------------------------------------------------------------
+
+/** Anonymous /auth/password/forgot flow.
+ *
+ * App pool, single transaction. Resolves silently in three expected no-op
+ * branches (unknown email, user.disabled_at set, no active membership) so
+ * the route can always return 200 without leaking which path was taken.
+ * Unexpected errors (DB / argon2 / EmailProvider) bubble up — the route
+ * does NOT catch them; Fastify's default handler returns 500. See
+ * PHASE_3_STEP_3_PASSWORD_RESET.md §2.1 / §5.
+ *
+ * memberships is RLS-scoped, so we cannot SELECT it without a GUC. The
+ * login path solves the same problem by probing each organizations row
+ * under its own SET LOCAL context — listActiveMembershipsAcrossOrgs.
+ * We reuse it here. Its last loop iteration leaves the GUC set; we
+ * re-set explicitly below so the intent stays visible. */
+export async function requestPasswordReset(input: {
+  email: string;
+}): Promise<void> {
+  await withTransaction(async (client) => {
+    // 1) users is NOT RLS-scoped — direct lookup is safe.
+    const user = await getByEmailWithPasswordHash(client, input.email);
+    if (!user) return;                  // unknown email — enumeration shield
+    if (user.disabled_at) return;       // globally disabled — recovery denied
+
+    // 2) Pick the user's first active membership (created_at ASC inside
+    //    the helper) so the token's org_id is deterministic.
+    const memberships = await listActiveMembershipsAcrossOrgs(client, user.id);
+    if (memberships.length === 0) return; // every membership disabled
+
+    const orgId = memberships[0]!.organization.id;
+    await setOrgContext(client, orgId);
+
+    // 3) Invalidate any prior active password_reset token for this user.
+    //    Required to satisfy auth_tokens_user_purpose_active_idx UNIQUE.
+    await invalidateActiveTokens({
+      client,
+      userId:  user.id,
+      purpose: "password_reset",
+    });
+
+    // 4) Mint a fresh 1h token.
+    const fresh = await mintToken({
+      client,
+      orgId,
+      userId:  user.id,
+      purpose: "password_reset",
+      ttlMs:   TTL_PASSWORD_RESET_MS,
+    });
+
+    // 5) Write the outbox row in the same transaction. If anything throws
+    //    between mint and now, both rollback together.
+    await emailProvider.sendPasswordResetEmail({
+      client,
+      orgId,
+      toEmail:  user.email,
+      toName:   user.name,
+      resetUrl: buildResetUrl(fresh.rawToken),
+      rawToken: fresh.rawToken,
+    });
+  });
+}
+
+/** Anonymous /auth/password/reset flow.
+ *
+ * Owns ONE servicePool transaction so consumeToken + UPDATE users +
+ * UPDATE sessions revoke are atomic. Same pattern as verifyEmail.
+ *
+ * hashPassword runs BEFORE the transaction opens — argon2id takes tens of
+ * ms and holding a pool connection idle through it is wasteful. The race
+ * window is fine: if anything changes between hash and consume, consume's
+ * FOR UPDATE catches it.
+ *
+ * Sessions: every active session for the user is revoked with reason
+ * 'password_reset'. Old refresh cookies will 401 on next /auth/refresh.
+ * Access JWTs are stateless and remain valid until their TTL — PHASE_3_
+ * STEP_3_PASSWORD_RESET.md §1-10 and §4 document the trade-off.
+ *
+ * Throws AuthError(token_not_found | token_already_used |
+ * token_invalidated | token_expired) — the route collapses all four to a
+ * generic 410 via sendTokenError. */
+export async function resetPassword(input: {
+  rawToken: string;
+  newPassword: string;
+}): Promise<void> {
+  const passwordHash = await hashPassword(input.newPassword);
+
+  const client = await getServicePool().connect();
+  try {
+    await client.query("BEGIN");
+    const consumed = await consumeToken(client, input.rawToken, "password_reset");
+    if (!consumed.userId) {
+      // CHECK auth_tokens_invitation_purpose_check forces non-invitation
+      // purposes to carry user_id NOT NULL. Defensive — unreachable.
+      throw new AuthError(500, "reset_internal_inconsistency",
+        "password_reset token missing user_id");
+    }
+
+    await client.query(
+      `UPDATE users SET password_hash = $1 WHERE id = $2`,
+      [passwordHash, consumed.userId],
+    );
+
+    // Revoke every active session for this user. COALESCE preserves prior
+    // revoked_at / revoked_reason so a session already revoked for another
+    // reason keeps its original timestamp + reason.
+    await client.query(
+      `UPDATE sessions
+          SET revoked_at     = COALESCE(revoked_at, now()),
+              revoked_reason = COALESCE(revoked_reason, 'password_reset')
+        WHERE user_id    = $1
+          AND revoked_at IS NULL`,
+      [consumed.userId],
+    );
+
+    await client.query("COMMIT");
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackErr) {
+      client.release(rollbackErr as Error);
+      throw err;
+    }
+    client.release();
+    throw err;
+  }
+  client.release();
 }
 
 export async function login(input: {

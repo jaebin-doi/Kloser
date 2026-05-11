@@ -45,6 +45,12 @@ const ENTITY_REGISTRY = [
         browser: "platform/types/signup.js",
         types: ["SignupInput", "VerifyEmailInput"],
     },
+    {
+        name: "password-reset",
+        server: "server/src/types/password-reset.ts",
+        browser: "platform/types/password-reset.js",
+        types: ["ForgotPasswordInput", "ResetPasswordInput"],
+    },
 ];
 
 // ---------- parsers ---------- //

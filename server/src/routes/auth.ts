@@ -21,7 +21,9 @@ import {
   login,
   logout,
   refresh,
+  requestPasswordReset,
   resendVerificationEmail,
+  resetPassword,
   signup,
   verifyEmail,
   type AuthResult,
@@ -101,20 +103,21 @@ function sendAuthError(reply: FastifyReply, err: unknown): FastifyReply {
   throw err;
 }
 
-// /auth/verify collapses every distinct token-failure reason into one
-// generic 410. Internally the service throws AuthError with a precise
-// code (token_not_found / token_already_used / token_invalidated /
-// token_expired) so tests and logs can keep the granularity; the wire
-// shape stays opaque to defeat timing / enumeration. Plan §7.
-const VERIFY_TOKEN_REASON_CODES = new Set([
+// Both /auth/verify and /auth/password/reset collapse every distinct
+// token-failure reason into one generic 410. Internally the service
+// throws AuthError with a precise code (token_not_found /
+// token_already_used / token_invalidated / token_expired) so tests and
+// logs can keep the granularity; the wire shape stays opaque to defeat
+// timing / enumeration. Step 2 plan §7 / Step 3 plan §3.2.
+const TOKEN_REASON_CODES = new Set([
   "token_not_found",
   "token_already_used",
   "token_invalidated",
   "token_expired",
 ]);
 
-function sendVerifyError(reply: FastifyReply, err: unknown): FastifyReply {
-  if (err instanceof AuthError && VERIFY_TOKEN_REASON_CODES.has(err.code)) {
+function sendTokenError(reply: FastifyReply, err: unknown): FastifyReply {
+  if (err instanceof AuthError && TOKEN_REASON_CODES.has(err.code)) {
     return reply.code(410).send({
       error: "token_invalid_or_expired",
       code:  "token_invalid_or_expired",
@@ -144,6 +147,32 @@ const VERIFY_BODY = {
 
 interface VerifyBody {
   token: string;
+}
+
+const FORGOT_BODY = {
+  type: "object",
+  required: ["email"],
+  properties: {
+    email: { type: "string", minLength: 3, maxLength: 320 },
+  },
+} as const;
+
+interface ForgotBody {
+  email: string;
+}
+
+const RESET_BODY = {
+  type: "object",
+  required: ["token", "newPassword"],
+  properties: {
+    token:       { type: "string", minLength: 1, maxLength: 512 },
+    newPassword: { type: "string", minLength: 8, maxLength: 1024 },
+  },
+} as const;
+
+interface ResetBody {
+  token:       string;
+  newPassword: string;
 }
 
 const LOGIN_BODY = {
@@ -268,7 +297,7 @@ async function authRoutes(app: FastifyInstance) {
         await verifyEmail(request.body.token);
         return reply.code(200).send({ ok: true });
       } catch (err) {
-        return sendVerifyError(reply, err);
+        return sendTokenError(reply, err);
       }
     },
   );
@@ -294,6 +323,49 @@ async function authRoutes(app: FastifyInstance) {
         return reply.code(200).send({ ok: true });
       } catch (err) {
         return sendAuthError(reply, err);
+      }
+    },
+  );
+
+  // POST /auth/password/forgot — anonymous. Body { email }. Always 200
+  // on the expected paths (unknown email / globally disabled user / no
+  // active membership) so the response shape never leaks which path the
+  // server took. There is NO try/catch here: unexpected service errors
+  // (DB, argon2, EmailProvider) propagate to Fastify's default handler
+  // and surface as 500 — that is a real error, not an enumeration vector,
+  // and operators need to see it via 50x metrics. Plan §2.2 / §5.
+  app.post<{ Body: ForgotBody }>(
+    "/auth/password/forgot",
+    { schema: { body: FORGOT_BODY } },
+    async (request, reply) => {
+      await requestPasswordReset({
+        email: request.body.email.trim().toLowerCase(),
+      });
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
+  // POST /auth/password/reset — anonymous. Body { token, newPassword }.
+  // resetPassword owns a single servicePool transaction that consumes the
+  // token, updates users.password_hash, and revokes every active session
+  // for the user. Old refresh cookies 401 on next /auth/refresh; old
+  // access JWTs remain valid until their TTL — documented trade-off
+  // (Step 3 plan §1-10).
+  //
+  // Token failure reasons (not_found / already_used / invalidated /
+  // expired) all collapse to a generic 410 via sendTokenError.
+  app.post<{ Body: ResetBody }>(
+    "/auth/password/reset",
+    { schema: { body: RESET_BODY } },
+    async (request, reply) => {
+      try {
+        await resetPassword({
+          rawToken:    request.body.token,
+          newPassword: request.body.newPassword,
+        });
+        return reply.code(200).send({ ok: true });
+      } catch (err) {
+        return sendTokenError(reply, err);
       }
     },
   );
