@@ -51,6 +51,14 @@ const ENTITY_REGISTRY = [
         browser: "platform/types/password-reset.js",
         types: ["ForgotPasswordInput", "ResetPasswordInput"],
     },
+    {
+        name: "team",
+        server: "server/src/types/team.ts",
+        browser: "platform/types/team.js",
+        // MembershipPatchInput uses .refine() and is intentionally out
+        // of sync scope (same convention as customers' CustomerPatch).
+        types: ["Team", "TeamCreateInput", "TeamPatchInput", "Member"],
+    },
 ];
 
 // ---------- parsers ---------- //

@@ -15,6 +15,7 @@ import dbPlugin from "./plugins/db.js";
 import authRoutes from "./routes/auth.js";
 import customersRoutes from "./routes/customers.js";
 import meRoutes from "./routes/me.js";
+import teamRoutes from "./routes/team.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -51,6 +52,7 @@ await app.register(dbPlugin);
 await app.register(authRoutes);
 await app.register(meRoutes);
 await app.register(customersRoutes);
+await app.register(teamRoutes);
 
 app.get("/health", async () => ({
   ok: true,

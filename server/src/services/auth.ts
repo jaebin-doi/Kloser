@@ -314,7 +314,16 @@ async function resolveMembershipForLogin(
 
   const memberships = await listActiveMembershipsAcrossOrgs(client, input.userId);
   if (memberships.length === 0) {
-    throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    // user existed + password verified + no active membership in any org =
+    // every per-org membership disabled. Phase 3 Step 4 surfaces this as
+    // a distinct code so the client can show "your account has been
+    // deactivated" instead of "wrong credentials". The trade-off (email
+    // existence leaked when the password is correct) is the intentional
+    // policy in PHASE_3_MASTER.md §11 / Step 4 plan §1-8.
+    //
+    // The explicit-orgId branch above keeps `invalid_credentials` so a
+    // wrong orgId guess never reveals which orgs the user does belong to.
+    throw new AuthError(401, "account_disabled", "account is disabled");
   }
   if (memberships.length > 1) {
     const availableOrgs: AvailableOrg[] = memberships.map((m) => ({
