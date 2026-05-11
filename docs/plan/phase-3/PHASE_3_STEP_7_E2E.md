@@ -8,17 +8,17 @@
 
 ## 진행 상태
 
-- [ ] 1. lock-ins 사전 결정 (§1)
-- [ ] 2. `test/phase_3_e2e.mjs` (신규) — 6 시나리오 + cleanup
-- [ ] 3. `.gitignore` 보강 — `test/phase_3_e2e.png` (screenshot artifact) 추가
-- [ ] 4. 6 시나리오 모두 PASS
-- [ ] 5. `npm --prefix server run typecheck` PASS
-- [ ] 6. `node test/sync_shared_types.mjs` PASS
-- [ ] 7. `npm --prefix server test` 155/155 PASS 회귀
-- [ ] 8. `node test/phase_0_5_e2e.mjs` 16/16 PASS 회귀
-- [ ] 9. `node test/phase_2_customers_e2e.mjs` 7/7 PASS 회귀
-- [ ] 10. `PHASE_3_STEP_7_FINDINGS.md` 작성
-- [ ] 11. `PHASE_3_MASTER.md` Step 7 체크박스 [x] — 위 9·10 완료 후에만
+- [x] 1. lock-ins 사전 결정 (§1)
+- [x] 2. `test/phase_3_e2e.mjs` (신규) — 6 시나리오 + cleanup
+- [x] 3. `.gitignore` 보강 — `test/phase_3_e2e.png` (screenshot artifact) 추가
+- [x] 4. 6 시나리오 모두 PASS
+- [x] 5. `npm --prefix server run typecheck` PASS
+- [x] 6. `node test/sync_shared_types.mjs` PASS
+- [x] 7. `npm --prefix server test` 155/155 PASS 회귀
+- [x] 8. `node test/phase_0_5_e2e.mjs` 16/16 PASS 회귀
+- [x] 9. `node test/phase_2_customers_e2e.mjs` 7/7 PASS 회귀
+- [x] 10. `PHASE_3_STEP_7_FINDINGS.md` 작성
+- [x] 11. `PHASE_3_MASTER.md` Step 7 체크박스 [x] — 위 9·10 완료 후에만
 
 ---
 
@@ -41,8 +41,8 @@ Master §1 산출물 6 "Phase 3 종합 e2e + 결산". 본 step이 끝나면:
 | 1. 스크립트 위치 / 이름 | `test/phase_3_e2e.mjs` (단일 파일) | Phase 0.5 / Phase 2 e2e와 같은 패턴 |
 | 2. 실행 방식 | Playwright `chromium.launch({ headless: true })` + 직접 fetch 헬퍼. 시나리오는 `for` 루프 아닌 sequential `await` (Phase 2와 같은 형태) | 결과 가독성 — PASS/FAIL 1행씩 |
 | 3. 시나리오 범위 | 6개 — signup→verify / forgot→reset / admin invite→신규 user accept / 기존 user multi-org accept / role+status 변경 / resend·cancel 410. Phase 3 Step 6 §12 6 persona를 그대로 자동화 | Step 6 수동 검증과 1:1 매핑 |
-| 4. token 추출 방식 | `pg` 모듈로 servicePool credentials 직접 connect → `SELECT metadata->>'verifyUrl'/'resetUrl'/'acceptUrl' FROM email_outbox WHERE to_email = $1 AND template = $2 ORDER BY created_at DESC LIMIT 1` | dev outbox provider 그대로. raw token이 metadata에 노출되는 dev 정책 (Phase 3 Step 1 §7) 활용 |
-| 5. DB connect string 출처 | `process.env.SERVICE_DATABASE_URL` (`server/.env` 같은 값). `dotenv/config` import로 `server/.env` 자동 로딩 — Phase 2 e2e가 같은 패턴 | 환경별 분리 |
+| 4. token 추출 방식 | `child_process.execFileSync("docker", ["exec", "-e", "PGPASSWORD=...", PG_CONTAINER, "psql", "-U", PG_SVC_USER, "-d", PG_DB, "-At", "-c", sql])`로 컨테이너 안 psql 호출 → `SELECT metadata->>'verifyUrl'/'resetUrl'/'acceptUrl' FROM email_outbox WHERE to_email = $1 AND template = $2 ORDER BY created_at DESC LIMIT 1`. service role (`kloser_service`)이 BYPASSRLS라 GUC 없이 SELECT 가능 | dev outbox provider 그대로. raw token이 metadata에 노출되는 dev 정책 (Phase 3 Step 1 §7) 활용 |
+| 5. DB credential 출처 | 컨테이너 이름 + DB / 역할명 / 비밀번호를 e2e 스크립트에 const로 박음 (`PG_CONTAINER`, `PG_SVC_USER`, `PG_SVC_PASS`, `PG_APP_USER`, `PG_APP_PASS`). dev compose 고정값과 일치. **root에 `pg` / `dotenv` 모듈 의존 추가 회피** — Phase 0.5 / Phase 2 e2e가 fetch + playwright만으로 작동하는 패턴 유지 | dev 외 환경 실행 시 컨테이너 이름이 다르면 즉시 fail — 의도된 환경 분리 |
 | 6. 테스트 데이터 식별자 | email은 `phase3test-<scenario>-<timestamp>@example.test`. afterAll에서 prefix sweep | invitation_routes.test와 같은 prefix isolation |
 | 7. 시드 의존 | Acme `admin@acme.test` + `emp@acme.test` + Beta `admin@beta.test` 3개 seeded account 사용. password도 seed default 그대로 | Phase 0.5 / Phase 2와 동일. Phase 3 종합 시점에 seed reset 가정 |
 | 8. cleanup contract | (a) finally 블록에서 phase3test- prefix users 직접 DELETE (app pool — users는 RLS off) (b) acme/beta org 안의 phase3test- 초대 모두 `cancel` 처리 또는 invitation_routes.test.afterEach가 다음 server test 실행 시 sweep (c) acme `emp@acme.test` membership을 원상 (role='employee', status='active') 복원 | persona 5에서 만든 role/status 변경을 같은 spec 내에서 되돌림 |
@@ -60,7 +60,7 @@ Master §1 산출물 6 "Phase 3 종합 e2e + 결산". 본 step이 끝나면:
 
 ### Scenario 1 — signup → verify
 1. `uiSignup(page, { email: phase3test-p1, ... })`. `live.html` 도착 후 unverified-banner DOM 존재 확인.
-2. `pgPool.query(...)` 로 `verifyUrl` 추출. token URL → `verify.html?token=...`.
+2. `psql(...)`(docker exec wrapper)로 `verifyUrl` 추출. token URL → `verify.html?token=...`.
 3. Page 진입 후 `location.search === ''` 확인 (replaceState OK). state-success 노출 확인.
 4. `live.html` 재진입 → unverified-banner 부재 확인.
 
@@ -113,7 +113,7 @@ Master §1 산출물 6 "Phase 3 종합 e2e + 결산". 본 step이 끝나면:
 |---|---|
 | Phase 2 e2e가 admin@acme.test password를 의존 — Step 7이 그걸 손상시키면 회귀 fail | scenario 2의 forgot/reset은 **새 user**에 대해서만. seeded admin은 password 안 건드림 |
 | persona 6 cancel 후 token B가 invalidate된 상태로 남으면 다음 실행 충돌 | persona 6의 invitation은 phase3test-p6 prefix — afterEach가 다음 실행에서 sweep. 본 step의 cleanup은 더 폭넓게 (생성한 모든 phase3test-*) users 직접 DELETE로 보완 |
-| servicePool credential을 e2e가 직접 사용 — dev 외 환경 진입 차단 | `process.env.SERVICE_DATABASE_URL`이 production set인 환경에선 실행 금지. e2e doc에 dev-only 명시 |
+| service-role credential을 e2e가 직접 사용 — dev 외 환경 진입 차단 | 컨테이너 이름 / 역할 / 비밀번호는 e2e 스크립트에 dev-compose 고정값으로 박음. production 환경에는 해당 컨테이너 / 역할이 없어 자연 실패. e2e doc에 dev-only 명시 |
 | Headless chromium이 cookie 동작 차이로 logout 안 됨 | `kloserApi.logout()` 직접 호출 후 새 context 생성하면 안전. scenario 3 / 4에서 새 context로 분리 |
 | seeded `emp@acme.test`를 scenario 5 도중 disable 상태로 남기면 Phase 2 e2e 회귀 다음 실행 시 깨질 가능성 | scenario 5의 마지막 steps + finally의 무조건 restore로 두 번 보장 |
 | 본 step 실행 시 dev DB의 phase3test- 잔여 데이터로 두 번째 실행이 23505 conflict | scenario 시작 시 phase3test- prefix users sweep (pre-clean) |

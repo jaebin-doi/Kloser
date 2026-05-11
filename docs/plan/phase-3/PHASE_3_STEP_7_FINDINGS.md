@@ -58,10 +58,11 @@ Step 7 **완료** (2026-05-11). 계획서 §4 완료 기준 6항목 중 5번째 
 (1) Step 6 anonymous 페이지들 (signup / accept-invitation)은 성공 시 server가 Set-Cookie로 refresh를 박는다. Playwright headless에서 새 browser context로 분리하지 않고 같은 page를 재사용하면 이전 시나리오의 cookie + accessToken이 새 사용자 진입을 오염시킬 수 있음.
 
 (2) 본 e2e의 해법:
-- scenario 3 / 4 accept 진입 전 `ctx.clearCookies()` + `kloserApi.logout()` 두 가지 모두 호출. cookie는 server 측에서 server-side revoke (logout) + browser 측 제거 (clearCookies) 양면 정리.
+- scenario 3 / 4 accept 진입 전 `ctx.clearCookies()` 호출로 browser 측 refresh 쿠키 제거. accept-invitation 페이지는 anonymous라 로그인 상태 잔재가 흐름을 오염시키지 않도록 cookie 비움이 1차.
+- 일부 시나리오 (scenario 2의 forgot/reset 전환 등)에서는 `kloserApi.logout()`로 page-context의 access token도 정리. server-side session revoke는 logout이 담당.
 - accessToken은 closure 변수라 page reload 시 휘발됨 — 명시 정리 불요.
 
-(3) Phase 4+ e2e가 같은 페이지 인스턴스를 계속 재사용하려면 본 패턴 유지. 두 user를 격리하려면 `browser.newContext()`로 완전 새 컨텍스트 (cookies + storage 분리) 권장.
+(3) Phase 4+ e2e가 같은 페이지 인스턴스를 계속 재사용하려면 본 패턴 유지. 두 user를 완전히 격리하려면 `browser.newContext()`로 새 컨텍스트 (cookies + storage 분리)를 만드는 것이 권장 — 본 step은 단일 context + `ctx.clearCookies()`로 충분히 격리됐기 때문에 newContext까지 가지 않음.
 
 ---
 

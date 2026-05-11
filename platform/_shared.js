@@ -71,6 +71,16 @@ const SIDEBAR_HTML = `
         <div class="text-[.65rem] text-slate-500 truncate">영업1팀 · 대리</div>
       </div>
     </button>
+    <button id="sidebarLogoutBtn" type="button"
+            class="mt-1 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md
+                   text-[.72rem] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      로그아웃
+    </button>
   </div>
 </aside>
 <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -81,6 +91,23 @@ function renderSidebar(activePage) {
   if (activePage) {
     const el = document.querySelector(`.nav-item[data-page="${activePage}"]`);
     if (el) el.classList.add('active');
+  }
+  // Wire logout — server logout failure must not strand the user on a
+  // protected page, so we always navigate to login.html regardless.
+  const logoutBtn = document.getElementById('sidebarLogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      logoutBtn.disabled = true;
+      try {
+        if (window.kloserApi && typeof window.kloserApi.logout === 'function') {
+          await window.kloserApi.logout();
+        }
+      } catch (err) {
+        console.warn('[logout] server call failed; clearing client anyway', err);
+      } finally {
+        window.location.replace('/platform/login.html');
+      }
+    });
   }
 }
 
