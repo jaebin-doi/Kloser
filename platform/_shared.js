@@ -257,6 +257,82 @@ function renderNotification(notifBtnId) {
    account is already verified (409 already_verified —
    classic race: user clicked verify URL in another tab).
 ───────────────────────────────────────────── */
+const UNVERIFIED_BANNER_HEIGHT_PX = 40;
+
+function findAppShellForBanner() {
+  // live.html / team.html / customers.html share the same top-level shell:
+  //   <body><div class="flex h-screen">…</div></body>
+  // h-screen pins the shell to 100vh, so adding body.paddingTop pushes the
+  // shell off-screen and clips the bottom. Instead, we shrink the shell
+  // itself by `marginTop` + `height: calc(100vh - <banner>)`.
+  //
+  // The selector intentionally matches the documented shell shape; pages
+  // without this shape (signup.html etc.) fall through to body paddingTop.
+  const candidates = document.body.querySelectorAll(':scope > div.flex.h-screen');
+  // Skip the banner itself even though it's prepended (it has no .flex.h-screen).
+  for (const el of candidates) {
+    if (el.id === 'unverified-banner') continue;
+    return el;
+  }
+  return null;
+}
+
+function applyBannerLayout(shell, h) {
+  if (shell) {
+    // padding-top (NOT margin-top) avoids margin-collapse: a child's
+    // top-margin can collapse with its parent's, pushing the entire
+    // body down `h` px. Since live/team set `body { overflow: hidden }`,
+    // that collapse would clip the bottom `h` px of content. padding-top
+    // creates a block formatting context boundary at the parent edge,
+    // so no margin escapes upward.
+    //
+    // The shell keeps its `h-screen` (= 100vh) height; the padding-top
+    // pushes its flex content (sidebar + main column) down by `h`,
+    // so the visible inside of the shell is 100vh - h. Banner sits
+    // `position: fixed` over the padding strip — no double-counted
+    // space, no overflow.
+    shell.dataset.kloserBannerOrigPaddingTop = shell.style.paddingTop || '';
+    shell.style.paddingTop = h + 'px';
+    return;
+  }
+  // Fallback for pages without the documented app shell — keep a body
+  // padding-top nudge so anonymous / non-shell pages still don't overlap.
+  document.body.dataset.kloserBannerOrigPaddingTop = document.body.style.paddingTop || '';
+  document.body.style.paddingTop = h + 'px';
+}
+
+function restoreBannerLayout(shell) {
+  if (shell) {
+    shell.style.paddingTop = shell.dataset.kloserBannerOrigPaddingTop || '';
+    delete shell.dataset.kloserBannerOrigPaddingTop;
+    return;
+  }
+  document.body.style.paddingTop =
+    document.body.dataset.kloserBannerOrigPaddingTop || '';
+  delete document.body.dataset.kloserBannerOrigPaddingTop;
+}
+
+/* ─────────────────────────────────────────────
+   Unverified email banner (Phase 3 Step 6).
+
+   Shows a top-of-page banner when the logged-in user's
+   `email_verified_at` is null. Resend button calls
+   POST /auth/verify/resend and reports the result via
+   a transient inline toast.
+
+   Layout policy:
+     - banner is `position: fixed; top: 0; height: 40px`.
+     - the page's top-level app shell (`<div class="flex h-screen">`) is
+       pushed down by `marginTop: 40px` and shrunk to
+       `height: calc(100vh - 40px)`. Without this, h-screen + body
+       paddingTop would total 100vh + 40px and clip the bottom.
+     - pages without the documented shell fall back to body paddingTop.
+
+   Idempotent: re-calling does NOT inject a second banner.
+   The banner self-removes when the server confirms the
+   account is already verified (409 already_verified —
+   classic race: user clicked verify URL in another tab).
+───────────────────────────────────────────── */
 function renderUnverifiedBanner(user) {
   if (!user || user.email_verified_at) return;
   if (document.getElementById('unverified-banner')) return;
@@ -264,9 +340,10 @@ function renderUnverifiedBanner(user) {
   const banner = document.createElement('div');
   banner.id = 'unverified-banner';
   banner.style.cssText =
-    'position:fixed;top:0;left:0;right:0;z-index:300;' +
+    'position:fixed;top:0;left:0;right:0;z-index:300;height:' +
+    UNVERIFIED_BANNER_HEIGHT_PX + 'px;' +
     'background:rgb(254 252 232);border-bottom:1px solid rgb(252 211 77);' +
-    'color:rgb(120 53 15);font-size:.78rem;padding:8px 16px;' +
+    'color:rgb(120 53 15);font-size:.78rem;padding:0 16px;' +
     'display:flex;align-items:center;justify-content:center;gap:12px;' +
     "font-family:'Pretendard Variable',Pretendard,Inter,system-ui,sans-serif;";
   banner.innerHTML =
@@ -281,10 +358,8 @@ function renderUnverifiedBanner(user) {
     '인증 메일 재발송</button>';
   document.body.prepend(banner);
 
-  // Push page content down so the banner doesn't overlap a fixed header.
-  const original = document.body.style.paddingTop;
-  document.body.dataset.originalPaddingTop = original;
-  document.body.style.paddingTop = '40px';
+  const shell = findAppShellForBanner();
+  applyBannerLayout(shell, UNVERIFIED_BANNER_HEIGHT_PX);
 
   function toast(msg) {
     const t = document.createElement('div');
@@ -301,8 +376,7 @@ function renderUnverifiedBanner(user) {
 
   function removeBanner() {
     banner.remove();
-    document.body.style.paddingTop = document.body.dataset.originalPaddingTop || '';
-    delete document.body.dataset.originalPaddingTop;
+    restoreBannerLayout(shell);
   }
 
   const btn = document.getElementById('unverified-resend-btn');
