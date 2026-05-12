@@ -33,6 +33,7 @@ import {
   type AuthenticatedUser,
 } from "../services/auth.js";
 import * as callsService from "../services/calls.js";
+import * as callHeartbeatService from "../services/callHeartbeat.js";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -277,6 +278,62 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
       }
       clearCall(socket);
       if (typeof ack === "function") ack({ ok: true });
+    });
+
+    // -------------------------------------------------------------- //
+    // heartbeat — Phase 5 Step 3.
+    //
+    // Client pings every 20s (master plan §2 decision 11). The handler
+    // refreshes calls.last_seen_at via the service. ack contract:
+    //   { ok: true,  lastSeenAt }              — heartbeat applied
+    //   { ok: false, error: "no_active_call" } — start_call not yet
+    //   { ok: false, error: "call_ended" }     — call marked ended/missed/dropped
+    //   { ok: false, error: "persistence_failed" } — DB error; client retries
+    //
+    // The disconnect handler still does NOT mark the call dropped on
+    // its own — that's the sweep service's job, gated by the 60s cutoff
+    // (master plan §2 decision 10).
+    // -------------------------------------------------------------- //
+    socket.on("heartbeat", async (_payload: unknown, ack?: (resp: unknown) => void) => {
+      const ctx = calls.get(socket);
+      if (!ctx) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "no_active_call" });
+        }
+        return;
+      }
+      try {
+        const updated = await callHeartbeatService.touchCallHeartbeat(
+          app,
+          user.orgId,
+          ctx.callId,
+        );
+        if (!updated) {
+          // Call exists but is no longer in_progress (ended / missed /
+          // dropped / soft-deleted). Signal the client to stop pinging.
+          if (typeof ack === "function") {
+            ack({ ok: false, error: "call_ended" });
+          }
+          return;
+        }
+        if (typeof ack === "function") {
+          ack({
+            ok: true,
+            lastSeenAt:
+              updated.last_seen_at instanceof Date
+                ? updated.last_seen_at.toISOString()
+                : updated.last_seen_at,
+          });
+        }
+      } catch (err) {
+        socket.data.log("heartbeat persistence_failed", {
+          err: (err as Error)?.message,
+          callId: ctx.callId,
+        });
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "persistence_failed" });
+        }
+      }
     });
 
     socket.on("disconnect", (reason) => {

@@ -15,6 +15,7 @@
  */
 import type { FastifyInstance } from "fastify";
 import * as itemsRepo from "../repositories/callChecklistItems.js";
+import * as callsRepo from "../repositories/calls.js";
 import {
   assertCanMutateCall,
   type Actor,
@@ -24,17 +25,22 @@ import type {
   CallChecklistStatus,
 } from "../repositories/callChecklistItems.js";
 
-// Initialize is read-or-create: callable by any same-org user (the call
-// detail view triggers it on first open). No team-scope check — the
-// list is org-wide read.
+// Initialize creates per-call rows, so it follows the same mutation
+// permission rule as status changes: admin all, employee own call,
+// manager same team.
 export async function initializeChecklistForCall(
   app: FastifyInstance,
-  actorOrgId: string,
+  actor: Actor,
   callId: string,
 ): Promise<CallChecklistItem[] | null> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    itemsRepo.initializeForCallInCurrentOrg(client, callId),
-  );
+  return app.withOrgContext(actor.orgId, actor.id, async (client) => {
+    const call = await callsRepo.lockByIdInCurrentOrg(client, callId);
+    if (!call) return null;
+    await assertCanMutateCall(client, actor, {
+      agent_user_id: call.agent_user_id,
+    });
+    return itemsRepo.initializeForCallInCurrentOrg(client, callId);
+  });
 }
 
 export async function listChecklistForCall(

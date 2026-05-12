@@ -89,6 +89,14 @@ export const CallNotesInput = z.object({
 });
 export type CallNotesInput = z.infer<typeof CallNotesInput>;
 
+export const CallSummaryManualInput = z.object({
+  summary: z.string().max(4000).nullable(),
+  needs: z.string().max(4000).nullable(),
+  issues: z.string().max(4000).nullable(),
+  sentiment: CallSentiment.nullable(),
+});
+export type CallSummaryManualInput = z.infer<typeof CallSummaryManualInput>;
+
 export const CallEndInput = z.object({
   ended_at: z.preprocess((v) => {
     if (v === undefined || v === null) return v;

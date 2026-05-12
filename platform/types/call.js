@@ -66,6 +66,14 @@
  */
 
 /**
+ * @typedef {Object} CallSummaryManualInput
+ * @property {string|null} summary
+ * @property {string|null} needs
+ * @property {string|null} issues
+ * @property {CallSentiment|null} sentiment
+ */
+
+/**
  * @typedef {Object} CallEndInput
  * @property {string} [ended_at]
  * @property {CallFinalStatus} [final_status]

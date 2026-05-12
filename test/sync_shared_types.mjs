@@ -80,6 +80,7 @@ const ENTITY_REGISTRY = [
             "CallDetailResponse",
             "CallEndInput",
             "CallNotesInput",
+            "CallSummaryManualInput",
         ],
     },
     {
@@ -104,6 +105,62 @@ const ENTITY_REGISTRY = [
         server: "server/src/types/dashboard.ts",
         browser: "platform/types/dashboard.js",
         types: ["DashboardSummary", "DashboardRecentCall"],
+    },
+    {
+        name: "knowledgeBase",
+        server: "server/src/types/knowledgeBase.ts",
+        browser: "platform/types/knowledgeBase.js",
+        types: [
+            "KnowledgeBase",
+            "KnowledgeBaseCreateInput",
+            "KnowledgeBasePatchInput",
+            "KnowledgeBaseListResponse",
+        ],
+    },
+    {
+        name: "knowledgeChunk",
+        server: "server/src/types/knowledgeChunk.ts",
+        browser: "platform/types/knowledgeChunk.js",
+        types: [
+            "KnowledgeChunk",
+            "KnowledgeChunkInput",
+            "KnowledgeChunkReplaceInput",
+            "KnowledgeChunkSearchQuery",
+            "KnowledgeChunkSearchResultItem",
+            "KnowledgeChunkSearchResponse",
+        ],
+    },
+    {
+        name: "checklistTemplate",
+        server: "server/src/types/checklistTemplate.ts",
+        browser: "platform/types/checklistTemplate.js",
+        types: [
+            "CallChecklistTemplate",
+            "CallChecklistTemplateCreateInput",
+            "CallChecklistTemplatePatchInput",
+            "CallChecklistTemplateListResponse",
+        ],
+    },
+    {
+        name: "callChecklistItem",
+        server: "server/src/types/callChecklistItem.ts",
+        browser: "platform/types/callChecklistItem.js",
+        types: [
+            "CallChecklistItem",
+            "CallChecklistItemStatusInput",
+            "CallChecklistItemListResponse",
+        ],
+    },
+    {
+        name: "callSuggestion",
+        server: "server/src/types/callSuggestion.ts",
+        browser: "platform/types/callSuggestion.js",
+        types: [
+            "CallSuggestion",
+            "CallSuggestionInput",
+            "CallSuggestionGroupInput",
+            "CallSuggestionListResponse",
+        ],
     },
 ];
 
