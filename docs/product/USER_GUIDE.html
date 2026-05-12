@@ -229,6 +229,9 @@
                 <li>HttpOnly refresh cookie 30일 + Bearer access 15분 갱신</li>
                 <li>잘못된 자격증명·다중 조직 시 인라인 안내 메시지</li>
                 <li>localhost 접속 시 dev 시드 4쌍 + 자동 채우기 버튼 노출</li>
+                <li>✓ Phase 3에서 추가: 회원가입 UI + 24시간 이메일 인증 메일</li>
+                <li>✓ Phase 3에서 추가: 비밀번호 분실 → 메일 링크로 재설정 (적용 시 모든 활성 세션 revoke)</li>
+                <li>✓ Phase 3에서 추가: 멀티-조직 계정은 1차 로그인 실패 응답에 organization 리스트가 포함되어 조직 ID 입력 안내 노출</li>
               </ul>
             </div>
             <div class="status-box-soon">
@@ -236,10 +239,8 @@
                 <span class="pill-soon">⌛ 아직 안 됨</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>회원가입 UI (Phase 3, 이메일 인증과 함께)</li>
-                <li>비밀번호 재설정 / 마법 링크 (Phase 3)</li>
-                <li>SSO / SAML — Enterprise 단계</li>
-                <li>조직 picker UI — 현재는 ID 직접 입력 (Phase 3+ 회원가입과 함께 도입 예정)</li>
+                <li>SSO / SAML — Enterprise 단계 (Phase 6+)</li>
+                <li>조직 picker UI 1차 화면화 — 현재는 로그인 1차 시도 후 자동 노출 또는 "조직 ID 직접 입력" 토글 (Phase 4+ UX polish)</li>
               </ul>
             </div>
           </div>
@@ -446,7 +447,7 @@
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
                 <li>행 클릭 상세 패널 (통화 이력 결합) — Phase 4</li>
-                <li>팀 단위 권한 분기 ("매니저는 자기 팀만") — Phase 3</li>
+                <li>팀 단위 권한 분기 ("매니저는 자기 팀만") — Phase 4+ (현재 admin-only mutation으로 단순화)</li>
                 <li>CSV 일괄 가져오기 — Phase 6+ enterprise</li>
                 <li>HubSpot / Salesforce 양방향 동기화 — Phase 6 (v2 베타)</li>
                 <li>고급 검색 (오타 허용·전문 검색) — Phase 5+</li>
@@ -487,7 +488,7 @@
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
                 <li>실제 LLM 연동 (Claude / GPT) — Phase 5</li>
-                <li>실제 메일 발송 인프라 — Phase 3 (SMTP / SES)</li>
+                <li>실제 메일 발송 인프라 (SMTP / SES) — Phase 6+ 운영 진입 단계 어댑터. 현재는 dev outbox 테이블에 메일 본문 보존</li>
                 <li>발송 통계 실시간 트래킹 — Phase 6</li>
               </ul>
             </div>
@@ -516,9 +517,10 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>14명 구성원 + 우수 사례 랭킹 + 권한 매트릭스 UI</li>
-                <li>직원 초대 모달 (mock 흐름)</li>
-                <li>서버 측 role guard — admin / manager / employee / viewer 4단계 미들웨어 동작</li>
+                <li>구성원 목록 + 권한 매트릭스 UI (실 /team/members API)</li>
+                <li>직원 초대 모달 — Phase 3에서 실 API로 wiring (보내기·다시 보내기·취소 + 익명 수락 페이지)</li>
+                <li>서버 측 role guard — admin / manager / employee / viewer 4단계 미들웨어 동작 + 마지막 admin 보호 + requireFreshRole로 stale role 차단</li>
+                <li>✓ Phase 3에서 추가: 초대 토큰 발급·소비 (sha256 해시 저장, 7일 TTL)</li>
               </ul>
             </div>
             <div class="status-box-soon">
@@ -526,8 +528,8 @@
                 <span class="pill-soon">⌛ 아직 안 됨</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>실제 초대 메일 발송 — Phase 3 (SMTP)</li>
-                <li>초대 토큰 검증 + 가입 완성 흐름 — Phase 3</li>
+                <li>실제 외부 메일 발송 (SMTP / SES) — Phase 6+ 운영 진입 단계. 현재는 dev outbox 테이블에 메일 본문 보존</li>
+                <li>팀 CRUD UI (팀 생성·수정·삭제) — Phase 4+ (초대 모달의 팀 드롭다운만 현재 GET /teams 사용)</li>
                 <li>우수 사례 자동 추출 엔진 — Phase 5</li>
               </ul>
             </div>
@@ -566,7 +568,7 @@
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
                 <li>각 항목 저장 — Phase 4+ (해당 기능 구현 시점에)</li>
                 <li>API 키 발급 — Phase 6</li>
-                <li>2단계 인증 (TOTP) — Phase 3</li>
+                <li>2단계 인증 (TOTP / WebAuthn) — Phase 6+ 운영 진입 단계</li>
               </ul>
             </div>
           </div>
@@ -636,7 +638,7 @@
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">팀 / 권한</td>
                   <td class="px-4 py-3">role 미들웨어 4단계 동작 (customers는 viewer 차단까지 e2e 검증). 팀 단위 분기는 미도입</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 3 — 초대 메일 + 가입 완성 + 팀 단위 권한</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 3 — 초대 토큰 + 가입 완성 / Phase 4+ — 팀 단위 권한</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">자동 회귀</td>

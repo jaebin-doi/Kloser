@@ -28,7 +28,7 @@
 | L-01 | 사이드바 프로필 `/me` 실데이터 반영 | `platform/_shared.js`의 `loadSidebarProfile()`가 `renderSidebar()`에서 자동 호출. 모든 logged-in 페이지에서 상단 카드(조직·플랜) + 하단 버튼(이름·역할) 채워짐. `dashboard/calls/newsletter/daily.html`에는 직전 commit에서 `api.js`도 같이 wire | OK | — | 없음 |
 | L-02 | logout 메뉴 (popover) | 프로필 버튼 클릭 → "설정 / 로그아웃" 위로 뜸. 외부 클릭·Esc로 닫힘. 서버 logout 실패해도 `/platform/login.html`로 항상 이동 | OK | — | 없음 |
 | L-03 | 미인증 배너 wire 범위 | 현재 `live.html` + `team.html` 두 페이지만 부팅 코드에서 `renderUnverifiedBanner(meBody.user)` 호출. `dashboard.html` / `calls.html` / `customers.html` / `daily.html` / `newsletter.html` / `settings.html` 6 페이지는 미연결. 미인증 사용자가 이 페이지로 직접 진입하면 자기 상태를 모름 | Medium | Phase 4 (Step 4 frontend wiring에 흡수) | 각 페이지 부팅 코드에 `/me` 응답 → `window.renderUnverifiedBanner(meBody.user)` 한 줄씩 추가 (Phase 3 Step 7 findings §154 인계 항목). API 호출은 사이드바 프로필 로드가 이미 `/me`를 부르고 있으니 응답 캐시 공유 가능 |
-| L-04 | seed 계정 `email_verified_at = NULL` | 시드 4계정(`admin@acme`, `emp@acme`, `admin@beta`, `emp@beta`) 전부 `email_verified_at = NULL`. 그래서 `admin@acme.test`로 로그인하면 사이드바엔 실 /me 데이터가 보이는데 **노란 미인증 배너도 동시에 뜸**. 본 audit 작업 직전 `sidebar-loggedin.png` 캡처에 그대로 노출 (배너 + Acme Sales Inc. + 에이스 어드민). 평가자/데모 시청자가 "이거 진짜 인증된 거 맞나"로 헷갈림 | **High** | **Before Phase 4** | `server/seeds/0001_demo.sql`의 시드 user 4행 INSERT 문에 `email_verified_at` 컬럼 + `now()` 값 추가. 본질적으로 1-line 시드 SQL 변경. 영향 범위: dev DB만. 마이그레이션 무관 |
+| L-04 | seed 계정 `email_verified_at = NULL` | **✓ 처리 완료 (Before Phase 4)** — `server/seeds/0001_demo.sql`의 user INSERT에 `email_verified_at` 컬럼 + `now()` 값 추가, `ON CONFLICT DO UPDATE`에도 `email_verified_at = EXCLUDED.email_verified_at` 추가. 시드 4계정(`admin@acme`, `emp@acme`, `admin@beta`, `emp@beta`)이 verified 상태로 적용됨. 신규 signup user는 여전히 `email_verified_at = NULL`로 만들어져 미인증 배너 동작 정상 (Phase 3 e2e 회귀로 검증) | OK | — | 없음 |
 
 ### 1.2 Auth / Self-service 흐름
 
@@ -59,7 +59,7 @@
 |---|---|---|---|---|---|
 | D-01 | PHASE_3_FOUNDATIONS.html — 실 캡처 vs mock 도식 구분 | 8개 figure 모두 `.shot` wrapper로 캡처임을 시각적으로 구분. mock 도식(URL strip / 배너 mock / 4단계 invite 카드 / 토큰 라이프사이클 6단계)은 흐름 설명용으로 보존. 각 캡처에 alt + caption | OK | — | 없음 |
 | D-02 | `team.png` (Phase 3 시각 가이드 안) | Phase 3 와이어링 *이전* 캡처 — 사이드바에 `김민수 · Kloser Inc.` 정적 표시. caption이 그 사실을 명시하고 바로 위 `sidebar-loggedin.png`가 현재 모습을 보여줌 | Low | Phase 6+ (marketing polish) | admin@acme 시드 인증 후 team.html 재캡처해 `team.png` 교체. caption 단서 문구 삭제. 본 audit 범위에서는 미조치 |
-| D-03 | `USER_GUIDE.html` Phase 3 stale 문구 | 본문 여러 곳이 Phase 3 항목을 "예정"으로 기록: 라인 239 "회원가입 UI (Phase 3, 이메일 인증과 함께)", 240 "비밀번호 재설정 / 마법 링크 (Phase 3)", 242 "조직 picker UI ... (Phase 3+ 회원가입과 함께 도입 예정)", 449 "팀 단위 권한 분기 ... Phase 3", 490 "실제 메일 발송 인프라 — Phase 3 (SMTP / SES)", 520-530 초대 모달·메일·토큰 4건 Phase 3 예정, 569 "2단계 인증 (TOTP) — Phase 3" 등. 실제로는 Phase 3에서 이미 들어왔거나 (signup/verify/forgot/reset/invite/accept), Phase 6+로 미뤘거나 (SMTP/MFA), 단순화로 진입하지 않은 (team-scope 권한) 상태. 가이드 독자가 Phase 3 결과와 가이드의 "예정" 표기를 비교하면 모순. 본 페이지 하단에는 별도 violet callout으로 Phase 3 대표 캡처 2장 + PHASE_3_FOUNDATIONS 링크는 추가돼 있음 | Medium | **Before Phase 4** (한 줄짜리 sweep) | 위 라인들을 (a) 실제로 도입된 항목은 "✓ Phase 3에서 완료" 또는 평서문으로 변경 (b) Phase 6+로 미뤄진 항목은 "Phase 6+" 명시 (c) 단순화된 항목(team-scope 권한)은 Phase 4+ 명시. mock 도식 자체는 손대지 않음 |
+| D-03 | `USER_GUIDE.html` Phase 3 stale 문구 | **✓ 처리 완료 (Before Phase 4)** — 5개 section 정리: ① 로그인 — 회원가입/비밀번호 재설정/멀티-org organization 리스트 안내 3건을 ✓ 가능 목록으로 이동 + SSO·조직 picker UI는 Phase 6+/Phase 4+ 명시. ② 고객 — "팀 단위 권한 분기"를 Phase 4+로 정정. ③ 뉴스레터 — 메일 발송 인프라를 Phase 6+로 정정. ④ 팀 — 초대 모달 "mock" 표현 제거 + 초대 토큰 발급/소비를 ✓ 가능 목록으로 이동 + SMTP/팀 CRUD UI를 Phase 6+/Phase 4+로 정정. ⑤ 설정 — TOTP를 Phase 6+로 정정. 본문 grep "(Phase 3)" stale 잔여 0건 | OK | — | 없음 |
 | D-04 | PHASE_2_FOUNDATIONS.html — Phase 4 인계 항목 | 표 내 "행 클릭 상세 패널 (통화 이력 결합) — Phase 4" 등의 promise가 Phase 4 master plan §1과 일치 | OK | — | 없음 |
 | D-05 | PHASE_1_FOUNDATIONS.html — Phase 3 인계 항목 | 상단 nav + 푸터에 Phase 3 cross-link 있음. 본문 stale 표현 검출 안 됨 | OK | — | 없음 |
 
@@ -86,23 +86,23 @@
 
 ## 2. Before Phase 4 — 반드시 처리할 것
 
-Phase 4 schema migration (Step 1)에 손대기 전에 짧게 정리해야 demo/audit 정합성이 무너지지 않는 항목.
+Phase 4 schema migration (Step 1)에 손대기 전에 짧게 정리해야 demo/audit 정합성이 무너지지 않는 항목. **2건 모두 처리 완료 (2026-05-12).**
 
-1. **L-04 — seed 4 user `email_verified_at = now()`**
+1. **✓ L-04 — seed 4 user `email_verified_at = now()` 적용 완료**
    - 파일: `server/seeds/0001_demo.sql`
-   - 영향: dev DB 시드 4행에 컬럼·값 추가
-   - 효과: `admin@acme.test` 등으로 로그인 시 노란 띠 사라짐 → 사이드바/UI 스크린샷이 모두 verified 상태로 일관
-   - 위험 0건: 마이그레이션 무관, 운영 데이터 무관, 다른 phase e2e 시나리오와 충돌 없음 (Phase 3 e2e는 seed pw를 손대지 않는 약속을 유지하지만 verified 상태는 별개)
-   - 1-2분 작업
+   - 적용 내용: user INSERT 문에 `email_verified_at` 컬럼 + 4행 모두 `now()` 값 / `ON CONFLICT (id) DO UPDATE` 절에 `email_verified_at = EXCLUDED.email_verified_at` 추가
+   - 효과: `admin@acme.test` 등 시드 4계정으로 로그인 시 미인증 배너 미노출. 신규 signup user는 여전히 `email_verified_at = NULL`로 만들어져 미인증 배너 동작 유지
+   - 검증: 서버 unit tests (155개), `sync_shared_types`, Phase 3 e2e (33 assertion) 모두 회귀 PASS — `verify_routes.test.mjs`의 "fresh signup은 verified=null" assertion이 정상 통과
 
-2. **D-03 — `USER_GUIDE.html` stale Phase 3 mention sweep**
+2. **✓ D-03 — `USER_GUIDE.html` stale Phase 3 mention sweep 적용 완료**
    - 파일: `docs/product/USER_GUIDE.html`
-   - 영향: 본문 8~10개 라인의 "Phase 3 예정" 표현을 "✓ Phase 3에서 완료" 또는 평서문으로, Phase 6+ 미뤄진 항목은 "Phase 6+"로, 단순화된 항목은 "Phase 4+"로 정정
-   - 효과: Phase 3 결과와 가이드 문구 모순 제거
-   - 본문 텍스트 외 layout/CSS/캡처는 손대지 않음
-   - 10-15분 작업
-
-**둘 다 코드 로직 변경이 아니라 데이터·문구 변경**이고, Phase 4 Step 1 schema 작업과 conflict 가능성 0이므로 안심하고 Before Phase 4 슬롯에 넣는다.
+   - 적용 내용: 5개 section 본문 텍스트만 정정
+     - 로그인 §: signup·forgot/reset·multi-org organization 리스트 안내 3건을 ✓ 가능 목록으로 이동 + SSO와 조직 picker UI를 Phase 6+/Phase 4+ 명시
+     - 고객 §: "팀 단위 권한 분기 — Phase 3" → "— Phase 4+ (admin-only mutation으로 단순화)"
+     - 뉴스레터 §: "실제 메일 발송 인프라 — Phase 3 (SMTP/SES)" → "— Phase 6+ 운영 진입 단계 어댑터"
+     - 팀 §: "직원 초대 모달 (mock 흐름)" → 실 API wiring 표기 / "초대 토큰 검증 + 가입 완성 — Phase 3" → ✓ 가능 목록 / 메일 발송은 Phase 6+ / 팀 CRUD UI는 Phase 4+
+     - 설정 §: "2단계 인증 (TOTP) — Phase 3" → "— Phase 6+ 운영 진입 단계"
+   - 검증: 본문 grep `(Phase 3)` / `— Phase 3` 잔여 stale "예정" 표현 0건. layout/CSS/이미지/캡처 무변경
 
 ---
 
@@ -129,4 +129,4 @@ Phase 4 schema migration (Step 1)에 손대기 전에 짧게 정리해야 demo/a
 
 ## 5. 결론
 
-> Phase 4 schema migration 들어가기 전에 **2건 (seed verified-at + USER_GUIDE.html stale 문구 sweep)** 만 별도로 처리하면 demo·문서 정합성이 깨끗하다. 나머지 audit 항목은 모두 Phase 4 step plan 내부에 자연스럽게 흡수되거나 Phase 5/6+로 의도적으로 미뤄진 상태이며, Phase 4 진입 자체를 차단하는 Blocker는 없다.
+> **Before Phase 4 필수 2건 처리 완료 (2026-05-12)** — seed 4계정 `email_verified_at = now()` + `USER_GUIDE.html` Phase 3 stale 문구 sweep. 두 변경 모두 코드 로직·마이그레이션·layout 무관, 서버 unit tests / sync_shared_types / Phase 3 e2e 회귀 모두 PASS로 검증. 나머지 audit 항목은 모두 Phase 4 step plan 내부에 자연스럽게 흡수되거나 Phase 5/6+로 의도적으로 미뤄진 상태이며, Phase 4 schema migration (Step 1) 진입 차단 요인 없음.
