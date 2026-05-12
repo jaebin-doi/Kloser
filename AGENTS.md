@@ -134,21 +134,28 @@ git status --short --branch
 git diff --stat
 ```
 
-Commit only files in the task scope:
+Codex owns git write operations for this repository. Claude should not run
+`git add`, `git commit`, `git push`, `git merge`, `git rebase`, or branch
+integration commands unless the user explicitly overrides this rule for a
+specific operation.
+
+When Codex commits, commit only files in the task scope:
 
 ```powershell
 git add -- <paths>
 git commit -m "<concise imperative summary>"
 ```
 
-Before pushing:
+Before Codex pushes:
 
 ```powershell
 git status --short --branch
 git log --oneline --decorate -n 5
 ```
 
-For this repository, Codex approval includes commit + push authorization. If Codex reviews a completed task and says it is OK, Claude may commit and push the scoped changes without asking for a separate push approval.
+Codex approval includes Codex-side commit + push authorization. After Claude
+finishes implementation, Claude should report the changed files and validation
+results; Codex reviews the scope and performs the commit/push when OK.
 
 Still stop before committing/pushing when:
 
