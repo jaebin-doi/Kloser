@@ -179,6 +179,27 @@
     });
   }
 
+  // Phase 5 Step 4 — heartbeat. Wraps the `heartbeat` event with the
+  // same Promise/ack shape as startCall/endCall. Returns the server ack
+  // object verbatim so the caller can branch on
+  //   { ok: true, lastSeenAt }                  — keep pinging
+  //   { ok: false, error: 'no_active_call' }    — pre-start_call
+  //   { ok: false, error: 'call_ended' }        — stop pinging
+  //   { ok: false, error: 'persistence_failed' }— transient; retry next tick
+  // Timeout falls back to { ok: false, reason: 'ack-timeout' } so
+  // callers don't have to wrap this in their own race.
+  function sendHeartbeat(socket) {
+    return new Promise(function (resolve) {
+      const timer = setTimeout(function () {
+        resolve({ ok: false, reason: 'ack-timeout' });
+      }, 2000);
+      socket.emit('heartbeat', {}, function (resp) {
+        clearTimeout(timer);
+        resolve(resp || { ok: false, reason: 'empty-ack' });
+      });
+    });
+  }
+
   function endCall(socket) {
     return new Promise(function (resolve) {
       const timer = setTimeout(function () {
@@ -200,6 +221,7 @@
     connectCallNamespace: connectCallNamespace,
     startCall: startCall,
     sendTextChunk: sendTextChunk,
+    sendHeartbeat: sendHeartbeat,
     endCall: endCall,
     onTranscript: onTranscript,
     onSuggestion: onSuggestion,

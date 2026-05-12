@@ -262,13 +262,27 @@
 
         <!-- ─── LEFT: Call info & controls ─── -->
         <section class="col-span-3 flex flex-col gap-3 min-h-0">
-          <!-- Customer card -->
-          <div class="rounded-xl border border-slate-200 bg-white p-4 flex-shrink-0">
-            <div class="flex items-center gap-3 mb-4">
-              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-[1.1rem] font-black text-white">김</div>
-              <div class="min-w-0">
-                <div class="font-bold text-slate-800 truncate">김민수</div>
-                <div class="text-[.78rem] text-slate-500 truncate">Kloser Inc. · CTO</div>
+          <!-- Customer card — Phase 5 Step 4: API-backed picker.
+               name / company / title come from /customers via link-customer.
+               Avatar initial is derived from the first character of name. -->
+          <div class="rounded-xl border border-slate-200 bg-white p-4 flex-shrink-0 relative">
+            <div class="flex items-center gap-3 mb-3">
+              <div id="custAvatar" class="w-12 h-12 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-[1.1rem] font-black text-white">·</div>
+              <div class="min-w-0 flex-1">
+                <div id="custName" class="font-bold text-slate-800 truncate">고객 미선택</div>
+                <div id="custMeta" class="text-[.78rem] text-slate-500 truncate">우측 버튼으로 고객을 선택하세요.</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 mb-4">
+              <button id="custPickerBtn" type="button" class="text-[.7rem] font-bold text-blue-600 hover:text-blue-700 px-2 py-1 rounded-md hover:bg-blue-50">고객 선택/변경</button>
+              <button id="custUnlinkBtn" type="button" class="text-[.7rem] font-bold text-slate-500 hover:text-rose-600 px-2 py-1 rounded-md hover:bg-rose-50 hidden">연결 해제</button>
+              <span id="custLinkStatus" class="text-[.65rem] text-slate-400"></span>
+            </div>
+            <!-- Picker panel (inline, hidden by default) -->
+            <div id="custPickerPanel" class="hidden mb-3 border border-slate-200 rounded-lg bg-slate-50/70 p-2">
+              <input id="custPickerSearch" type="text" placeholder="이름 검색…" class="w-full px-2 py-1.5 text-[.78rem] border border-slate-200 rounded-md bg-white focus:outline-none focus:border-blue-400" />
+              <div id="custPickerList" class="mt-2 max-h-48 overflow-y-auto space-y-1">
+                <div class="text-[.72rem] text-slate-400 px-1">불러오는 중…</div>
               </div>
             </div>
 
@@ -324,31 +338,12 @@
               </div>
               <span class="text-[.65rem] text-slate-500 tnum"><span id="chkDone">2</span>/<span id="chkTotal">5</span></span>
             </div>
+            <!-- Checklist items — Phase 5 Step 4: rendered from API
+                 (call_checklist_items) once the call_id is known.
+                 Title text is server-supplied (org template) — use
+                 textContent only, never innerHTML. -->
             <ul id="checklist" class="space-y-2 flex-1 overflow-y-auto scroll-area pr-1 text-[.8rem]">
-              <li class="flex items-center gap-2 text-slate-400 line-through" data-done="1">
-                <span class="w-4 h-4 rounded border-2 border-blue-500 bg-blue-500 flex items-center justify-center shrink-0">
-                  <svg width="9" height="9" fill="none" stroke="white" stroke-width="3.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-                </span>
-                고객 요구사항 청취
-              </li>
-              <li class="flex items-center gap-2 text-slate-400 line-through" data-done="1">
-                <span class="w-4 h-4 rounded border-2 border-blue-500 bg-blue-500 flex items-center justify-center shrink-0">
-                  <svg width="9" height="9" fill="none" stroke="white" stroke-width="3.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-                </span>
-                회사 규모 확인
-              </li>
-              <li class="flex items-center gap-2 text-slate-700" data-done="0">
-                <button class="w-4 h-4 rounded border-2 border-slate-300 hover:border-blue-400 shrink-0 cursor-pointer" onclick="toggleChk(this)"></button>
-                기존 시스템 연동 가능 여부 안내
-              </li>
-              <li class="flex items-center gap-2 text-slate-700" data-done="0">
-                <button class="w-4 h-4 rounded border-2 border-slate-300 hover:border-blue-400 shrink-0 cursor-pointer" onclick="toggleChk(this)"></button>
-                플랜 추천 (Pro 권장)
-              </li>
-              <li class="flex items-center gap-2 text-slate-700" data-done="0">
-                <button class="w-4 h-4 rounded border-2 border-slate-300 hover:border-blue-400 shrink-0 cursor-pointer" onclick="toggleChk(this)"></button>
-                도입 시연 일정 제안
-              </li>
+              <li class="text-[.74rem] text-slate-400 py-1" data-empty>통화 시작 후 항목이 표시됩니다.</li>
             </ul>
           </div>
 
@@ -593,8 +588,9 @@
         aiSuggestionsEl.innerHTML = '';
         group.suggestions.forEach((s, i) => {
           const card = document.createElement('div');
-          card.className = `sug-card rounded-lg border ${toneStyles[s.tone]} p-3 cursor-pointer`;
+          card.className = `sug-card rounded-lg border ${toneStyles[s.tone]} p-3`;
           card.style.animation = `msgIn .35s cubic-bezier(0.16,1,0.3,1) ${i*0.06}s both`;
+          if (s.id) card.dataset.suggestionId = s.id;
 
           const header = document.createElement('div');
           header.className = `flex items-center gap-1.5 mb-1.5 ${toneTitleColor[s.tone] || ''}`;
@@ -620,6 +616,32 @@
 
           card.appendChild(header);
           card.appendChild(body);
+
+          // Phase 5 Step 4 — use/dismiss controls only when the card
+          // carries a persisted id. Phase 0.5 demo replay groups don't
+          // have ids; in that case we omit the buttons entirely so the
+          // user can't trigger a 4xx against an empty endpoint.
+          if (s.id) {
+            const actions = document.createElement('div');
+            actions.className = 'flex items-center justify-end gap-2 mt-2';
+
+            const useBtn = document.createElement('button');
+            useBtn.type = 'button';
+            useBtn.className = 'text-[.7rem] font-bold text-blue-600 hover:text-blue-700 px-2 py-1 rounded-md hover:bg-blue-50';
+            useBtn.textContent = '사용';
+            useBtn.addEventListener('click', () => window.__liveSuggestionAction && window.__liveSuggestionAction(s.id, 'use', card));
+
+            const dismissBtn = document.createElement('button');
+            dismissBtn.type = 'button';
+            dismissBtn.className = 'text-[.7rem] font-bold text-slate-500 hover:text-rose-600 px-2 py-1 rounded-md hover:bg-rose-50';
+            dismissBtn.textContent = '닫기';
+            dismissBtn.addEventListener('click', () => window.__liveSuggestionAction && window.__liveSuggestionAction(s.id, 'dismiss', card));
+
+            actions.appendChild(useBtn);
+            actions.appendChild(dismissBtn);
+            card.appendChild(actions);
+          }
+
           aiSuggestionsEl.appendChild(card);
         });
         aiSuggestionsEl.style.opacity = '1';
@@ -850,29 +872,415 @@
       }
     });
 
-    /* Checklist toggle */
-    function toggleChk(btn) {
-      const li = btn.parentElement;
-      const done = li.dataset.done === '1';
-      li.dataset.done = done ? '0' : '1';
-      if (!done) {
-        btn.outerHTML = `<span class="w-4 h-4 rounded border-2 border-blue-500 bg-blue-500 flex items-center justify-center shrink-0">
-          <svg width="9" height="9" fill="none" stroke="white" stroke-width="3.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-        </span>`;
-        li.classList.add('text-slate-400', 'line-through');
-        li.classList.remove('text-slate-700');
-      } else {
-        btn.outerHTML = `<button class="w-4 h-4 rounded border-2 border-slate-300 hover:border-blue-400 shrink-0 cursor-pointer" onclick="toggleChk(this)"></button>`;
-        li.classList.remove('text-slate-400', 'line-through');
-        li.classList.add('text-slate-700');
+    // ─────────────────────────────────────────────
+    // Phase 5 Step 4 — live API wiring:
+    //   1) customer picker + link/unlink
+    //   2) checklist initialize/list/toggle from API
+    //   3) WS heartbeat 20s
+    //   4) suggestion use/dismiss for persisted (id-carrying) cards
+    //   5) window.__liveCallState dev/e2e snapshot
+    //
+    // XSS gate: every dynamic value rendered into the customer card,
+    // checklist list, and picker list is server-returned text. All of
+    // it lands via textContent — no innerHTML for server data here.
+    // The suggestion card path still goes through DOMPurify upstream.
+    // ─────────────────────────────────────────────
+    (function () {
+      const api = window.kloserApi;
+      if (!api) return;
+
+      // Extend callState in-place; the outer scope already declared it.
+      callState.customerId = null;
+      callState.customerLinkStatus = null;
+      callState.checklist = [];          // [{ id, template_id, title, status }]
+      callState.heartbeat = {
+        lastSeenAt: null,
+        intervalId: null,
+        lastError: null,
+      };
+
+      // ─── DOM refs ───
+      const custName = document.getElementById('custName');
+      const custMeta = document.getElementById('custMeta');
+      const custAvatar = document.getElementById('custAvatar');
+      const custPickerBtn = document.getElementById('custPickerBtn');
+      const custPickerPanel = document.getElementById('custPickerPanel');
+      const custPickerSearch = document.getElementById('custPickerSearch');
+      const custPickerList = document.getElementById('custPickerList');
+      const custUnlinkBtn = document.getElementById('custUnlinkBtn');
+      const custLinkStatus = document.getElementById('custLinkStatus');
+      const checklistUl = document.getElementById('checklist');
+      const chkDoneEl = document.getElementById('chkDone');
+      const chkTotalEl = document.getElementById('chkTotal');
+
+      // ─── helpers ───
+      function statusFromCode(code) {
+        if (code === 403) return '권한 없음';
+        if (code === 404) return '대상 없음';
+        if (code === 409) return '이미 처리됨';
+        if (code === 400) return '입력 오류';
+        return '오류 ' + code;
       }
-      // Recount
-      const all = document.querySelectorAll('#checklist li').length;
-      const done2 = document.querySelectorAll('#checklist li[data-done="1"]').length;
-      document.getElementById('chkDone').textContent = done2;
-      document.getElementById('chkTotal').textContent = all;
-    }
-    window.toggleChk = toggleChk;
+
+      function setCustomerLinkStatus(text, tone) {
+        custLinkStatus.textContent = text || '';
+        custLinkStatus.style.color =
+          tone === 'error' ? 'rgb(190 18 60)' :
+          tone === 'ok'    ? 'rgb(5 150 105)' :
+                             'rgb(100 116 139)';
+      }
+
+      function renderCustomerCard(customer) {
+        if (!customer) {
+          custName.textContent = '고객 미선택';
+          custMeta.textContent = '우측 버튼으로 고객을 선택하세요.';
+          custAvatar.textContent = '·';
+          custUnlinkBtn.classList.add('hidden');
+          return;
+        }
+        const name = customer.name || '(이름 없음)';
+        custName.textContent = name;
+        const company = customer.company || '';
+        const title = customer.title || '';
+        const metaParts = [company, title].filter(Boolean);
+        custMeta.textContent = metaParts.length ? metaParts.join(' · ') : (customer.email || customer.phone || '');
+        custAvatar.textContent = (name.charAt(0) || '·').toUpperCase();
+        custUnlinkBtn.classList.remove('hidden');
+      }
+
+      // ─── customer picker ───
+      let customersCache = [];
+      let customersLoaded = false;
+      async function loadCustomersOnce() {
+        if (customersLoaded) return;
+        try {
+          const res = await api.apiGet('/customers?limit=50');
+          if (!res.ok) {
+            custPickerList.textContent = 'API 오류: ' + statusFromCode(res.status);
+            return;
+          }
+          const body = await res.json();
+          customersCache = Array.isArray(body && body.items) ? body.items : [];
+          customersLoaded = true;
+          renderPickerList('');
+        } catch (err) {
+          console.warn('[live] /customers load failed', err);
+          custPickerList.textContent = '고객 목록 로드 실패';
+        }
+      }
+
+      function renderPickerList(filter) {
+        custPickerList.innerHTML = '';
+        const q = (filter || '').toLowerCase();
+        const items = customersCache.filter((c) => {
+          if (!q) return true;
+          const hay = ((c.name || '') + ' ' + (c.company || '') + ' ' + (c.email || '')).toLowerCase();
+          return hay.indexOf(q) !== -1;
+        });
+        if (items.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'text-[.72rem] text-slate-400 px-1 py-2';
+          empty.textContent = '일치하는 고객이 없습니다.';
+          custPickerList.appendChild(empty);
+          return;
+        }
+        for (const c of items.slice(0, 50)) {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'w-full text-left px-2 py-1.5 rounded-md hover:bg-white border border-transparent hover:border-slate-200';
+          const name = document.createElement('div');
+          name.className = 'text-[.78rem] font-bold text-slate-800';
+          name.textContent = c.name || '(이름 없음)';
+          const meta = document.createElement('div');
+          meta.className = 'text-[.7rem] text-slate-500';
+          meta.textContent = [c.company, c.title, c.email].filter(Boolean).join(' · ');
+          row.appendChild(name);
+          row.appendChild(meta);
+          row.addEventListener('click', () => linkCustomer(c));
+          custPickerList.appendChild(row);
+        }
+      }
+
+      async function linkCustomer(customer) {
+        if (!callState.callId) {
+          setCustomerLinkStatus('통화 식별자 대기 중', 'error');
+          return;
+        }
+        setCustomerLinkStatus('연결 중…');
+        try {
+          const res = await api.linkCallCustomer(callState.callId, customer.id);
+          if (res.ok) {
+            callState.customerId = customer.id;
+            renderCustomerCard(customer);
+            setCustomerLinkStatus('연결됨', 'ok');
+            custPickerPanel.classList.add('hidden');
+            updateLiveCallStateSnapshot();
+          } else if (res.status === 403) {
+            setCustomerLinkStatus('권한 없음', 'error');
+          } else if (res.status === 400) {
+            setCustomerLinkStatus('다른 회사 고객은 연결할 수 없습니다', 'error');
+          } else {
+            setCustomerLinkStatus(statusFromCode(res.status), 'error');
+          }
+        } catch (err) {
+          console.warn('[live] linkCustomer failed', err);
+          setCustomerLinkStatus('네트워크 오류', 'error');
+        }
+      }
+
+      async function unlinkCustomer() {
+        if (!callState.callId) return;
+        setCustomerLinkStatus('해제 중…');
+        try {
+          const res = await api.unlinkCallCustomer(callState.callId);
+          if (res.ok) {
+            callState.customerId = null;
+            renderCustomerCard(null);
+            setCustomerLinkStatus('해제됨', 'ok');
+            updateLiveCallStateSnapshot();
+          } else {
+            setCustomerLinkStatus(statusFromCode(res.status), 'error');
+          }
+        } catch (err) {
+          console.warn('[live] unlinkCustomer failed', err);
+          setCustomerLinkStatus('네트워크 오류', 'error');
+        }
+      }
+
+      custPickerBtn.addEventListener('click', async () => {
+        const hidden = custPickerPanel.classList.toggle('hidden');
+        if (!hidden) await loadCustomersOnce();
+      });
+      custPickerSearch.addEventListener('input', (e) => renderPickerList(e.target.value));
+      custUnlinkBtn.addEventListener('click', unlinkCustomer);
+
+      // ─── checklist ───
+      function renderChecklist() {
+        checklistUl.innerHTML = '';
+        if (callState.checklist.length === 0) {
+          const empty = document.createElement('li');
+          empty.className = 'text-[.74rem] text-slate-400 py-1';
+          empty.textContent = '활성화된 체크리스트 항목이 없습니다.';
+          checklistUl.appendChild(empty);
+        }
+        let done = 0;
+        for (const item of callState.checklist) {
+          const li = document.createElement('li');
+          li.dataset.itemId = item.id;
+          li.dataset.done = item.status === 'done' ? '1' : '0';
+          li.className = 'flex items-center gap-2 ' + (item.status === 'done'
+            ? 'text-slate-400 line-through'
+            : 'text-slate-700');
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          if (item.status === 'done') {
+            btn.className = 'w-4 h-4 rounded border-2 border-blue-500 bg-blue-500 flex items-center justify-center shrink-0 cursor-pointer';
+            btn.innerHTML = '<svg width="9" height="9" fill="none" stroke="white" stroke-width="3.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+            done += 1;
+          } else {
+            btn.className = 'w-4 h-4 rounded border-2 border-slate-300 hover:border-blue-400 shrink-0 cursor-pointer';
+          }
+          btn.addEventListener('click', () => toggleChecklistItem(item.id));
+
+          li.appendChild(btn);
+
+          // Title text — server-supplied. textContent only.
+          const span = document.createElement('span');
+          span.textContent = item.title || '(제목 없음)';
+          li.appendChild(span);
+
+          checklistUl.appendChild(li);
+        }
+        if (chkDoneEl) chkDoneEl.textContent = String(done);
+        if (chkTotalEl) chkTotalEl.textContent = String(callState.checklist.length);
+        updateLiveCallStateSnapshot();
+      }
+
+      async function hydrateChecklistAfterStart() {
+        if (!callState.callId) return;
+        try {
+          // Initialize creates rows for active templates (idempotent),
+          // then returns the current list.
+          const initRes = await api.initializeCallChecklist(callState.callId);
+          if (initRes.ok) {
+            const body = await initRes.json();
+            callState.checklist = await enrichChecklistTitles(body.items || []);
+            renderChecklist();
+            return;
+          }
+          // 403/404 falls through to plain GET (read endpoint is open
+          // to any same-org user even if mutation is blocked).
+          const listRes = await api.listCallChecklist(callState.callId);
+          if (listRes.ok) {
+            const body = await listRes.json();
+            callState.checklist = await enrichChecklistTitles(body.items || []);
+            renderChecklist();
+          }
+        } catch (err) {
+          console.warn('[live] checklist load failed', err);
+        }
+      }
+
+      // call_checklist_items rows carry template_id but not the title
+      // — fetch the templates list once and join by id. Templates are
+      // org-wide and small; cache for the page lifetime.
+      let templatesById = null;
+      async function enrichChecklistTitles(items) {
+        if (!templatesById) {
+          templatesById = new Map();
+          try {
+            const tres = await api.listChecklistTemplates();
+            if (tres.ok) {
+              const tb = await tres.json();
+              for (const t of (tb.items || [])) templatesById.set(t.id, t.title);
+            }
+          } catch (err) {
+            console.warn('[live] templates load failed', err);
+          }
+        }
+        return items.map((it) => Object.assign({}, it, {
+          title: templatesById.get(it.template_id) || it.template_id,
+        }));
+      }
+
+      async function toggleChecklistItem(itemId) {
+        const cur = callState.checklist.find((x) => x.id === itemId);
+        if (!cur) return;
+        const next = cur.status === 'done' ? 'open' : 'done';
+        try {
+          const res = await api.patchCallChecklistItemStatus(itemId, next);
+          if (res.ok) {
+            const body = await res.json();
+            cur.status = body.item ? body.item.status : next;
+            renderChecklist();
+          } else if (res.status === 403) {
+            setCustomerLinkStatus('체크리스트 권한 없음', 'error');
+          } else {
+            console.warn('[live] checklist toggle status', res.status);
+          }
+        } catch (err) {
+          console.warn('[live] checklist toggle failed', err);
+        }
+      }
+      // backward-compat: legacy inline onclick="toggleChk(this)" — no-op now.
+      window.toggleChk = function () { /* deprecated — Phase 5 Step 4 */ };
+
+      // ─── heartbeat ───
+      function startHeartbeat() {
+        if (!window.kloserWS || typeof window.kloserWS.sendHeartbeat !== 'function') return;
+        if (callState.heartbeat.intervalId) return;
+        const tick = async () => {
+          if (!callState.socket || callState.status !== 'live') return;
+          try {
+            const ack = await window.kloserWS.sendHeartbeat(callState.socket);
+            callState.heartbeat.lastError = ack && ack.ok ? null : (ack && ack.error) || 'unknown';
+            if (ack && ack.ok) {
+              callState.heartbeat.lastSeenAt = ack.lastSeenAt || new Date().toISOString();
+            } else if (ack && ack.error === 'call_ended') {
+              // Server says the call is no longer in_progress — stop pinging.
+              stopHeartbeat();
+            }
+          } catch (err) {
+            console.warn('[live] heartbeat failed', err);
+            callState.heartbeat.lastError = String(err && err.message || err);
+          }
+          updateLiveCallStateSnapshot();
+        };
+        // Fire one immediately, then every 20s (master plan §2 decision 11).
+        tick();
+        callState.heartbeat.intervalId = setInterval(tick, 20000);
+      }
+
+      function stopHeartbeat() {
+        if (callState.heartbeat.intervalId) {
+          clearInterval(callState.heartbeat.intervalId);
+          callState.heartbeat.intervalId = null;
+        }
+      }
+
+      // ─── suggestion use/dismiss ───
+      window.__liveSuggestionAction = async function (suggestionId, action, cardEl) {
+        if (!suggestionId) return;
+        try {
+          const fn = action === 'use' ? api.useCallSuggestion : api.dismissCallSuggestion;
+          const res = await fn(suggestionId);
+          if (res.ok) {
+            if (cardEl) {
+              cardEl.style.opacity = '0.5';
+              cardEl.style.pointerEvents = 'none';
+              const tag = document.createElement('div');
+              tag.className = 'text-[.65rem] font-bold text-emerald-600 mt-1';
+              tag.textContent = action === 'use' ? '✓ 사용됨' : '✓ 닫음';
+              cardEl.appendChild(tag);
+            }
+          } else if (res.status === 409) {
+            if (cardEl) {
+              cardEl.style.opacity = '0.5';
+              const tag = document.createElement('div');
+              tag.className = 'text-[.65rem] font-bold text-amber-600 mt-1';
+              tag.textContent = '이미 처리됨';
+              cardEl.appendChild(tag);
+            }
+          } else {
+            console.warn('[live] suggestion action', res.status);
+          }
+        } catch (err) {
+          console.warn('[live] suggestion action failed', err);
+        }
+      };
+
+      // ─── post-start kickoff ───
+      // Poll callState.status until 'live' (or terminal) and then run
+      // the per-call hydration once. The boot script in the IIFE above
+      // sets callState.status = 'live' inside the async await chain, so
+      // a one-shot post-frame check is enough.
+      function whenLive(callback, attempts) {
+        if (attempts > 50) return; // ~5 seconds @100ms
+        if (callState.status === 'live' && callState.callId) {
+          callback();
+          return;
+        }
+        if (callState.status === 'failed' || callState.status === 'ended') return;
+        setTimeout(() => whenLive(callback, attempts + 1), 100);
+      }
+      whenLive(async () => {
+        await hydrateChecklistAfterStart();
+        startHeartbeat();
+        updateLiveCallStateSnapshot();
+      }, 0);
+
+      // Stop heartbeat on end_call / page unload / failure.
+      const origEndBtn = document.getElementById('endCallBtn');
+      if (origEndBtn) {
+        origEndBtn.addEventListener('click', () => {
+          stopHeartbeat();
+        });
+      }
+      window.addEventListener('beforeunload', stopHeartbeat);
+
+      // ─── dev/e2e snapshot ───
+      function updateLiveCallStateSnapshot() {
+        window.__liveCallState = {
+          callId: callState.callId,
+          status: callState.status,
+          customerId: callState.customerId,
+          checklist: {
+            total: callState.checklist.length,
+            done: callState.checklist.filter((x) => x.status === 'done').length,
+          },
+          heartbeat: {
+            lastSeenAt: callState.heartbeat.lastSeenAt,
+            lastError: callState.heartbeat.lastError,
+          },
+        };
+      }
+      updateLiveCallStateSnapshot();
+      // Re-publish whenever the status changes; the simplest mechanism
+      // is a setInterval, but to keep CPU quiet we re-publish on visible
+      // mutations only. The heartbeat tick and renderChecklist already
+      // call updateLiveCallStateSnapshot.
+    })();
   </script>
 </body>
 

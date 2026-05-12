@@ -168,10 +168,66 @@
                       <p id="dNotes" class="text-[.8rem] text-slate-700 leading-relaxed whitespace-pre-wrap"></p>
                     </div>
                     <div class="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
-                      <div class="text-[.7rem] font-bold text-blue-700 mb-1.5">다음 액션</div>
+                      <div class="flex items-center justify-between mb-1.5">
+                        <div class="text-[.7rem] font-bold text-blue-700">다음 액션</div>
+                        <span id="dSummarySource" class="text-[.62rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600"></span>
+                      </div>
                       <ul id="dActions" class="space-y-1 text-[.78rem] text-slate-700"></ul>
+                      <!-- Action item create form — Phase 5 Step 4.
+                           No delete endpoint, so no delete control. -->
+                      <div class="mt-2 pt-2 border-t border-blue-100 flex items-center gap-2">
+                        <input id="dActionInput" type="text" placeholder="새 액션 항목" maxlength="200"
+                          class="flex-1 px-2 py-1.5 text-[.78rem] border border-slate-200 rounded-md bg-white focus:outline-none focus:border-blue-400" />
+                        <button id="dActionAddBtn" type="button" class="text-[.72rem] font-bold text-blue-700 hover:text-blue-800 px-2 py-1 rounded-md hover:bg-blue-100">추가</button>
+                      </div>
+                      <div id="dActionStatus" class="text-[.65rem] text-slate-500 mt-1"></div>
                     </div>
                   </div>
+                </section>
+
+                <!-- Manual summary writer — Phase 5 Step 4.
+                     Server keeps AI vs manual split via summary_source.
+                     Saving here marks summary_source='manual' which
+                     blocks subsequent AI overwrites (callSummary service). -->
+                <section>
+                  <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-400 mb-2">수동 요약 편집</div>
+                  <div class="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                    <div>
+                      <label class="text-[.65rem] font-bold text-slate-500">요약</label>
+                      <textarea id="dManualSummary" rows="2" maxlength="4000" class="w-full mt-1 px-2 py-1.5 text-[.78rem] border border-slate-200 rounded-md focus:outline-none focus:border-blue-400 resize-none" placeholder="통화 요약을 직접 입력하세요."></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class="text-[.65rem] font-bold text-slate-500">고객 니즈</label>
+                        <textarea id="dManualNeeds" rows="2" maxlength="4000" class="w-full mt-1 px-2 py-1.5 text-[.78rem] border border-slate-200 rounded-md focus:outline-none focus:border-blue-400 resize-none"></textarea>
+                      </div>
+                      <div>
+                        <label class="text-[.65rem] font-bold text-slate-500">미해결 이슈</label>
+                        <textarea id="dManualIssues" rows="2" maxlength="4000" class="w-full mt-1 px-2 py-1.5 text-[.78rem] border border-slate-200 rounded-md focus:outline-none focus:border-blue-400 resize-none"></textarea>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-[.65rem] font-bold text-slate-500">감정</label>
+                      <select id="dManualSentiment" class="px-2 py-1 text-[.78rem] border border-slate-200 rounded-md bg-white focus:outline-none focus:border-blue-400">
+                        <option value="">선택 안 함</option>
+                        <option value="positive">긍정</option>
+                        <option value="neutral">보통</option>
+                        <option value="cautious">망설임</option>
+                        <option value="negative">부정</option>
+                      </select>
+                      <button id="dManualSaveBtn" type="button" class="ml-auto btn-primary text-[.72rem]">수동 요약 저장</button>
+                    </div>
+                    <div id="dManualStatus" class="text-[.65rem] text-slate-500"></div>
+                  </div>
+                </section>
+
+                <!-- Suggestion history — Phase 5 Step 4.
+                     Lists AI suggestion cards persisted during the call
+                     (call_suggestions). Title/body are server/LLM-returned
+                     strings and go through escapeHtml. -->
+                <section>
+                  <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-400 mb-2">AI 추천 이력</div>
+                  <div id="dSuggestions" class="space-y-2"></div>
                 </section>
 
                 <!-- Transcript -->
@@ -453,16 +509,30 @@
       document.getElementById('dTranscript').innerHTML = '';
       document.getElementById('dTags').innerHTML = '';
 
+      // Reset Phase 5 controls
+      document.getElementById('dSummarySource').textContent = '';
+      document.getElementById('dManualSummary').value = '';
+      document.getElementById('dManualNeeds').value = '';
+      document.getElementById('dManualIssues').value = '';
+      document.getElementById('dManualSentiment').value = '';
+      document.getElementById('dManualStatus').textContent = '';
+      document.getElementById('dActionInput').value = '';
+      document.getElementById('dActionStatus').textContent = '';
+      document.getElementById('dSuggestions').innerHTML = '';
+
+      currentCallId = callId;
+
       // Parallel fetch — single transaction per request but separate
       // HTTP roundtrips so they overlap. 404 on the call itself short-
       // circuits; transcript/action 404 just means the parent call
       // disappeared between calls (race) and we treat them as empty.
-      let callRes, trRes, aiRes;
+      let callRes, trRes, aiRes, sgRes;
       try {
-        [callRes, trRes, aiRes] = await Promise.all([
+        [callRes, trRes, aiRes, sgRes] = await Promise.all([
           window.kloserApi.getCall(callId),
           window.kloserApi.listTranscript(callId),
           window.kloserApi.listActionItems(callId),
+          window.kloserApi.listCallSuggestions(callId),
         ]);
       } catch (err) {
         console.error('[calls] detail fetch failed', err);
@@ -481,6 +551,7 @@
       const { call } = await callRes.json();
       const transcripts = trRes.ok ? (await trRes.json()).items || [] : [];
       const actionItems = aiRes.ok ? (await aiRes.json()).items || [] : [];
+      const suggestions = sgRes && sgRes.ok ? (await sgRes.json()).items || [] : [];
 
       const meta = STATUS_BADGE[call.status] || { c: 'badge-slate', l: call.status };
       ds.className = 'badge ' + meta.c;
@@ -508,22 +579,33 @@
       document.getElementById('dIssues').textContent = call.issues  || '미해결 이슈가 등록되지 않았습니다.';
       document.getElementById('dNotes').textContent  = call.notes   || '메모가 없습니다.';
 
-      // Action items → 안전 보간.
-      const dActions = document.getElementById('dActions');
-      if (actionItems.length === 0) {
-        dActions.innerHTML =
-          '<li class="text-slate-400 text-[.78rem]">등록된 다음 액션이 없습니다.</li>';
+      // Action items — Phase 5 Step 4: status toggle. No delete UI
+      // (no backend endpoint). Title and due_date are server-stored
+      // strings → escapeHtml + innerHTML, then status toggle wired by id.
+      renderActionItems(actionItems);
+
+      // Summary source badge (manual vs ai) — Phase 5 Step 4.
+      const srcBadge = document.getElementById('dSummarySource');
+      if (call.summary_source === 'manual') {
+        srcBadge.textContent = '수동 작성';
+        srcBadge.className = 'text-[.62rem] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700';
+      } else if (call.summary_source === 'ai') {
+        srcBadge.textContent = 'AI 생성';
+        srcBadge.className = 'text-[.62rem] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700';
       } else {
-        dActions.innerHTML = actionItems.map((a) => {
-          const isDone = a.status === 'done';
-          const arrow = isDone ? '<span class="text-emerald-500 font-black shrink-0">✓</span>'
-                               : '<span class="text-blue-500 font-black shrink-0">→</span>';
-          const due = a.due_date ? ' (' + escapeHtml(a.due_date) + ')' : '';
-          return '<li class="flex gap-1.5 ' + (isDone ? 'text-slate-400 line-through' : '') + '">' +
-                   arrow + escapeHtml(a.title) + due +
-                 '</li>';
-        }).join('');
+        srcBadge.textContent = '미작성';
+        srcBadge.className = 'text-[.62rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500';
       }
+
+      // Pre-fill the manual summary form with the current call values
+      // so the writer is an edit-in-place experience.
+      document.getElementById('dManualSummary').value = call.summary || '';
+      document.getElementById('dManualNeeds').value   = call.needs   || '';
+      document.getElementById('dManualIssues').value  = call.issues  || '';
+      document.getElementById('dManualSentiment').value = call.sentiment || '';
+
+      // Render suggestion history.
+      renderSuggestionHistory(suggestions);
 
       // Transcript — speaker label maps agent/customer/system.
       const tr = document.getElementById('dTranscript');
@@ -563,13 +645,179 @@
         '<span class="text-slate-400 text-[.72rem]">태그가 없습니다.</span>';
     }
 
+    // ─────────────────────────────────────────────
+    // Phase 5 Step 4 — detail panel mutation handlers.
+    // currentCallId is the id of the call whose detail is open. Set
+    // inside openDetail; closeDetail clears it.
+    // ─────────────────────────────────────────────
+    let currentCallId = null;
+
+    function renderActionItems(items) {
+      const ul = document.getElementById('dActions');
+      if (!items || items.length === 0) {
+        ul.innerHTML = '<li class="text-slate-400 text-[.78rem]">등록된 다음 액션이 없습니다.</li>';
+        return;
+      }
+      ul.innerHTML = items.map((a) => {
+        const isDone = a.status === 'done';
+        const due = a.due_date ? ' (' + escapeHtml(a.due_date) + ')' : '';
+        // data-action-id + data-action-status drive the click handler below.
+        return '<li class="flex items-start gap-1.5 ' + (isDone ? 'text-slate-400 line-through' : '') + '">' +
+                 '<button type="button" data-action-id="' + escapeHtml(a.id) + '" data-action-status="' + escapeHtml(a.status) + '"' +
+                 ' class="text-blue-500 font-black shrink-0 hover:text-blue-700" title="상태 토글">' +
+                 (isDone ? '✓' : '→') +
+                 '</button>' +
+                 '<span>' + escapeHtml(a.title || '') + due + '</span>' +
+               '</li>';
+      }).join('');
+
+      ul.querySelectorAll('button[data-action-id]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-action-id');
+          const cur = btn.getAttribute('data-action-status');
+          const next = cur === 'done' ? 'open' : 'done';
+          btn.disabled = true;
+          try {
+            const res = await window.kloserApi.patchActionItemStatus(id, next);
+            if (res.ok && currentCallId) {
+              // refresh the detail panel so the strike-through state
+              // matches what the server stored.
+              await openDetail(currentCallId);
+            } else {
+              document.getElementById('dActionStatus').textContent = '상태 변경 실패 (' + res.status + ')';
+              btn.disabled = false;
+            }
+          } catch (err) {
+            console.warn('[calls] action status failed', err);
+            document.getElementById('dActionStatus').textContent = '네트워크 오류';
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    function renderSuggestionHistory(items) {
+      const el = document.getElementById('dSuggestions');
+      if (!items || items.length === 0) {
+        el.innerHTML = '<div class="text-slate-400 text-[.75rem]">기록된 AI 추천이 없습니다.</div>';
+        return;
+      }
+      const SUG_TYPE_LABEL = {
+        direction: '방향', script: '스크립트', alert: '주의',
+        risk: '리스크', next: '다음', kb: '가이드',
+      };
+      const SUG_TONE_BADGE = {
+        blue:    'bg-blue-50 text-blue-700',
+        cyan:    'bg-cyan-50 text-cyan-700',
+        amber:   'bg-amber-50 text-amber-700',
+        rose:    'bg-rose-50 text-rose-700',
+        emerald: 'bg-emerald-50 text-emerald-700',
+        slate:   'bg-slate-100 text-slate-600',
+      };
+      el.innerHTML = items.map((s) => {
+        const typeLabel = SUG_TYPE_LABEL[s.type] || s.type || '';
+        const toneBadge = SUG_TONE_BADGE[s.tone] || 'bg-slate-100 text-slate-600';
+        let stateBadge = '';
+        if (s.used_at) {
+          stateBadge = '<span class="text-[.6rem] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">사용됨</span>';
+        } else if (s.dismissed_at) {
+          stateBadge = '<span class="text-[.6rem] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">닫음</span>';
+        } else {
+          stateBadge = '<span class="text-[.6rem] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">미반응</span>';
+        }
+        return '<div class="rounded-lg border border-slate-200 bg-white p-2.5">' +
+                 '<div class="flex items-center justify-between gap-2 mb-1">' +
+                   '<span class="text-[.62rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ' + toneBadge + '">' +
+                     escapeHtml(typeLabel) +
+                   '</span>' +
+                   stateBadge +
+                 '</div>' +
+                 '<div class="text-[.78rem] font-bold text-slate-800">' + escapeHtml(s.title || '') + '</div>' +
+                 (s.body ? '<div class="text-[.74rem] text-slate-600 mt-0.5 whitespace-pre-wrap">' + escapeHtml(s.body) + '</div>' : '') +
+               '</div>';
+      }).join('');
+    }
+
+    // Manual summary save — sets summary_source='manual'. Empty
+    // strings are coerced to null on the wire so the server clears
+    // the field rather than storing '' (Phase 5 routes treat null
+    // and empty as clear).
+    function emptyToNull(v) {
+      const s = (v == null ? '' : String(v)).trim();
+      return s.length === 0 ? null : s;
+    }
+
+    async function saveManualSummary() {
+      if (!currentCallId) return;
+      const statusEl = document.getElementById('dManualStatus');
+      statusEl.textContent = '저장 중…';
+      const payload = {
+        summary: emptyToNull(document.getElementById('dManualSummary').value),
+        needs:   emptyToNull(document.getElementById('dManualNeeds').value),
+        issues:  emptyToNull(document.getElementById('dManualIssues').value),
+        sentiment: emptyToNull(document.getElementById('dManualSentiment').value),
+      };
+      try {
+        const res = await window.kloserApi.patchCallManualSummary(currentCallId, payload);
+        if (res.ok) {
+          statusEl.textContent = '저장됨';
+          setTimeout(() => { statusEl.textContent = ''; }, 1800);
+          await openDetail(currentCallId);
+        } else if (res.status === 403) {
+          statusEl.textContent = '권한 없음';
+        } else if (res.status === 404) {
+          statusEl.textContent = '통화를 찾을 수 없습니다';
+        } else if (res.status === 400) {
+          statusEl.textContent = '입력값을 확인해주세요';
+        } else {
+          statusEl.textContent = '저장 실패 (' + res.status + ')';
+        }
+      } catch (err) {
+        console.warn('[calls] manual summary failed', err);
+        statusEl.textContent = '네트워크 오류';
+      }
+    }
+
+    async function addActionItem() {
+      if (!currentCallId) return;
+      const input = document.getElementById('dActionInput');
+      const title = (input.value || '').trim();
+      const statusEl = document.getElementById('dActionStatus');
+      if (!title) { statusEl.textContent = '제목을 입력하세요.'; return; }
+      statusEl.textContent = '추가 중…';
+      try {
+        const res = await window.kloserApi.createActionItem(currentCallId, { title: title });
+        if (res.status === 201 || res.ok) {
+          input.value = '';
+          statusEl.textContent = '';
+          await openDetail(currentCallId);
+        } else if (res.status === 403) {
+          statusEl.textContent = '권한 없음';
+        } else {
+          statusEl.textContent = '추가 실패 (' + res.status + ')';
+        }
+      } catch (err) {
+        console.warn('[calls] action item create failed', err);
+        statusEl.textContent = '네트워크 오류';
+      }
+    }
+
     function closeDetail() {
       document.getElementById('detailContent').classList.add('hidden');
       document.getElementById('detailContent').classList.remove('flex');
       document.getElementById('detailEmpty').classList.remove('hidden');
       document.getElementById('detailPanel').classList.remove('open');
+      currentCallId = null;
     }
     window.closeDetail = closeDetail;
+
+    // Wire Phase 5 controls once at load time. They read currentCallId
+    // when invoked, so they only act after a detail panel is open.
+    document.getElementById('dManualSaveBtn').addEventListener('click', saveManualSummary);
+    document.getElementById('dActionAddBtn').addEventListener('click', addActionItem);
+    document.getElementById('dActionInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); addActionItem(); }
+    });
 
     /* ─── Boot ─── */
     (async () => {

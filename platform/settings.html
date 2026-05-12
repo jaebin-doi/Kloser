@@ -141,6 +141,7 @@
               <a href="#company" class="toc-link">회사 정보</a>
               <a href="#call-env" class="toc-link">통화 환경</a>
               <a href="#ai" class="toc-link">AI & 자동화</a>
+              <a href="#guides" class="toc-link">가이드 & 체크리스트</a>
               <a href="#integrations" class="toc-link">통합</a>
               <a href="#notifications" class="toc-link">알림</a>
               <a href="#security" class="toc-link">보안 & 개인정보</a>
@@ -468,6 +469,89 @@
                       <textarea class="field-textarea">B2B SaaS, AI 콜센터, CRM 통합, 영업 자동화, 통화 분석, HubSpot, Salesforce</textarea>
                     </div>
                   </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ─── 가이드 & 체크리스트 (Phase 5 Step 4) ─── -->
+            <!--
+              Two API-backed admin panels:
+                • 회사 가이드 (knowledge_bases + chunks)
+                • 상담 체크리스트 (org_call_checklist_templates)
+              Read endpoints are open to any same-org user; writes are
+              admin-only at the server. The UI mirrors that — non-admin
+              shows a read-only banner and disables mutation controls.
+              All server-returned strings render via textContent (no
+              raw innerHTML for KB titles, chunk text, template titles).
+            -->
+            <section id="guides" class="set-card">
+              <div class="set-card-header">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 class="text-[1rem] font-black tracking-tight text-slate-800">가이드 & 체크리스트</h2>
+                    <p class="text-[.78rem] text-slate-500 mt-0.5">AI 응대 추천에 쓰는 회사 가이드와 상담 체크리스트 마스터를 관리합니다. <span class="text-blue-600">(API)</span></p>
+                  </div>
+                  <span id="guidesRoleBadge" class="text-[.7rem] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600">권한 확인 중…</span>
+                </div>
+                <div id="guidesReadonlyBanner" class="hidden mt-3 text-[.74rem] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+                  관리자만 가이드/체크리스트를 변경할 수 있습니다. 현재 권한으로는 목록 조회만 가능합니다.
+                </div>
+              </div>
+
+              <!-- 회사 가이드 / FAQ -->
+              <div class="set-card-body">
+                <div class="flex items-baseline justify-between gap-3 mb-3">
+                  <div>
+                    <h3 class="text-[.92rem] font-bold text-slate-800">회사 가이드 / FAQ</h3>
+                    <p class="text-[.72rem] text-slate-500 mt-0.5">통화 중 AI가 RAG 검색하는 문서입니다. 빈 줄 기준으로 자동 분할되어 임베딩됩니다.</p>
+                  </div>
+                </div>
+
+                <div id="kbList" class="space-y-2 mb-4">
+                  <div class="text-[.78rem] text-slate-400 px-1 py-2" data-kb-empty>아직 등록된 가이드가 없습니다.</div>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+                  <div class="text-[.78rem] font-bold text-slate-700 mb-2">새 가이드 등록</div>
+                  <div class="grid sm:grid-cols-[1fr_140px] gap-2 mb-2">
+                    <input id="kbNewTitle" class="field-input" type="text" placeholder="가이드 제목" maxlength="200" />
+                    <select id="kbNewSourceType" class="field-select">
+                      <option value="manual" selected>직접 입력</option>
+                      <option value="file">파일(텍스트)</option>
+                      <option value="url">URL</option>
+                    </select>
+                  </div>
+                  <textarea id="kbNewBody" class="field-textarea" rows="5" placeholder="가이드 본문. 한 줄 또는 한 단락 단위로 작성하세요. 빈 줄 사이가 청크 경계가 됩니다."></textarea>
+                  <div class="flex items-center justify-between mt-2">
+                    <div id="kbNewStatus" class="text-[.72rem] text-slate-500"></div>
+                    <button id="kbNewBtn" class="btn-primary">가이드 추가</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="set-card-divider"></div>
+
+              <!-- 상담 체크리스트 템플릿 -->
+              <div class="set-card-body">
+                <div class="flex items-baseline justify-between gap-3 mb-3">
+                  <div>
+                    <h3 class="text-[.92rem] font-bold text-slate-800">상담 체크리스트 템플릿</h3>
+                    <p class="text-[.72rem] text-slate-500 mt-0.5">통화 시작 시 자동으로 채워지는 항목입니다. 활성 항목만 새 통화에 복사됩니다.</p>
+                  </div>
+                </div>
+
+                <div id="tmplList" class="space-y-2 mb-4">
+                  <div class="text-[.78rem] text-slate-400 px-1 py-2" data-tmpl-empty>아직 등록된 항목이 없습니다.</div>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+                  <div class="text-[.78rem] font-bold text-slate-700 mb-2">새 체크리스트 항목</div>
+                  <div class="grid sm:grid-cols-[1fr_120px_auto] gap-2 items-end">
+                    <input id="tmplNewTitle" class="field-input" type="text" placeholder="예: 고객 요구사항 청취" maxlength="200" />
+                    <input id="tmplNewSort" class="field-input" type="number" min="0" max="10000" value="0" />
+                    <button id="tmplNewBtn" class="btn-primary whitespace-nowrap">항목 추가</button>
+                  </div>
+                  <div id="tmplNewStatus" class="text-[.72rem] text-slate-500 mt-2"></div>
                 </div>
               </div>
             </section>
@@ -1063,6 +1147,530 @@
     document.getElementById('saveBtn').addEventListener('click', () => {
       showToast('✓ 설정이 저장되었습니다');
     });
+
+    // ─────────────────────────────────────────────
+    // Phase 5 Step 4 — 가이드 & 체크리스트 wiring.
+    //
+    // Server-returned strings (KB title, source_uri, chunk text,
+    // template title) go through textContent only — never innerHTML.
+    // The chunk preview uses <pre> + textContent so even raw HTML in
+    // the chunk source renders as literal text. Admin gating is best
+    // effort UI hint; the server is authoritative on every 4xx.
+    // ─────────────────────────────────────────────
+    (function () {
+      const kbApi = window.kloserApi;
+      if (!kbApi) return;
+
+      const roleBadge = document.getElementById('guidesRoleBadge');
+      const readonlyBanner = document.getElementById('guidesReadonlyBanner');
+      const kbListEl = document.getElementById('kbList');
+      const kbNewTitle = document.getElementById('kbNewTitle');
+      const kbNewSourceType = document.getElementById('kbNewSourceType');
+      const kbNewBody = document.getElementById('kbNewBody');
+      const kbNewBtn = document.getElementById('kbNewBtn');
+      const kbNewStatus = document.getElementById('kbNewStatus');
+      const tmplListEl = document.getElementById('tmplList');
+      const tmplNewTitle = document.getElementById('tmplNewTitle');
+      const tmplNewSort = document.getElementById('tmplNewSort');
+      const tmplNewBtn = document.getElementById('tmplNewBtn');
+      const tmplNewStatus = document.getElementById('tmplNewStatus');
+
+      let isAdmin = false;
+      let kbCache = [];      // [{ id, title, source_type, source_uri, updated_at }]
+      const kbChunkCounts = new Map();
+      let tmplCache = [];    // [{ id, title, sort_order, active, updated_at }]
+
+      // ── role resolution ──────────────────────────────────────
+      async function ensureAccessToken() {
+        // Mirror _shared.js loadSidebarProfile() pre-flight: if the
+        // memory token is empty, try refresh once via the HttpOnly
+        // cookie. If that also fails, /me will 401 cleanly and the
+        // role badge stays as "권한 확인 실패". The pre-flight prevents
+        // a 401 surfacing in DevTools console on cold loads.
+        if (typeof kbApi.getAccessToken === 'function' && kbApi.getAccessToken()) return true;
+        try {
+          if (typeof kbApi.refreshAccessToken === 'function') {
+            await kbApi.refreshAccessToken();
+          }
+        } catch (_) { /* fall through */ }
+        return !!(kbApi.getAccessToken && kbApi.getAccessToken());
+      }
+
+      async function resolveRole() {
+        const haveToken = await ensureAccessToken();
+        if (!haveToken) {
+          roleBadge.textContent = '로그인 필요';
+          return null;
+        }
+        try {
+          const res = await kbApi.apiGet('/me');
+          if (!res.ok) {
+            roleBadge.textContent = '로그인 필요';
+            return null;
+          }
+          const body = await res.json();
+          const role = (body && body.membership && body.membership.role) || null;
+          isAdmin = role === 'admin';
+          roleBadge.textContent = isAdmin ? '관리자' : (role === 'manager' ? '매니저 (읽기 전용)' : role === 'employee' ? '직원 (읽기 전용)' : '뷰어 (읽기 전용)');
+          roleBadge.classList.toggle('bg-blue-50', isAdmin);
+          roleBadge.classList.toggle('text-blue-700', isAdmin);
+          if (!isAdmin) {
+            readonlyBanner.classList.remove('hidden');
+            kbNewTitle.disabled = true;
+            kbNewSourceType.disabled = true;
+            kbNewBody.disabled = true;
+            kbNewBtn.disabled = true;
+            kbNewBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            tmplNewTitle.disabled = true;
+            tmplNewSort.disabled = true;
+            tmplNewBtn.disabled = true;
+            tmplNewBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          }
+          return role;
+        } catch (err) {
+          console.warn('[settings/guides] role lookup failed', err);
+          roleBadge.textContent = '권한 확인 실패';
+          return null;
+        }
+      }
+
+      // ── shared helpers ───────────────────────────────────────
+      function chunkifyText(text) {
+        const MAX = 2400;
+        const raw = String(text || '').replace(/\r\n/g, '\n');
+        const paragraphs = raw.split(/\n\s*\n/);
+        const out = [];
+        for (let i = 0; i < paragraphs.length; i++) {
+          const p = paragraphs[i].trim();
+          if (!p) continue;
+          if (p.length <= MAX) { out.push(p); continue; }
+          // Hard-wrap oversized paragraphs into MAX-sized slices.
+          for (let j = 0; j < p.length; j += MAX) {
+            out.push(p.slice(j, j + MAX));
+          }
+        }
+        return out.map((text, idx) => ({ position: idx, text: text }));
+      }
+
+      function statusFromCode(code) {
+        if (code === 403) return '권한이 없습니다 (관리자만).';
+        if (code === 404) return '해당 항목을 찾을 수 없습니다.';
+        if (code === 409) return '이미 존재하거나 처리된 항목입니다.';
+        if (code === 400) return '입력값이 올바르지 않습니다.';
+        return '서버 오류 ' + code;
+      }
+
+      function fmtDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toISOString().slice(0, 16).replace('T', ' ');
+      }
+
+      function clearChildren(node) {
+        while (node.firstChild) node.removeChild(node.firstChild);
+      }
+
+      function makeBtn(label, kind) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.className = kind === 'danger'
+          ? 'text-[.72rem] font-bold text-rose-600 hover:text-rose-700 px-2 py-1 rounded-md hover:bg-rose-50'
+          : kind === 'primary'
+            ? 'text-[.72rem] font-bold text-blue-600 hover:text-blue-700 px-2 py-1 rounded-md hover:bg-blue-50'
+            : 'text-[.72rem] font-bold text-slate-600 hover:text-slate-800 px-2 py-1 rounded-md hover:bg-slate-100';
+        return b;
+      }
+
+      // ── Knowledge bases ──────────────────────────────────────
+      async function loadKbs() {
+        const res = await kbApi.listKnowledgeBases({ limit: 100 });
+        if (!res.ok) {
+          kbListEl.textContent = 'API 오류: ' + statusFromCode(res.status);
+          return;
+        }
+        const body = await res.json();
+        kbCache = (body && body.items) || [];
+        // chunk count per KB — fetch detail in parallel, capped to first 20
+        // to avoid request storm if a tenant has many.
+        kbChunkCounts.clear();
+        const slice = kbCache.slice(0, 20);
+        await Promise.all(slice.map(async (kb) => {
+          try {
+            const detail = await kbApi.getKnowledgeBase(kb.id);
+            if (detail.ok) {
+              const j = await detail.json();
+              kbChunkCounts.set(kb.id, Array.isArray(j.chunks) ? j.chunks.length : 0);
+            }
+          } catch (_) { /* leave unknown */ }
+        }));
+        renderKbList();
+      }
+
+      function renderKbList() {
+        clearChildren(kbListEl);
+        if (kbCache.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'text-[.78rem] text-slate-400 px-1 py-2';
+          empty.textContent = '아직 등록된 가이드가 없습니다.';
+          kbListEl.appendChild(empty);
+          return;
+        }
+        for (const kb of kbCache) {
+          const row = document.createElement('div');
+          row.className = 'border border-slate-200 rounded-xl p-3 bg-white';
+          row.dataset.kbId = kb.id;
+
+          const head = document.createElement('div');
+          head.className = 'flex items-center justify-between gap-3 mb-1';
+
+          const titleWrap = document.createElement('div');
+          titleWrap.className = 'min-w-0 flex-1';
+
+          const titleEl = document.createElement('div');
+          titleEl.className = 'text-[.86rem] font-bold text-slate-900 truncate';
+          titleEl.textContent = kb.title || '(제목 없음)';
+
+          const metaEl = document.createElement('div');
+          metaEl.className = 'text-[.7rem] text-slate-500 mt-0.5';
+          const chunkCount = kbChunkCounts.has(kb.id) ? kbChunkCounts.get(kb.id) : '–';
+          metaEl.textContent =
+            (kb.source_type || 'manual') +
+            ' · 청크 ' + chunkCount +
+            ' · 갱신 ' + fmtDate(kb.updated_at);
+
+          titleWrap.appendChild(titleEl);
+          titleWrap.appendChild(metaEl);
+
+          const actions = document.createElement('div');
+          actions.className = 'flex items-center gap-1 flex-shrink-0';
+
+          const viewBtn = makeBtn('보기', 'plain');
+          viewBtn.addEventListener('click', () => toggleKbDetail(row, kb.id));
+          actions.appendChild(viewBtn);
+
+          const editBtn = makeBtn('편집', 'primary');
+          editBtn.disabled = !isAdmin;
+          if (!isAdmin) editBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          editBtn.addEventListener('click', () => toggleKbEdit(row, kb.id));
+          actions.appendChild(editBtn);
+
+          const delBtn = makeBtn('삭제', 'danger');
+          delBtn.disabled = !isAdmin;
+          if (!isAdmin) delBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          delBtn.addEventListener('click', () => deleteKb(kb.id, kb.title));
+          actions.appendChild(delBtn);
+
+          head.appendChild(titleWrap);
+          head.appendChild(actions);
+          row.appendChild(head);
+
+          const slot = document.createElement('div');
+          slot.dataset.slot = 'panel';
+          row.appendChild(slot);
+
+          kbListEl.appendChild(row);
+        }
+      }
+
+      async function toggleKbDetail(row, id) {
+        const slot = row.querySelector('[data-slot="panel"]');
+        if (!slot) return;
+        if (slot.dataset.mode === 'view') { clearChildren(slot); slot.dataset.mode = ''; return; }
+        clearChildren(slot);
+        slot.dataset.mode = 'view';
+
+        const loading = document.createElement('div');
+        loading.className = 'text-[.72rem] text-slate-400 mt-2';
+        loading.textContent = '청크 불러오는 중…';
+        slot.appendChild(loading);
+
+        try {
+          const res = await kbApi.getKnowledgeBase(id);
+          clearChildren(slot);
+          if (!res.ok) {
+            const err = document.createElement('div');
+            err.className = 'text-[.72rem] text-rose-600 mt-2';
+            err.textContent = statusFromCode(res.status);
+            slot.appendChild(err);
+            return;
+          }
+          const body = await res.json();
+          const chunks = body.chunks || [];
+          if (chunks.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'text-[.72rem] text-slate-400 mt-2';
+            empty.textContent = '청크가 없습니다.';
+            slot.appendChild(empty);
+            return;
+          }
+          const wrap = document.createElement('div');
+          wrap.className = 'mt-2 space-y-1 max-h-64 overflow-y-auto';
+          chunks.forEach((c, idx) => {
+            const item = document.createElement('div');
+            item.className = 'border border-slate-100 rounded-md p-2 bg-slate-50';
+            const tag = document.createElement('div');
+            tag.className = 'text-[.65rem] font-bold text-slate-500';
+            tag.textContent = '청크 #' + (c.position ?? idx);
+            const body2 = document.createElement('pre');
+            body2.className = 'text-[.74rem] text-slate-800 whitespace-pre-wrap font-sans mt-1';
+            body2.textContent = c.text || '';
+            item.appendChild(tag);
+            item.appendChild(body2);
+            wrap.appendChild(item);
+          });
+          slot.appendChild(wrap);
+        } catch (err) {
+          clearChildren(slot);
+          const e = document.createElement('div');
+          e.className = 'text-[.72rem] text-rose-600 mt-2';
+          e.textContent = '청크 로드 실패';
+          slot.appendChild(e);
+        }
+      }
+
+      function toggleKbEdit(row, id) {
+        if (!isAdmin) return;
+        const slot = row.querySelector('[data-slot="panel"]');
+        if (!slot) return;
+        if (slot.dataset.mode === 'edit') { clearChildren(slot); slot.dataset.mode = ''; return; }
+        clearChildren(slot);
+        slot.dataset.mode = 'edit';
+
+        const kb = kbCache.find((x) => x.id === id);
+        if (!kb) return;
+
+        const form = document.createElement('div');
+        form.className = 'mt-2 space-y-2';
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.className = 'field-input';
+        titleInput.value = kb.title || '';
+        titleInput.maxLength = 200;
+        form.appendChild(titleInput);
+
+        const bodyArea = document.createElement('textarea');
+        bodyArea.className = 'field-textarea';
+        bodyArea.rows = 5;
+        bodyArea.placeholder = '본문을 교체하려면 여기에 입력하세요. 빈 칸으로 두면 본문은 그대로 둡니다.';
+        form.appendChild(bodyArea);
+
+        const status = document.createElement('div');
+        status.className = 'text-[.72rem] text-slate-500';
+        form.appendChild(status);
+
+        const buttons = document.createElement('div');
+        buttons.className = 'flex items-center gap-2 justify-end';
+
+        const cancelBtn = makeBtn('취소', 'plain');
+        cancelBtn.addEventListener('click', () => { clearChildren(slot); slot.dataset.mode = ''; });
+        buttons.appendChild(cancelBtn);
+
+        const saveBtn = makeBtn('저장', 'primary');
+        saveBtn.addEventListener('click', async () => {
+          saveBtn.disabled = true;
+          status.textContent = '저장 중…';
+          try {
+            if (titleInput.value.trim() !== (kb.title || '').trim()) {
+              const patch = await kbApi.patchKnowledgeBase(id, { title: titleInput.value.trim() });
+              if (!patch.ok) { status.textContent = '제목 저장 실패: ' + statusFromCode(patch.status); saveBtn.disabled = false; return; }
+            }
+            if (bodyArea.value.trim()) {
+              const chunks = chunkifyText(bodyArea.value);
+              const repl = await kbApi.replaceKnowledgeChunks(id, chunks);
+              if (!repl.ok) { status.textContent = '청크 저장 실패: ' + statusFromCode(repl.status); saveBtn.disabled = false; return; }
+            }
+            await loadKbs();
+            showToast('✓ 가이드 저장 완료');
+          } catch (err) {
+            console.warn(err);
+            status.textContent = '네트워크 오류';
+          } finally {
+            saveBtn.disabled = false;
+          }
+        });
+        buttons.appendChild(saveBtn);
+
+        form.appendChild(buttons);
+        slot.appendChild(form);
+      }
+
+      async function deleteKb(id, title) {
+        if (!isAdmin) return;
+        const ok = window.confirm('"' + (title || '제목 없음') + '" 가이드를 삭제할까요? (소프트 삭제, 청크는 숨김 처리됩니다.)');
+        if (!ok) return;
+        const res = await kbApi.deleteKnowledgeBase(id);
+        if (res.status === 204 || res.ok) {
+          showToast('✓ 삭제됨');
+          await loadKbs();
+        } else {
+          showToast('✗ ' + statusFromCode(res.status));
+        }
+      }
+
+      async function createKb() {
+        if (!isAdmin) return;
+        const title = kbNewTitle.value.trim();
+        const body = kbNewBody.value;
+        const sourceType = kbNewSourceType.value;
+        if (!title) { kbNewStatus.textContent = '제목을 입력하세요.'; return; }
+        kbNewBtn.disabled = true;
+        kbNewStatus.textContent = '저장 중…';
+        try {
+          const createRes = await kbApi.createKnowledgeBase({
+            title: title,
+            source_type: sourceType,
+          });
+          if (!createRes.ok) {
+            kbNewStatus.textContent = statusFromCode(createRes.status);
+            return;
+          }
+          const created = (await createRes.json()).knowledge_base;
+          const chunks = chunkifyText(body);
+          if (chunks.length > 0 && created && created.id) {
+            const repl = await kbApi.replaceKnowledgeChunks(created.id, chunks);
+            if (!repl.ok) {
+              kbNewStatus.textContent = '청크 저장 실패: ' + statusFromCode(repl.status);
+              return;
+            }
+          }
+          kbNewTitle.value = '';
+          kbNewBody.value = '';
+          kbNewStatus.textContent = '';
+          await loadKbs();
+          showToast('✓ 가이드 추가됨');
+        } catch (err) {
+          console.warn(err);
+          kbNewStatus.textContent = '네트워크 오류';
+        } finally {
+          kbNewBtn.disabled = false;
+        }
+      }
+
+      // ── Checklist templates ──────────────────────────────────
+      async function loadTemplates() {
+        const res = await kbApi.listChecklistTemplates();
+        if (!res.ok) {
+          tmplListEl.textContent = 'API 오류: ' + statusFromCode(res.status);
+          return;
+        }
+        const body = await res.json();
+        tmplCache = (body && body.items) || [];
+        renderTemplates();
+      }
+
+      function renderTemplates() {
+        clearChildren(tmplListEl);
+        if (tmplCache.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'text-[.78rem] text-slate-400 px-1 py-2';
+          empty.textContent = '아직 등록된 항목이 없습니다.';
+          tmplListEl.appendChild(empty);
+          return;
+        }
+        for (const t of tmplCache) {
+          const row = document.createElement('div');
+          row.className = 'border border-slate-200 rounded-xl p-3 bg-white flex items-center gap-3';
+
+          const sortInput = document.createElement('input');
+          sortInput.type = 'number';
+          sortInput.min = '0';
+          sortInput.value = t.sort_order ?? 0;
+          sortInput.className = 'field-input w-16 text-center';
+          sortInput.disabled = !isAdmin;
+          if (!isAdmin) sortInput.classList.add('opacity-60');
+
+          const titleInput = document.createElement('input');
+          titleInput.type = 'text';
+          titleInput.className = 'field-input flex-1';
+          titleInput.value = t.title || '';
+          titleInput.maxLength = 200;
+          titleInput.disabled = !isAdmin;
+          if (!isAdmin) titleInput.classList.add('opacity-60');
+
+          const toggleWrap = document.createElement('label');
+          toggleWrap.className = 'switch';
+          const toggleInput = document.createElement('input');
+          toggleInput.type = 'checkbox';
+          toggleInput.checked = !!t.active;
+          toggleInput.disabled = !isAdmin;
+          const slider = document.createElement('span');
+          slider.className = 'slider';
+          toggleWrap.appendChild(toggleInput);
+          toggleWrap.appendChild(slider);
+
+          const saveBtn = makeBtn('저장', 'primary');
+          saveBtn.disabled = !isAdmin;
+          if (!isAdmin) saveBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          saveBtn.addEventListener('click', async () => {
+            if (!isAdmin) return;
+            saveBtn.disabled = true;
+            const patch = {
+              title: titleInput.value.trim(),
+              sort_order: Number(sortInput.value) || 0,
+              active: toggleInput.checked,
+            };
+            const res = await kbApi.patchChecklistTemplate(t.id, patch);
+            saveBtn.disabled = false;
+            if (res.ok) { showToast('✓ 항목 저장됨'); await loadTemplates(); }
+            else showToast('✗ ' + statusFromCode(res.status));
+          });
+
+          const delBtn = makeBtn('삭제', 'danger');
+          delBtn.disabled = !isAdmin;
+          if (!isAdmin) delBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          delBtn.addEventListener('click', async () => {
+            if (!isAdmin) return;
+            const ok = window.confirm('"' + (t.title || '제목 없음') + '" 항목을 삭제할까요?');
+            if (!ok) return;
+            const res = await kbApi.deleteChecklistTemplate(t.id);
+            if (res.status === 204 || res.ok) { showToast('✓ 삭제됨'); await loadTemplates(); }
+            else showToast('✗ ' + statusFromCode(res.status));
+          });
+
+          row.appendChild(sortInput);
+          row.appendChild(titleInput);
+          row.appendChild(toggleWrap);
+          row.appendChild(saveBtn);
+          row.appendChild(delBtn);
+          tmplListEl.appendChild(row);
+        }
+      }
+
+      async function createTemplate() {
+        if (!isAdmin) return;
+        const title = tmplNewTitle.value.trim();
+        if (!title) { tmplNewStatus.textContent = '제목을 입력하세요.'; return; }
+        const sort = Number(tmplNewSort.value) || 0;
+        tmplNewBtn.disabled = true;
+        tmplNewStatus.textContent = '저장 중…';
+        try {
+          const res = await kbApi.createChecklistTemplate({ title: title, sort_order: sort, active: true });
+          if (!res.ok) { tmplNewStatus.textContent = statusFromCode(res.status); return; }
+          tmplNewTitle.value = '';
+          tmplNewSort.value = '0';
+          tmplNewStatus.textContent = '';
+          await loadTemplates();
+          showToast('✓ 항목 추가됨');
+        } catch (err) {
+          console.warn(err);
+          tmplNewStatus.textContent = '네트워크 오류';
+        } finally {
+          tmplNewBtn.disabled = false;
+        }
+      }
+
+      // ── boot ─────────────────────────────────────────────────
+      kbNewBtn.addEventListener('click', createKb);
+      tmplNewBtn.addEventListener('click', createTemplate);
+
+      (async function init() {
+        await resolveRole();
+        await Promise.all([loadKbs(), loadTemplates()]);
+      })();
+    })();
   </script>
 </body>
 </html>

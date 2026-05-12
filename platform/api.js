@@ -404,6 +404,159 @@
     return apiGet('/dashboard/summary');
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 5 — knowledge bases / checklist templates / call checklist /
+  // call suggestions / call meta (link, summary). Plan:
+  // docs/plan/phase-5/PHASE_5_STEP_4_CLIENT.md §3.
+  //
+  // All helpers return the raw Response so callers stay consistent with
+  // Phase 4. The server collapses missing / cross-org / soft-deleted
+  // into 404; 403 surfaces forbidden; 409 surfaces conflict_state for
+  // suggestion already-used/dismissed transitions and conflict for
+  // unique constraint hits.
+  // ─────────────────────────────────────────────
+
+  // Knowledge bases ---------------------------------------------------
+
+  function listKnowledgeBases(query) {
+    const q = query || {};
+    const params = new URLSearchParams();
+    Object.keys(q).forEach(function (k) {
+      const v = q[k];
+      if (v === undefined || v === null || v === '') return;
+      params.set(k, String(v));
+    });
+    const qs = params.toString();
+    return apiGet('/knowledge-bases' + (qs ? '?' + qs : ''));
+  }
+
+  function getKnowledgeBase(id) {
+    return apiGet('/knowledge-bases/' + encodeURIComponent(id));
+  }
+
+  function createKnowledgeBase(input) {
+    return apiPost('/knowledge-bases', input || {});
+  }
+
+  function patchKnowledgeBase(id, input) {
+    return apiPatch('/knowledge-bases/' + encodeURIComponent(id), input || {});
+  }
+
+  function deleteKnowledgeBase(id) {
+    return apiDelete('/knowledge-bases/' + encodeURIComponent(id));
+  }
+
+  function replaceKnowledgeChunks(id, chunks) {
+    return apiPost(
+      '/knowledge-bases/' + encodeURIComponent(id) + '/chunks/replace',
+      { chunks: chunks || [] },
+    );
+  }
+
+  function searchKnowledge(query, limit) {
+    const body = { query: query };
+    if (typeof limit === 'number') body.limit = limit;
+    return apiPost('/knowledge-bases/search', body);
+  }
+
+  // Checklist templates ----------------------------------------------
+
+  function listChecklistTemplates() {
+    return apiGet('/call-checklist-templates');
+  }
+
+  function createChecklistTemplate(input) {
+    return apiPost('/call-checklist-templates', input || {});
+  }
+
+  function patchChecklistTemplate(id, input) {
+    return apiPatch(
+      '/call-checklist-templates/' + encodeURIComponent(id),
+      input || {},
+    );
+  }
+
+  function deleteChecklistTemplate(id) {
+    return apiDelete('/call-checklist-templates/' + encodeURIComponent(id));
+  }
+
+  // Call checklist (per-call snapshot) -------------------------------
+
+  function initializeCallChecklist(callId) {
+    return apiPost(
+      '/calls/' + encodeURIComponent(callId) + '/checklist/initialize',
+      {},
+    );
+  }
+
+  function listCallChecklist(callId) {
+    return apiGet('/calls/' + encodeURIComponent(callId) + '/checklist');
+  }
+
+  function patchCallChecklistItemStatus(itemId, status) {
+    return apiPost(
+      '/call-checklist-items/' + encodeURIComponent(itemId) + '/status',
+      { status: status },
+    );
+  }
+
+  // Call suggestions --------------------------------------------------
+
+  function listCallSuggestions(callId) {
+    return apiGet('/calls/' + encodeURIComponent(callId) + '/suggestions');
+  }
+
+  function useCallSuggestion(id) {
+    return apiPost(
+      '/call-suggestions/' + encodeURIComponent(id) + '/use',
+      {},
+    );
+  }
+
+  function dismissCallSuggestion(id) {
+    return apiPost(
+      '/call-suggestions/' + encodeURIComponent(id) + '/dismiss',
+      {},
+    );
+  }
+
+  // Call meta — customer link / manual summary -----------------------
+
+  function linkCallCustomer(callId, customerId) {
+    return apiPost(
+      '/calls/' + encodeURIComponent(callId) + '/link-customer',
+      { customer_id: customerId },
+    );
+  }
+
+  function unlinkCallCustomer(callId) {
+    return apiPost(
+      '/calls/' + encodeURIComponent(callId) + '/unlink-customer',
+      {},
+    );
+  }
+
+  // input shape: { summary, needs, issues, sentiment }. Callers pass
+  // null for cleared fields (server CallSummaryManualInput accepts
+  // string|null on each of the four fields).
+  function patchCallManualSummary(callId, input) {
+    return apiPost(
+      '/calls/' + encodeURIComponent(callId) + '/summary/manual',
+      input || {},
+    );
+  }
+
+  // /calls/:id/heartbeat exists as a REST fallback (Step 3 routes plan
+  // §2.3) but the primary path is the WS heartbeat event, so the page
+  // helper for that lives in ws.js. We still expose this thin wrapper
+  // for the rare fallback case (WebSocket blocked by corporate proxy).
+  function postCallHeartbeat(callId) {
+    return apiPost(
+      '/calls/' + encodeURIComponent(callId) + '/heartbeat',
+      {},
+    );
+  }
+
   window.kloserApi = {
     // Token store (memory-only).
     setAccessToken: setAccessToken,
@@ -445,6 +598,29 @@
     patchActionItemStatus: patchActionItemStatus,
     patchActionItemAssignee: patchActionItemAssignee,
     getDashboardSummary: getDashboardSummary,
+
+    // Phase 5 — knowledge / checklist / suggestion / call meta.
+    listKnowledgeBases: listKnowledgeBases,
+    getKnowledgeBase: getKnowledgeBase,
+    createKnowledgeBase: createKnowledgeBase,
+    patchKnowledgeBase: patchKnowledgeBase,
+    deleteKnowledgeBase: deleteKnowledgeBase,
+    replaceKnowledgeChunks: replaceKnowledgeChunks,
+    searchKnowledge: searchKnowledge,
+    listChecklistTemplates: listChecklistTemplates,
+    createChecklistTemplate: createChecklistTemplate,
+    patchChecklistTemplate: patchChecklistTemplate,
+    deleteChecklistTemplate: deleteChecklistTemplate,
+    initializeCallChecklist: initializeCallChecklist,
+    listCallChecklist: listCallChecklist,
+    patchCallChecklistItemStatus: patchCallChecklistItemStatus,
+    listCallSuggestions: listCallSuggestions,
+    useCallSuggestion: useCallSuggestion,
+    dismissCallSuggestion: dismissCallSuggestion,
+    linkCallCustomer: linkCallCustomer,
+    unlinkCallCustomer: unlinkCallCustomer,
+    patchCallManualSummary: patchCallManualSummary,
+    postCallHeartbeat: postCallHeartbeat,
 
     // Read-only config — ws.js consumes this so the WS URL stays in
     // sync with the API base.
