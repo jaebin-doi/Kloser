@@ -13,7 +13,7 @@
 
 - [x] **Step 1** — Schema (`calls` / `transcripts` / `call_action_items`) + RLS + 인덱스 + app grants → `PHASE_4_STEP_1_SCHEMA.md` + `PHASE_4_STEP_1_FINDINGS.md` (2026-05-12 완료, demo seed는 schema-only 지시에 따라 후속 결정)
 - [x] **Step 2** — Repository + unit tests (calls / transcripts / action items 저장소 + endCall service, RLS 격리·composite FK·soft delete·seq 동시 append·`customers.last_contacted_at` 갱신·트랜잭션 롤백 모두 단위 테스트로 증명) → `PHASE_4_STEP_2_REPO.md` + `PHASE_4_STEP_2_FINDINGS.md` (2026-05-12 완료, 25 신규 테스트 PASS, 누적 180/180)
-- [ ] **Step 3** — Route layer (`/calls` REST + `/dashboard/summary` + WebSocket 영속 hook) + shared types + route tests
+- [ ] **Step 3** — Route layer (`/calls` REST + `/dashboard/summary` + WebSocket 영속 hook) + shared types + route tests → `PHASE_4_STEP_3_ROUTES.md` (계획 작성됨)
 - [ ] **Step 4** — Frontend wiring (live.html 영속 hook 추가 / calls.html mock 제거 → 실 API / dashboard.html mock 제거 → 실 KPI)
 - [ ] **Step 5** — Phase 4 통합 e2e + Phase 4 종합 findings
 
