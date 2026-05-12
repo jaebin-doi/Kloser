@@ -6,7 +6,13 @@ name: kloser-dev
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector/pgvector image is a `postgres:16` base + pgvector extension
+    # preinstalled. Phase 5 Step 1 introduces the `vector` extension for
+    # knowledge_chunks.embedding columns; the alpine variant has no vector
+    # library so we switch to the official pgvector image. PG data file
+    # format is identical to postgres:16, so the existing `kloser_pgdata`
+    # volume is reused without re-init.
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-kloser}

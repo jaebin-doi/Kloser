@@ -11,7 +11,7 @@
 
 > 이 섹션은 sub-step 진행 시 갱신된다. 본 plan은 master로, 각 sub-step은 별도 `PHASE_5_STEP_X_*.md` 문서에서 상세 설계.
 
-- [ ] **Step 1** — Schema (`knowledge_bases` / `knowledge_chunks` / `org_call_checklist_templates` / `call_checklist_items` / `call_suggestions` + `calls` 메타 컬럼 + `transcripts` STT 메타 컬럼 + `current_app_user_id()` / `app.user_id` 컨텍스트 + app grants) → `PHASE_5_STEP_1_SCHEMA.md`
+- [x] **Step 1** — Schema (`knowledge_bases` / `knowledge_chunks` / `org_call_checklist_templates` / `call_checklist_items` / `call_suggestions` + `calls` 메타 컬럼 + `transcripts` STT 메타 컬럼 + `current_app_user_id()` / `app.user_id` 컨텍스트 + app grants) → `PHASE_5_STEP_1_SCHEMA.md` + `PHASE_5_STEP_1_FINDINGS.md` (2026-05-12 완료, 8 migration UP PASS, pgvector 0.8.2 + ivfflat ordering 검증, RLS FORCE 5 테이블 × 4 정책, `npm test` 212/212 + phase 0.5·2·3·4 e2e 모두 회귀 PASS)
 - [ ] **Step 2** — Repository + service + unit tests (체크리스트 / suggestions / knowledge ingest·검색 / heartbeat / customer linkage / manager team-scope 권한 helper)
 - [ ] **Step 3** — STT/LLM/Embedding adapter + RAG search service + AI summary/suggestion service + REST routes + shared types + WS persistence 보강 + route/WS tests
 - [ ] **Step 4** — Frontend wiring (live.html customer picker + 실 checklist/suggestion · calls.html action item 작성·완료 · settings.html knowledge base 관리)
