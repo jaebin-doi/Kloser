@@ -1,35 +1,28 @@
-# Kloser server (Phase 2 complete)
+# Kloser server (Phase 4 complete)
 
 > **Status**:
-> - **Phase 0.5 spike** complete (live stream pipeline verified, 14/14 e2e PASS, RTT 1ms).
-> - **Phase 1 Step 1** complete: DB infrastructure (compose, migration, seed, runtime verification).
-> - **Phase 1 Step 2** complete: runtime `app` role + RLS SET LOCAL context + isolation tests (10/10 PASS, e2e regression PASS).
-> - **Phase 1 Step 3** complete: Argon2id + Bearer access JWT + HttpOnly refresh cookie (Path=/auth) + sessions rotation with family reuse detection + role guard + prod X-Org-Id strict reject. 29/29 unit (auth 19 + rls 7 + orgContext 3) + 14/14 e2e PASS. See `docs/plan/phase-1/PHASE_1_STEP_3_AUTH_CORE.md` / `docs/plan/phase-1/PHASE_1_STEP_3_FINDINGS.md`.
-> - **Phase 1 Step 4** complete: `platform/api.js` fetch wrapper (memory access token + single in-flight refresh + retry-once + login redirect) + `platform/login.html` + `platform/live.html` auth gate + DOMPurify suggestion sanitize + WS handshake JWT auth (`auth.token` slot, `userId` query removed) + `text_chunk` before `start_call` invariant. 37/37 unit (29 + WS auth 8) + 16/16 e2e PASS (login pre-step + 14 prior + auth reject 2). See `docs/plan/phase-1/PHASE_1_STEP_4_CLIENT_WIRING.md` / `docs/plan/phase-1/PHASE_1_STEP_4_FINDINGS.md`.
-> - **Phase 1 Step 5** complete: Caddy single-origin reverse proxy (`ops/Caddyfile.dev`, `tls internal`) + client-side origin auto-detect in `platform/api.js` (`https + localhost → ""` relative URLs) + `KLOSER_E2E_BASE_URL` parameterization for the e2e + `FASTIFY_GUIDE.md` §8 snake_case sync (Phase 0.5 inheritance 7/7 closed). 37/37 unit + 16/16 split-origin e2e PASS; Caddy variant e2e left for the user's Caddy-installed machine. See `docs/plan/phase-1/PHASE_1_STEP_5_REVERSE_PROXY.md` / `docs/plan/phase-1/PHASE_1_STEP_5_FINDINGS.md`.
-> - **Phase 1 complete.** All 5 sub-steps done with code, tests, docs, and Caddy single-origin runtime verification (`caddy validate`, `curl -k https://localhost/health`, `KLOSER_E2E_BASE_URL=https://localhost` variant e2e 16/16) all PASS.
-> - **Phase 2 Step 1** complete: customers schema + RLS FORCE + index set + Acme 12 / Beta 12 seed (24 rows, plan column dropped via forward migration `1715000003000_drop_customers_plan.sql`). See `docs/plan/phase-2/PHASE_2_STEP_1_SCHEMA.md` / `docs/plan/phase-2/PHASE_2_STEP_1_FINDINGS.md`.
-> - **Phase 2 Step 2** complete: `customersRepo` (list/get/create/update/softDelete) under RLS + 12-case repo CRUD/RLS test. See `docs/plan/phase-2/PHASE_2_STEP_2_REPO.md` / `docs/plan/phase-2/PHASE_2_STEP_2_FINDINGS.md`.
-> - **Phase 2 Step 3** complete: shared zod types (`CustomerListQuery`, `CustomerCreateInput`, `CustomerPatch`) + `InvalidListOptionError` boundary + browser JSDoc mirror + `test/sync_shared_types.mjs` regex sync test. See `docs/plan/phase-2/PHASE_2_STEP_3_SHARED_TYPES.md` / `docs/plan/phase-2/PHASE_2_STEP_3_FINDINGS.md`.
-> - **Phase 2 Step 4** complete: REST `/customers` (list/stats/get/create/patch/delete — 6 endpoints) + `requireRole` + plugin-scoped `setErrorHandler` (ZodError→400 invalid_input, InvalidListOptionError→400 invalid_<field>+value) + 16/16 customers route test. See `docs/plan/phase-2/PHASE_2_STEP_4_ROUTES.md` / `docs/plan/phase-2/PHASE_2_STEP_4_FINDINGS.md`.
-> - **Phase 2 Step 5** complete: `platform/customers.html` real API CRUD (4 KPI · status/sort 2-group chip filter · search + URL query sync · dual-mode modal + delete) + `apiPatch`/`apiDelete` in `platform/api.js` + sidebar customers count sync + customers.plan domain cleanup (UI/server/types/seed/migration). See `docs/plan/phase-2/PHASE_2_STEP_5_CLIENT.md` / `docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md`.
-> - **Phase 2 Step 6** complete: `test/phase_2_customers_e2e.mjs` 7-scenario regression (login + KPI + add/edit/delete + Beta isolation + filter + cleanup sweep) + `page.on("dialog", d => d.accept())` confirm auto-accept + created-row id Set tracking + final `e2etest-` prefix sweep. See `docs/plan/phase-2/PHASE_2_STEP_6_E2E.md` / `docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md`.
-> - **Phase 2 complete.** customers CRUD shipped end-to-end with code, tests, docs. 65/65 server unit (including 16 customers route cases) + `sync_shared_types` PASS + `phase_0_5_e2e` 16/16 PASS + `phase_2_customers_e2e` 7/7 PASS. Phase 3 is next.
-> - See `docs/plan/phase-0.5/PHASE_0_5_LIVE_SPIKE.md`, `docs/plan/phase-1/PHASE_1_MASTER.md`, `docs/plan/phase-1/PHASE_1_STEP_1_DB_INFRA.md`, `docs/plan/phase-1/PHASE_1_STEP_2_RLS_CONTEXT.md`, `docs/plan/phase-1/PHASE_1_STEP_2_FINDINGS.md`, `docs/plan/phase-1/PHASE_1_STEP_3_AUTH_CORE.md`, `docs/plan/phase-1/PHASE_1_STEP_3_FINDINGS.md`, `docs/plan/phase-1/PHASE_1_STEP_4_CLIENT_WIRING.md`, `docs/plan/phase-1/PHASE_1_STEP_4_FINDINGS.md`, `docs/plan/phase-1/PHASE_1_STEP_5_REVERSE_PROXY.md`, `docs/plan/phase-1/PHASE_1_STEP_5_FINDINGS.md`, `docs/plan/phase-2/PHASE_2_MASTER.md`, `docs/plan/phase-2/PHASE_2_STEP_1_SCHEMA.md`, `docs/plan/phase-2/PHASE_2_STEP_1_FINDINGS.md`, `docs/plan/phase-2/PHASE_2_STEP_2_REPO.md`, `docs/plan/phase-2/PHASE_2_STEP_2_FINDINGS.md`, `docs/plan/phase-2/PHASE_2_STEP_3_SHARED_TYPES.md`, `docs/plan/phase-2/PHASE_2_STEP_3_FINDINGS.md`, `docs/plan/phase-2/PHASE_2_STEP_4_ROUTES.md`, `docs/plan/phase-2/PHASE_2_STEP_4_FINDINGS.md`, `docs/plan/phase-2/PHASE_2_STEP_5_CLIENT.md`, `docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md`, `docs/plan/phase-2/PHASE_2_STEP_6_E2E.md`, `docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md`.
+> - **Phase 0.5 spike** complete (live stream pipeline verified, RTT 1ms, e2e PASS).
+> - **Phase 1 complete** (Steps 1~5): docker-compose + RLS FORCE migrations, `app` role with `SET LOCAL app.org_id` context, Argon2id + Bearer access JWT + HttpOnly refresh cookie + family-rotation + grace window, `platform/api.js` memory-token fetch wrapper, WS handshake JWT auth, Caddy single-origin reverse proxy. Details under `docs/plan/phase-1/`.
+> - **Phase 2 complete** (Steps 1~6): `customers` schema + RLS + Acme/Beta 24 seed, `customersRepo` + `customersService`, REST `/customers` (list/stats/get/create/patch/delete), shared types via `test/sync_shared_types.mjs`, `platform/customers.html` real API CRUD with URL query sync, `customers.plan` domain cleanup, `phase_2_customers_e2e` 7-scenario regression. Details under `docs/plan/phase-2/`.
+> - **Phase 3 complete** (Steps 1~7): `auth_tokens` (unified purpose) + `email_outbox` (dev provider) + `invitations` enrich + `memberships.status` CHECK + service-role grants. Self-service signup with one-transaction org/user/admin/verification-token mint, email verify, password reset (sha256-only `auth_tokens.token_hash`, revoke-all-sessions on success), team invite (anonymous accept with multi-org membership reuse, 7-day TTL, resend/cancel + 410-Gone on stale tokens), team CRUD + member role/status patch with last-admin protection (`lockActiveAdminIds`), `requireFreshRole` middleware for admin-only mutations, enumeration parity on `/auth/password/forgot`, sidebar profile + logout popover wired to `/me`. `phase_3_e2e` 6-scenario / 33-assertion regression. Details under `docs/plan/phase-3/`.
+> - **Phase 4 complete** (Steps 1~5): three new tables `calls` / `transcripts` / `call_action_items` with FORCE RLS + partial indexes + composite FK to `customers(org_id, id)` and `memberships(org_id, user_id)`. `endCall` service transaction (calls status / ended_at / duration_seconds + `customers.last_contacted_at = GREATEST(...)` in one go). REST `/calls` (11 endpoints: list / create / get / notes / end / transcript GET+POST / action-items GET+POST + per-action-item status/assignee) + `/dashboard/summary`. WebSocket persistence hook for `start_call` / `text_chunk` / `end_call` so the Phase 0.5 flow now writes through to DB. `requireVerified` middleware applied to every Phase 4 mutation (read endpoints stay open, mutations return 403 `email_not_verified` until users verify). Browser side: `platform/calls.html` mock removed (real `/calls` with URL sync + parallel detail fetch), `platform/dashboard.html` KPI 4 + recent 5 wired to `/dashboard/summary`, `platform/live.html` quick-note + end-call persist. Shared types added for call / transcript / actionItem / dashboard (9 total entities under `test/sync_shared_types.mjs`). `phase_4_e2e` 8-scenario regression + cleanup sweep. Details under `docs/plan/phase-4/`.
+> - **Verification baseline**: `npm --prefix server test` **212/212** + `node test/sync_shared_types.mjs` (9 entities) + `node test/phase_0_5_e2e.mjs` 16/16 + `node test/phase_2_customers_e2e.mjs` 7/7 + `node test/phase_3_e2e.mjs` 33-assertion + `node test/phase_4_e2e.mjs` 8-scenario + cleanup sweep all PASS. Phase 5 is next (real STT + AI suggestion/summary + checklist/suggestions persistence + disconnect→dropped policy + customer selection + manager team-scope).
+> - Master plans: `docs/plan/phase-1/PHASE_1_MASTER.md`, `docs/plan/phase-2/PHASE_2_MASTER.md`, `docs/plan/phase-3/PHASE_3_MASTER.md`, `docs/plan/phase-4/PHASE_4_MASTER.md`. User guides: `docs/USER_GUIDE_PHASE_{1,2,3,4}.md`. Visual guides: `docs/product/PHASE_{1,2,3,4}_FOUNDATIONS.html`.
 
 ## What this provides
 
-- Fastify HTTP server on `:32173` with `/health`
-- Socket.io namespace `/calls`:
-  - **client → server**: `start_call`, `text_chunk`, `end_call` (snake_case, per `BACKEND_PLAN.md` §6)
+- Fastify HTTP server on `:32173` (default; override via `PORT`) with `/health`
+- Socket.io namespace `/calls` (handshake JWT auth):
+  - **client → server**: `start_call`, `text_chunk`, `end_call` (snake_case)
   - **server → client**: `transcript`, `suggestion`, `sentiment`, `error`
-- On `start_call`, the server schedules the legacy demo conversation
-  + AI suggestion sequence + sentiment changes via `setTimeout`. The
-  fixture lives in `src/fixtures/demo-call.ts` and was lifted from the
-  former client-side `live.html` mock so visual parity is preserved.
-- `text_chunk` is echoed back as `transcript` with the original
-  `clientSentAt` round-tripped — this is what the client uses to
-  measure RTT.
+- WebSocket persistence (Phase 4): `start_call` inserts a `calls` row, `text_chunk` appends a `transcripts` row before echoing, `end_call` runs `service.endCall` which marks the call ended and bumps `customers.last_contacted_at` in the same transaction. Demo fixture (`src/fixtures/demo-call.ts`) drives the visual replay during `start_call` for parity with the Phase 0.5 spike; real STT replaces it in Phase 5.
+- REST surface:
+  - Auth/me: `/auth/{signup,login,refresh,logout,verify,password/forgot,password/reset}` + `/me`
+  - Customers (Phase 2): `/customers` (list / stats / get / create / patch / delete)
+  - Team + invitations (Phase 3): `/teams` (list / create / patch / delete), `/teams/:id/members`, `/memberships/:id` (role/status patch with last-admin protection), `/invitations` (create / resend / cancel / accept)
+  - Calls + dashboard (Phase 4): `/calls` (11 endpoints — list / create / get / notes / end / transcript GET+POST / action-items GET+POST + per-action-item status & assignee) + `/dashboard/summary`
+- All mutation endpoints gate through `requireAuth → orgContext → requireVerified (Phase 4+) → requireRole → requireFreshRole` (added by phase).
+- Shared types: server zod source-of-truth under `src/types/*` mirrors `platform/types/*.js` JSDoc, validated by `test/sync_shared_types.mjs` for **9 entities** (customers / signup / password-reset / team / invitation / call / transcript / actionItem / dashboard).
 
 ## Run
 
@@ -71,11 +64,17 @@ authenticated WebSocket, and you should see:
 ## Verify
 
 ```bash
-# (servers running) — Playwright e2e
-node test/phase_0_5_e2e.mjs
-# expect: 16 PASS lines + "E2E PASSED"
-#   (login pre-step + 14 prior cases + 2 WS auth-reject cases)
+# (servers running) — full regression baseline used to gate every phase
+npm --prefix server run typecheck
+node test/sync_shared_types.mjs          # 9 entities
+npm --prefix server test                 # 212/212
+node test/phase_0_5_e2e.mjs              # 16 assertion — Phase 1 live regression
+node test/phase_2_customers_e2e.mjs      # 7 scenarios — Phase 2 regression + leftover sweep
+node test/phase_3_e2e.mjs                # 6 scenarios / 33 assertion — Phase 3 regression
+node test/phase_4_e2e.mjs                # 8 scenarios + cleanup sweep — Phase 4 closeout
 ```
+
+Each Playwright e2e writes a screenshot artifact next to itself (`test/phase_*_e2e.png`) for visual evidence of the final state.
 
 ## Run (Caddy single-origin variant — Phase 1 Step 5)
 
@@ -133,82 +132,168 @@ The same script writes `test/phase_0_5_e2e.png` for visual evidence.
 server/
 ├── package.json           # fastify, socket.io, pg, dotenv, @fastify/{jwt,cookie}, argon2
 ├── tsconfig.json          # ES2022 / NodeNext / strict
-├── .env.example           # DATABASE_URL(app), MIGRATE_DATABASE_URL(admin), REDIS_URL, JWT_SECRET
-├── migrations/            # node-pg-migrate
-│   ├── 1715000000000_init.sql        # 7 tables + RLS FORCE ENABLE (Step 1)
-│   └── 1715000001000_auth_sessions.sql  # sessions enriched: org_id, membership_id,
-│                                        # token_family_id, replaced_by_session_id (Step 3)
+├── .env.example           # DATABASE_URL(app), MIGRATE_DATABASE_URL(admin), SERVICE_DATABASE_URL, REDIS_URL, JWT_SECRET
+├── migrations/            # node-pg-migrate (forward-only)
+│   ├── 1715000000000_init.sql                       # base tables + RLS FORCE (Phase 1)
+│   ├── 1715000001000_auth_sessions.sql              # sessions enrich for family rotation (Phase 1 Step 3)
+│   ├── 1715000002000_customers.sql                  # customers + RLS + indexes (Phase 2)
+│   ├── 1715000003000_drop_customers_plan.sql        # remove customers.plan (Phase 2 cleanup)
+│   ├── 1715000004000_phase3_memberships_status_check.sql   # active/disabled CHECK (Phase 3)
+│   ├── 1715000005000_phase3_invitations_enrich.sql         # team_id / invited_by / canceled_at / last_sent_at
+│   ├── 1715000006000_phase3_auth_tokens.sql                # unified auth_tokens (verify/reset/invite)
+│   ├── 1715000007000_phase3_email_outbox.sql               # dev email_outbox (raw URL kept for e2e only)
+│   ├── 1715000008000_phase3_service_grants.sql             # kloser_service SELECT/INSERT/UPDATE grants
+│   ├── 1715000009000_phase4_calls.sql                      # calls + RLS + partial indexes + composite FK
+│   ├── 1715000010000_phase4_transcripts.sql                # transcripts + RLS + (call_id, seq) UNIQUE
+│   ├── 1715000011000_phase4_call_action_items.sql          # call_action_items + RLS
+│   └── 1715000012000_phase4_app_grants.sql                 # app role CRUD grants for Phase 4 tables
 ├── seeds/
-│   └── 0001_demo.sql       # 2 orgs × (admin + employee), Argon2id hashes
+│   ├── 0001_demo.sql       # 2 orgs × (admin + employee) — Argon2id hashes
+│   ├── 0002_customers.sql  # Acme 12 + Beta 12 (24 rows)
+│   └── 0003_phase3_demo.sql# additional Phase 3 fixtures
 ├── scripts/
 │   ├── migrate.mjs         # routes node-pg-migrate through MIGRATE_DATABASE_URL
 │   └── run-seed.mjs        # routes seed through MIGRATE_DATABASE_URL
-├── test/                   # tsx --test --test-concurrency=1
-│   ├── auth.test.mjs              # 19 cases (Step 3)
-│   ├── rls_isolation.test.mjs     # 7 cases (Step 2)
-│   ├── orgContext.test.mjs        # 3 cases (Step 3)
-│   └── ws_auth.test.mjs           # 8 cases (Step 4 §1.7)
+├── test/                   # tsx --test --test-concurrency=1 (212/212 PASS)
+│   ├── auth.test.mjs                       # Phase 1 — auth core
+│   ├── rls_isolation.test.mjs              # Phase 1 — RLS context isolation
+│   ├── orgContext.test.mjs                 # Phase 1 — withOrgContext helper
+│   ├── ws_auth.test.mjs                    # Phase 1 — WS handshake auth
+│   ├── customers_repo.test.mjs             # Phase 2 — repo + RLS
+│   ├── customers_routes.test.mjs           # Phase 2 — REST routes
+│   ├── invitations_*.test.mjs              # Phase 3 — invite create/accept/resend/cancel
+│   ├── team_routes.test.mjs                # Phase 3 — team CRUD + memberships patch + last-admin lock
+│   ├── auth_password_reset.test.mjs        # Phase 3 — forgot/reset + revoke-all-sessions
+│   ├── signup_verify.test.mjs              # Phase 3 — signup transaction + verify
+│   ├── calls_repo.test.mjs                 # Phase 4 — calls repository
+│   ├── transcripts_repo.test.mjs           # Phase 4 — transcripts repository
+│   ├── call_action_items_repo.test.mjs     # Phase 4 — action items repository
+│   ├── calls_service.test.mjs              # Phase 4 — endCall transaction + last_contacted_at update
+│   ├── calls_routes.test.mjs               # Phase 4 — REST routes (incl. permission matrix)
+│   ├── dashboard_routes.test.mjs           # Phase 4 — /dashboard/summary
+│   └── ws_persistence.test.mjs             # Phase 4 — WS hook persists calls/transcripts
 └── src/
-    ├── server.ts          # Fastify entry — registers plugins, routes, WS namespace
-    ├── config/
-    │   └── authEnv.ts      # JWT_SECRET fail-fast + TTLs + cookieSecure flag (Step 3)
-    ├── db/
-    │   └── pool.ts         # pg Pool — DATABASE_URL required, no fallback
+    ├── server.ts                           # Fastify entry — plugins, routes, WS, error handler
+    ├── config/authEnv.ts                   # JWT_SECRET fail-fast + TTLs + cookieSecure
+    ├── db/pool.ts                          # pg Pool — DATABASE_URL required, no fallback
     ├── plugins/
-    │   ├── auth.ts         # @fastify/cookie + @fastify/jwt (HS256) + signAccessToken (Step 3)
-    │   └── db.ts           # app.pg + app.withOrgContext(orgId, fn) (Step 2)
+    │   ├── auth.ts                         # @fastify/cookie + @fastify/jwt (HS256) + signAccessToken
+    │   └── db.ts                           # app.pg + app.withOrgContext(orgId, fn)
     ├── middleware/
-    │   ├── auth.ts         # requireAuth — Bearer parse + jwtVerify + AuthenticatedUser
-    │   ├── orgContext.ts   # SET LOCAL app.org_id (JWT-priority; prod rejects X-Org-Id)
-    │   └── role.ts         # requireRole(...roles)
+    │   ├── auth.ts                         # requireAuth — Bearer parse + jwtVerify
+    │   ├── orgContext.ts                   # SET LOCAL app.org_id (JWT-priority)
+    │   ├── role.ts                         # requireRole(...roles)
+    │   ├── requireFreshRole.ts             # admin-only mutation guard (Phase 3)
+    │   └── requireVerified.ts              # email-verified guard for Phase 4 mutations
     ├── services/
-    │   └── auth.ts         # signup/login/refresh/logout (Argon2id + family rotation + grace)
-    ├── repositories/       # RLS-aware (memberships, sessions, etc.)
+    │   ├── auth.ts                         # signup/login/refresh/logout + AuthError
+    │   ├── auth-tokens.ts                  # verify/reset/invite token mint + consume
+    │   ├── customers.ts                    # Phase 2 service
+    │   ├── invitations.ts                  # Phase 3 invite create/accept/resend/cancel
+    │   ├── memberships.ts                  # Phase 3 role/status patch + last-admin lock
+    │   ├── teams.ts                        # Phase 3 team CRUD
+    │   ├── email.ts                        # EmailProvider (dev outbox)
+    │   └── calls.ts                        # Phase 4 endCall transaction + appendTranscript
+    ├── repositories/
+    │   ├── customers.ts                    # Phase 2
+    │   ├── calls.ts                        # Phase 4
+    │   ├── transcripts.ts                  # Phase 4 — seq-aware append + range read
+    │   ├── callActionItems.ts              # Phase 4 — CRUD + parent-call lookup for permission
+    │   └── ... (sessions, memberships, teams, invitations, auth_tokens, email_outbox)
     ├── routes/
-    │   ├── auth.ts         # signup/login/refresh/logout
-    │   └── me.ts           # GET /me
+    │   ├── auth.ts        # /auth/* (signup/login/refresh/logout/verify/password)
+    │   ├── me.ts          # GET /me
+    │   ├── customers.ts   # Phase 2 — 6 endpoints
+    │   ├── team.ts        # Phase 3 — teams + memberships
+    │   ├── invitations.ts # Phase 3 — invite CRUD + anonymous accept
+    │   ├── calls.ts       # Phase 4 — 11 endpoints (calls + action items)
+    │   └── dashboard.ts   # Phase 4 — /dashboard/summary
     ├── ws/
-    │   └── calls.ts        # /calls namespace — handshake JWT auth + invariants (Step 4)
+    │   └── calls.ts        # /calls namespace — handshake auth + persistence hook
+    ├── types/              # zod source-of-truth for shared types (9 entities)
+    │   ├── customers.ts | signup.ts | password-reset.ts | team.ts | invitation.ts
+    │   └── call.ts | transcript.ts | actionItem.ts | dashboard.ts
     └── fixtures/
         └── demo-call.ts    # conversation + aiSequence (with sentiment)
 ```
 
-(Phase 0.5 throwaway `__test_client.ts` removed at Phase 1 kickoff per the cleanup pointer.)
-
 ## Not done on purpose
 
-These are deferred to later Phase 1 steps or beyond and intentionally not yet implemented:
+Phase 5+ scope, intentionally not yet implemented:
 
-- DB-backed call/transcript persistence — Phase 1 step 1·2 set up postgres + RLS but call data still lives in-memory; Phase 4 wires the real storage.
-- Per-organization rooms in WS — single socket = single call
-- Runtime payload validation — only minimal shape checks beyond the Phase 0.5 spike (BAD_PAYLOAD on `text_chunk` shape, `no_active_call` if `text_chunk` precedes `start_call`)
-- Real STT / LLM — Phase 5 of the broader plan
-- Reverse proxy / TLS — `localhost` plaintext only (Step 5)
-- Shared types between server and browser — Phase 2 Step 3 added customer-scoped zod types + JSDoc mirror via `test/sync_shared_types.mjs` regex sync. Generic codegen across all entities is still deferred (no build step on the static pages today). See `docs/plan/phase-2/PHASE_2_STEP_3_FINDINGS.md`.
+- **Real STT (Naver Clova)** — Phase 0.5 fixture still drives the `transcript` replay during `start_call`. Phase 5 swaps in a real STT adapter; the persistence path (`text_chunk → transcripts insert + echo`) is already in place.
+- **AI suggestion / call-summary generation** — `calls.summary` / `needs` / `issues` / `sentiment` columns exist but are populated by user notes only. Phase 5 wires the LLM pipeline.
+- **Checklist / live suggestion persistence** — the 5-item checklist and AI suggestion cards in `live.html` are still static; persistence comes with Phase 5.
+- **Disconnect → `dropped` automatic marking** — abnormal browser exit leaves a call as `in_progress` until manually ended. Phase 5 introduces a heartbeat / drop policy that marks orphaned calls.
+- **Customer selection in live flow** — `start_call` accepts `customerId` but the UI does not present a picker yet; left-side customer card in `live.html` is still static demo.
+- **Action item / transcript authoring UI** — `calls.html` detail panel is read-only. Backend mutation endpoints exist; only the UI wiring is deferred.
+- **Manager team-scope permission** — Phase 4 grants any role read access to all org calls. Manager team-scope (`memberships.team_id`-based RLS) lands with Phase 5 manager reports.
+- **CSV export from `calls.html`** — placeholder button, Phase 6+.
+- **Org-level timezone** — dashboard "today" uses UTC midnight. Phase 6+ introduces `organizations.timezone`.
+- **Real SMTP / Resend** — Phase 3 ships a dev `email_outbox` (raw token kept in metadata for e2e extraction). Production provider lands in Phase 6+; the outbox becomes archive-only.
 
 ## Endpoints / events reference
 
 ```text
 GET  /health                                   → { ok, version, uptimeSec }
 
-POST /auth/signup                              → { accessToken, user }; sets refresh cookie
+# Phase 1 — auth core
+POST /auth/signup                              → { accessToken, user }; sets refresh cookie (creates org + admin in one tx)
 POST /auth/login                               → { accessToken, user }; sets refresh cookie
                                                  400 + availableOrgs[] when multi-org and orgId missing
-POST /auth/refresh                             → { accessToken }; rotates refresh cookie (30s grace window)
+POST /auth/refresh                             → { accessToken }; rotates refresh cookie (30s grace)
 POST /auth/logout                              → { ok: true }; clears refresh cookie
-GET  /me                                       → { user }; requires Bearer access token
+GET  /me                                       → { user, organization, membership }; requires Bearer
 
+# Phase 3 — self-service (anonymous flows use kloser_service BYPASSRLS pool)
+POST /auth/verify                              → 200 (token-once; URL token stripped client-side)
+POST /auth/password/forgot                     → 200 (enumeration parity — always 200)
+POST /auth/password/reset                      → 200; revokes all active refresh sessions on success
+POST /invitations                              → 201 (admin only, requireFreshRole)
+POST /invitations/:id/resend                   → 200 (admin)
+DELETE /invitations/:id                        → 204 (admin)
+POST /invitations/accept                       → 200/201 (anonymous, token + name + password)
+
+# Phase 2 — customers
+GET    /customers / /customers/stats / /customers/:id
+POST   /customers
+PATCH  /customers/:id
+DELETE /customers/:id                          (soft delete)
+
+# Phase 3 — team / memberships
+GET    /teams / /teams/:id/members
+POST   /teams
+PATCH  /teams/:id / /memberships/:id (role/status — last-admin protection via lockActiveAdminIds)
+DELETE /teams/:id
+
+# Phase 4 — calls + dashboard (all mutations gated by requireVerified)
+GET    /calls                                  → list with q / status / customerId / agentUserId / limit / offset
+POST   /calls                                  → 201 { call } (employee auto-bound to self as agent)
+GET    /calls/:id                              → 200 { call }
+POST   /calls/:id/notes                        → 200 { call }
+POST   /calls/:id/end                          → 200 { call }; bumps customers.last_contacted_at in tx
+GET    /calls/:id/transcript                   → 200 { items[] }
+POST   /calls/:id/transcript                   → 201 { transcript } (server-assigned seq)
+GET    /calls/:id/action-items                 → 200 { items[] }
+POST   /calls/:id/action-items                 → 201 { action_item }
+POST   /call-action-items/:id/status           → 200 { action_item } (open / done / dropped)
+POST   /call-action-items/:id/assignee         → 200 { action_item }
+GET    /dashboard/summary                      → 200 { today_calls, response_rate, avg_duration_seconds,
+                                                          active_calls, recent_calls[] }
+
+# WebSocket — /calls namespace (handshake JWT)
 WS   /calls   (auth: { token: <Bearer access JWT> }, NO userId query)
      handshake connect_error (data.code):
        missing_token | expired_token | invalid_token
      ── connect (logged server-side; socket.data.user populated from JWT)
-     C2S start_call({ customerId? })           → ack { callId }
-     C2S text_chunk({ seq, text, clientSentAt })  (no ack — server emits transcript)
-     C2S end_call()                            → ack { ok: true }
+     C2S start_call({ customerId? })           → ack { callId }  (Phase 4 persists calls row)
+     C2S text_chunk({ seq, text, clientSentAt })  (Phase 4 persists transcripts row, then echoes)
+     C2S end_call()                            → ack { ok: true }  (Phase 4 endCall transaction)
      S2C transcript { seq, who, text, clientSentAt?, serverSentAt }
      S2C suggestion { at, suggestions[] }
      S2C sentiment  { mood, interest, stage }
-     S2C error      { code, message }    (codes: no_active_call, BAD_PAYLOAD)
+     S2C error      { code, message }
+                    codes: no_active_call, BAD_PAYLOAD, call_not_found, persistence_failed
 ```
 
 ## Phase 1 DB / RLS Developer Guide

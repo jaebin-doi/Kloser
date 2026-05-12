@@ -59,18 +59,18 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
 
 ## 🚀 라이브 플랫폼 데모
 
-`platform/` 폴더에 **9개의 인터랙티브 페이지**가 있습니다. 모든 페이지는 mock 데이터로 동작하고 회원가입 없이 즉시 체험 가능합니다.
+`platform/` 폴더에 **9개의 인터랙티브 페이지**가 있습니다. 인증·고객·통화·대시보드·팀 영역은 Phase 1~4를 거치며 실 API로 동작하고, 나머지 일부 위젯은 아직 데모 데이터입니다 (페이지별 `(API)` / `(demo)` 라벨 참고).
 
 | 페이지 | 경로 | 주요 인터랙션 |
 |---|---|---|
-| 🏠 **대시보드** | [`platform/dashboard.html`](platform/dashboard.html) | 4 KPI · 트렌드 위젯 · To-Do 체크박스 · 최근 통화 · 팀 활동 피드 · **알림 패널** |
-| 📅 **오늘의 일** | [`platform/daily.html`](platform/daily.html) | 시장 트렌드 + 추천 To-Do + 경쟁사 동향 + **관심사 키워드 설정** + **5포맷 다운로드 (HTML/PDF/Word/Excel/PPT)** |
-| 📞 **실시간 통화** | [`platform/live.html`](platform/live.html) | 통화 타이머 · STT Transcript 자동 추가 · AI 추천 동적 갱신 · 감정 분석 단계 변화 · 알림 패널 |
-| 📚 **통화 기록** | [`platform/calls.html`](platform/calls.html) | 검색·필터 · 8건 mock 통화 · 클릭 시 우측 상세 패널 슬라이드 |
+| 🏠 **대시보드** | [`platform/dashboard.html`](platform/dashboard.html) | KPI 4장 + 최근 통화 5건 실 API (`/dashboard/summary`) · 시장 트렌드 / 추천 To-Do / 팀 활동은 demo (헤더에 라벨) · 미인증 배너 |
+| 📅 **오늘의 일** | [`platform/daily.html`](platform/daily.html) | 시장 트렌드 + 추천 To-Do + 경쟁사 동향 + **관심사 키워드 설정** + **5포맷 다운로드 (HTML/PDF/Word/Excel/PPT)** (demo) |
+| 📞 **실시간 통화** | [`platform/live.html`](platform/live.html) | 통화 타이머 · 인증 WebSocket으로 transcript / sentiment / suggestion 실시간 수신 · 빠른 메모 저장 · 통화 종료(WS `end_call`)가 DB 영속화 + `customers.last_contacted_at` 갱신 |
+| 📚 **통화 기록** | [`platform/calls.html`](platform/calls.html) | 종료된 통화가 실제 기록으로 남고, 검색·상태 필터·우측 상세 패널에서 메모/대화 내용/액션 아이템을 확인. `phase_4_e2e` 8 시나리오 회귀 |
 | 👥 **고객 관리** | [`platform/customers.html`](platform/customers.html) | 4 KPI · status/sort 2 그룹 필터 chip · 검색 + URL query sync · CRUD 모달 듀얼 모드 (실 API + 24명 seed). `phase_2_customers_e2e` 7 시나리오 회귀 |
-| ✉️ **뉴스레터** | [`platform/newsletter.html`](platform/newsletter.html) | 캠페인 5개 + 통계 · AI 챗봇으로 메일 초안 자동 생성 |
-| 🏢 **팀 & 계정** | [`platform/team.html`](platform/team.html) | 14명 구성원 + 우수 사례 랭킹 + 권한 매트릭스 + 직원 초대 모달 |
-| ⚙️ **설정** | [`platform/settings.html`](platform/settings.html) | 12개 카테고리 (프로필/회사/통화환경/AI/통합/알림/보안/데이터/플랜/API/언어/위험영역) + 스크롤스파이 TOC |
+| ✉️ **뉴스레터** | [`platform/newsletter.html`](platform/newsletter.html) | 캠페인 5개 + 통계 · AI 챗봇으로 메일 초안 자동 생성 (demo) |
+| 🏢 **팀 & 계정** | [`platform/team.html`](platform/team.html) | `/teams` · `/memberships` · `/invitations` 실 API — 멤버 목록 / 역할 변경 / 직원 초대 모달. `phase_3_e2e` 33 assertion 회귀 |
+| ⚙️ **설정** | [`platform/settings.html`](platform/settings.html) | 12개 카테고리 (프로필/회사/통화환경/AI/통합/알림/보안/데이터/플랜/API/언어/위험영역) + 스크롤스파이 TOC (demo) |
 
 ### 🎬 동적 시뮬레이션 하이라이트
 
@@ -143,8 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 2 완료** (Step 1~6) — Phase 1 기반 위에 customers entity 정착. `customers` 테이블 + RLS 4정책 + 5 partial 인덱스 + 24명 seed, repository (7 함수) + service (6 함수) + 6 REST endpoint (`GET /customers`, `GET /customers/stats`, `GET /customers/:id`, `POST`, `PATCH`, `DELETE`), shared types (zod source-of-truth + JSDoc browser mirror + sync 검증), `platform/customers.html` 실 API CRUD (모달 듀얼 모드 + 2 그룹 필터 chip + URL query sync + `loadAll` 재조회 정책), customers e2e 7 시나리오 + cleanup. **`customers.plan`은 의도적으로 제거** — `organizations.plan` (Kloser 구독 단계)과 도메인 경계 충돌 회피. `npm test` 65/65 + `phase_0_5_e2e` 16/16 + `phase_2_customers_e2e` PASS + `sync_shared_types` PASS. 다음은 Phase 3 (회원가입/이메일/팀 초대).
-> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md`](docs/plan/phase-2/PHASE_2_STEP_5_FINDINGS.md), [`docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md`](docs/plan/phase-2/PHASE_2_STEP_6_FINDINGS.md).
+> **현재 단계**: **Phase 4 완료** (Step 1~5) — Phase 3까지의 인증·고객·셀프서비스 기반 위에 통화 영속화와 대시보드 실 데이터까지 정착. 신규 테이블 3개(`calls` / `transcripts` / `call_action_items`) + RLS FORCE + 부분 인덱스 + composite FK + endCall 단일 트랜잭션(`customers.last_contacted_at` 동시 갱신), `/calls` REST 11개 + `/dashboard/summary` + WS persistence hook(`start_call`/`text_chunk`/`end_call`), shared types 9 entity (customers / signup / password-reset / team / invitation / call / transcript / actionItem / dashboard). `platform/calls.html`은 정적 데모를 제거하고 실제 통화 기록 검색·필터·상세 패널로 전환. `platform/dashboard.html`은 KPI 4장 + 최근 통화 5건을 실제 데이터로 표시. `live.html` 빠른 메모 + 종료가 영속화. `requireVerified` 미들웨어로 미인증 사용자의 통화 mutation 차단. `npm test` 212/212 + `sync_shared_types` 9 entity + `phase_0_5_e2e` 16/16 + `phase_2_customers_e2e` 7/7 + `phase_3_e2e` 33 assertion + `phase_4_e2e` 8 시나리오 + cleanup sweep 모두 PASS. 다음은 Phase 5 (실 STT + AI 응대 추천 + AI 통화 후 자동 요약 + disconnect heartbeat + customer selection).
+> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-3/PHASE_3_MASTER.md`](docs/plan/phase-3/PHASE_3_MASTER.md), [`docs/plan/phase-4/PHASE_4_MASTER.md`](docs/plan/phase-4/PHASE_4_MASTER.md), [`docs/plan/phase-4/PHASE_4_STEP_5_FINDINGS.md`](docs/plan/phase-4/PHASE_4_STEP_5_FINDINGS.md). 사용자 가이드: [`docs/USER_GUIDE_PHASE_4.md`](docs/USER_GUIDE_PHASE_4.md) · 시각 가이드: [`docs/product/PHASE_4_FOUNDATIONS.html`](docs/product/PHASE_4_FOUNDATIONS.html).
 
 ---
 
@@ -184,20 +184,28 @@ kloser/
 ├── docs/                                   # 문서 인덱스: docs/README.md
 │   ├── README.md                           # 폴더 인덱스 + 빠른 진입표
 │   ├── USER_GUIDE_PHASE_1.md               # Phase 1 사용자/평가자용 텍스트 가이드
+│   ├── USER_GUIDE_PHASE_2.md               # Phase 2 — Customers CRUD
+│   ├── USER_GUIDE_PHASE_3.md               # Phase 3 — 셀프서비스 (signup/verify/reset/invite)
+│   ├── USER_GUIDE_PHASE_4.md               # Phase 4 — 통화 영속화 / calls 실 API / dashboard
 │   ├── plan/                               # Phase별 실행 계획 + 결과 인계
 │   │   ├── README.md                       #   plan 폴더 색인
 │   │   ├── roadmap/                        #   BACKEND_PLAN / DESKTOP_APP_PLAN
 │   │   ├── phase-0.5/                      #   live spike 계획 + findings
 │   │   ├── phase-1/                        #   Phase 1 master + Step 1~5
-│   │   └── phase-2/                        #   Phase 2 master + Step 1~6
+│   │   ├── phase-2/                        #   Phase 2 master + Step 1~6
+│   │   ├── phase-3/                        #   Phase 3 master + Step 1~7
+│   │   └── phase-4/                        #   Phase 4 master + Step 1~5
 │   ├── decision/                           # 기술 선택 트레일 (4)
 │   │   ├── FASTIFY_GUIDE.md                #   Fastify 도입 근거 + 패턴
 │   │   ├── NODE_VS_PYTHON_BACKEND.md       #   Node vs Python 결정
 │   │   ├── SUPABASE_VS_ONPREM.md           #   Supabase managed 미채택 사유
 │   │   └── SUPABASE_GUIDE.md               #   (검토 시점 참고, 이력 보존)
-│   ├── product/                            # 제품·마케팅·도입 가이드 (5)
-│   │   ├── USER_GUIDE.html                 #   🆕 시각 가이드 — 9개 화면 walkthrough
-│   │   ├── PHASE_1_FOUNDATIONS.html        #   🆕 Phase 1 기반 기능 시각 가이드 (6 기둥)
+│   ├── product/                            # 제품·마케팅·도입 가이드
+│   │   ├── USER_GUIDE.html                 #   시각 가이드 — 9개 화면 walkthrough
+│   │   ├── PHASE_1_FOUNDATIONS.html        #   Phase 1 시각 가이드 (6 기둥)
+│   │   ├── PHASE_2_FOUNDATIONS.html        #   Phase 2 시각 가이드 (5 기둥)
+│   │   ├── PHASE_3_FOUNDATIONS.html        #   Phase 3 시각 가이드 (5 기둥)
+│   │   ├── PHASE_4_FOUNDATIONS.html        #   Phase 4 시각 가이드 (5 기둥)
 │   │   ├── pricing.md                      #   가격 정책 (내부 SSOT)
 │   │   ├── guide.html                      #   도입 가이드 (고객용)
 │   │   └── realtime-call-assistant-guide.md #  제품·아키텍처 정의 SSOT
@@ -375,13 +383,14 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 2 완료, Phase 3 대기)
-- **런타임/언어**: Node.js 20+ / TypeScript
-- **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스)
+### 백엔드 (`server/` — Phase 4 완료, Phase 5 대기)
+- **런타임/언어**: Node.js 20+ / TypeScript, dev 포트 `:32173`
+- **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스, JWT handshake + WS persistence hook)
+- **REST 표면**: `/auth/*` · `/me` · `/customers` · `/teams` · `/memberships` · `/invitations` · `/calls` · `/dashboard/summary`
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)
-- **DB**: 직접 운영 PostgreSQL + RLS default-deny (Phase 1부터)
-- **큐/캐시**: Redis + BullMQ (Phase 4+)
-- **Reverse proxy**: Nginx 또는 Caddy (Phase 1+)
+- **DB**: 직접 운영 PostgreSQL + RLS FORCE default-deny (Phase 1부터, Phase 4 신규 테이블도 동일 패턴)
+- **큐/캐시**: Redis + BullMQ (Phase 5+ — 실 STT 도입 시 큐 워커 본격 도입)
+- **Reverse proxy**: Nginx 또는 Caddy (Phase 1+ — `ops/Caddyfile.dev`로 single-origin 변형 제공)
 
 ### 외부 연동 (Phase 5~6)
 - **STT**: Naver Clova Speech (한국어 영업 도메인 정확도 우선)
@@ -405,10 +414,12 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - 수동 RTT 1ms · 자동 데모 재생 · sentiment 자동 전이 · 14/14 e2e PASS
 - 결과 정리: [`docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md`](docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md)
 
-### v1 — MVP (다음 단계, Phase 1~6)
-- **Phase 1**: PostgreSQL 부트스트랩 + RLS default-deny + 자체 Auth (Argon2id + JWT + refresh rotation) + 클라이언트 wiring + Caddy reverse proxy (Step 1~5)
-- **Phase 2**: Customers CRUD
-- **Phase 3~5**: Team/초대, Calls REST + Dashboard, 실시간 STT(Clova) + AI suggestion
+### v1 — MVP (Phase 1~6)
+- **Phase 1** ✅: PostgreSQL 부트스트랩 + RLS default-deny + 자체 Auth (Argon2id + JWT + refresh rotation) + 클라이언트 wiring + Caddy reverse proxy (Step 1~5)
+- **Phase 2** ✅: Customers CRUD + RLS 격리 + 실 API UI + e2e
+- **Phase 3** ✅: 회원가입 + 이메일 인증 + 비밀번호 재설정 + 동료 초대 + 팀·멤버 관리 + 마지막 admin 보호
+- **Phase 4** ✅: 통화/발화/액션 영속화 + `/calls` REST + `/dashboard/summary` + WS persistence hook + 미인증 mutation 차단 + `phase_4_e2e` 8 시나리오
+- **Phase 5** (다음): 실시간 STT (Clova) + AI 응대 추천 / 통화 후 자동 요약 + checklist · suggestions 영속화 + disconnect heartbeat → `dropped` + customer selection + manager team-scope 권한
 - Windows 데스크톱 앱 (오디오 캡처)
 - Claude RAG 기반 응대 추천 엔진
 - 단일 회사·1~5명 직원 기준 PoC

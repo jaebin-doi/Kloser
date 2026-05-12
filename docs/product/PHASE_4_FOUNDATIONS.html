@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser Phase 4 — 통화 영속화 · 실 API · 대시보드</title>
+  <meta name="description" content="Phase 4가 만든 5가지 약속 — 통화 영속화 / 실 API 통화 기록 / 실 데이터 대시보드 / 권한·미인증 게이트 / 자동 회귀 종료 게이트 — 을 사용자 입장에서 풀어 보여주는 시각 가이드." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(8, 145, 178, 0.07), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(37, 99, 235, 0.07), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #0891b2 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+    .card-tight {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .03);
+    }
+
+    .pillar-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    }
+    .pillar-card:hover {
+      transform: translateY(-2px);
+      border-color: rgb(125 211 252);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(8, 145, 178, .15);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(8 145 178); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(8 145 178);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    .icon-bubble {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Persistence flow */
+    .flow-step {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 12px;
+      padding: 14px;
+      background: white;
+      flex: 1;
+    }
+    .flow-step-blue   { background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); border-color: rgb(191 219 254); }
+    .flow-step-cyan   { background: linear-gradient(180deg, #ecfeff 0%, #ffffff 100%); border-color: rgb(165 243 252); }
+    .flow-step-amber  { background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%); border-color: rgb(253 230 138); }
+    .flow-step-emerald{ background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%); border-color: rgb(167 243 208); }
+    .flow-arrow {
+      display: inline-flex;
+      align-items: center;
+      color: rgb(148 163 184);
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    /* Before/after column */
+    .ba-col {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 12px;
+      padding: 14px;
+      background: white;
+    }
+    .ba-before { background: rgb(248 250 252); border-color: rgb(203 213 225); }
+    .ba-after  { background: rgb(240 253 250); border-color: rgb(110 231 183); }
+    .ba-label-before { color: rgb(100 116 139); }
+    .ba-label-after  { color: rgb(5 95 70); }
+
+    /* KPI mock card */
+    .kpi-mock {
+      border-radius: 10px;
+      border: 1px solid rgb(226 232 240);
+      background: white;
+      padding: 14px;
+    }
+    .kpi-mock-val {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: -.02em;
+      color: rgb(15 23 42);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-mock-label {
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: rgb(100 116 139);
+    }
+    .kpi-mock-sub {
+      font-size: .7rem;
+      font-weight: 600;
+      color: rgb(148 163 184);
+      margin-top: 4px;
+    }
+
+    /* Permission matrix */
+    .perm-row {
+      display: grid;
+      grid-template-columns: 110px repeat(4, 1fr);
+      gap: 6px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      font-size: .82rem;
+    }
+    @media (max-width: 640px) {
+      .perm-row { grid-template-columns: 80px repeat(4, 1fr); font-size: .72rem; gap: 4px; padding: 8px 10px; }
+    }
+    .perm-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 0;
+      border-radius: 6px;
+      font-size: .7rem;
+      font-weight: 700;
+    }
+    .perm-allow { background: rgb(209 250 229); color: rgb(6 95 70); }
+    .perm-deny  { background: rgb(254 226 226); color: rgb(153 27 27); }
+    .perm-self  { background: rgb(254 243 199); color: rgb(146 64 14); }
+    .role-pill {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .role-pill-admin    { background: rgb(124 58 237); color: white; }
+    .role-pill-manager  { background: rgb(37 99 235); color: white; }
+    .role-pill-employee { background: rgb(8 145 178); color: white; }
+    .role-pill-viewer   { background: rgb(100 116 139); color: white; }
+
+    /* Banner mock */
+    .banner-mock {
+      background: rgb(254 252 232);
+      border: 1px solid rgb(252 211 77);
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: rgb(120 53 15);
+      font-size: .82rem;
+    }
+    .banner-mock-btn {
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: white;
+      border: 1px solid rgb(252 211 77);
+      color: rgb(146 64 14);
+      font-size: .72rem;
+      font-weight: 700;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* Tables for boundary */
+    .boundary-row {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      gap: 8px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      font-size: .82rem;
+    }
+    @media (max-width: 640px) {
+      .boundary-row { grid-template-columns: 1fr; }
+    }
+    .badge-api  { background: rgb(209 250 229); color: rgb(6 95 70); display: inline-flex; padding: 2px 8px; border-radius: 9999px; font-size: .68rem; font-weight: 700; }
+    .badge-demo { background: rgb(254 243 199); color: rgb(146 64 14); display: inline-flex; padding: 2px 8px; border-radius: 9999px; font-size: .68rem; font-weight: 700; }
+
+    /* Inline code chips */
+    code.inline {
+      font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: .78rem;
+      background: rgb(241 245 249);
+      color: rgb(15 23 42);
+      padding: 1px 6px;
+      border-radius: 4px;
+      letter-spacing: -.005em;
+    }
+
+    section[id] { scroll-margin-top: 24px; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-100 text-cyan-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 4 · PERSISTENT CALLS
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        통화가 끝나도 사라지지 않습니다 — <br>
+        <span class="g-text">기록·집계·다시 보기</span>가 진짜로 가능합니다
+      </h1>
+      <p class="mt-6 text-[1.05rem] text-slate-600 leading-relaxed">
+        Phase 4에서는 다섯 가지가 새로 가능해집니다 —
+        <strong class="text-slate-900">통화 자체의 DB 영속화, 통화 기록 페이지의 실 API 전환, 대시보드의 실 데이터 KPI, 권한·인증 게이트, 자동 회귀로 만든 종료 게이트</strong>.
+        이제 평가자는 자기 손으로 통화를 만들고, 다시 열어 보고, 대시보드에서 집계까지 확인할 수 있습니다.
+      </p>
+      <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
+        <p class="text-[.9rem] text-slate-700 leading-relaxed">
+          <span class="text-cyan-600 font-black mr-1">⌜</span>
+          Phase 0.5는 통화 흐름을 실시간 WebSocket으로 연결했지만 데이터는 흘러간 뒤 사라졌습니다.
+          Phase 4는 그 흐름을 DB로 묶고, 통화 기록과 대시보드를 진짜 데이터로 다시 켭니다.
+          이전 단계가 보장하던 회사별 분리·권한·입력 검증은 그대로 유지된 채, 이 새 흐름들이 그 위에 올라갑니다.
+          <span class="text-cyan-600 font-black ml-1">⌟</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Pillars overview -->
+  <section class="max-w-6xl mx-auto px-6 pb-16">
+    <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">Phase 4의 약속</p>
+    <h2 class="text-[1.6rem] font-black tracking-tight mb-6">평가자가 직접 확인할 수 있는 5가지 기둥</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="#persist" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-cyan-50 text-cyan-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0-2 2c0 1.02.51 1.91 2 2.66l1.42-.77c.34-.18.58-.55.58-.93V14a2 2 0 0 0-2-2z"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">1 · 통화 영속화</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">시작·발화·종료가 한 트랜잭션으로 DB에 남고, 고객의 마지막 연락 시각이 동시에 갱신됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#calls-page" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-blue-50 text-blue-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">2 · 통화 기록 실 API</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">정적 8건 데모는 사라지고, 검색·필터·상세 패널이 모두 본인 조직의 진짜 통화로 동작합니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#dashboard" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-emerald-50 text-emerald-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 4 5-5"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">3 · 실 데이터 대시보드</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">오늘 통화 / 응답률 / 평균 통화 / 진행 중 / 최근 5건이 단일 API 응답으로 채워집니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#permission" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-amber-50 text-amber-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">4 · 권한·인증 게이트</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">Viewer는 읽기만, 미인증 사용자는 변경 금지. 화면 위 배너로 즉시 보이고 서버가 강제합니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#regress" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-violet-50 text-violet-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">5 · 자동 회귀 종료 게이트</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">단위 212 + 4개 흐름 e2e가 매번 그린이어야만 Phase 4가 합격으로 인정됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Detail sections ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24 space-y-20">
+
+    <!-- ─────────── 1. Persistence ─────────── -->
+    <section id="persist">
+      <p class="text-[.78rem] font-bold tracking-wider text-cyan-600 mb-2">기둥 01</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">통화 영속화 — 한 트랜잭션, 한 결과</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        통화가 시작되면 서버가 즉시 데이터베이스에 통화 행을 만듭니다.
+        통화 중에 흘러가는 발화는 같은 통화에 묶여 차곡차곡 적층되고,
+        종료 버튼은 통화 상태를 마감하면서 이 고객의 마지막 연락 시각까지 같은 트랜잭션에서 함께 갱신합니다.
+        통화 도중 회선이 끊겨도 이미 들어간 발화는 그대로 남고, 페이지를 새로고침해도 통화 기록에서 다시 볼 수 있습니다.
+      </p>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">통화 한 건이 만드는 흐름</p>
+        <div class="flex flex-col lg:flex-row items-stretch gap-3">
+          <div class="flow-step flow-step-blue">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-cyan-600 mb-1">1</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">통화 시작 — WebSocket</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">화면이 서버와 통화 채널을 열고 시작 신호를 보냅니다. 서버는 곧바로 새 통화 행을 만들고 식별자를 돌려줍니다.</p>
+          </div>
+          <div class="flow-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="flow-step flow-step-cyan">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-cyan-600 mb-1">2</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">발화 적층 — 순서 보존</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">상담원과 고객의 말이 들어올 때마다 통화 식별자에 묶여 순번과 함께 저장됩니다. 같은 통화의 발화는 절대 섞이지 않습니다.</p>
+          </div>
+          <div class="flow-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="flow-step flow-step-amber">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-amber-600 mb-1">3</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">빠른 메모 — 즉시 저장</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">통화 중 입력한 한 줄 메모는 저장 버튼을 누르는 즉시 통화에 붙습니다. 통화 기록 화면의 메모 패널에 그대로 노출됩니다.</p>
+          </div>
+          <div class="flow-arrow">
+            <svg width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="flow-step flow-step-emerald">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-emerald-600 mb-1">4</p>
+            <p class="font-bold text-slate-900 text-[.9rem]">종료 — 고객 마지막 연락 갱신</p>
+            <p class="text-[.78rem] text-slate-600 leading-relaxed mt-1">종료 버튼은 통화 상태를 마감하면서, 이 통화의 고객 행에서 "마지막 연락 시각"도 같은 트랜잭션에서 갱신합니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">한 트랜잭션 = 한 결과</p>
+          <p class="text-slate-600 leading-relaxed">
+            종료 처리는 통화 상태 마감 + 고객의 마지막 연락 시각 갱신을 동시에 합니다.
+            중간에 실패하면 둘 다 없던 일이 되어, 통화는 끝난 것처럼 보이는데 고객 타임라인은 어긋난 상태가 절대 생기지 않습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">cross-org 참조 자체가 막힘</p>
+          <p class="text-slate-600 leading-relaxed">
+            통화의 고객·상담원 참조는 모두 "조직 + 식별자" 두 키 조합으로 묶여 있어, 다른 회사 고객이나 상담원을 가리키는 통화는 데이터베이스가 처음부터 거절합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">부드러운 삭제 + 부분 색인</p>
+          <p class="text-slate-600 leading-relaxed">
+            통화는 직접 지우는 대신 "삭제 표시"만 합니다. 모든 조회 색인은 삭제되지 않은 통화만 보도록 좁혀져 있어, 색인 크기와 쓰기 비용을 동시에 줄입니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">발화 순번은 서버가 발급</p>
+          <p class="text-slate-600 leading-relaxed">
+            한 통화의 발화 순번은 서버가 결정합니다. 두 발화가 같은 순번을 가질 가능성이 데이터베이스 차원에서 차단됩니다 (한 통화 안에서 순번은 유일).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. Calls page real API ─────────── -->
+    <section id="calls-page">
+      <p class="text-[.78rem] font-bold tracking-wider text-blue-600 mb-2">기둥 02</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">통화 기록 페이지 — 정적 데모는 사라졌습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        예전에는 통화 기록 페이지가 8건짜리 정적 예시를 화면에 그대로 박아 보여주는 데모였습니다.
+        Phase 4에서 이 화면은 본인 조직의 진짜 통화를 검색·필터링·열람하는 도구로 바뀌었습니다.
+        브라우저 주소창의 검색·필터 상태가 그대로 URL에 살아남고, 행을 클릭하면 통화 본문·전사·다음 액션이 한 번에 열립니다.
+      </p>
+
+      <div class="grid lg:grid-cols-2 gap-4 mb-6">
+        <div class="ba-col ba-before">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider mb-2 ba-label-before">이전 — Phase 3까지</p>
+          <ul class="text-[.85rem] text-slate-700 leading-relaxed space-y-1.5">
+            <li>· 화면 안에 직접 박혀 있는 8건짜리 예시 통화</li>
+            <li>· "총 1,243건" 같은 가짜 카운트</li>
+            <li>· 검색은 화면이 가진 8건만 substring 비교</li>
+            <li>· 행을 눌러도 같은 정적 예시만 펼쳐짐</li>
+            <li>· 다른 조직으로 로그인해도 같은 8건이 보임</li>
+          </ul>
+        </div>
+        <div class="ba-col ba-after">
+          <p class="text-[.7rem] font-bold uppercase tracking-wider mb-2 ba-label-after">Phase 4 — 지금</p>
+          <ul class="text-[.85rem] text-slate-700 leading-relaxed space-y-1.5">
+            <li>· 정적 배열 없음. 모두 본인 조직 데이터베이스 결과</li>
+            <li>· 헤더 카운트는 서버가 돌려준 진짜 총합</li>
+            <li>· 검색·상태 필터·페이지가 모두 서버 호출 (250ms 디바운스)</li>
+            <li>· 행을 누르면 통화 본문·전사·다음 액션을 동시에 조회</li>
+            <li>· 다른 회사 통화는 식별자 직격에도 존재 자체가 보이지 않음</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">URL이 곧 상태입니다</p>
+        <div class="font-mono text-[.78rem] bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-3 text-slate-700 overflow-x-auto whitespace-nowrap">
+          /platform/calls.html<span class="text-cyan-600">?q=</span>합병<span class="text-slate-400">&amp;</span><span class="text-cyan-600">status=</span>ended
+        </div>
+        <p class="text-[.85rem] text-slate-700 leading-relaxed">
+          이 URL을 그대로 북마크하거나 공유하면, 다음에 열었을 때 검색창이 자동으로 "합병"으로 채워지고 상태 필터가 "완료"에 고정된 상태로 진입합니다.
+          페이지 안에서 검색어를 바꾸면 URL이 즉시 같이 갱신됩니다 — 새로고침해도 같은 상태가 유지되는 것이 핵심입니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">상세 패널 — 3개 동시 조회</p>
+          <p class="text-slate-600 leading-relaxed">
+            행을 누르면 통화 본문·전사·다음 액션이 같은 시점에 요청되어 응답이 도착하는 대로 채워집니다. 한 번씩 순차 호출이 아니라 병렬이라 체감이 빠릅니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">외부에서 흘러온 텍스트는 escape</p>
+          <p class="text-slate-600 leading-relaxed">
+            통화 메모, 전사, 다음 액션 제목처럼 외부에서 흘러왔을 수 있는 텍스트는 화면에 박히기 전에 모두 안전한 형태로 변환됩니다. HTML이 섞여 들어와도 그대로 글자처럼만 표시됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">CSV 내보내기 버튼은 아직 데모</p>
+          <p class="text-slate-600 leading-relaxed">
+            우측 상단의 CSV 내보내기 버튼은 자리만 잡혀 있습니다. 실제 동작은 운영 단계(Phase 6+)에서 정해집니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. Dashboard ─────────── -->
+    <section id="dashboard">
+      <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기둥 03</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">대시보드 — 진짜 KPI 4장 + 최근 통화 5건</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        대시보드 첫 줄의 카드 네 장과 그 아래 최근 통화 목록은 모두 서버가 본인 조직의 데이터를 모아 한 번의 응답으로 돌려주는 결과입니다.
+        나머지 영역(시장 트렌드, 추천 To-Do, 팀 활동)은 아직 데모 상태이고 그 사실이 카드 헤더에 노란 라벨로 표시됩니다.
+      </p>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-4">KPI 4장 (실 데이터 예시 — UTC 자정 기준)</p>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="kpi-mock">
+            <p class="kpi-mock-label">오늘 통화</p>
+            <p class="kpi-mock-val mt-2">8</p>
+            <p class="kpi-mock-sub">UTC 자정 기준</p>
+          </div>
+          <div class="kpi-mock">
+            <p class="kpi-mock-label">응답률</p>
+            <p class="kpi-mock-val mt-2">87.5%</p>
+            <p class="kpi-mock-sub">완료 ÷ (완료 + 미수신)</p>
+          </div>
+          <div class="kpi-mock">
+            <p class="kpi-mock-label">평균 통화</p>
+            <p class="kpi-mock-val mt-2">9<span class="text-[.95rem] text-slate-500 font-bold">m</span> 42<span class="text-[.95rem] text-slate-500 font-bold">s</span></p>
+            <p class="kpi-mock-sub">오늘 완료된 통화 평균</p>
+          </div>
+          <div class="kpi-mock">
+            <p class="kpi-mock-label">진행 중</p>
+            <p class="kpi-mock-val mt-2">2</p>
+            <p class="kpi-mock-sub">현재 시점</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem] mb-6">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">한 번에 다 받습니다</p>
+          <p class="text-slate-600 leading-relaxed">
+            네 장의 카드와 최근 5건이 각각 따로 호출되지 않고, 단일 요약 API 한 번에 모두 채워집니다. 페이지 로드가 가볍고 일관성 있는 시점의 데이터입니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">"오늘"은 UTC 자정 기준</p>
+          <p class="text-slate-600 leading-relaxed">
+            현재 단계에서는 회사 단위 시간대 설정이 없어 서버 표준시(UTC) 자정 기준으로 "오늘"이 결정됩니다. 한국 시간 자정 직후 ~ 오전 9시 사이에는 *어제*로 분류된 통화가 일시적으로 섞일 수 있습니다 (운영 단계에서 회사별 시간대 도입 예정).
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">응답률의 정의</p>
+          <p class="text-slate-600 leading-relaxed">
+            응답률 = 완료된 통화 ÷ (완료된 통화 + 미수신 통화). 네트워크 끊김으로 인한 통화는 분모에서 제외됩니다 — 응대 의지와 무관한 회선 사고이기 때문입니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">최근 통화 5건은 LEFT JOIN</p>
+          <p class="text-slate-600 leading-relaxed">
+            최근 통화 5건은 고객 이름·상담원 이름을 함께 보여주지만, 그 고객이나 상담원이 사라져도 통화 행 자체는 목록에서 빠지지 않습니다. "이름 없음"으로 표시되어 이력이 보존됩니다.
+          </p>
+        </div>
+      </div>
+
+      <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-2">아직 데모인 영역</p>
+      <div class="card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        대시보드의 시장 트렌드, 추천 To-Do, 팀 활동은 아직 정적 예시입니다.
+        각 섹션 헤더에 노란 <span class="badge-demo">demo</span> 라벨이 붙어 있어 평가 시점에 즉시 구분 가능합니다.
+        시장 트렌드는 운영 단계의 검색 API 연동 시점에, To-Do와 팀 활동은 AI 추천·활동 로그 도입 시점에 진짜 데이터로 바뀝니다.
+      </div>
+    </section>
+
+    <!-- ─────────── 4. Permission + Unverified gate ─────────── -->
+    <section id="permission">
+      <p class="text-[.78rem] font-bold tracking-wider text-amber-600 mb-2">기둥 04</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">권한과 인증 게이트 — 못 하는 일은 명확히</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        통화 데이터는 누구나 만질 수 있는 데이터가 아닙니다.
+        관리자·매니저·일반 직원·조회 권한이 각자 할 수 있는 일이 다르고,
+        이메일 인증을 마치지 않은 사용자는 화면 위에 노란 띠로 안내가 뜨면서 통화 변경이 모두 거절됩니다.
+      </p>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">통화 변경 권한 매트릭스</p>
+
+        <div class="perm-row mb-2 bg-slate-50 border-slate-100" style="font-weight:700; font-size:.72rem; color:rgb(71,85,105);">
+          <span>역할</span>
+          <span class="text-center">읽기</span>
+          <span class="text-center">본인 통화 변경</span>
+          <span class="text-center">남의 통화 변경</span>
+          <span class="text-center">삭제(soft)</span>
+        </div>
+
+        <div class="perm-row mb-1.5">
+          <span class="role-pill role-pill-admin">관리자</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-allow">허용</span>
+        </div>
+        <div class="perm-row mb-1.5">
+          <span class="role-pill role-pill-manager">매니저</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-allow">허용</span>
+        </div>
+        <div class="perm-row mb-1.5">
+          <span class="role-pill role-pill-employee">직원</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-self">본인만</span>
+          <span class="perm-cell perm-deny">차단</span>
+          <span class="perm-cell perm-deny">차단</span>
+        </div>
+        <div class="perm-row">
+          <span class="role-pill role-pill-viewer">조회</span>
+          <span class="perm-cell perm-allow">허용</span>
+          <span class="perm-cell perm-deny">차단</span>
+          <span class="perm-cell perm-deny">차단</span>
+          <span class="perm-cell perm-deny">차단</span>
+        </div>
+
+        <p class="text-[.78rem] text-slate-500 leading-relaxed mt-4">
+          "본인 통화"란 통화 행에 박혀 있는 상담원 식별자가 지금 로그인한 사용자와 같은 경우를 말합니다.
+          매니저가 자기 팀 통화만 다루는 더 세밀한 정책은 다음 단계(Phase 5)에서 매니저 보고서와 함께 도입됩니다.
+        </p>
+      </div>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">미인증 사용자가 보호 화면에 들어가면</p>
+        <div class="banner-mock mb-3">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+          <span class="font-bold">이메일 인증이 완료되지 않았습니다.</span>
+          <span class="ml-1">통화 변경은 인증 후에 가능합니다.</span>
+          <button class="banner-mock-btn">인증 메일 재발송</button>
+        </div>
+        <p class="text-[.85rem] text-slate-700 leading-relaxed">
+          상단의 노란 띠가 미인증 상태를 화면에 즉시 알립니다. 통화 기록·대시보드 두 페이지 모두 이 띠가 켜진 상태에서 진입합니다.
+          그 위에 서버가 통화 변경 시도를 모두 거절합니다 — 읽기는 여전히 가능하기 때문에, 인증을 마치지 않아도 자기 조직 통화를 둘러볼 수는 있습니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">남의 통화를 만지려고 하면</p>
+          <p class="text-slate-600 leading-relaxed">
+            일반 직원이 다른 사람 통화의 메모를 바꾸려고 하면 즉시 "권한 없음"으로 거절됩니다. 같은 조직 안에서도 본인 통화 외에는 손댈 수 없습니다 (조회만 가능).
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">다른 회사 통화는 식별자도 노출되지 않음</p>
+          <p class="text-slate-600 leading-relaxed">
+            "다른 회사 통화의 ID를 안다고 가정"하고 그 통화를 조회·변경하려고 하면, 서버는 "그런 통화 없음"으로 응답합니다. 존재 자체가 드러나지 않는 것이 핵심입니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">로그아웃 후 다시 들어오면 같은 약속</p>
+          <p class="text-slate-600 leading-relaxed">
+            로그인 세션이 끊겨도, 다시 로그인한 뒤 위 규칙들이 그대로 적용됩니다. 새로 발급된 토큰의 역할·인증 상태를 매번 다시 확인합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">역할이 바뀐 직후의 안전망</p>
+          <p class="text-slate-600 leading-relaxed">
+            방금 관리자에서 일반 직원으로 강등된 사용자가 옛 토큰으로 변경을 시도하면, 서버가 데이터베이스의 현재 역할을 다시 읽어 차이를 잡아내고 재로그인을 요구합니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. Regression / closeout gate ─────────── -->
+    <section id="regress">
+      <p class="text-[.78rem] font-bold tracking-wider text-violet-600 mb-2">기둥 05</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">자동 회귀 — 다음 변경이 위 약속을 깨지 않도록</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 4가 만든 약속들은 코드 변경이 있을 때마다 자동으로 검사됩니다. 아래 여섯 가지가 모두 통과해야만 Phase 4가 합격으로 인정됩니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">212 / 212</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">서버 기능 검사</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">통화 / 발화 / 다음 액션 / 대시보드 / WS 영속화</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">8 시나리오</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">Phase 4 흐름 검사</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">통화 시작 → 메모 → 종료 → 기록 → 대시보드 → 격리 → 권한 → 정리</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">33 / 33</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">셀프서비스 (회귀)</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">Phase 3 약속이 깨지지 않았는지</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">7 / 7</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">고객 흐름 (회귀)</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">Phase 2 약속이 깨지지 않았는지</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">16 / 16</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">통화 흐름 (회귀)</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">Phase 1 약속이 깨지지 않았는지</p>
+        </div>
+        <div class="card-tight p-4 text-center">
+          <p class="text-[1.4rem] font-black text-emerald-600">PASS</p>
+          <p class="text-[.78rem] font-bold text-slate-700 mt-1">입력 형식 일치 (9 종)</p>
+          <p class="text-[.72rem] text-slate-500 leading-relaxed mt-1">서버와 화면이 같은 입력 규칙을 따르는지</p>
+        </div>
+      </div>
+
+      <div class="card-tight p-4 text-[.85rem] text-slate-700 leading-relaxed">
+        Phase 4 흐름 검사의 마지막 단계는 검사 도중 임시로 만들어진 통화·발화·다음 액션·사용자·초대가 모두 깨끗이 정리됐는지 확인합니다.
+        정리되지 않은 잔재가 있으면 검사 자체가 실패하므로 같은 개발 데이터베이스에 임시 데이터가 쌓이지 않습니다.
+      </div>
+    </section>
+
+    <!-- ─────────── (API) vs (demo) boundary table ─────────── -->
+    <section id="boundary">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">화면 단위 정리</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">화면별 — 어디까지가 진짜고, 어디부터 데모인가</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 4 시점에서 통화·기록·대시보드 화면이 각자 어디까지 실제 서버 데이터로 동작하고 어디부터 정적 예시가 남아 있는지를 한눈에 정리합니다.
+        다음 Phase에서 이 데모 영역들이 차례로 진짜 데이터로 바뀝니다.
+      </p>
+
+      <div class="space-y-3 mb-4">
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">실시간 통화 (live.html)</span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">API</span> 인증 · 미인증 배너 · WebSocket 시작/종료 · 빠른 메모 저장 · 발화 자동 echo
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-demo">demo</span> 좌측 고객 카드 / 통화 메타 / 체크리스트 / 빠른 응대 멘트 / 음소거·대기 버튼
+          </span>
+        </div>
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">통화 기록 (calls.html)</span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">API</span> 목록 · 검색·상태 필터 · URL 동기화 · 상세 패널(통화/전사/다음 액션 병렬) · 미인증 배너
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-demo">demo</span> CSV 내보내기 버튼
+          </span>
+        </div>
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">대시보드 (dashboard.html)</span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">API</span> 인사말 · 미인증 배너 · KPI 4장 · 최근 통화 5건
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-demo">demo</span> 시장 트렌드 알림 · 오늘의 추천 To-Do · 팀 활동 5건
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── Next phase handoff ─────────── -->
+    <section id="next">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">다음 단계</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">Phase 5 인계 — 진짜 음성과 AI</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 4가 통화 영속화의 토대를 깔았다면, Phase 5에서는 그 위에 실제 음성 인식과 AI 분석이 올라갑니다. 통화 화면의 데모 영역이 진짜 데이터로 바뀌고, 매니저용 팀 단위 시야가 도입됩니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">실제 음성 인식 (STT)</p>
+          <p class="text-slate-600 leading-relaxed">
+            Phase 0.5의 데모 발화 흐름이 실제 마이크 입력을 한국어로 변환하는 외부 STT 어댑터로 교체됩니다. 영속화 흐름은 그대로 살아 있어 새 음성이 들어오면 즉시 통화에 적층됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">AI 요약·응대 추천 자동 생성</p>
+          <p class="text-slate-600 leading-relaxed">
+            통화 후 요약·미해결 이슈·다음 액션이 회사 가이드 기반 AI로 자동 생성되어 통화에 붙습니다. 통화 중에는 실시간 응대 추천 카드가 진짜 LLM 응답으로 갱신됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">상담 체크리스트·빠른 멘트 영속화</p>
+          <p class="text-slate-600 leading-relaxed">
+            지금은 화면에 박혀 있는 5항목 체크리스트와 빠른 응대 멘트가 회사별 설정 데이터로 옮겨가고, 통화 화면에서 토글한 결과가 통화 기록에 함께 저장됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">통화 회선 끊김 자동 처리</p>
+          <p class="text-slate-600 leading-relaxed">
+            브라우저 비정상 종료로 인해 통화가 "진행 중"으로 남는 케이스를 서버가 자동으로 "끊김"으로 마감합니다. 진행 중 KPI가 자연스럽게 정상화됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">고객 선택 흐름</p>
+          <p class="text-slate-600 leading-relaxed">
+            통화 시작 시점에 고객을 골라 통화에 연결할 수 있는 흐름이 추가되어, 좌측 고객 카드가 진짜 고객 데이터로 채워집니다. 통화 후에는 사후 매칭도 가능합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">매니저 팀 시야</p>
+          <p class="text-slate-600 leading-relaxed">
+            "매니저는 자기 팀 통화만"이라는 더 좁은 권한 정책이 도입됩니다. 지금은 매니저가 자기 회사 전체 통화를 볼 수 있는 상태에서 출발합니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── Tech summary ─────────── -->
+    <section id="tech">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">참고 — 기술 관심자용</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">기술 요약</h2>
+      <p class="text-slate-600 mb-6 leading-relaxed max-w-3xl">
+        이 섹션은 보안·아키텍처에 관심 있는 분이 핵심 결정 사항을 한눈에 보기 위한 부분입니다.
+        앞 섹션들은 이 용어를 몰라도 이해할 수 있도록 작성했으니, 이 부분은 가볍게 건너뛰셔도 됩니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.85rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">신규 스키마 4 migration</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">calls</code> · <code class="inline">transcripts</code> · <code class="inline">call_action_items</code> 테이블 + RLS FORCE + 부분 인덱스 4쌍 + 부속 app role grants. 모두 forward-only.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">composite FK guard</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">calls(org_id, customer_id) → customers(org_id, id)</code> +
+            <code class="inline">calls(org_id, agent_user_id) → memberships(org_id, user_id)</code>.
+            cross-org 참조 자체를 PostgreSQL이 거절.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">endCall 트랜잭션</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">calls</code> 상태/종료시각/지속시간 UPDATE + customer_id가 있으면
+            <code class="inline">customers.last_contacted_at = GREATEST(기존, ended_at)</code>을 같은 트랜잭션. trigger 사용 안 함.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5"><code class="inline">requireVerified</code> 위치</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">requireAuth → orgContext → requireVerified → requireRole → requireFreshRole</code>.
+            비활성 멤버는 같은 hook에서 <code class="inline">401 stale_session</code>으로 통합 분기.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">WebSocket persistence hook</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">start_call</code> 시 calls insert, <code class="inline">text_chunk</code> 시 transcripts append + echo, <code class="inline">end_call</code> 시 service.endCall. <code class="inline">agent_user_id</code>는 server-side에서 socket.user.id로 고정.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">shared types 9 entity</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">server/src/types/*</code> zod 원본 + <code class="inline">platform/types/*.js</code> JSDoc 사본 + <code class="inline">test/sync_shared_types.mjs</code>. Phase 4에서 call / transcript / actionItem / dashboard 4 entity 추가.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">dashboard "오늘" 정의</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">date_trunc('day', now() AT TIME ZONE 'UTC')</code> 기준. 조직 단위 timezone 도입은 Phase 6+.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">innerHTML XSS gate</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">calls.html</code> / <code class="inline">dashboard.html</code> server-supplied 보간 자리에 <code class="inline">escapeHtml</code> 명시. <code class="inline">live.html</code> transcript는 textContent, AI suggestion은 DOMPurify.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">e2e cleanup 범위</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">phase4test-</code> prefix가 붙은 통화·발화·다음 액션 + <code class="inline">phase4test-%@example.test</code> 사용자가 만든 통화만 hard-delete. 무관한 수동 통화는 손대지 않음.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">자동 회귀</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="inline">npm --prefix server test</code> 212/212 +
+            <code class="inline">sync_shared_types</code> (9 entity) +
+            <code class="inline">phase_0_5_e2e</code> 16/16 +
+            <code class="inline">phase_2_customers_e2e</code> 7/7 +
+            <code class="inline">phase_3_e2e</code> 33 +
+            <code class="inline">phase_4_e2e</code> 8 시나리오 + cleanup sweep.
+          </p>
+        </div>
+      </div>
+
+      <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
+        Phase 1·2·3 기반이 궁금하면
+        <a href="PHASE_1_FOUNDATIONS.html" class="text-cyan-600 hover:underline font-semibold">PHASE_1_FOUNDATIONS</a> /
+        <a href="PHASE_2_FOUNDATIONS.html" class="text-cyan-600 hover:underline font-semibold">PHASE_2_FOUNDATIONS</a> /
+        <a href="PHASE_3_FOUNDATIONS.html" class="text-cyan-600 hover:underline font-semibold">PHASE_3_FOUNDATIONS</a>
+        에 있습니다.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">Phase 4 Persistent Calls</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

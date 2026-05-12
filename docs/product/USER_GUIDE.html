@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Kloser 사용자 가이드 — Phase 1</title>
-  <meta name="description" content="Kloser 플랫폼을 화면별로 둘러보는 시각 가이드. Phase 1 시점 기준." />
+  <title>Kloser 사용자 가이드 — Phase 4</title>
+  <meta name="description" content="Kloser 플랫폼을 화면별로 둘러보는 시각 가이드. Phase 1·2·3·4 완료 시점 기준." />
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -151,14 +151,14 @@
     <div class="max-w-3xl">
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-100 text-cyan-700 text-[.72rem] font-bold tracking-wider mb-5">
         <span class="pulse-dot"></span>
-        PHASE 1 + 2 · USER GUIDE
+        PHASE 1·2·3·4 · USER GUIDE
       </div>
       <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
         화면으로 보는 <span class="g-text">Kloser 사용자 가이드</span>
       </h1>
       <p class="mt-5 text-[1.05rem] text-slate-600 leading-relaxed">
         영업팀이 매일 마주할 9개 화면을 차례로 둘러봅니다. 각 섹션엔 실제 화면 캡처와
-        주요 인터랙션, 그리고 <strong class="text-slate-900">현재 동작하는 부분(Phase 1·2 완료)</strong>과
+        주요 인터랙션, 그리고 <strong class="text-slate-900">현재 동작하는 부분(Phase 1·2·3·4 완료)</strong>과
         <strong class="text-slate-900">아직 mock·미구현인 부분</strong>을 함께 표시했습니다.
         평가·검토 단계의 분께 권장.
       </p>
@@ -267,9 +267,10 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>4 KPI · 트렌드 위젯 · To-Do 체크박스 · 알림 패널 (UI 인터랙션)</li>
-                <li>fade-in / 토스트 / 모달 애니메이션 — 데모 외관 동등</li>
-                <li>반응형 — 1024px 미만에서 사이드바가 드로어로 전환</li>
+                <li>오늘 통화 / 응답률 / 평균 통화 길이 / 진행 중인 통화 — 4개 카드가 본인 회사 데이터로 채워집니다.</li>
+                <li>최근 통화 5건이 종료된 시각 순으로 같이 보입니다.</li>
+                <li>인사말에 본인 이름이 표시되고, 이메일 인증을 아직 안 했다면 상단에 안내 띠가 뜹니다.</li>
+                <li>알림 패널 · 토스트 · 모달 인터랙션, 사이드바 드로어 전환(좁은 화면)이 정상 동작합니다.</li>
               </ul>
             </div>
             <div class="status-box-soon">
@@ -277,9 +278,9 @@
                 <span class="pill-soon">⌛ 아직 안 됨</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>실제 KPI 집계 — 현재 mock 숫자 (Phase 4 calls REST)</li>
-                <li>실제 시장 트렌드 수집 — 네이버 검색 API (Phase 4~5)</li>
-                <li>To-Do 자동 생성 엔진 — 통화 기록 + 트렌드 결합 (Phase 5)</li>
+                <li>시장 트렌드 알림 5건 — 네이버 검색 API 연동 (Phase 5~6, 현재 demo)</li>
+                <li>오늘의 추천 To-Do — AI 추천 엔진 (Phase 5, 현재 demo)</li>
+                <li>팀 활동 피드 — activity_log 도입 (Phase 5+, 현재 demo)</li>
               </ul>
             </div>
           </div>
@@ -292,9 +293,9 @@
             <h2 class="text-[1.6rem] font-black tracking-tight">실시간 통화 — 핵심 기능</h2>
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
-            Kloser의 차별점. 통화 중 STT가 실시간 전사를 만들고, RAG 기반 AI가
-            <strong class="text-slate-900">2~3초 안에</strong> 응대 멘트를 추천합니다.
-            우측엔 고객 감정 변화(관심 → 망설임 → 재고려)가 실시간 갱신.
+            Kloser의 핵심 통화 화면입니다. 현재는 데모 대화가 실시간처럼 흘러가며
+            전사, 추천 멘트, 감정 변화가 갱신됩니다. Phase 4에서는 여기서 만든 통화와 메모, 종료 상태가
+            <strong class="text-slate-900">통화 기록과 대시보드에 남도록</strong> 연결됐습니다.
           </p>
 
           <div class="shot mb-5">
@@ -307,11 +308,11 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>인증된 WebSocket으로 데모 시퀀스 재생 (Phase 0.5 spike)</li>
-                <li>JWT 핸드셰이크 — 서버가 토큰을 검증해야만 통화 채널 진입</li>
-                <li>transcript / suggestion / sentiment 이벤트 스트리밍</li>
-                <li>RTT 0~5ms 라운드트립 — 클릭에서 화면 갱신까지 체감 즉시</li>
-                <li>4 KPI · 상담 체크리스트 · 빠른 응대 칩 UI</li>
+                <li>로그인한 사용자만 통화 화면에 들어갈 수 있습니다.</li>
+                <li>데모 대화가 실시간으로 흘러가며 전사, 추천 멘트, 감정 변화가 화면에 표시됩니다.</li>
+                <li>통화 중 빠른 메모를 저장하면 나중에 통화 기록 상세에서 다시 볼 수 있습니다.</li>
+                <li>종료 버튼을 누르면 통화가 완료 상태로 저장되고 대시보드 최근 통화에도 반영됩니다.</li>
+                <li>상담 체크리스트와 빠른 응대 칩 UI는 아직 데모 보조 영역입니다.</li>
               </ul>
             </div>
             <div class="status-box-soon">
@@ -336,9 +337,9 @@
             <h2 class="text-[1.6rem] font-black tracking-tight">오늘의 일 — 시장 트렌드 + To-Do</h2>
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
-            매일 06:00에 자동 갱신. 회사가 지정한 모니터링 키워드와 경쟁사 동향을
-            네이버 검색 API로 수집해 우선순위 To-Do로 정리합니다. 회의 자료를
-            5포맷(HTML / PDF / Word / Excel / PPT)으로 즉시 다운로드.
+            오늘 확인할 시장 이슈와 To-Do를 한 화면에서 보는 데모 화면입니다.
+            현재는 예시 데이터로 구성되어 있고, 회의 자료를
+            5포맷(HTML / PDF / Word / Excel / PPT)으로 다운로드하는 흐름을 확인할 수 있습니다.
           </p>
 
           <div class="shot mb-5">
@@ -362,7 +363,7 @@
                 <span class="pill-soon">⌛ 아직 안 됨</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>실제 네이버 검색 API 호출 — Phase 4~5</li>
+                <li>실제 네이버 검색 API 호출 — Phase 5~6</li>
                 <li>실제 To-Do 생성 엔진 (시장 + 통화 결합) — Phase 5</li>
                 <li>To-Do 우선순위 자동 정렬 모델 — Phase 5</li>
               </ul>
@@ -391,9 +392,11 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>검색·필터 UI · 8건 mock 통화 데이터</li>
-                <li>우측 상세 패널 슬라이드 — 클릭 인터랙션</li>
-                <li>회사 단위 데이터 통합 — 떠난 직원의 통화도 유지</li>
+                <li>실시간 통화에서 종료한 통화가 통화 기록에 그대로 남습니다.</li>
+                <li>통화 기록 화면에서 검색어와 상태 필터로 통화를 찾을 수 있습니다.</li>
+                <li>목록에서 통화를 클릭하면 오른쪽 상세 패널에서 메모·대화 내용·액션 아이템을 한 번에 볼 수 있습니다.</li>
+                <li>다른 회사의 통화 기록은 보이지 않습니다 (회사 단위 분리).</li>
+                <li>대시보드의 최근 통화에도 종료된 통화가 반영됩니다.</li>
               </ul>
             </div>
             <div class="status-box-soon">
@@ -401,9 +404,12 @@
                 <span class="pill-soon">⌛ 아직 안 됨</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>DB 영속 통화 기록 — Phase 4 calls REST + dashboard</li>
-                <li>RLS 기반 조직 격리 — DB 스키마는 Phase 1에 준비됨, REST 라우트는 Phase 4</li>
-                <li>전문 검색 (transcript 본문) — Phase 4~5</li>
+                <li>녹음 음성을 실제로 받아 적어 주는 기능 (실 STT)은 다음 단계입니다.</li>
+                <li>AI가 자동으로 통화 요약과 추천 답변을 만들어 주는 기능은 다음 단계입니다.</li>
+                <li>액션 아이템을 화면에서 새로 만들거나 완료 처리하는 기능은 아직 없습니다.</li>
+                <li>고객을 선택해서 통화에 연결하는 흐름은 아직 없습니다.</li>
+                <li>CSV 내보내기 버튼은 아직 실제 다운로드 기능이 아닙니다 (자리만 잡혀 있음).</li>
+                <li>대화 내용 전체를 본문 검색하는 기능은 아직 없습니다.</li>
               </ul>
             </div>
           </div>
@@ -446,8 +452,8 @@
                 <span class="pill-soon">⌛ 아직 안 됨</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>행 클릭 상세 패널 (통화 이력 결합) — Phase 4</li>
-                <li>팀 단위 권한 분기 ("매니저는 자기 팀만") — Phase 4+ (현재 admin-only mutation으로 단순화)</li>
+                <li>행 클릭 상세 패널 (통화 이력 결합 UI) — Phase 5 (통화 영속화는 Phase 4에서 완료, customers ↔ calls 결합 화면은 후속)</li>
+                <li>팀 단위 권한 분기 ("매니저는 자기 팀만") — Phase 5 (현재 admin-only mutation으로 단순화)</li>
                 <li>CSV 일괄 가져오기 — Phase 6+ enterprise</li>
                 <li>HubSpot / Salesforce 양방향 동기화 — Phase 6 (v2 베타)</li>
                 <li>고급 검색 (오타 허용·전문 검색) — Phase 5+</li>
@@ -578,11 +584,11 @@
         <section id="summary">
           <div class="flex items-baseline gap-3 mb-1">
             <span class="text-[.78rem] font-bold tracking-wider text-blue-600">10</span>
-            <h2 class="text-[1.6rem] font-black tracking-tight">Phase 1 + 2 종합 정리</h2>
+            <h2 class="text-[1.6rem] font-black tracking-tight">Phase 1·2·3·4 종합 정리</h2>
           </div>
           <p class="text-slate-600 mb-6 leading-relaxed">
             지금 시점에서 무엇이 진짜로 동작하고 무엇이 mock인지를 한 표로 정리.
-            Phase 1 기반(인증·격리·권한·세션·실시간) + Phase 2 첫 비즈니스 entity(고객 CRUD)가 모두 완료된 상태.
+            Phase 1 기반(인증·격리·권한·세션·실시간) + Phase 2 첫 비즈니스 entity(고객 CRUD) + Phase 3 셀프서비스(가입·인증·복구·초대·팀) + Phase 4 통화 영속화(calls / transcripts / action items + dashboard 실 KPI)까지 완료된 상태.
           </p>
 
           <div class="card overflow-hidden">
@@ -590,59 +596,59 @@
               <thead class="bg-slate-50 text-slate-600 text-[.75rem] font-bold uppercase tracking-wider">
                 <tr>
                   <th class="text-left px-4 py-3 border-b border-slate-200">영역</th>
-                  <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1 + 2)</th>
+                  <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1·2·3·4)</th>
                   <th class="text-left px-4 py-3 border-b border-slate-200">예정</th>
                 </tr>
               </thead>
               <tbody class="text-slate-700">
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">데이터 영속</td>
-                  <td class="px-4 py-3">PostgreSQL 16 + RLS default-deny + 8 tables (customers 포함)</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 4 — calls / transcripts CRUD</td>
+                  <td class="px-4 py-3">PostgreSQL 16 + RLS FORCE default-deny — customers (Phase 2) + auth_tokens / email_outbox / 초대 (Phase 3) + calls / transcripts / call_action_items (Phase 4)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 5 — knowledge_bases (pgvector) / 통화 녹음 / activity_log</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">고객 관리 (CRM)</td>
-                  <td class="px-4 py-3"><strong class="text-slate-900">실 API CRUD 동작</strong> — 6 endpoints + 4 KPI + 검색·필터·정렬 (URL 동기화) + soft delete + 24명 seed</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 4 — 행 클릭 상세 패널 (통화 이력 결합)</td>
+                  <td class="px-4 py-3"><strong class="text-slate-900">실 API CRUD 동작</strong> — 6 endpoints + 4 KPI + 검색·필터·정렬 (URL 동기화) + soft delete + 24명 seed. 통화 종료 시 <code class="font-mono text-[.78rem]">customers.last_contacted_at</code> 자동 갱신</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 5 — 행 클릭 상세 패널 (통화 이력 결합 UI)</td>
                 </tr>
                 <tr class="border-b border-slate-100">
-                  <td class="px-4 py-3 font-semibold">인증</td>
-                  <td class="px-4 py-3">자체 Auth — Argon2id + JWT + refresh rotation + role guard</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 3 — 회원가입/이메일 인증/비밀번호 재설정</td>
+                  <td class="px-4 py-3 font-semibold">인증 / 셀프서비스</td>
+                  <td class="px-4 py-3">자체 Auth — Argon2id + JWT + refresh rotation + role guard. <strong class="text-slate-900">Phase 3 추가</strong> — 자가 회원가입 / 이메일 인증 / 비밀번호 재설정 / 동료 초대 / 마지막 admin 보호. <strong class="text-slate-900">Phase 4 추가</strong> — 미인증 mutation 차단 (<code class="font-mono text-[.78rem]">requireVerified</code>)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 6+ — SMTP / 2FA / 운영 도메인</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">조직별 격리 (RLS)</td>
-                  <td class="px-4 py-3">DB 차원 강제 (Phase 1 인프라 + Phase 2 customers 정책 4 + 테스트로 회귀 보호)</td>
+                  <td class="px-4 py-3">DB 차원 강제 — Phase 1 인프라 + Phase 2 customers + Phase 3 invitations/auth_tokens + Phase 4 calls/transcripts/action_items 모두 FORCE RLS + composite FK</td>
                   <td class="px-4 py-3 text-slate-500">새 entity 추가 시 같은 패턴</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">입력 검증 / 형식 동기화</td>
-                  <td class="px-4 py-3">zod 서버 + JSDoc 화면 + sync 테스트 (customer 형식 한 출처)</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 3+ 새 entity도 동일 패턴</td>
+                  <td class="px-4 py-3">zod 서버 + JSDoc 화면 + sync 테스트 (9 entity: customers / signup / password-reset / team / invitation / call / transcript / actionItem / dashboard)</td>
+                  <td class="px-4 py-3 text-slate-500">새 entity 추가 시 한 줄 등록</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">통화 어시스턴트</td>
-                  <td class="px-4 py-3">WebSocket (인증 핸드셰이크) + 데모 시퀀스 fixture</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 5 — 실제 STT (Clova) + LLM (Claude) + RAG</td>
+                  <td class="px-4 py-3">WebSocket (인증 핸드셰이크) + 데모 시퀀스 fixture. <strong class="text-slate-900">Phase 4 추가</strong> — <code class="font-mono text-[.78rem]">start_call</code> / <code class="font-mono text-[.78rem]">text_chunk</code> / <code class="font-mono text-[.78rem]">end_call</code>이 DB 영속 + <code class="font-mono text-[.78rem]">endCall</code> 트랜잭션이 last_contacted_at 갱신</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 5 — 실제 STT (Clova) + LLM (Claude) + RAG + disconnect heartbeat</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">대시보드 / KPI</td>
-                  <td class="px-4 py-3">고객 KPI는 실 데이터 (4종). 통화·매출 KPI는 mock</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 4 — calls REST + 실 KPI 집계</td>
+                  <td class="px-4 py-3"><strong class="text-slate-900">Phase 4 — `/dashboard/summary` 실 API</strong>: 오늘 통화 / 응답률 / 평균 통화 / 진행 중 + 최근 통화 5건. 시장 트렌드 / 추천 To-Do / 팀 활동은 demo (헤더 라벨)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 5 — AI 추천 To-Do / 매니저 보고서 / 팀 KPI 차트</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">시장 트렌드</td>
                   <td class="px-4 py-3">5 포맷 다운로드 (HTML/PDF/Word/Excel/PPT) 실작동, 데이터는 mock</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 4~5 — 네이버 검색 API + To-Do 엔진</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 5~6 — 네이버 검색 API + To-Do 엔진</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">팀 / 권한</td>
-                  <td class="px-4 py-3">role 미들웨어 4단계 동작 (customers는 viewer 차단까지 e2e 검증). 팀 단위 분기는 미도입</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 3 — 초대 토큰 + 가입 완성 / Phase 4+ — 팀 단위 권한</td>
+                  <td class="px-4 py-3">role 미들웨어 4단계 동작 (admin / manager / employee / viewer). <strong class="text-slate-900">Phase 3 추가</strong> — 초대 발송 / 수락 / 멤버 역할·상태 변경 / 마지막 admin 보호. <strong class="text-slate-900">Phase 4 추가</strong> — calls 권한 매트릭스 + employee 본인 통화만 mutation</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 5 — manager team-scope ("자기 팀 통화만")</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">자동 회귀</td>
-                  <td class="px-4 py-3">서버 단위 65/65 + sync 형식 + Phase 0.5 e2e 16/16 + customers e2e 7 시나리오 + cleanup sweep</td>
+                  <td class="px-4 py-3">서버 단위 212/212 + sync 9 entity + Phase 0.5 e2e 16/16 + customers e2e 7/7 + Phase 3 e2e 33 assertion + Phase 4 e2e 8 시나리오 + cleanup sweep</td>
                   <td class="px-4 py-3 text-slate-500">새 entity마다 같은 패턴 추가</td>
                 </tr>
                 <tr class="border-b border-slate-100">
@@ -660,8 +666,10 @@
           </div>
 
           <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
-            Phase 1 기반 기능 시각 가이드: <a href="PHASE_1_FOUNDATIONS.html" class="text-blue-600 hover:underline">PHASE_1_FOUNDATIONS.html</a> ·
-            Phase 2 고객 관리 시각 가이드: <a href="PHASE_2_FOUNDATIONS.html" class="text-cyan-700 hover:underline font-semibold">PHASE_2_FOUNDATIONS.html</a>
+            Phase 1 기반: <a href="PHASE_1_FOUNDATIONS.html" class="text-blue-600 hover:underline">PHASE_1_FOUNDATIONS.html</a> ·
+            Phase 2 고객 관리: <a href="PHASE_2_FOUNDATIONS.html" class="text-cyan-700 hover:underline">PHASE_2_FOUNDATIONS.html</a> ·
+            Phase 3 셀프서비스: <a href="PHASE_3_FOUNDATIONS.html" class="text-violet-700 hover:underline">PHASE_3_FOUNDATIONS.html</a> ·
+            Phase 4 통화 영속화: <a href="PHASE_4_FOUNDATIONS.html" class="text-cyan-800 hover:underline font-semibold">PHASE_4_FOUNDATIONS.html</a>
           </p>
 
           <!-- Phase 3 representative captures (full self-service walkthrough lives in PHASE_3_FOUNDATIONS) -->
@@ -701,7 +709,7 @@
         <span class="text-[.95rem] font-black tracking-tight">
           <span class="g-text">Kloser</span>
         </span>
-        <span class="text-[.78rem] text-slate-500 ml-2">사용자 가이드 · Phase 1</span>
+        <span class="text-[.78rem] text-slate-500 ml-2">사용자 가이드 · Phase 1·2·3·4</span>
       </div>
       <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
         <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
