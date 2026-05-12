@@ -148,4 +148,12 @@ git status --short --branch
 git log --oneline --decorate -n 5
 ```
 
-Push only after explicit approval, unless the user has directly asked to commit and push.
+For this repository, Codex approval includes commit + push authorization. If Codex reviews a completed task and says it is OK, Claude may commit and push the scoped changes without asking for a separate push approval.
+
+Still stop before committing/pushing when:
+
+- unrelated dirty files are present and cannot be cleanly excluded,
+- tests or required validation fail,
+- the implementation scope differs from the user's request,
+- secrets, oversized binaries, or transient artifacts are staged,
+- a product/security policy decision is still unresolved.
