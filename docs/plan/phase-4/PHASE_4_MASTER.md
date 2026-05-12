@@ -14,7 +14,7 @@
 - [x] **Step 1** — Schema (`calls` / `transcripts` / `call_action_items`) + RLS + 인덱스 + app grants → `PHASE_4_STEP_1_SCHEMA.md` + `PHASE_4_STEP_1_FINDINGS.md` (2026-05-12 완료, demo seed는 schema-only 지시에 따라 후속 결정)
 - [x] **Step 2** — Repository + unit tests (calls / transcripts / action items 저장소 + endCall service, RLS 격리·composite FK·soft delete·seq 동시 append·`customers.last_contacted_at` 갱신·트랜잭션 롤백 모두 단위 테스트로 증명) → `PHASE_4_STEP_2_REPO.md` + `PHASE_4_STEP_2_FINDINGS.md` (2026-05-12 완료, 25 신규 테스트 PASS, 누적 180/180)
 - [x] **Step 3** — Route layer (`/calls` REST 11 endpoint + `/dashboard/summary` + WS persistence hook) + shared types 4 entity (call / transcript / actionItem / dashboard) + `requireVerified` middleware + route/WS tests → `PHASE_4_STEP_3_ROUTES.md` + `PHASE_4_STEP_3_FINDINGS.md` (2026-05-12 완료, 32 신규 테스트 PASS, 누적 212/212, sync_shared_types 9 entity PASS)
-- [ ] **Step 4** — Frontend wiring (live.html 영속 hook 추가 / calls.html mock 제거 → 실 API / dashboard.html mock 제거 → 실 KPI)
+- [x] **Step 4** — Frontend wiring: `platform/api.js` Phase 4 helper 12개 + `live.html` callId 보관 + 종료/메모 wire + `calls.html` mock 제거 → `/calls` 실 API + URL sync + detail 병렬 fetch + `dashboard.html` KPI 4장 + 최근 통화 5건 → `/dashboard/summary` + 미인증 배너 wire (calls/dashboard) → `PHASE_4_STEP_4_FINDINGS.md` (2026-05-12 완료, Playwright manual 8/8 PASS, 회귀 typecheck/sync_shared_types/212 unit/phase 0.5·2·3 e2e 모두 PASS)
 - [ ] **Step 5** — Phase 4 통합 e2e + Phase 4 종합 findings
 
 ---

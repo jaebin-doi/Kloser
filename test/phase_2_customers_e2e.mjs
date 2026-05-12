@@ -1,7 +1,7 @@
 /* Phase 2 customers e2e — 7 시나리오 + cleanup 검증.
  *
  * Pre-req (split-origin):
- *   - API:    `npm --prefix server run dev`            (port 3001)
+ *   - API:    `npm --prefix server run dev`            (port 32173)
  *   - Static: `npx http-server . -p 8765 --silent`     (project root)
  *   - Seed:   `npm --prefix server run db:seed`        (Acme 12 + Beta 12)
  *
@@ -31,7 +31,7 @@ import path from "node:path";
 
 const E2E_BASE      = process.env.KLOSER_E2E_BASE_URL || "";
 const STATIC_ORIGIN = E2E_BASE || "http://localhost:8765";
-const API_BASE      = E2E_BASE || "http://localhost:3001";
+const API_BASE      = E2E_BASE || "http://localhost:32173";
 const LOGIN_URL     = `${STATIC_ORIGIN}/platform/login.html`;
 const CUSTOMERS_URL = `${STATIC_ORIGIN}/platform/customers.html`;
 const API_HEALTH    = `${API_BASE}/health`;
@@ -138,7 +138,7 @@ async function rowIdForName(page, name) {
 // ──────────────────────────────────────────────────────────────────────────
 async function main() {
     console.log(
-        `→ mode: ${E2E_BASE ? `single-origin (${E2E_BASE})` : "split-origin (8765 + 3001)"}`,
+        `→ mode: ${E2E_BASE ? `single-origin (${E2E_BASE})` : "split-origin (8765 + 32173)"}`,
     );
 
     if (IS_HTTPS) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";

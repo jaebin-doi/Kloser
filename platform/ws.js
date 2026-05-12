@@ -49,7 +49,7 @@
     if (window.kloserApi && typeof window.kloserApi.apiBaseUrl === 'string') {
       return window.kloserApi.apiBaseUrl;
     }
-    return 'http://localhost:3001';
+    return 'http://localhost:32173';
   }
 
   function connectCallNamespace(opts) {

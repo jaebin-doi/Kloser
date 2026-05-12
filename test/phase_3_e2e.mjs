@@ -1,7 +1,7 @@
 /* Phase 3 통합 e2e — 6 시나리오 + cleanup.
  *
  * Pre-req (split-origin):
- *   - API:      `npm --prefix server run dev`            (port 3001)
+ *   - API:      `npm --prefix server run dev`            (port 32173)
  *   - Static:   `npx http-server . -p 8765 --silent`     (project root)
  *   - Seed:     `npm --prefix server run db:seed`        (acme/beta + phase3 demo)
  *   - Postgres: docker compose up (container `kloser-dev-postgres-1`)
@@ -38,7 +38,7 @@ import path from "node:path";
 
 const E2E_BASE      = process.env.KLOSER_E2E_BASE_URL || "";
 const STATIC_ORIGIN = E2E_BASE || "http://localhost:8765";
-const API_BASE      = E2E_BASE || "http://localhost:3001";
+const API_BASE      = E2E_BASE || "http://localhost:32173";
 const API_HEALTH    = `${API_BASE}/health`;
 const IS_HTTPS      = STATIC_ORIGIN.startsWith("https:");
 
@@ -270,7 +270,7 @@ function cleanupTestData() {
 // ──────────────────────────────────────────────────────────────────────────
 async function main() {
     console.log(
-        `→ mode: ${E2E_BASE ? `single-origin (${E2E_BASE})` : "split-origin (8765 + 3001)"}`,
+        `→ mode: ${E2E_BASE ? `single-origin (${E2E_BASE})` : "split-origin (8765 + 32173)"}`,
     );
 
     if (IS_HTTPS) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";

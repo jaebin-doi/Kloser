@@ -19,7 +19,7 @@
 
 ## What this provides
 
-- Fastify HTTP server on `:3001` with `/health`
+- Fastify HTTP server on `:32173` with `/health`
 - Socket.io namespace `/calls`:
   - **client → server**: `start_call`, `text_chunk`, `end_call` (snake_case, per `BACKEND_PLAN.md` §6)
   - **server → client**: `transcript`, `suggestion`, `sentiment`, `error`
@@ -40,7 +40,7 @@ npm install
 
 # 2. Start the API + WebSocket server (tsx watch — picks up file changes)
 npm run dev
-# logs: kloser-server listening on :3001
+# logs: kloser-server listening on :32173
 #       [ws/calls] namespace registered at /calls
 ```
 
@@ -60,7 +60,7 @@ to `/platform/login.html?returnUrl=/platform/live.html`. Use any of the
 seeded credentials documented in `seeds/0001_demo.sql` (e.g.
 `admin@acme.test` / `acme-admin-1234` — the dev fixture box on
 login.html shows all 4 pairs on localhost). After login the page
-redirects back and connects to `http://localhost:3001/calls` over an
+redirects back and connects to `http://localhost:32173/calls` over an
 authenticated WebSocket, and you should see:
 
 1. The agent greeting transcript at t=0
@@ -118,11 +118,11 @@ KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs
 | 비교 | split-origin (default) | Caddy single-origin |
 |---|---|---|
 | 정적 | `http://localhost:8765` (http-server) | `https://localhost` (Caddy) |
-| API | `http://localhost:3001` (Fastify) | `https://localhost/auth/*` (Caddy → :3001) |
-| WS | `http://localhost:3001/calls` | `https://localhost/socket.io/*` (Caddy → :3001) |
+| API | `http://localhost:32173` (Fastify) | `https://localhost/auth/*` (Caddy → :32173) |
+| WS | `http://localhost:32173/calls` | `https://localhost/socket.io/*` (Caddy → :32173) |
 | TLS | none | `tls internal` (self-signed) |
 | Cookie `Secure` flag | false (HTTP) | can be true (HTTPS) |
-| `api.js` base URL | `http://localhost:3001` (default) | `""` auto-detected on `https://localhost` |
+| `api.js` base URL | `http://localhost:32173` (default) | `""` auto-detected on `https://localhost` |
 | When to use | 일상 dev / e2e baseline | prod 등가 검증 / TLS 동작 확인 |
 
 The same script writes `test/phase_0_5_e2e.png` for visual evidence.

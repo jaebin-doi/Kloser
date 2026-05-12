@@ -17,7 +17,7 @@
 # the env is unset, so launching from project root works either way.
 #
 # Pre-req:
-#   - Fastify on 127.0.0.1:3001 (`npm --prefix server run dev`)
+#   - Fastify on 127.0.0.1:32173 (`npm --prefix server run dev`)
 #   - Browser must trust Caddy's local CA on first run (`caddy trust`),
 #     or the e2e ignores HTTPS errors when target starts with https://.
 #
@@ -33,19 +33,19 @@
 
 localhost {
 	handle /socket.io/* {
-		reverse_proxy 127.0.0.1:3001
+		reverse_proxy 127.0.0.1:32173
 	}
 	handle /auth/* {
-		reverse_proxy 127.0.0.1:3001
+		reverse_proxy 127.0.0.1:32173
 	}
 	handle /me {
-		reverse_proxy 127.0.0.1:3001
+		reverse_proxy 127.0.0.1:32173
 	}
 	handle /api/* {
-		reverse_proxy 127.0.0.1:3001
+		reverse_proxy 127.0.0.1:32173
 	}
 	handle /health {
-		reverse_proxy 127.0.0.1:3001
+		reverse_proxy 127.0.0.1:32173
 	}
 	handle {
 		root * {$KLOSER_STATIC_ROOT:.}

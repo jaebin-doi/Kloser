@@ -2,7 +2,7 @@
  * and parameterized for Phase 1 step 5 (Caddy single-origin variant).
  *
  * Pre-req (default split-origin):
- *   - API:    `npm --prefix server run dev`            (port 3001)
+ *   - API:    `npm --prefix server run dev`            (port 32173)
  *   - Static: `npx http-server . -p 8765 --silent`     (project root)
  *
  * Run (split-origin):
@@ -18,7 +18,7 @@
  *   KLOSER_E2E_BASE_URL=https://localhost node test/phase_0_5_e2e.mjs
  *
  *   Caddy must be running (`caddy run --config ops/Caddyfile.dev`) and
- *   proxy /auth, /me, /socket.io, /health to Fastify on :3001 and serve
+ *   proxy /auth, /me, /socket.io, /health to Fastify on :32173 and serve
  *   the project root as static. The test ignores TLS errors when the
  *   target is https:// so Caddy's internal-CA cert isn't a blocker.
  *
@@ -42,7 +42,7 @@ import path from "node:path";
 // When unset, fall back to the split-origin defaults.
 const E2E_BASE      = process.env.KLOSER_E2E_BASE_URL || "";
 const STATIC_ORIGIN = E2E_BASE || "http://localhost:8765";
-const API_BASE      = E2E_BASE || "http://localhost:3001";
+const API_BASE      = E2E_BASE || "http://localhost:32173";
 const LOGIN_URL     = `${STATIC_ORIGIN}/platform/login.html`;
 const LIVE_URL      = `${STATIC_ORIGIN}/platform/live.html`;
 const API_HEALTH    = `${API_BASE}/health`;
@@ -56,7 +56,7 @@ function pass(msg) { console.log("PASS:", msg); }
 function fail(msg) { console.error("FAIL:", msg); process.exitCode = 1; }
 
 async function main() {
-  console.log(`→ mode: ${E2E_BASE ? `single-origin (${E2E_BASE})` : "split-origin (8765 + 3001)"}`);
+  console.log(`→ mode: ${E2E_BASE ? `single-origin (${E2E_BASE})` : "split-origin (8765 + 32173)"}`);
 
   // Sanity probe before launching headless browser.
   // For HTTPS targets the self-signed cert would otherwise fail this fetch

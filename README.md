@@ -269,7 +269,7 @@ docker compose -f ops/docker-compose.yml up -d
 ```
 
 ```powershell
-# 터미널 2: 백엔드 API + WebSocket (:3001)
+# 터미널 2: 백엔드 API + WebSocket (:32173)
 cd server
 npm install                  # 최초 1회
 npm run db:migrate:up        # 최초 1회 또는 migration 변경 시

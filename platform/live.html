@@ -353,16 +353,18 @@
           </div>
 
           <!-- Controls -->
+          <!-- 음소거 / 대기는 Phase 4 시점에는 (demo) — 실제 오디오 캡처 핸들러 없음.
+               종료 버튼만 WS end_call에 wire. -->
           <div class="rounded-xl border border-slate-200 bg-white p-3 flex items-center gap-2 flex-shrink-0">
-            <button class="flex-1 h-10 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors" title="음소거">
+            <button class="flex-1 h-10 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors" title="음소거 (demo)">
               <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>
             </button>
-            <button class="flex-1 h-10 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors" title="대기">
+            <button class="flex-1 h-10 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors" title="대기 (demo)">
               <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
             </button>
-            <button class="flex-[2] h-10 rounded-lg btn-primary btn-danger justify-center" title="통화 종료">
+            <button id="endCallBtn" class="flex-[2] h-10 rounded-lg btn-primary btn-danger justify-center" title="통화 종료">
               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="transform:rotate(135deg)"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              종료
+              <span id="endCallLabel">종료</span>
             </button>
           </div>
         </section>
@@ -395,9 +397,10 @@
           <!-- Note input -->
           <div class="border-t border-slate-200 px-4 py-3 flex items-center gap-2 flex-shrink-0 bg-slate-50/50">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-400 flex-shrink-0" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            <input type="text" placeholder="통화 중 빠른 메모를 남겨두세요..."
+            <input id="noteInput" type="text" placeholder="통화 중 빠른 메모를 남겨두세요..."
               class="flex-1 bg-transparent outline-none text-[.82rem] text-slate-700 placeholder:text-slate-400" />
-            <button class="text-[.7rem] font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors">저장</button>
+            <span id="noteStatus" class="text-[.62rem] text-slate-400 hidden"></span>
+            <button id="noteSaveBtn" type="button" class="text-[.7rem] font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors">저장</button>
           </div>
         </section>
 
@@ -658,11 +661,38 @@
     }
 
     /* ────────────────────────────────────────────────
-       Live WebSocket 연결 (Phase 1 step 4)
-       — Phase 0.5의 setTimeout mock 제거 + auth gate 추가.
+       Live WebSocket 연결 (Phase 1 step 4 + Phase 4 step 4 persistence wiring)
+       — Phase 0.5의 setTimeout mock 제거 + auth gate.
        — userId query는 폐기, JWT가 socket.handshake.auth.token으로 들어감.
-       — kloserWS 자체에서 __liveSocket을 localhost-only로 노출.
+       — Phase 4: start_call ack의 callId를 보관해서 종료 버튼 / 메모 input /
+         (실패 시) REST end-call 가드에 사용.
     ──────────────────────────────────────────────── */
+
+    // 페이지 전역 통화 상태. start_call ack에서 callId를 받으면 채우고, 종료
+    // 시 status='ended'로 옮긴다. 메모 input과 종료 버튼이 같은 state를 참조.
+    const callState = {
+      callId: null,
+      status: 'idle',  // 'idle' | 'live' | 'ending' | 'ended' | 'failed'
+      socket: null,
+    };
+
+    function setEndButton(label, disabled) {
+      const btn = document.getElementById('endCallBtn');
+      const lbl = document.getElementById('endCallLabel');
+      if (lbl) lbl.textContent = label;
+      if (btn) btn.disabled = !!disabled;
+    }
+
+    function setNoteStatus(text, tone) {
+      const el = document.getElementById('noteStatus');
+      if (!el) return;
+      el.textContent = text || '';
+      el.classList.toggle('hidden', !text);
+      el.style.color = tone === 'error' ? 'rgb(190 18 60)' :
+                       tone === 'ok'    ? 'rgb(5 150 105)' :
+                                          'rgb(100 116 139)';
+    }
+
     (async () => {
       // Auth gate: ensure an access token is in memory. On a fresh
       // page load the memory is empty — try refreshAccessToken first,
@@ -705,6 +735,7 @@
         tokenProvider: () => window.kloserApi.getAccessToken(),
         onAuthFailure: () => window.kloserApi.loginRedirect(),
       });
+      callState.socket = socket;
 
       // 리스너는 startCall 전에 등록 — 서버가 ack 직후 발사를 시작해도 첫 이벤트를 놓치지 않도록
       window.kloserWS.onTranscript(socket, (ev) => {
@@ -728,17 +759,96 @@
         console.error('[live] server error', err);
       });
 
+      // start_call: Phase 4 시점에는 demo customer가 없으므로 customerId를
+      // 빈 객체로 호출한다 (서버는 UUID 외 값은 NULL로 흡수). DB에 customer_id
+      // NULL 통화 row가 만들어지고, ack의 callId를 보관한다.
       try {
-        const ack = await window.kloserWS.startCall(socket, { customerId: 'demo-customer' });
-        console.log('[live] start_call ack', ack);
+        const ack = await window.kloserWS.startCall(socket, {});
+        if (ack && typeof ack.callId === 'string') {
+          callState.callId = ack.callId;
+          callState.status = 'live';
+          console.log('[live] start_call ack', ack);
+        } else {
+          callState.status = 'failed';
+          console.error('[live] start_call persistence failed', ack);
+          setEndButton('재시도 필요', true);
+        }
       } catch (err) {
+        callState.status = 'failed';
         console.error('[live] startCall failed', err);
+        setEndButton('재시도 필요', true);
       }
 
+      // beforeunload는 best-effort. WS end_call만 emit하고 REST는 호출하지
+      // 않는다 — 두 경로가 모두 service.endCall을 호출하면 동일 row를 두 번
+      // 종료 시도해서 ended_at이 흔들릴 수 있다 (단일 종결 경로 유지).
       window.addEventListener('beforeunload', () => {
+        if (callState.status !== 'live') return;
         try { window.kloserWS.endCall(socket); } catch (_) { /* ignore */ }
       });
     })().catch((err) => console.error('[live] init failed', err));
+
+    /* 종료 버튼 — WS end_call 한 번만. ack ok이면 UI lock + ended 표시. */
+    document.getElementById('endCallBtn').addEventListener('click', async () => {
+      if (callState.status !== 'live') return;
+      callState.status = 'ending';
+      setEndButton('종료 중…', true);
+      try {
+        const ack = await window.kloserWS.endCall(callState.socket);
+        if (ack && ack.ok) {
+          callState.status = 'ended';
+          setEndButton('종료됨', true);
+        } else {
+          callState.status = 'failed';
+          console.error('[live] endCall ack', ack);
+          setEndButton('종료 실패', true);
+        }
+      } catch (err) {
+        callState.status = 'failed';
+        console.error('[live] endCall threw', err);
+        setEndButton('종료 실패', true);
+      }
+    });
+
+    /* 빠른 메모 저장 — /calls/:id/notes. callId가 없으면 비활성. */
+    async function saveLiveNotes() {
+      const input = document.getElementById('noteInput');
+      if (!input) return;
+      const notes = input.value.trim();
+      if (!callState.callId) {
+        setNoteStatus('통화 식별자 대기 중', 'error');
+        return;
+      }
+      setNoteStatus('저장 중…', 'info');
+      try {
+        const res = await window.kloserApi.patchCallNotes(callState.callId, notes || null);
+        if (res.ok) {
+          setNoteStatus('저장됨', 'ok');
+          setTimeout(() => setNoteStatus('', null), 1800);
+        } else if (res.status === 403) {
+          const body = await res.json().catch(() => null);
+          if (body && body.code === 'email_not_verified') {
+            setNoteStatus('이메일 인증 필요', 'error');
+          } else {
+            setNoteStatus('권한 없음', 'error');
+          }
+        } else if (res.status === 404) {
+          setNoteStatus('통화를 찾을 수 없음', 'error');
+        } else {
+          setNoteStatus('저장 실패', 'error');
+        }
+      } catch (err) {
+        console.error('[live] saveLiveNotes failed', err);
+        setNoteStatus('저장 실패', 'error');
+      }
+    }
+    document.getElementById('noteSaveBtn').addEventListener('click', saveLiveNotes);
+    document.getElementById('noteInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveLiveNotes();
+      }
+    });
 
     /* Checklist toggle */
     function toggleChk(btn) {

@@ -18,12 +18,12 @@
  *     promise — no thundering herd against /auth/refresh.
  *   - Every request prefixes the configured API_BASE_URL so the
  *     cross-origin between the static server (e.g. :8765) and the
- *     API server (:3001) is explicit, not implicit. Override
+ *     API server (:32173) is explicit, not implicit. Override
  *     priority (Phase 1 Step 5):
  *       1. window.KLOSER_API_BASE (string — empty allowed)
  *       2. <meta name="kloser-api-base" content="..."> (empty allowed)
  *       3. AUTO: https + hostname=localhost → "" (Caddy single-origin)
- *       4. default "http://localhost:3001" (split-origin dev)
+ *       4. default "http://localhost:32173" (split-origin dev)
  *     Empty string means "use relative URLs (same-origin)".
  *
  * Error contract:
@@ -39,7 +39,7 @@
 (function () {
   'use strict';
 
-  const DEFAULT_API_BASE = 'http://localhost:3001';
+  const DEFAULT_API_BASE = 'http://localhost:32173';
   const LOGIN_PATH = '/platform/login.html';
   const REFRESH_ENDPOINT = '/auth/refresh';
 
@@ -67,7 +67,7 @@
       return '';
     }
     // 4. Default — split-origin dev (http://localhost:8765 page hits
-    //    http://localhost:3001 API).
+    //    http://localhost:32173 API).
     return DEFAULT_API_BASE;
   }
 
@@ -323,6 +323,87 @@
     window.location.replace(url);
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 4 Step 4 — calls + transcripts + action items + dashboard.
+  //
+  // All helpers thin-wrap apiGet/apiPost/apiPatch and return the raw
+  // Response so callers stay consistent with Phase 2/3 (`res.ok` →
+  // `res.json()`, non-OK → branch on `res.status`). The server already
+  // collapses cross-org / soft-deleted / missing into a uniform 404
+  // shape (`{ error: 'not_found' }`), so the wrappers don't try to
+  // pre-decode that.
+  //
+  // listCalls accepts a query object and serialises it with
+  // URLSearchParams. undefined values are skipped (so callers can pass
+  // partial objects without sentinel checking). `customerId: null` is
+  // intentionally encoded as the literal string "null" because the
+  // server's CallListQuery preprocessor reads "null" → null (used to
+  // filter rows whose customer_id IS NULL).
+  // ─────────────────────────────────────────────
+
+  function listCalls(query) {
+    const q = query || {};
+    const params = new URLSearchParams();
+    Object.keys(q).forEach(function (k) {
+      const v = q[k];
+      if (v === undefined) return;
+      if (v === null) { params.set(k, 'null'); return; }
+      params.set(k, String(v));
+    });
+    const qs = params.toString();
+    return apiGet('/calls' + (qs ? '?' + qs : ''));
+  }
+
+  function getCall(id) {
+    return apiGet('/calls/' + encodeURIComponent(id));
+  }
+
+  function createCall(input) {
+    return apiPost('/calls', input || {});
+  }
+
+  function patchCallNotes(id, notes) {
+    return apiPost('/calls/' + encodeURIComponent(id) + '/notes', { notes: notes });
+  }
+
+  function endCall(id, input) {
+    return apiPost('/calls/' + encodeURIComponent(id) + '/end', input || {});
+  }
+
+  function listTranscript(callId) {
+    return apiGet('/calls/' + encodeURIComponent(callId) + '/transcript');
+  }
+
+  function appendTranscript(callId, input) {
+    return apiPost('/calls/' + encodeURIComponent(callId) + '/transcript', input || {});
+  }
+
+  function listActionItems(callId) {
+    return apiGet('/calls/' + encodeURIComponent(callId) + '/action-items');
+  }
+
+  function createActionItem(callId, input) {
+    return apiPost('/calls/' + encodeURIComponent(callId) + '/action-items', input || {});
+  }
+
+  function patchActionItemStatus(id, status) {
+    return apiPost(
+      '/call-action-items/' + encodeURIComponent(id) + '/status',
+      { status: status },
+    );
+  }
+
+  function patchActionItemAssignee(id, assigneeUserId) {
+    return apiPost(
+      '/call-action-items/' + encodeURIComponent(id) + '/assignee',
+      { assignee_user_id: assigneeUserId },
+    );
+  }
+
+  function getDashboardSummary() {
+    return apiGet('/dashboard/summary');
+  }
+
   window.kloserApi = {
     // Token store (memory-only).
     setAccessToken: setAccessToken,
@@ -350,6 +431,20 @@
 
     // Utility.
     loginRedirect: loginRedirect,
+
+    // Phase 4 — calls / transcripts / action items / dashboard.
+    listCalls: listCalls,
+    getCall: getCall,
+    createCall: createCall,
+    patchCallNotes: patchCallNotes,
+    endCall: endCall,
+    listTranscript: listTranscript,
+    appendTranscript: appendTranscript,
+    listActionItems: listActionItems,
+    createActionItem: createActionItem,
+    patchActionItemStatus: patchActionItemStatus,
+    patchActionItemAssignee: patchActionItemAssignee,
+    getDashboardSummary: getDashboardSummary,
 
     // Read-only config — ws.js consumes this so the WS URL stays in
     // sync with the API base.

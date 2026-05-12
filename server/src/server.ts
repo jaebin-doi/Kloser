@@ -20,7 +20,7 @@ import invitationsRoutes from "./routes/invitations.js";
 import meRoutes from "./routes/me.js";
 import teamRoutes from "./routes/team.js";
 
-const PORT = Number(process.env.PORT ?? 3001);
+const PORT = Number(process.env.PORT ?? 32173);
 const HOST = process.env.HOST ?? "0.0.0.0";
 const STATIC_ORIGIN = process.env.STATIC_ORIGIN ?? "http://localhost:8765";
 

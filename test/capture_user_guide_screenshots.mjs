@@ -1,7 +1,7 @@
 /* User-guide screenshot capture (Phase 1 시점).
  *
  * Pre-req:
- *   - API server   on :3001  (`npm --prefix server run dev`)
+ *   - API server   on :32173  (`npm --prefix server run dev`)
  *   - Static server on :8765 (`npx http-server . -p 8765 --silent`)
  *
  * Run from project root:
@@ -27,7 +27,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 
 const STATIC_ORIGIN = "http://localhost:8765";
-const API_HEALTH    = "http://localhost:3001/health";
+const API_HEALTH    = "http://localhost:32173/health";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR   = path.resolve(__dirname, "..", "assets", "screenshots", "user_guide");

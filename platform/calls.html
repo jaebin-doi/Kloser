@@ -50,17 +50,18 @@
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <h1 class="text-[1rem] font-black tracking-tight text-slate-800 truncate">통화 기록</h1>
-          <span class="text-[.7rem] text-slate-400 tnum hidden sm:inline">총 1,243건</span>
+          <span id="totalCount" class="text-[.7rem] text-slate-400 tnum hidden sm:inline">총 — 건</span>
         </div>
         <div class="flex items-center gap-2">
-          <button class="btn-secondary hidden sm:inline-flex">
+          <!-- CSV 내보내기는 Phase 6+ 작업 (settings에 표시되어 있고 미구현) — demo 라벨. -->
+          <button class="btn-secondary hidden sm:inline-flex" title="CSV 내보내기 (Phase 6 예정)">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             CSV 내보내기
           </button>
-          <button class="btn-primary">
+          <a href="live.html" class="btn-primary">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             새 통화
-          </button>
+          </a>
         </div>
       </header>
 
@@ -74,16 +75,18 @@
           <div class="px-4 lg:px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-2 flex-wrap lg:justify-between flex-shrink-0">
             <div class="relative w-full lg:w-auto lg:max-w-xs">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input type="text" id="searchInput" placeholder="고객명, 회사명, 키워드 검색"
+              <input type="text" id="searchInput" placeholder="제목, 메모, 요약 검색"
                 class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-white text-[.82rem] outline-none focus:border-blue-400 focus:shadow-[0_0_0_4px_rgba(59,130,246,.12)] transition-all" />
             </div>
+            <!-- Phase 4 backend filter set: q + status + customerId + agentUserId
+                 + limit + offset. UI chips below map to status enum 또는 전체.
+                 sort/dir은 백엔드 미지원이므로 제공하지 않음. -->
             <div class="flex items-center gap-1.5 flex-wrap">
-              <button class="filter-chip active" data-filter="all">전체</button>
-              <button class="filter-chip" data-filter="today">오늘</button>
-              <button class="filter-chip" data-filter="week">이번 주</button>
-              <button class="filter-chip" data-filter="closed">완료</button>
-              <button class="filter-chip" data-filter="open">미완료</button>
-              <button class="filter-chip" data-filter="follow">후속 필요</button>
+              <button class="filter-chip active" data-status="">전체</button>
+              <button class="filter-chip" data-status="in_progress">진행 중</button>
+              <button class="filter-chip" data-status="ended">완료</button>
+              <button class="filter-chip" data-status="missed">미수신</button>
+              <button class="filter-chip" data-status="dropped">끊김</button>
             </div>
           </div>
 
@@ -160,6 +163,10 @@
                       <div class="text-[.7rem] font-bold text-amber-700 mb-1">미해결 이슈</div>
                       <p id="dIssues" class="text-[.8rem] text-slate-700 leading-relaxed"></p>
                     </div>
+                    <div class="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                      <div class="text-[.7rem] font-bold text-emerald-700 mb-1">메모</div>
+                      <p id="dNotes" class="text-[.8rem] text-slate-700 leading-relaxed whitespace-pre-wrap"></p>
+                    </div>
                     <div class="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
                       <div class="text-[.7rem] font-bold text-blue-700 mb-1.5">다음 액션</div>
                       <ul id="dActions" class="space-y-1 text-[.78rem] text-slate-700"></ul>
@@ -203,202 +210,359 @@
   <script src="api.js"></script>
   <script src="_shared.js"></script>
   <script>
-    renderSidebar('calls');
+    /* Phase 4 Step 4 — Mock 통화 array는 제거됨. /calls API로 list/detail 렌더. */
 
-    // Mock calls data
-    const calls = [
-      {
-        id: '#2026-1453', customer: '김민수', company: 'Kloser Inc.', avatar: 'bg-violet-500',
-        type: '신규 인바운드', duration: '8분 12초', date: '2026-05-03 10:24', status: '진행중',
-        statusBadge: 'badge-emerald',
-        summary: 'CRM 통합 검토 · Pro 플랜 안내',
-        needs: '영업 8명 규모, 기존 HubSpot CRM 데이터 통합이 우선순위',
-        issues: '예산 시기 미확정 — 다음 주 중 공유 예정',
-        actions: ['통합 가이드 PDF 발송', '데모 일정 제안 (5/8)', 'Enterprise 견적서 준비'],
-        transcript: [
-          { who: '고객', text: '저희가 영업팀이 8명 정도 됩니다.' },
-          { who: '영업', text: 'Pro 플랜이 가장 적합하실 것 같습니다.' },
-          { who: '고객', text: 'HubSpot과 연동 가능한가요?' },
-          { who: '영업', text: '네, 양방향 동기화 기본 지원입니다.' },
-        ],
-        tags: ['CRM 통합', 'HubSpot', 'Pro 검토', '8인 팀']
-      },
-      {
-        id: '#2026-1452', customer: '이지은', company: 'DesignCo.', avatar: 'bg-rose-500',
-        type: '후속 미팅', duration: '12분 38초', date: '2026-05-03 09:48', status: '완료',
-        statusBadge: 'badge-blue',
-        summary: '도입 일정 5/15 확정',
-        needs: '6/1 정식 도입 목표, 5/15부터 직원 온보딩 시작',
-        issues: '없음',
-        actions: ['데스크톱 앱 다운로드 링크 발송', '5/15 화상 온보딩 일정 픽스'],
-        transcript: [
-          { who: '영업', text: '온보딩 일정 확정하실까요?' },
-          { who: '고객', text: '네, 5/15 오전 가능합니다.' },
-          { who: '영업', text: '좋습니다. 캘린더 초대 보내드리겠습니다.' },
-        ],
-        tags: ['일정 확정', '도입 진행', 'Pro']
-      },
-      {
-        id: '#2026-1451', customer: '박서준', company: 'Nexus Lab', avatar: 'bg-emerald-500',
-        type: '신규 인바운드', duration: '15분 02초', date: '2026-05-03 09:12', status: '완료',
-        statusBadge: 'badge-blue',
-        summary: 'Pro 플랜 안내 · 견적 요청',
-        needs: '12명 영업팀, AI 통화 분석 핵심 관심사',
-        issues: '예산 책정 단계 — 5/10 임원 회의 후 결정',
-        actions: ['Enterprise 견적서 발송', '도입 사례집 PDF 첨부', '5/12 후속 미팅 잡기'],
-        transcript: [
-          { who: '고객', text: '저희가 12명인데 Pro로는 안 되겠죠?' },
-          { who: '영업', text: 'Enterprise 5인 + 추가 옵션이 적합합니다.' },
-        ],
-        tags: ['Enterprise 검토', '12인 팀', '견적 요청']
-      },
-      {
-        id: '#2026-1450', customer: '정유진', company: 'TerraBase', avatar: 'bg-amber-500',
-        type: '클로징', duration: '6분 55초', date: '2026-05-03 08:55', status: '완료',
-        statusBadge: 'badge-blue',
-        summary: 'Enterprise 계약 체결 ✓',
-        needs: '계약 완료, 초기 셋팅 일정 조율 중',
-        issues: '없음',
-        actions: ['계약서 서명본 송부', '5/20 현장 방문 셋팅 확정'],
-        transcript: [
-          { who: '고객', text: '계약 서명 완료했습니다.' },
-          { who: '영업', text: '감사합니다! 5/20 셋팅 일정으로 확정하겠습니다.' },
-        ],
-        tags: ['계약 체결', 'Enterprise', '온보딩 대기']
-      },
-      {
-        id: '#2026-1449', customer: '최서연', company: 'OrbitLab', avatar: 'bg-blue-500',
-        type: '신규 문의', duration: '0분 0초', date: '2026-05-03 08:21', status: '미접수',
-        statusBadge: 'badge-slate',
-        summary: '음성 메시지 1건 · 콜백 필요',
-        needs: '확인 필요',
-        issues: '아직 접수되지 않음',
-        actions: ['10:30 콜백 시도'],
-        transcript: [{ who: '고객', text: '(음성 메시지) 가격 문의로 연락드렸습니다.' }],
-        tags: ['콜백 필요']
-      },
-      {
-        id: '#2026-1448', customer: '강지훈', company: 'SkyNode', avatar: 'bg-cyan-500',
-        type: '후속 미팅', duration: '22분 41초', date: '2026-05-02 17:33', status: '완료',
-        statusBadge: 'badge-blue',
-        summary: 'Slack 통합 데모 진행',
-        needs: 'Slack 알림 통합 우선, 통화 후 자동 요약 Slack 전송',
-        issues: '없음',
-        actions: ['통합 가이드 발송', 'Slack OAuth 연결 안내'],
-        transcript: [],
-        tags: ['Slack 통합', 'Pro 사용중']
-      },
-      {
-        id: '#2026-1447', customer: '한수민', company: 'GridWorks', avatar: 'bg-violet-500',
-        type: '신규 인바운드', duration: '4분 18초', date: '2026-05-02 16:02', status: '완료',
-        statusBadge: 'badge-blue',
-        summary: '간단 정보 안내 · 후속 검토',
-        needs: '회사 규모 확인 후 재상담 예정',
-        issues: '회사 정보 부족',
-        actions: ['이메일로 가격표 발송', '5/9 재연락'],
-        transcript: [],
-        tags: ['초기 단계', '재상담']
-      },
-      {
-        id: '#2026-1446', customer: '윤서아', company: 'MapCore', avatar: 'bg-rose-500',
-        type: '후속 미팅', duration: '18분 23초', date: '2026-05-02 14:17', status: '완료',
-        statusBadge: 'badge-blue',
-        summary: '온프레미스 배포 협의',
-        needs: '금융권 보안 요구로 온프레미스 배포 필수',
-        issues: 'IT 보안팀 검토 진행 중',
-        actions: ['보안 감사 자료 패키지 발송', 'VPC 배포 견적'],
-        tags: ['Enterprise', '온프레미스', '보안']
-      },
-    ];
+    /* XSS gate: server-supplied 필드를 innerHTML 보간하는 모든 자리에 적용.
+       customers.html / team.html과 동일 헬퍼를 복제. */
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
+    const STATUS_BADGE = {
+      in_progress: { c: 'badge-emerald', l: '진행 중', live: true },
+      ended:       { c: 'badge-blue',    l: '완료' },
+      missed:      { c: 'badge-slate',   l: '미수신' },
+      dropped:     { c: 'badge-rose',    l: '끊김' },
+    };
+    const DIRECTION_LABEL = {
+      inbound:  '인바운드',
+      outbound: '아웃바운드',
+      meeting:  '미팅',
+    };
+    const SENTIMENT_LABEL = {
+      positive: '긍정',
+      neutral:  '보통',
+      cautious: '망설임',
+      negative: '부정',
+    };
+
+    function avatarColorFor(name) {
+      const palette = ['bg-violet-500','bg-rose-500','bg-emerald-500','bg-amber-500','bg-blue-500','bg-cyan-500','bg-pink-500','bg-teal-500'];
+      const safe = (name && name.length > 0) ? name : '?';
+      const idx = (safe.charCodeAt(0) + safe.charCodeAt(safe.length-1)) % palette.length;
+      return palette[idx];
+    }
+
+    function formatDuration(secs) {
+      if (secs === null || secs === undefined) return '—';
+      const n = Math.max(0, Math.floor(secs));
+      const m = Math.floor(n / 60);
+      const s = n % 60;
+      if (m === 0) return s + '초';
+      return m + '분 ' + String(s).padStart(2, '0') + '초';
+    }
+
+    function formatDateShort(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return mm + '-' + dd + ' · ' + hh + ':' + mi;
+    }
+
+    function formatDateLong(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return yyyy + '-' + mm + '-' + dd + ' ' + hh + ':' + mi;
+    }
+
+    /* URL state — q / status / customerId / agentUserId / limit / offset.
+       sort/dir은 백엔드 미지원이므로 URL에 넣지 않는다. */
+    function readUrlState() {
+      const sp = new URLSearchParams(window.location.search);
+      return {
+        q:           sp.get('q')           || '',
+        status:      sp.get('status')      || '',
+        customerId:  sp.get('customerId')  || '',
+        agentUserId: sp.get('agentUserId') || '',
+        limit:       Number(sp.get('limit'))  || 20,
+        offset:      Number(sp.get('offset')) || 0,
+      };
+    }
+    function writeUrlState(state) {
+      const sp = new URLSearchParams();
+      if (state.q)           sp.set('q', state.q);
+      if (state.status)      sp.set('status', state.status);
+      if (state.customerId)  sp.set('customerId', state.customerId);
+      if (state.agentUserId) sp.set('agentUserId', state.agentUserId);
+      if (state.limit  && state.limit  !== 20) sp.set('limit',  String(state.limit));
+      if (state.offset && state.offset !== 0)  sp.set('offset', String(state.offset));
+      const qs = sp.toString();
+      const url = window.location.pathname + (qs ? '?' + qs : '');
+      window.history.replaceState(null, '', url);
+    }
+
+    let state = readUrlState();
     const tableEl = document.getElementById('callsTable');
-    let activeFilter = 'all';
-    let activeSearch = '';
+    const totalCountEl = document.getElementById('totalCount');
 
-    function renderTable() {
+    function renderTable(body) {
       tableEl.innerHTML = '';
-      const filtered = calls.filter(c => {
-        const q = activeSearch.toLowerCase();
-        if (q && !(c.customer.toLowerCase().includes(q) || c.company.toLowerCase().includes(q) || c.summary.toLowerCase().includes(q))) return false;
-        if (activeFilter === 'today' && !c.date.startsWith('2026-05-03')) return false;
-        if (activeFilter === 'closed' && c.status !== '완료') return false;
-        if (activeFilter === 'open' && c.status === '완료') return false;
-        return true;
-      });
-      if (filtered.length === 0) {
-        tableEl.innerHTML = `<tr><td colspan="6" class="text-center text-slate-400 py-12 text-[.85rem]">검색 결과가 없습니다.</td></tr>`;
+      const items = (body && body.items) || [];
+      const total = (body && typeof body.total === 'number') ? body.total : items.length;
+      totalCountEl.textContent = '총 ' + total.toLocaleString() + ' 건';
+
+      if (items.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.className = 'text-center text-slate-400 py-12 text-[.85rem]';
+        td.textContent = state.q ? '검색 결과가 없습니다.' : '아직 통화 기록이 없습니다.';
+        tr.appendChild(td);
+        tableEl.appendChild(tr);
         return;
       }
-      filtered.forEach((c, idx) => {
+
+      items.forEach((c) => {
         const tr = document.createElement('tr');
-        tr.onclick = () => openDetail(c);
-        const live = c.status === '진행중' ? '<span class="pulse-dot mr-1" style="width:6px;height:6px"></span>' : '';
-        tr.innerHTML = `
-          <td><span class="badge ${c.statusBadge}">${live}${c.status}</span></td>
-          <td>
-            <div class="flex items-center gap-2.5 min-w-0">
-              <div class="w-8 h-8 rounded-full ${c.avatar} flex items-center justify-center text-[.7rem] font-black text-white shrink-0">${c.customer.slice(0,1)}</div>
-              <div class="min-w-0">
-                <div class="font-bold text-slate-800 text-[.85rem] truncate">${c.customer}</div>
-                <div class="text-[.68rem] text-slate-400 truncate">${c.company}</div>
-              </div>
-            </div>
-          </td>
-          <td class="hidden sm:table-cell text-slate-600 text-[.78rem]">${c.type}</td>
-          <td class="hidden md:table-cell text-slate-700 tnum text-[.78rem]">${c.duration}</td>
-          <td class="text-slate-600 text-[.78rem] tnum">${c.date.slice(5).replace(' ', ' · ')}</td>
-          <td class="hidden lg:table-cell text-slate-600 text-[.78rem] max-w-[260px] truncate">${c.summary}</td>
-        `;
+        tr.classList.add('cursor-pointer');
+        tr.addEventListener('click', () => openDetail(c.id));
+
+        const meta = STATUS_BADGE[c.status] || { c: 'badge-slate', l: c.status || '?' };
+        const live = meta.live
+          ? '<span class="pulse-dot mr-1" style="width:6px;height:6px"></span>'
+          : '';
+        const titleFallback = c.title || (DIRECTION_LABEL[c.direction] || c.direction || '통화');
+        const initial = (titleFallback.charAt(0) || '·').toUpperCase();
+        const avatarClass = avatarColorFor(titleFallback);
+
+        // Build innerHTML with all server fields escaped.
+        tr.innerHTML =
+          '<td><span class="badge ' + meta.c + '">' + live + escapeHtml(meta.l) + '</span></td>' +
+          '<td>' +
+            '<div class="flex items-center gap-2.5 min-w-0">' +
+              '<div class="w-8 h-8 rounded-full ' + avatarClass +
+                ' flex items-center justify-center text-[.7rem] font-black text-white shrink-0">' +
+                escapeHtml(initial) + '</div>' +
+              '<div class="min-w-0">' +
+                '<div class="font-bold text-slate-800 text-[.85rem] truncate">' +
+                  escapeHtml(titleFallback) + '</div>' +
+                '<div class="text-[.68rem] text-slate-400 truncate">' +
+                  escapeHtml(c.customer_id ? '고객 ID ' + c.customer_id.slice(0, 8) : '미등록 발신자') + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</td>' +
+          '<td class="hidden sm:table-cell text-slate-600 text-[.78rem]">' +
+            escapeHtml(DIRECTION_LABEL[c.direction] || c.direction || '') + '</td>' +
+          '<td class="hidden md:table-cell text-slate-700 tnum text-[.78rem]">' +
+            escapeHtml(formatDuration(c.duration_seconds)) + '</td>' +
+          '<td class="text-slate-600 text-[.78rem] tnum">' +
+            escapeHtml(formatDateShort(c.started_at)) + '</td>' +
+          '<td class="hidden lg:table-cell text-slate-600 text-[.78rem] max-w-[260px] truncate">' +
+            escapeHtml(c.summary || c.notes || '') + '</td>';
+
         tableEl.appendChild(tr);
       });
     }
-    renderTable();
 
-    // Search & filters
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      activeSearch = e.target.value;
-      renderTable();
-    });
-    document.querySelectorAll('.filter-chip').forEach(btn => {
+    async function fetchList() {
+      const query = {
+        limit:  state.limit,
+        offset: state.offset,
+      };
+      if (state.q)           query.q = state.q;
+      if (state.status)      query.status = state.status;
+      if (state.customerId)  query.customerId = state.customerId;
+      if (state.agentUserId) query.agentUserId = state.agentUserId;
+
+      const res = await window.kloserApi.listCalls(query);
+      if (res.status === 401) return; // authFetch will have redirected.
+      if (!res.ok) {
+        console.error('[calls] list failed', res.status);
+        tableEl.innerHTML =
+          '<tr><td colspan="6" class="text-center text-rose-500 py-12 text-[.85rem]">' +
+          '목록을 불러오지 못했습니다.</td></tr>';
+        return;
+      }
+      const body = await res.json();
+      renderTable(body);
+    }
+
+    // Filter chips → status state.
+    document.querySelectorAll('.filter-chip').forEach((btn) => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.filter-chip').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
-        activeFilter = btn.dataset.filter;
-        renderTable();
+        state.status = btn.dataset.status || '';
+        state.offset = 0;
+        writeUrlState(state);
+        fetchList();
       });
     });
 
-    // Detail
-    function openDetail(c) {
+    // Search — debounce 250ms.
+    let searchTimer = null;
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.q = e.target.value;
+        state.offset = 0;
+        writeUrlState(state);
+        fetchList();
+      }, 250);
+    });
+
+    // Restore search input + active chip from URL on first paint.
+    (function applyUrlToControls() {
+      document.getElementById('searchInput').value = state.q;
+      document.querySelectorAll('.filter-chip').forEach((b) => {
+        b.classList.toggle('active', (b.dataset.status || '') === state.status);
+      });
+    })();
+
+    /* ─── Detail panel ─── */
+
+    async function openDetail(callId) {
+      // Optimistic UI flip — show panel + reset placeholders before fetch.
       document.getElementById('detailEmpty').classList.add('hidden');
       const dc = document.getElementById('detailContent');
       dc.classList.remove('hidden');
       dc.classList.add('flex');
       document.getElementById('detailPanel').classList.add('open');
 
-      document.getElementById('dCallId').textContent = c.id;
+      document.getElementById('dCallId').textContent = '로딩 중…';
       const ds = document.getElementById('dStatus');
-      ds.className = `badge ${c.statusBadge}`;
-      ds.textContent = c.status;
-      document.getElementById('dDate').textContent = c.date;
-      document.getElementById('dDuration').textContent = `통화 ${c.duration}`;
+      ds.className = 'badge badge-slate';
+      ds.textContent = '';
+      document.getElementById('dDate').textContent = '';
+      document.getElementById('dDuration').textContent = '';
+      document.getElementById('dAvatar').textContent = '·';
+      document.getElementById('dAvatar').className =
+        'w-11 h-11 rounded-full bg-slate-300 flex items-center justify-center text-white font-black';
+      document.getElementById('dCustomer').textContent = '';
+      document.getElementById('dCompany').textContent = '';
+      document.getElementById('dNeeds').textContent = '';
+      document.getElementById('dIssues').textContent = '';
+      document.getElementById('dNotes').textContent = '';
+      document.getElementById('dActions').innerHTML = '';
+      document.getElementById('dTranscript').innerHTML = '';
+      document.getElementById('dTags').innerHTML = '';
+
+      // Parallel fetch — single transaction per request but separate
+      // HTTP roundtrips so they overlap. 404 on the call itself short-
+      // circuits; transcript/action 404 just means the parent call
+      // disappeared between calls (race) and we treat them as empty.
+      let callRes, trRes, aiRes;
+      try {
+        [callRes, trRes, aiRes] = await Promise.all([
+          window.kloserApi.getCall(callId),
+          window.kloserApi.listTranscript(callId),
+          window.kloserApi.listActionItems(callId),
+        ]);
+      } catch (err) {
+        console.error('[calls] detail fetch failed', err);
+        document.getElementById('dCallId').textContent = '로드 실패';
+        return;
+      }
+
+      if (callRes.status === 404) {
+        document.getElementById('dCallId').textContent = '찾을 수 없음';
+        return;
+      }
+      if (!callRes.ok) {
+        document.getElementById('dCallId').textContent = '로드 실패';
+        return;
+      }
+      const { call } = await callRes.json();
+      const transcripts = trRes.ok ? (await trRes.json()).items || [] : [];
+      const actionItems = aiRes.ok ? (await aiRes.json()).items || [] : [];
+
+      const meta = STATUS_BADGE[call.status] || { c: 'badge-slate', l: call.status };
+      ds.className = 'badge ' + meta.c;
+      ds.textContent = meta.l;
+
+      document.getElementById('dCallId').textContent = '#' + call.id.slice(0, 8);
+      document.getElementById('dDate').textContent = formatDateLong(call.started_at);
+      document.getElementById('dDuration').textContent =
+        '통화 ' + formatDuration(call.duration_seconds);
+
+      const titleFallback = call.title || (DIRECTION_LABEL[call.direction] || call.direction || '통화');
       const ava = document.getElementById('dAvatar');
-      ava.className = `w-11 h-11 rounded-full ${c.avatar} flex items-center justify-center text-white font-black`;
-      ava.textContent = c.customer.slice(0,1);
-      document.getElementById('dCustomer').textContent = c.customer + ' 고객';
-      document.getElementById('dCompany').textContent = c.company + ' · ' + c.type;
-      document.getElementById('dNeeds').textContent = c.needs;
-      document.getElementById('dIssues').textContent = c.issues;
-      document.getElementById('dActions').innerHTML = c.actions.map(a => `<li class="flex gap-1.5"><span class="text-blue-500 font-black shrink-0">→</span>${a}</li>`).join('');
+      ava.className =
+        'w-11 h-11 rounded-full ' + avatarColorFor(titleFallback) +
+        ' flex items-center justify-center text-white font-black';
+      ava.textContent = (titleFallback.charAt(0) || '·').toUpperCase();
+
+      document.getElementById('dCustomer').textContent =
+        call.customer_id ? '고객 ID ' + call.customer_id.slice(0, 8) : '미등록 발신자';
+      const dirLabel = DIRECTION_LABEL[call.direction] || call.direction || '';
+      document.getElementById('dCompany').textContent =
+        (call.title || '제목 없음') + (dirLabel ? ' · ' + dirLabel : '');
+
+      document.getElementById('dNeeds').textContent  = call.needs   || '아직 분석되지 않았습니다.';
+      document.getElementById('dIssues').textContent = call.issues  || '미해결 이슈가 등록되지 않았습니다.';
+      document.getElementById('dNotes').textContent  = call.notes   || '메모가 없습니다.';
+
+      // Action items → 안전 보간.
+      const dActions = document.getElementById('dActions');
+      if (actionItems.length === 0) {
+        dActions.innerHTML =
+          '<li class="text-slate-400 text-[.78rem]">등록된 다음 액션이 없습니다.</li>';
+      } else {
+        dActions.innerHTML = actionItems.map((a) => {
+          const isDone = a.status === 'done';
+          const arrow = isDone ? '<span class="text-emerald-500 font-black shrink-0">✓</span>'
+                               : '<span class="text-blue-500 font-black shrink-0">→</span>';
+          const due = a.due_date ? ' (' + escapeHtml(a.due_date) + ')' : '';
+          return '<li class="flex gap-1.5 ' + (isDone ? 'text-slate-400 line-through' : '') + '">' +
+                   arrow + escapeHtml(a.title) + due +
+                 '</li>';
+        }).join('');
+      }
+
+      // Transcript — speaker label maps agent/customer/system.
       const tr = document.getElementById('dTranscript');
-      tr.innerHTML = c.transcript.length ? c.transcript.map(t => `
-        <div class="flex gap-1.5">
-          <span class="text-[.55rem] px-1 rounded ${t.who === '고객' ? 'bg-slate-100 text-slate-500' : 'bg-blue-100 text-blue-700'} shrink-0 self-start mt-0.5 font-bold">${t.who}</span>
-          <p class="text-[.78rem] text-slate-700 leading-snug">${t.text}</p>
-        </div>
-      `).join('') : '<div class="text-center py-3 text-slate-400 text-[.75rem]">Transcript 없음</div>';
-      document.getElementById('dTags').innerHTML = c.tags.map(t => `<span class="badge badge-slate">${t}</span>`).join('');
+      if (transcripts.length === 0) {
+        tr.innerHTML =
+          '<div class="text-center py-3 text-slate-400 text-[.75rem]">Transcript 없음</div>';
+      } else {
+        tr.innerHTML = transcripts.map((t) => {
+          const label = t.speaker === 'agent' ? '상담원'
+                       : t.speaker === 'system' ? '안내'
+                                                : '고객';
+          const labelClass = t.speaker === 'agent'
+            ? 'bg-blue-100 text-blue-700'
+            : t.speaker === 'system'
+              ? 'bg-amber-100 text-amber-700'
+              : 'bg-slate-100 text-slate-500';
+          return '<div class="flex gap-1.5">' +
+                   '<span class="text-[.55rem] px-1 rounded ' + labelClass +
+                     ' shrink-0 self-start mt-0.5 font-bold">' + escapeHtml(label) + '</span>' +
+                   '<p class="text-[.78rem] text-slate-700 leading-snug">' + escapeHtml(t.text) + '</p>' +
+                 '</div>';
+        }).join('');
+      }
+
+      // Tags — Phase 4 시점에는 sentiment만 빠른 라벨로 보여줌.
+      const dTags = document.getElementById('dTags');
+      const tagsParts = [];
+      if (call.sentiment) {
+        tagsParts.push('<span class="badge badge-slate">' +
+          escapeHtml(SENTIMENT_LABEL[call.sentiment] || call.sentiment) + '</span>');
+      }
+      if (call.direction) {
+        tagsParts.push('<span class="badge badge-slate">' +
+          escapeHtml(DIRECTION_LABEL[call.direction] || call.direction) + '</span>');
+      }
+      dTags.innerHTML = tagsParts.join('') ||
+        '<span class="text-slate-400 text-[.72rem]">태그가 없습니다.</span>';
     }
+
     function closeDetail() {
       document.getElementById('detailContent').classList.add('hidden');
       document.getElementById('detailContent').classList.remove('flex');
@@ -406,6 +570,30 @@
       document.getElementById('detailPanel').classList.remove('open');
     }
     window.closeDetail = closeDetail;
+
+    /* ─── Boot ─── */
+    (async () => {
+      if (!window.kloserApi) return;
+      // Auth gate identical to live.html.
+      if (!window.kloserApi.getAccessToken()) {
+        try { await window.kloserApi.refreshAccessToken(); }
+        catch (_err) { window.kloserApi.loginRedirect(); return; }
+      }
+
+      renderSidebar('calls');
+
+      try {
+        const meRes = await window.kloserApi.apiGet('/me');
+        if (meRes.ok && typeof window.renderUnverifiedBanner === 'function') {
+          const me = await meRes.json();
+          window.renderUnverifiedBanner(me.user);
+        }
+      } catch (err) {
+        console.warn('[calls] /me failed', err);
+      }
+
+      await fetchList();
+    })().catch((err) => console.error('[calls] boot failed', err));
   </script>
 </body>
 </html>

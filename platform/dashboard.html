@@ -52,13 +52,14 @@
           <div class="relative">
             <div class="text-[.7rem] text-slate-400 mb-1" id="todayDate"></div>
             <h2 class="text-[1.4rem] lg:text-[1.6rem] font-black tracking-tight text-slate-800">
-              좋은 아침, <span class="g-text">김민수님</span> ☀️
+              좋은 아침, <span id="greetingName" class="g-text">—</span> ☀️
             </h2>
-            <p class="text-[.85rem] text-slate-500 mt-1.5">오늘은 <b class="text-slate-800">17개</b>의 추천 To-Do와 <b class="text-slate-800">3건</b>의 후속 미팅이 예정되어 있어요.</p>
+            <p class="text-[.85rem] text-slate-500 mt-1.5">오늘 통화 현황을 KPI 카드에서 확인하세요. <span class="text-amber-600 font-bold">(추천 To-Do / 미팅 안내는 demo)</span></p>
           </div>
         </section>
 
-        <!-- KPI cards -->
+        <!-- KPI cards — Phase 4 Step 4: /dashboard/summary 실 데이터.
+             today_calls / response_rate / avg_duration_seconds / active_calls. -->
         <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <div class="rounded-xl border border-slate-200 bg-white p-4 lg:p-5">
             <div class="flex items-center justify-between mb-3">
@@ -67,8 +68,8 @@
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-600" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               </div>
             </div>
-            <div class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">23</div>
-            <div class="text-[.7rem] text-emerald-600 font-bold mt-1 tnum">↑ 12.5% vs 어제</div>
+            <div id="kpiTodayCalls" class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">—</div>
+            <div class="text-[.7rem] text-slate-400 font-bold mt-1">UTC 자정 기준</div>
           </div>
 
           <div class="rounded-xl border border-slate-200 bg-white p-4 lg:p-5">
@@ -78,8 +79,8 @@
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" class="text-emerald-600" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
               </div>
             </div>
-            <div class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">82.6%</div>
-            <div class="text-[.7rem] text-emerald-600 font-bold mt-1 tnum">↑ 3.2%p</div>
+            <div id="kpiResponseRate" class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">—</div>
+            <div class="text-[.7rem] text-slate-400 font-bold mt-1">완료 / (완료 + 미수신)</div>
           </div>
 
           <div class="rounded-xl border border-slate-200 bg-white p-4 lg:p-5">
@@ -89,31 +90,31 @@
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-600" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
               </div>
             </div>
-            <div class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">11<span class="text-[.95rem] text-slate-500 font-bold">m</span> 24<span class="text-[.95rem] text-slate-500 font-bold">s</span></div>
-            <div class="text-[.7rem] text-rose-500 font-bold mt-1 tnum">↓ 0.8% (효율↑)</div>
+            <div id="kpiAvgDuration" class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">—</div>
+            <div class="text-[.7rem] text-slate-400 font-bold mt-1">오늘 완료된 통화 평균</div>
           </div>
 
           <div class="rounded-xl border border-slate-200 bg-white p-4 lg:p-5">
             <div class="flex items-center justify-between mb-3">
-              <span class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500">신규 전환</span>
+              <span class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500">진행 중</span>
               <div class="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" class="text-rose-600" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" class="text-rose-600" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
               </div>
             </div>
-            <div class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">4</div>
-            <div class="text-[.7rem] text-emerald-600 font-bold mt-1 tnum">↑ 2건 vs 어제</div>
+            <div id="kpiActiveCalls" class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">—</div>
+            <div class="text-[.7rem] text-slate-400 font-bold mt-1">진행 중 통화</div>
           </div>
         </section>
 
         <!-- 2-col area: trends + To-Do -->
         <section class="grid lg:grid-cols-3 gap-4 lg:gap-6">
 
-          <!-- Trends (col-span-1) -->
+          <!-- Trends (col-span-1) — Phase 6+ daily.html과 통합 예정. 현재는 demo. -->
           <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-1">
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">시장 트렌드 알림</h3>
-                <p class="text-[.7rem] text-slate-500 mt-0.5">네이버 검색 API · 매일 06:00 갱신</p>
+                <p class="text-[.7rem] text-slate-500 mt-0.5">네이버 검색 API · 매일 06:00 갱신 <span class="text-amber-600 font-bold">(demo)</span></p>
               </div>
               <span class="badge badge-blue">12개</span>
             </div>
@@ -157,12 +158,12 @@
             <a href="daily.html" class="block text-center w-full mt-3 py-2 text-[.78rem] font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors no-underline">오늘의 일에서 전체 보기 →</a>
           </div>
 
-          <!-- To-Do (col-span-2) -->
+          <!-- To-Do (col-span-2) — Phase 5+ AI 추천 To-Do. 현재는 demo. -->
           <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-2">
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">오늘의 추천 To-Do</h3>
-                <p class="text-[.7rem] text-slate-500 mt-0.5">AI가 시장·통화 기록을 분석해 우선순위로 정렬</p>
+                <p class="text-[.7rem] text-slate-500 mt-0.5">AI가 시장·통화 기록을 분석해 우선순위로 정렬 <span class="text-amber-600 font-bold">(demo)</span></p>
               </div>
               <div class="flex items-center gap-3">
                 <div class="flex items-center gap-1 text-[.72rem]">
@@ -206,9 +207,12 @@
             </div>
           </div>
 
-          <!-- Team activity (col-span-1) -->
+          <!-- Team activity (col-span-1) — Phase 5+ activity_log 도입 예정. 현재는 demo. -->
           <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-1">
-            <h3 class="text-[.95rem] font-black tracking-tight text-slate-800 mb-4">팀 활동</h3>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">팀 활동</h3>
+              <span class="text-amber-600 font-bold text-[.6rem]">(demo)</span>
+            </div>
             <ul class="space-y-3">
               <li class="flex gap-2.5">
                 <div class="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-[.65rem] font-black text-white shrink-0">이</div>
@@ -257,16 +261,65 @@
   <script src="api.js"></script>
   <script src="_shared.js"></script>
   <script>
-    renderSidebar('dashboard');
-    renderNotification('notifBtn');
+    /* XSS gate. server 응답 필드 보간은 모두 escapeHtml 경유. */
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
-    // Today's date
+    const STATUS_BADGE = {
+      in_progress: { c: 'badge-emerald', l: '진행 중', live: true },
+      ended:       { c: 'badge-blue',    l: '완료' },
+      missed:      { c: 'badge-slate',   l: '미수신' },
+      dropped:     { c: 'badge-rose',    l: '끊김' },
+    };
+    const DIRECTION_LABEL = {
+      inbound:  '인바운드',
+      outbound: '아웃바운드',
+      meeting:  '미팅',
+    };
+
+    function formatDuration(secs) {
+      if (secs === null || secs === undefined) return '—';
+      const n = Math.max(0, Math.floor(secs));
+      const m = Math.floor(n / 60);
+      const s = n % 60;
+      if (m === 0) return s + '초';
+      return m + '분 ' + String(s).padStart(2, '0') + '초';
+    }
+    function formatHHMM(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      return String(d.getHours()).padStart(2, '0') + ':' +
+             String(d.getMinutes()).padStart(2, '0');
+    }
+    function formatAvgDurationLabel(avg) {
+      if (avg === null || avg === undefined) return '—';
+      const n = Math.max(0, Math.floor(avg));
+      const m = Math.floor(n / 60);
+      const s = n % 60;
+      // dashboard 카드 톤에 맞춰 m+s split.
+      return m + '<span class="text-[.95rem] text-slate-500 font-bold">m</span> ' +
+             String(s).padStart(2, '0') + '<span class="text-[.95rem] text-slate-500 font-bold">s</span>';
+    }
+    function formatResponseRateLabel(rate) {
+      if (rate === null || rate === undefined) return '—';
+      return (rate * 100).toFixed(1) + '%';
+    }
+
+    // Today's date label (real / computed).
     const today = new Date();
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     document.getElementById('todayDate').textContent =
       `${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일 (${days[today.getDay()]}요일)`;
 
-    // To-Do data
+    /* To-Do data — demo (Phase 5+ AI todo generation). 라벨은 위 헤더에 표시. */
     const todos = [
       { done: true, priority: 'high', text: 'A사 김대표님 후속 미팅 (10:00)', tags: ['미팅', '높음'] },
       { done: true, priority: 'med', text: '이전 통화 #1238 요약 검토', tags: ['검토'] },
@@ -284,6 +337,8 @@
         li.className = `flex items-center gap-3 p-3 rounded-lg border ${t.done ? 'bg-slate-50/50 border-slate-100' : 'bg-white border-slate-200 card-hover'} cursor-pointer`;
         li.onclick = () => { todos[i].done = !todos[i].done; renderTodos(); };
         const priColor = t.priority === 'high' ? 'rose' : t.priority === 'med' ? 'amber' : 'slate';
+        // demo 데이터 전용 — escape는 안 함 (constant). 만약 server-supplied로 바뀌면
+        // escapeHtml로 감싸야 함.
         li.innerHTML = `
           <span class="w-5 h-5 rounded-md border-2 ${t.done ? 'border-blue-500 bg-blue-500' : 'border-slate-300'} flex items-center justify-center shrink-0 transition-colors">
             ${t.done ? '<svg width="11" height="11" fill="none" stroke="white" stroke-width="3.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>' : ''}
@@ -304,36 +359,95 @@
     }
     renderTodos();
 
-    // Recent calls
-    const recent = [
-      { name: '김민수', company: 'Kloser Inc.', type: '신규 인바운드', time: '10:24', status: '진행중', summary: 'CRM 통합 검토' },
-      { name: '이지은', company: 'DesignCo.', type: '후속 미팅', time: '09:48', status: '완료', summary: '도입 일정 5/15 확정' },
-      { name: '박서준', company: 'Nexus Lab', type: '신규 인바운드', time: '09:12', status: '완료', summary: 'Pro 플랜 안내 · 견적 요청' },
-      { name: '정유진', company: 'TerraBase', type: '클로징', time: '08:55', status: '완료', summary: 'Enterprise 계약 체결 ✓' },
-      { name: '최서연', company: 'OrbitLab', type: '신규 문의', time: '08:21', status: '미접수', summary: '음성 메시지 1건' },
-    ];
-    const callsEl = document.getElementById('recentCalls');
-    recent.forEach(c => {
-      const tr = document.createElement('tr');
-      const statusClass = c.status === '진행중' ? 'badge-emerald' : c.status === '완료' ? 'badge-blue' : 'badge-slate';
-      const statusIcon = c.status === '진행중' ? '<span class="pulse-dot mr-1" style="width:6px;height:6px"></span>' : '';
-      tr.innerHTML = `
-        <td>
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[.7rem] font-black text-slate-700">${c.name.slice(0,1)}</div>
-            <div class="min-w-0">
-              <div class="font-bold text-slate-800 text-[.85rem] truncate">${c.name}</div>
-              <div class="text-[.68rem] text-slate-400 truncate">${c.company}</div>
-            </div>
-          </div>
-        </td>
-        <td class="hidden sm:table-cell text-slate-600">${c.type}</td>
-        <td class="text-slate-700 tnum">${c.time}</td>
-        <td class="hidden md:table-cell"><span class="badge ${statusClass}">${statusIcon}${c.status}</span></td>
-        <td class="text-slate-600 max-w-[220px] truncate">${c.summary}</td>
-      `;
-      callsEl.appendChild(tr);
-    });
+    /* Recent calls — Phase 4 Step 4: /dashboard/summary recent_calls 사용. */
+    function renderRecentCalls(items) {
+      const el = document.getElementById('recentCalls');
+      el.innerHTML = '';
+      if (!items || items.length === 0) {
+        el.innerHTML =
+          '<tr><td colspan="5" class="text-center text-slate-400 py-8 text-[.8rem]">' +
+          '아직 통화 기록이 없습니다.</td></tr>';
+        return;
+      }
+      items.forEach((c) => {
+        const meta = STATUS_BADGE[c.status] || { c: 'badge-slate', l: c.status || '?' };
+        const live = meta.live
+          ? '<span class="pulse-dot mr-1" style="width:6px;height:6px"></span>'
+          : '';
+        const name = c.customer_name || (c.customer_id ? '고객 ID ' + c.customer_id.slice(0, 8) : '미등록 발신자');
+        const company = c.title || (DIRECTION_LABEL[c.direction] || c.direction || '');
+        const agent = c.agent_name || '미지정 상담원';
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' +
+            '<div class="flex items-center gap-2.5">' +
+              '<div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[.7rem] font-black text-slate-700">' +
+                escapeHtml((name.charAt(0) || '·').toUpperCase()) + '</div>' +
+              '<div class="min-w-0">' +
+                '<div class="font-bold text-slate-800 text-[.85rem] truncate">' + escapeHtml(name) + '</div>' +
+                '<div class="text-[.68rem] text-slate-400 truncate">' + escapeHtml(agent) + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</td>' +
+          '<td class="hidden sm:table-cell text-slate-600">' +
+            escapeHtml(DIRECTION_LABEL[c.direction] || c.direction || '') + '</td>' +
+          '<td class="text-slate-700 tnum">' + escapeHtml(formatHHMM(c.started_at)) + '</td>' +
+          '<td class="hidden md:table-cell">' +
+            '<span class="badge ' + meta.c + '">' + live + escapeHtml(meta.l) + '</span></td>' +
+          '<td class="text-slate-600 max-w-[220px] truncate">' + escapeHtml(company) + '</td>';
+        el.appendChild(tr);
+      });
+    }
+
+    async function loadDashboard() {
+      const res = await window.kloserApi.getDashboardSummary();
+      if (res.status === 401) return; // authFetch redirected.
+      if (!res.ok) {
+        console.error('[dashboard] summary failed', res.status);
+        return;
+      }
+      const body = await res.json();
+      document.getElementById('kpiTodayCalls').textContent =
+        (typeof body.today_calls === 'number' ? body.today_calls : 0).toLocaleString();
+      document.getElementById('kpiResponseRate').textContent =
+        formatResponseRateLabel(body.response_rate);
+      document.getElementById('kpiAvgDuration').innerHTML =
+        formatAvgDurationLabel(body.avg_duration_seconds);
+      document.getElementById('kpiActiveCalls').textContent =
+        (typeof body.active_calls === 'number' ? body.active_calls : 0).toLocaleString();
+      renderRecentCalls(body.recent_calls || []);
+    }
+
+    /* Boot — auth gate + sidebar + verify banner + dashboard. */
+    (async () => {
+      if (!window.kloserApi) return;
+      if (!window.kloserApi.getAccessToken()) {
+        try { await window.kloserApi.refreshAccessToken(); }
+        catch (_err) { window.kloserApi.loginRedirect(); return; }
+      }
+
+      renderSidebar('dashboard');
+      if (typeof renderNotification === 'function') renderNotification('notifBtn');
+
+      // greeting name + verify banner from /me.
+      try {
+        const meRes = await window.kloserApi.apiGet('/me');
+        if (meRes.ok) {
+          const me = await meRes.json();
+          const name = (me.user && me.user.name && me.user.name.trim()) ||
+                       (me.user && me.user.email && me.user.email.split('@')[0]) ||
+                       '사용자';
+          document.getElementById('greetingName').textContent = name + '님';
+          if (typeof window.renderUnverifiedBanner === 'function') {
+            window.renderUnverifiedBanner(me.user);
+          }
+        }
+      } catch (err) {
+        console.warn('[dashboard] /me failed', err);
+      }
+
+      await loadDashboard();
+    })().catch((err) => console.error('[dashboard] boot failed', err));
   </script>
 </body>
 </html>
