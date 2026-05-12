@@ -65,6 +65,46 @@ const ENTITY_REGISTRY = [
         browser: "platform/types/invitation.js",
         types: ["Invitation", "InvitationCreateInput", "InvitationAcceptInput"],
     },
+    {
+        name: "call",
+        server: "server/src/types/call.ts",
+        browser: "platform/types/call.js",
+        // CallListQuery uses z.preprocess for q/customerId/agentUserId/status/limit/offset.
+        // Each preprocessed field is still declared as a top-level key on the
+        // outer z.object literal, so the parser matches them by name.
+        types: [
+            "Call",
+            "CallCreateInput",
+            "CallListQuery",
+            "CallListResponse",
+            "CallDetailResponse",
+            "CallEndInput",
+            "CallNotesInput",
+        ],
+    },
+    {
+        name: "transcript",
+        server: "server/src/types/transcript.ts",
+        browser: "platform/types/transcript.js",
+        types: ["Transcript", "TranscriptAppendInput", "TranscriptListResponse"],
+    },
+    {
+        name: "actionItem",
+        server: "server/src/types/actionItem.ts",
+        browser: "platform/types/actionItem.js",
+        types: [
+            "CallActionItem",
+            "ActionItemCreateInput",
+            "ActionItemStatusInput",
+            "ActionItemAssigneeInput",
+        ],
+    },
+    {
+        name: "dashboard",
+        server: "server/src/types/dashboard.ts",
+        browser: "platform/types/dashboard.js",
+        types: ["DashboardSummary", "DashboardRecentCall"],
+    },
 ];
 
 // ---------- parsers ---------- //

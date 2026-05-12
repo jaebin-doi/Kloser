@@ -71,6 +71,18 @@ before(async () => {
 });
 
 after(async () => {
+  // Phase 4 Step 3 hooked DB persistence into start_call. The happy-path
+  // case below cannot end the call (the assertion is on the transcript
+  // echo, not on shutdown), so a calls row may survive the test. Sweep
+  // it so dashboard_routes.test.mjs and phase 4 e2e see a clean slate.
+  if (app) {
+    await app.withOrgContext(ACME_ID, async (client) => {
+      await client.query(
+        `DELETE FROM calls WHERE agent_user_id = $1`,
+        [ACME_ADMIN_USER_ID],
+      );
+    });
+  }
   if (io) io.close();
   if (app) await app.close();
 });

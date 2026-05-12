@@ -187,3 +187,33 @@ export async function listByCallInCurrentOrg(
   );
   return r.rows;
 }
+
+// Resolve the parent call for an action item id. Routes that mutate an
+// action item by its own id (POST /call-action-items/:id/status,
+// /assignee) use this to fetch the parent call so the employee-own-call
+// permission check can run before the patch. Cross-org / soft-deleted
+// parents return null — RLS hides the action item too, so the route's
+// 404 vs 403 ordering can't distinguish the two.
+//
+// We return both ids and the agent so the caller does not need to chase
+// another round-trip through the calls repo.
+export interface ActionItemParentCall {
+  call_id: string;
+  agent_user_id: string | null;
+}
+
+export async function getParentCallForActionItem(
+  client: PoolClient,
+  actionItemId: string,
+): Promise<ActionItemParentCall | null> {
+  const r = await client.query<ActionItemParentCall>(
+    `SELECT c.id           AS call_id,
+            c.agent_user_id AS agent_user_id
+       FROM call_action_items a
+       JOIN calls c ON c.id = a.call_id
+      WHERE a.id = $1
+        AND c.deleted_at IS NULL`,
+    [actionItemId],
+  );
+  return r.rows[0] ?? null;
+}

@@ -48,7 +48,7 @@ export interface TranscriptAppendInput {
 
 const TRANSCRIPT_COLUMNS =
   "id, call_id, org_id, seq, speaker, text, start_ms, end_ms," +
-  " confidence, created_at";
+  " confidence::float8 AS confidence, created_at";
 
 // ---------- helpers ---------- //
 

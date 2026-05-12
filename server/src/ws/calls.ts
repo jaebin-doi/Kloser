@@ -2,9 +2,11 @@
  *
  * Phase 0.5 spike pumped the demo conversation via setTimeout. Phase 1
  * step 4 attaches an authenticated identity to every connection by
- * verifying a Bearer-equivalent JWT on the handshake. The `userId`
- * query parameter from the spike is gone — the token is the only
- * trust boundary now.
+ * verifying a Bearer-equivalent JWT on the handshake. Phase 4 step 3
+ * adds DB persistence: start_call inserts a calls row, text_chunk
+ * appends a transcripts row, end_call updates the call + bumps
+ * customers.last_contacted_at — all through the Step 2 service so the
+ * REST and WS surfaces share one source of truth.
  *
  * Error contract (kept stable so the client can branch on `err.data.code`
  * for handshake and emit `.code` for runtime):
@@ -13,18 +15,27 @@
  *     - "expired_token"  — JWT exp passed
  *     - "invalid_token"  — bad signature, malformed payload, etc.
  *   runtime `error` event:
- *     - "no_active_call" — text_chunk arrived before start_call
- *     - "BAD_PAYLOAD"    — text_chunk shape mismatch (preserved from spike)
+ *     - "no_active_call"      — text_chunk arrived before start_call
+ *     - "BAD_PAYLOAD"         — text_chunk shape mismatch
+ *     - "call_not_found"      — persistence target call vanished
+ *                                (soft-deleted between start and chunk)
+ *     - "persistence_failed"  — DB write threw mid-handler
+ *   ack payloads:
+ *     - start_call ack: { callId } on success, { error, code } on persistence failure
+ *     - end_call   ack: { ok: true } on success, { ok: false, error } when there was no active call
  */
 import type { FastifyInstance } from "fastify";
 import type { Server, Socket } from "socket.io";
-import { randomUUID } from "node:crypto";
 import { conversation, aiSequence } from "../fixtures/demo-call.js";
 import {
   toAuthenticatedUser,
   validateAccessTokenPayload,
   type AuthenticatedUser,
 } from "../services/auth.js";
+import * as callsService from "../services/calls.js";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface StartCallPayload {
   customerId?: string;
@@ -134,25 +145,50 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
     };
     socket.data.log("connection");
 
-    socket.on("start_call", (payload: StartCallPayload | undefined, ack?: (resp: unknown) => void) => {
-      // Clear any prior call on the same socket (e.g., reconnect / repeat start_call)
+    socket.on("start_call", async (payload: StartCallPayload | undefined, ack?: (resp: unknown) => void) => {
+      // Clear any prior call on the same socket (reconnect / repeat start_call).
       clearCall(socket);
 
-      const callId = randomUUID();
-      const ctx: CallContext = { callId, startedAt: Date.now(), timers: [] };
-      calls.set(socket, ctx);
-      socket.data.log("start_call", { callId, customerId: payload?.customerId });
+      // Validate customerId before sending it to the service. The
+      // composite FK would reject a non-UUID anyway, but checking here
+      // lets us produce a clean validation error for the typical
+      // client mistake without making the round-trip first.
+      const rawCustomerId = payload?.customerId;
+      const customerId =
+        typeof rawCustomerId === "string" && UUID_RE.test(rawCustomerId)
+          ? rawCustomerId
+          : null;
 
-      scheduleDemoReplay(socket, ctx);
+      try {
+        const call = await callsService.createCall(app, user.orgId, {
+          customer_id: customerId,
+          agent_user_id: user.id,
+          direction: "inbound",
+        });
+        const ctx: CallContext = {
+          callId: call.id,
+          startedAt: Date.now(),
+          timers: [],
+        };
+        calls.set(socket, ctx);
+        socket.data.log("start_call", { callId: call.id, customerId });
 
-      if (typeof ack === "function") ack({ callId });
+        scheduleDemoReplay(socket, ctx);
+        if (typeof ack === "function") ack({ callId: call.id });
+      } catch (err) {
+        socket.data.log("start_call persistence_failed", {
+          err: (err as Error)?.message,
+        });
+        if (typeof ack === "function") {
+          ack({ error: "persistence_failed", code: "persistence_failed" });
+        }
+      }
     });
 
-    socket.on("text_chunk", (payload: TextChunkPayload | undefined) => {
+    socket.on("text_chunk", async (payload: TextChunkPayload | undefined) => {
       // Invariant: a text_chunk only makes sense inside an active call.
-      // A normal client emits text_chunk only after the start_call ack,
-      // so this check protects against client bugs and probe scripts.
-      if (!calls.has(socket)) {
+      const ctx = calls.get(socket);
+      if (!ctx) {
         socket.emit("error", {
           code: "no_active_call",
           message: "text_chunk requires a prior start_call",
@@ -172,6 +208,39 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
         return;
       }
       const who: "agent" | "customer" = payload.seq % 2 === 0 ? "agent" : "customer";
+
+      // Persist first, then echo. If the call vanished (soft-deleted
+      // mid-stream), the repository returns null and we surface
+      // call_not_found instead of pretending the chunk landed.
+      try {
+        const persisted = await callsService.appendTranscript(
+          app,
+          user.orgId,
+          ctx.callId,
+          { speaker: who, text: payload.text },
+        );
+        if (!persisted) {
+          socket.emit("error", {
+            code: "call_not_found",
+            message: "call no longer available for transcript append",
+          });
+          return;
+        }
+      } catch (err) {
+        socket.data.log("text_chunk persistence_failed", {
+          err: (err as Error)?.message,
+          callId: ctx.callId,
+        });
+        socket.emit("error", {
+          code: "persistence_failed",
+          message: "transcript persistence failed",
+        });
+        return;
+      }
+
+      // Echo keeps the Phase 0.5 contract: `seq` mirrors the client's
+      // own counter, not the DB-side per-call seq. Clients that need
+      // the persisted seq can GET /calls/:id/transcript.
       socket.emit("transcript", {
         seq: payload.seq,
         who,
@@ -181,9 +250,31 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
       });
     });
 
-    socket.on("end_call", (_payload: unknown, ack?: (resp: unknown) => void) => {
+    socket.on("end_call", async (_payload: unknown, ack?: (resp: unknown) => void) => {
       const ctx = calls.get(socket);
-      socket.data.log("end_call", { callId: ctx?.callId });
+      if (!ctx) {
+        socket.data.log("end_call no_active_call");
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "no_active_call" });
+        }
+        return;
+      }
+      socket.data.log("end_call", { callId: ctx.callId });
+      try {
+        await callsService.endCall(app, user.orgId, ctx.callId);
+      } catch (err) {
+        socket.data.log("end_call persistence_failed", {
+          err: (err as Error)?.message,
+          callId: ctx.callId,
+        });
+        // Even on persistence failure, clear local state so the socket
+        // is not stuck thinking a call is active.
+        clearCall(socket);
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "persistence_failed" });
+        }
+        return;
+      }
       clearCall(socket);
       if (typeof ack === "function") ack({ ok: true });
     });
