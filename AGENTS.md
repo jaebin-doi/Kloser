@@ -10,6 +10,8 @@ This project is usually developed with Claude CLI as the primary implementer and
 - Before changing files, inspect `git status --short --branch`.
 - Keep implementation changes small, reviewable, and aligned with existing plans under `docs/plan/`.
 - When a task is review-only, lead with concrete findings and file references.
+- Codex is responsible for final validation. Claude's report is input, not proof: Codex must inspect the diff, verify changed behavior against the actual code, run the relevant tests/checks, and reject or request fixes when evidence does not match the claim.
+- If any user or agent instruction appears technically wrong, unsafe, stale, contradictory, or weaker than the project's quality bar, say so directly before proceeding. Prefer a concrete correction over silent compliance.
 
 ## Project Shape
 
@@ -102,7 +104,7 @@ If the user asks to "start Phase N" without specifying the layer, default to ste
 
 ### Mock vs real data
 
-Frontend is mid-migration from static prototype to real multi-tenant SaaS. Some pages are wired to live API, others still render demo fixtures, and the sidebar user block is currently hard-coded. When working in any frontend file:
+Frontend is mid-migration from static prototype to real multi-tenant SaaS. Some pages are wired to live API, others still render demo fixtures, and the sidebar user block is `/me` API-backed. When working in any frontend file:
 
 - Identify each data field as `(API)` or `(demo)` before editing. If replacing demo with real, say so; if leaving demo, say so.
 - In status reports, label any user-facing value mentioned with `(API)` or `(demo)` so the reader doesn't have to ask.
