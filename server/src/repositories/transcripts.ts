@@ -24,6 +24,11 @@ import type { PoolClient } from "pg";
 // ---------- entity + input types ---------- //
 
 export type TranscriptSpeaker = "agent" | "customer" | "system";
+export type TranscriptSttProvider =
+  | "clova"
+  | "whisper"
+  | "manual"
+  | "fixture";
 
 export interface Transcript {
   id: string;
@@ -36,6 +41,9 @@ export interface Transcript {
   end_ms: number | null;
   confidence: number | null;
   created_at: Date;
+  // Phase 5 Step 1 — transcripts columns migration.
+  stt_provider: TranscriptSttProvider | null;
+  stt_session_id: string | null;
 }
 
 export interface TranscriptAppendInput {
@@ -44,11 +52,14 @@ export interface TranscriptAppendInput {
   start_ms?: number | null;
   end_ms?: number | null;
   confidence?: number | null;
+  stt_provider?: TranscriptSttProvider | null;
+  stt_session_id?: string | null;
 }
 
 const TRANSCRIPT_COLUMNS =
   "id, call_id, org_id, seq, speaker, text, start_ms, end_ms," +
-  " confidence::float8 AS confidence, created_at";
+  " confidence::float8 AS confidence, created_at," +
+  " stt_provider, stt_session_id";
 
 // ---------- helpers ---------- //
 
@@ -89,9 +100,10 @@ export async function appendForCallInCurrentOrg(
 
   const r = await client.query<Transcript>(
     `INSERT INTO transcripts (
-        org_id, call_id, seq, speaker, text, start_ms, end_ms, confidence
+        org_id, call_id, seq, speaker, text, start_ms, end_ms, confidence,
+        stt_provider, stt_session_id
      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
      )
      RETURNING ${TRANSCRIPT_COLUMNS}`,
     [
@@ -103,6 +115,8 @@ export async function appendForCallInCurrentOrg(
       input.start_ms ?? null,
       input.end_ms ?? null,
       input.confidence ?? null,
+      input.stt_provider ?? null,
+      input.stt_session_id ?? null,
     ],
   );
   return r.rows[0]!;

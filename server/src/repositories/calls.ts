@@ -31,6 +31,11 @@ import type { PoolClient } from "pg";
 export type CallDirection = "inbound" | "outbound" | "meeting";
 export type CallStatus = "in_progress" | "ended" | "missed" | "dropped";
 export type CallSentiment = "positive" | "neutral" | "cautious" | "negative";
+export type CallSummarySource = "ai" | "manual";
+export type CallDroppedReason =
+  | "browser_disconnect"
+  | "server_timeout"
+  | "manual";
 
 export interface Call {
   id: string;
@@ -51,6 +56,13 @@ export interface Call {
   deleted_at: Date | null;
   created_at: Date;
   updated_at: Date;
+  // Phase 5 Step 1 — calls columns migration.
+  summary_generated_at: Date | null;
+  summary_source: CallSummarySource | null;
+  last_seen_at: Date | null;
+  dropped_reason: CallDroppedReason | null;
+  customer_linked_at: Date | null;
+  customer_linked_by_user_id: string | null;
 }
 
 export interface CallCreateInput {
@@ -76,7 +88,9 @@ export interface CallListOptions {
 const CALL_COLUMNS =
   "id, org_id, customer_id, agent_user_id, direction, status," +
   " started_at, ended_at, duration_seconds, title, summary, needs," +
-  " issues, sentiment, notes, deleted_at, created_at, updated_at";
+  " issues, sentiment, notes, deleted_at, created_at, updated_at," +
+  " summary_generated_at, summary_source, last_seen_at, dropped_reason," +
+  " customer_linked_at, customer_linked_by_user_id";
 
 // ---------- list filter clause builder ---------- //
 
@@ -271,4 +285,142 @@ export async function softDeleteByIdInCurrentOrg(
     [id],
   );
   return (r.rowCount ?? 0) > 0;
+}
+
+// ---------- Phase 5 mutations ---------- //
+
+// Heartbeat touch — only update last_seen_at for live, non-deleted calls.
+// ended/missed/dropped calls return null so the WS heartbeat handler can
+// stop pinging instead of resurrecting a closed call.
+export async function touchHeartbeatInCurrentOrg(
+  client: PoolClient,
+  callId: string,
+  seenAt: Date,
+): Promise<Call | null> {
+  const r = await client.query<Call>(
+    `UPDATE calls
+        SET last_seen_at = $1
+      WHERE id = $2
+        AND status = 'in_progress'
+        AND deleted_at IS NULL
+      RETURNING ${CALL_COLUMNS}`,
+    [seenAt, callId],
+  );
+  return r.rows[0] ?? null;
+}
+
+// Sweep: mark in_progress calls whose last heartbeat predates `cutoff`
+// as dropped/server_timeout. Returns the number of rows updated. Calls
+// with last_seen_at IS NULL (no heartbeat yet) are NOT swept — Step 3
+// will decide the policy for unheartbeated calls separately.
+export async function markDroppedTimedOutInCurrentOrg(
+  client: PoolClient,
+  cutoff: Date,
+  droppedAt: Date,
+): Promise<number> {
+  const r = await client.query(
+    `UPDATE calls
+        SET status           = 'dropped',
+            dropped_reason   = 'server_timeout',
+            ended_at         = $2,
+            duration_seconds = GREATEST(
+                0,
+                EXTRACT(EPOCH FROM ($2::timestamptz - started_at))::int
+            )
+      WHERE status = 'in_progress'
+        AND deleted_at IS NULL
+        AND last_seen_at IS NOT NULL
+        AND last_seen_at < $1`,
+    [cutoff, droppedAt],
+  );
+  return r.rowCount ?? 0;
+}
+
+// Link / unlink a customer to an existing call. customerId === null
+// clears the link (and stamps the unlink as a regular customer_linked_*
+// update so audit trail records who touched it last). Wrong-org customer
+// or wrong-org linker is rejected by the composite FK (23503) — repo
+// surfaces the raw error for the caller to translate.
+export async function linkCustomerInCurrentOrg(
+  client: PoolClient,
+  callId: string,
+  customerId: string | null,
+  linkedByUserId: string,
+  linkedAt: Date,
+): Promise<Call | null> {
+  const r = await client.query<Call>(
+    `UPDATE calls
+        SET customer_id                 = $1,
+            customer_linked_at          = $2,
+            customer_linked_by_user_id  = $3
+      WHERE id = $4
+        AND deleted_at IS NULL
+      RETURNING ${CALL_COLUMNS}`,
+    [customerId, linkedAt, linkedByUserId, callId],
+  );
+  return r.rows[0] ?? null;
+}
+
+export interface CallSummaryPatch {
+  summary: string | null;
+  needs: string | null;
+  issues: string | null;
+  sentiment: CallSentiment | null;
+}
+
+// AI summary writer. Only overwrites if there is no source yet, or the
+// existing source is 'ai'. summary_source='manual' is protected — the
+// user's hand-written summary must survive a delayed AI worker push.
+export async function updateAiSummaryInCurrentOrg(
+  client: PoolClient,
+  callId: string,
+  patch: CallSummaryPatch,
+  generatedAt: Date,
+): Promise<Call | null> {
+  const r = await client.query<Call>(
+    `UPDATE calls
+        SET summary               = $1,
+            needs                 = $2,
+            issues                = $3,
+            sentiment             = $4,
+            summary_generated_at  = $5,
+            summary_source        = 'ai'
+      WHERE id = $6
+        AND deleted_at IS NULL
+        AND (summary_source IS NULL OR summary_source = 'ai')
+      RETURNING ${CALL_COLUMNS}`,
+    [
+      patch.summary,
+      patch.needs,
+      patch.issues,
+      patch.sentiment,
+      generatedAt,
+      callId,
+    ],
+  );
+  return r.rows[0] ?? null;
+}
+
+// Manual summary writer. Sets summary_source='manual' so a later AI
+// worker push will be ignored by updateAiSummaryInCurrentOrg. We do not
+// touch summary_generated_at — that column is the AI generation
+// timestamp, not the last-edited timestamp (updated_at carries that).
+export async function updateManualSummaryInCurrentOrg(
+  client: PoolClient,
+  callId: string,
+  patch: CallSummaryPatch,
+): Promise<Call | null> {
+  const r = await client.query<Call>(
+    `UPDATE calls
+        SET summary        = $1,
+            needs          = $2,
+            issues         = $3,
+            sentiment      = $4,
+            summary_source = 'manual'
+      WHERE id = $5
+        AND deleted_at IS NULL
+      RETURNING ${CALL_COLUMNS}`,
+    [patch.summary, patch.needs, patch.issues, patch.sentiment, callId],
+  );
+  return r.rows[0] ?? null;
 }
