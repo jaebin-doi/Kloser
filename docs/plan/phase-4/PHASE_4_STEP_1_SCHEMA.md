@@ -8,7 +8,7 @@
 
 ## 0. Step 1 목표
 
-Phase 4 영속화의 기반이 되는 3개 테이블 (`calls` / `transcripts` / `call_action_items`) + 부속 grant + 시드가 RLS FORCE / 인덱스 / 제약 조건 / 트랜잭션 일관성까지 깨끗이 깔린다. Step 2 (repository layer)가 진입할 때 schema가 "이거 어떻게 쓰지" 같은 질문을 만들지 않는다.
+Phase 4 영속화의 기반이 되는 3개 테이블 (`calls` / `transcripts` / `call_action_items`) + 부속 grant가 RLS FORCE / 인덱스 / 제약 조건 / 트랜잭션 일관성까지 깨끗이 깔린다. Step 2 (repository layer)가 진입할 때 schema가 "이거 어떻게 쓰지" 같은 질문을 만들지 않는다. Demo seed는 schema-only 지시에 따라 후속 step에서 결정한다.
 
 ---
 
@@ -22,9 +22,9 @@ Phase 4 영속화의 기반이 되는 3개 테이블 (`calls` / `transcripts` / 
 | migration | `server/migrations/<ts>_phase4_transcripts.sql` | `transcripts` 테이블 + RLS 4 정책 + 인덱스 2개 |
 | migration | `server/migrations/<ts>_phase4_call_action_items.sql` | `call_action_items` 테이블 + RLS 4 정책 + 인덱스 2개 |
 | migration | `server/migrations/<ts>_phase4_grants.sql` | `app` role grant: SELECT/INSERT/UPDATE/DELETE on 3 신규 테이블 |
-| seed | `server/seeds/0004_phase4_demo.sql` | 시드 통화 10~15건 + 발화 5~10건/통화 + 액션 2~3개/통화 |
+| seed | `server/seeds/0004_phase4_demo.sql` | 후속 step에서 결정 (schema-only Step 1에서는 미작성) |
 
-> **본 작업 (master plan + step 1 plan)에서는 위 산출물 중 plan 2개만 만든다.** migration / seed / findings는 Step 1 구현 단계에서 생성.
+> **Step 1 구현 결과**: migration 4개 + findings 1개를 생성했다. Demo seed는 후속 step에서 결정한다.
 
 ---
 
@@ -34,8 +34,8 @@ Phase 4 영속화의 기반이 되는 3개 테이블 (`calls` / `transcripts` / 
 
 | # | 항목 | 결정 | 근거 |
 |---|---|---|---|
-| 1-1 | `calls.customer_id` NULL 허용 | **YES** — `REFERENCES customers(id) ON DELETE SET NULL` | unknown caller / 등록 안 된 발신자가 거는 통화 케이스 (calls.html mock의 `최서연 · OrbitLab · 신규 문의` 같은 시나리오). 시간이 지나 매칭되면 service가 UPDATE |
-| 1-2 | `calls.agent_user_id` NULL 허용 | **YES** — `REFERENCES users(id) ON DELETE SET NULL` | 사용자가 조직을 떠나도 통화 이력은 보존 (감사 / 고객 측 이력). NULL이면 "전 사용자"로 표시 |
+| 1-1 | `calls.customer_id` NULL 허용 | **YES** — composite FK `(org_id, customer_id) REFERENCES customers(org_id, id) ON DELETE SET NULL (customer_id)` | unknown caller / 등록 안 된 발신자가 거는 통화 케이스. 시간이 지나 매칭되면 service가 UPDATE. Composite FK로 Acme call → Beta customer 오염 차단 |
+| 1-2 | `calls.agent_user_id` NULL 허용 | **YES** — composite FK `(org_id, agent_user_id) REFERENCES memberships(org_id, user_id) ON DELETE SET NULL (agent_user_id)` | 사용자가 조직을 떠나도 통화 이력은 보존. NULL이면 "전 사용자"로 표시. Membership FK로 agent가 같은 org 소속임을 DB가 강제 |
 | 1-3 | `calls.direction` enum 값 | `'inbound' / 'outbound' / 'meeting'` 3종 | dashboard mock에 "신규 인바운드 / 후속 미팅 / 클로징 / 신규 문의"가 섞여 있지만, `meeting`은 일정 잡힌 후속, `outbound`는 우리가 거는 통화, `inbound`는 들어오는 통화로 정규화. "신규 문의"는 inbound의 한 상태로 흡수 |
 | 1-4 | `calls.status` enum 값 | `'in_progress' / 'ended' / 'missed' / 'dropped'` 4종 | `in_progress`는 진행 중. `ended`는 정상 종료. `missed`는 응답 안 됨 (음성 메시지). `dropped`는 네트워크 끊김 (Phase 0.5 spike에서 발견) |
 | 1-5 | `calls.duration_seconds` 계산 시점 | service.endCall() 트랜잭션에서 `EXTRACT(EPOCH FROM (ended_at - started_at))::int` | DB GENERATED ALWAYS AS는 timestamptz 차이가 numeric이라 cast 복잡. service에서 한 번 계산이 단순 |
@@ -59,9 +59,9 @@ Phase 4 영속화의 기반이 되는 3개 테이블 (`calls` / `transcripts` / 
 |---|---|---|---|
 | 2-1 | RLS FORCE 적용 | **3 신규 테이블 모두 `FORCE ROW LEVEL SECURITY`** — Phase 1·2·3 일관 | superuser 외 모든 role이 RLS 강제. app role도 우회 불가 |
 | 2-2 | RLS 정책 4종 | SELECT / INSERT WITH CHECK / UPDATE USING+WITH CHECK / DELETE — 모두 `org_id = current_app_org_id()` | Phase 2 customers 4 정책 그대로 |
-| 2-3 | `transcripts.org_id` 비정규화 | **YES** — RLS 평가가 JOIN 없이 transcripts.org_id 단독으로 | 결정 master §2-2와 일관. service 레이어가 INSERT 시 `calls.org_id` 동기 강제 |
+| 2-3 | `transcripts.org_id` 비정규화 | **YES** — RLS 평가가 JOIN 없이 transcripts.org_id 단독으로. `(org_id, call_id) REFERENCES calls(org_id, id)` composite FK로 drift 차단 | 결정 master §2-2와 일관. service 레이어가 INSERT 시 `calls.org_id`를 넣고 DB가 한 번 더 강제 |
 | 2-4 | `kloser_service` (BYPASSRLS) grant | **본 phase에 적용 안 함** | calls 흐름은 모두 인증된 사용자 — anonymous accept 같은 흐름 없음. service role 표 손대지 않음 |
-| 2-5 | `app` role grant | SELECT / INSERT / UPDATE / DELETE on `calls` + `transcripts` + `call_action_items` | Phase 2 customers / Phase 3 invitations와 동일. DELETE 권한은 soft delete 외에 row 자체 정리에 필요 (org cascade) |
+| 2-5 | `app` role grant | SELECT / INSERT / UPDATE / DELETE on `calls` + `transcripts` + `call_action_items` | Phase 2 customers / Phase 3 invitations와 동일. Dev init default privileges가 있어도 migration 계약을 명시하기 위해 별도 grant migration을 둔다 |
 | 2-6 | soft delete 정책 표면 | `calls.deleted_at`만 추가. `transcripts` / `call_action_items`는 부모 CASCADE — 독립 soft delete 컬럼 없음 | 결정 master §3과 일관. soft delete된 통화의 발화는 SELECT 시 자연스럽게 부분 인덱스로 제외 (RLS는 그대로 적용되지만 read query가 `WHERE deleted_at IS NULL`을 calls 측에서 거름) |
 | 2-7 | `customers.last_contacted_at` UPDATE 권한 | service.endCall이 같은 transaction에서 customers UPDATE — RLS는 `app.org_id` GUC로 동일 org 강제 | 별도 grant 추가 불요 (app role은 이미 customers UPDATE 권한 보유) |
 | 2-8 | retention enforce | **DB 레벨 0건** — 모든 retention 정책 표면화는 Phase 6+ (cron / archive) | 결정 master §17과 일관 |
@@ -74,7 +74,7 @@ Phase 4 영속화의 기반이 되는 3개 테이블 (`calls` / `transcripts` / 
 | 3-2 | timestamp prefix | `<ts>_phase4_calls.sql` 등 — 기존 패턴 `1715000XXX000` 다음 번호 | Phase 3 마지막 migration은 `1715000008000`. Phase 4는 `1715000009000` ~ `1715000012000` |
 | 3-3 | `gen_random_uuid()` 사용 | YES — Phase 1~3 일관 | `uuid_generate_v4()` (pgcrypto extension)와 달리 13+에서 built-in |
 | 3-4 | timestamptz vs timestamp | **timestamptz** — Phase 1~3 일관 | server timezone 변경 / 다중 지역 운영 시 안전 |
-| 3-5 | FK ON DELETE 정책 | `calls.org_id` CASCADE / `calls.customer_id` SET NULL / `calls.agent_user_id` SET NULL / `transcripts.call_id` CASCADE / `call_action_items.call_id` CASCADE / `call_action_items.assignee_user_id` SET NULL | org 삭제 시 통화 cascade는 의도 (org 자체가 사라짐). 고객·사용자 삭제는 통화 보존이 운영 의도 |
+| 3-5 | FK ON DELETE 정책 | `calls.org_id` CASCADE / `(calls.org_id, calls.customer_id)` SET NULL(customer_id) / `(calls.org_id, calls.agent_user_id)` SET NULL(agent_user_id) / `(transcripts.org_id, transcripts.call_id)` CASCADE / `(call_action_items.org_id, call_action_items.call_id)` CASCADE / `(call_action_items.org_id, assignee_user_id)` SET NULL(assignee_user_id) | org 삭제 시 통화 cascade는 의도. 고객·사용자/membership 삭제는 통화 보존이 운영 의도. Composite FK로 cross-org 참조를 DB 레벨에서 차단 |
 | 3-6 | 부분 인덱스 vs 전체 인덱스 | **부분 인덱스 `WHERE deleted_at IS NULL`** (calls에만 적용. transcripts / call_action_items는 부모 CASCADE라 deleted_at 컬럼 자체 없음) | Phase 2 customers 5개 부분 인덱스 패턴. 인덱스 크기·write 비용 절감 |
 | 3-7 | CHECK 제약 표현 | text + CHECK enum. Postgres ENUM type 미사용 | Phase 1·2·3 일관. ENUM은 ALTER 비용 큼. CHECK은 string compare로 충분 |
 | 3-8 | UNIQUE 제약 | `transcripts (call_id, seq)` 만 | calls / call_action_items에는 자연스러운 unique key 없음 (UUID PK로 충분) |
@@ -90,8 +90,8 @@ Phase 4 영속화의 기반이 되는 3개 테이블 (`calls` / `transcripts` / 
 CREATE TABLE calls (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id              uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  customer_id         uuid REFERENCES customers(id) ON DELETE SET NULL,
-  agent_user_id       uuid REFERENCES users(id) ON DELETE SET NULL,
+  customer_id         uuid,
+  agent_user_id       uuid,
   direction           text NOT NULL CHECK (direction IN ('inbound','outbound','meeting')),
   status              text NOT NULL CHECK (status IN ('in_progress','ended','missed','dropped')),
   started_at          timestamptz NOT NULL DEFAULT now(),
@@ -105,7 +105,12 @@ CREATE TABLE calls (
   notes               text,
   deleted_at          timestamptz,
   created_at          timestamptz NOT NULL DEFAULT now(),
-  updated_at          timestamptz NOT NULL DEFAULT now()
+  updated_at          timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (org_id, id),
+  FOREIGN KEY (org_id, customer_id)
+    REFERENCES customers(org_id, id) ON DELETE SET NULL (customer_id),
+  FOREIGN KEY (org_id, agent_user_id)
+    REFERENCES memberships(org_id, user_id) ON DELETE SET NULL (agent_user_id)
 );
 ```
 
@@ -171,8 +176,8 @@ CREATE INDEX calls_org_status_idx
 ```sql
 CREATE TABLE transcripts (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  call_id       uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
-  org_id        uuid NOT NULL,
+  call_id       uuid NOT NULL,
+  org_id        uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   seq           int NOT NULL CHECK (seq >= 0),
   speaker       text NOT NULL CHECK (speaker IN ('agent','customer','system')),
   text          text NOT NULL CHECK (length(text) > 0),
@@ -180,7 +185,8 @@ CREATE TABLE transcripts (
   end_ms        int CHECK (end_ms IS NULL OR (start_ms IS NOT NULL AND end_ms >= start_ms)),
   confidence    numeric(4,3) CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
   created_at    timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (call_id, seq)
+  UNIQUE (call_id, seq),
+  FOREIGN KEY (org_id, call_id) REFERENCES calls(org_id, id) ON DELETE CASCADE
 );
 ```
 
@@ -218,7 +224,7 @@ CREATE INDEX transcripts_org_created_idx
 
 ### 4.4 비정규화 일관성
 
-`transcripts.org_id = calls.org_id` 일관성은 **DB 레벨이 아닌 service 레이어가 강제**한다. INSERT 시 service가 `SELECT org_id FROM calls WHERE id = $call_id`로 lookup 후 transcripts INSERT에 같은 값 박는다. 이게 깨질 수 있는 시나리오는 사실상 없음 (calls.org_id는 immutable, customer 같은 mutable FK가 아니므로). Step 2 plan에서 service 패턴 정밀화.
+`transcripts.org_id = calls.org_id` 일관성은 service 레이어가 먼저 맞추고, `(org_id, call_id) REFERENCES calls(org_id, id)` composite FK가 DB 레벨에서 한 번 더 강제한다. Step 2 plan에서 service INSERT 패턴 정밀화.
 
 ---
 
@@ -229,11 +235,11 @@ CREATE INDEX transcripts_org_created_idx
 ```sql
 CREATE TABLE call_action_items (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  call_id           uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
-  org_id            uuid NOT NULL,
+  call_id           uuid NOT NULL,
+  org_id            uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   title             text NOT NULL CHECK (length(title) > 0),
   due_date          date,
-  assignee_user_id  uuid REFERENCES users(id) ON DELETE SET NULL,
+  assignee_user_id  uuid,
   status            text NOT NULL DEFAULT 'open' CHECK (status IN ('open','done','dropped')),
   completed_at      timestamptz,
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -241,7 +247,10 @@ CREATE TABLE call_action_items (
   CHECK (
     (status = 'done' AND completed_at IS NOT NULL) OR
     (status <> 'done' AND completed_at IS NULL)
-  )
+  ),
+  FOREIGN KEY (org_id, call_id) REFERENCES calls(org_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (org_id, assignee_user_id)
+    REFERENCES memberships(org_id, user_id) ON DELETE SET NULL (assignee_user_id)
 );
 ```
 
@@ -299,7 +308,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON call_action_items  TO app;
 
 ## 8. 시드 정책
 
-`server/seeds/0004_phase4_demo.sql`:
+`server/seeds/0004_phase4_demo.sql`은 이번 schema-only Step 1에서는 만들지 않는다. 아래는 후속 step에서 seed가 필요할 때의 초안이다.
 
 - Acme + Beta 각 조직에 통화 10~15건씩 (총 20~30건)
 - 시드 customers 12명 분포 (모두 등록된 고객) + customer_id NULL 통화 1~2건 (unknown caller 시나리오)
@@ -309,7 +318,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON call_action_items  TO app;
 - `transcripts`: 통화당 5~10개 utterance, agent / customer 번갈아
 - `call_action_items`: 통화당 2~3개, open / done 섞임
 
-시드 후 `customers.last_contacted_at`도 시드 통화의 ended_at으로 일괄 UPDATE — Phase 2 시드 시점엔 NULL이었던 컬럼이 Phase 4 시드 후엔 의미 있는 시각으로 채워짐.
+후속 seed를 만들 때는 `customers.last_contacted_at`도 시드 통화의 ended_at으로 일괄 UPDATE한다. Phase 2 시드 시점엔 NULL이었던 컬럼이 Phase 4 seed 후엔 의미 있는 시각으로 채워져야 한다.
 
 ---
 
@@ -317,18 +326,18 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON call_action_items  TO app;
 
 다음을 모두 만족해야 Step 1 종료 → Step 2 (repository) 진입.
 
-- [ ] 4 migration 작성 + `npm --prefix server run db:migrate:up` PASS
-- [ ] `npm --prefix server run db:seed` PASS (0004_phase4_demo.sql 적용)
-- [ ] `psql --role=postgres` (admin URL)로 3 테이블 RLS FORCE 확인 (`pg_class.relforcerowsecurity = true`)
-- [ ] `psql --role=postgres`로 RLS 정책 4종씩 존재 확인 (`pg_policies` 12행 = 3 테이블 × 4 정책)
-- [ ] `psql --role=app`로 GUC `app.org_id = <acme_id>` set 후 SELECT calls → Acme calls만 노출 (Beta 0건)
-- [ ] `psql --role=app`로 cross-org INSERT 시도 (`INSERT ... org_id = <beta_id>` while GUC = acme) → 23514 check 또는 42501 permission 거부
-- [ ] 부분 인덱스 4개 (`calls`) + 2개 (`transcripts`) + 2개 (`call_action_items`) 존재 확인 (`pg_indexes`)
-- [ ] `transcripts.call_id` CASCADE 동작 확인 — calls DELETE 시 관련 transcripts 자동 삭제
-- [ ] `call_action_items` CHECK (status / completed_at) 위반 INSERT 시도 → 23514 거부
-- [ ] `customers.last_contacted_at`이 0004 시드 후 의미 있는 시각으로 채워져 있음
-- [ ] `PHASE_4_STEP_1_FINDINGS.md` 작성 (구현 중 발견 사항·trade-off·diff 인계)
-- [ ] `PHASE_4_MASTER.md` Implementation Log의 Step 1 체크박스 `[x]` flip + 통과일 기재
+- [x] 4 migration 작성 + `npm --prefix server run db:migrate:up` PASS
+- [x] fresh DB에서 `npm --prefix server run db:migrate:up` PASS
+- [x] `db:migrate:down` 4회 후 재 `db:migrate:up` PASS
+- [x] admin URL로 3 테이블 RLS FORCE 확인 (`pg_class.relforcerowsecurity = true`)
+- [x] admin URL로 RLS 정책 4종씩 존재 확인 (`pg_policies` 12행 = 3 테이블 × 4 정책)
+- [x] app role + GUC로 cross-org INSERT / composite FK drift 차단 확인 (`42501`, `23503`, `23514`)
+- [x] app role grants 12개 확인 (`SELECT/INSERT/UPDATE/DELETE` × 3 tables)
+- [x] `call_action_items` CHECK (status / completed_at) 위반 INSERT 시도 → `23514` 거부
+- [x] `PHASE_4_STEP_1_FINDINGS.md` 작성 (구현 중 발견 사항·trade-off·diff 인계)
+- [x] `PHASE_4_MASTER.md` Implementation Log의 Step 1 체크박스 `[x]` flip + 통과일 기재
+
+Demo seed와 `customers.last_contacted_at` fixture 검증은 이번 schema-only 작업에서 제외했다. Step 2/3 service와 Step 4 UI가 요구하는 fixture shape가 확정된 뒤 별도 seed step에서 처리한다.
 
 ---
 
@@ -347,4 +356,4 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON call_action_items  TO app;
 
 ## 11. 한 줄 요약
 
-> **Step 1은 `calls` / `transcripts` / `call_action_items` 3개 테이블 + RLS FORCE 12 정책 + 부분 인덱스 8개 + app role grant 4종 + 시드 1 파일로, Phase 4 영속화의 SQL 표면을 깨끗이 깐다. customers.plan은 재도입 0건, soft delete는 calls에만 한정, retention enforce는 Phase 6+.**
+> **Step 1은 `calls` / `transcripts` / `call_action_items` 3개 테이블 + RLS FORCE 12 정책 + 부분 인덱스 + app role grant 4종으로, Phase 4 영속화의 SQL 표면을 깨끗이 깐다. customers.plan은 재도입 0건, soft delete는 calls에만 한정, retention enforce는 Phase 6+. Demo seed는 사용자 지시에 따라 이번 schema-only 작업에서 제외하고 후속 step에서 결정한다.**

@@ -11,7 +11,7 @@
 
 > 이 섹션은 sub-step 진행 시 갱신된다. 본 plan은 master로, 각 sub-step은 별도 `PHASE_4_STEP_X_*.md` 문서에서 상세 설계.
 
-- [ ] **Step 1** — Schema (`calls` / `transcripts` / `call_action_items` + customers 연계) + RLS + 인덱스 + 시드 → `PHASE_4_STEP_1_SCHEMA.md` (작성됨, migration 파일 미작성)
+- [x] **Step 1** — Schema (`calls` / `transcripts` / `call_action_items`) + RLS + 인덱스 + app grants → `PHASE_4_STEP_1_SCHEMA.md` + `PHASE_4_STEP_1_FINDINGS.md` (2026-05-12 완료, demo seed는 schema-only 지시에 따라 후속 결정)
 - [ ] **Step 2** — Repository + unit tests (calls / transcripts / action items 저장소, RLS 격리 증명, soft delete 동작)
 - [ ] **Step 3** — Route layer (`/calls` REST + `/dashboard/summary` + WebSocket 영속 hook) + shared types + route tests
 - [ ] **Step 4** — Frontend wiring (live.html 영속 hook 추가 / calls.html mock 제거 → 실 API / dashboard.html mock 제거 → 실 KPI)
@@ -54,7 +54,7 @@ Phase 1~3까지 갖춰진 것:
 - `call_action_items` 신규 — 통화 후 다음 액션 (call_id, org_id, title, due_date, assignee_user_id, status)
 - 모든 신규 테이블 RLS FORCE ENABLE (Phase 1·2·3 패턴)
 - 인덱스 설계 — list / per-customer / per-agent / open-action-items 4 패턴
-- seed: 시드 고객 12명에 대해 통화 데이터 10~15건 + transcript 발화 5~10건 / 통화 + action item 2~3건 / 통화
+- seed: 시드 고객 기반 통화 fixture는 schema-only Step 1에서 제외. repository/routes/UI 진입 시점에 필요한 형태로 후속 결정
 
 **서버 (Step 2~3)**
 
@@ -111,13 +111,13 @@ Phase 1~3까지 갖춰진 것:
 | # | 항목 | 결정 | 근거 |
 |---|---|---|---|
 | 1 | 스키마 진입 순서 | **`calls` → `transcripts` → `call_action_items`** 순서로 단일 forward-only migration 4개 (테이블 3 + grant 1) | Phase 1·3 패턴 일관. `customers` 변경은 컬럼 추가 0건 (`last_contacted_at`은 이미 Phase 2에 존재) |
-| 2 | `transcripts.org_id` 비정규화 | **YES** — `calls.org_id`와 동기. RLS 정책이 JOIN 없이 transcripts.org_id 단독으로 평가 | Phase 3 `auth_tokens.org_id` 동일 패턴. 조회 빈도 높고 JOIN 비용 회피 |
+| 2 | `transcripts.org_id` 비정규화 | **YES** — `calls.org_id`와 동기. RLS 정책이 JOIN 없이 transcripts.org_id 단독으로 평가하고 `(org_id, call_id)` composite FK가 drift를 차단 | Phase 3 `auth_tokens.org_id` 동일 패턴. 조회 빈도 높고 JOIN 비용 회피 |
 | 3 | soft delete 정책 | `calls.deleted_at` + 부분 인덱스. `transcripts` / `call_action_items`는 부모(calls) CASCADE — 독립 soft delete 없음 | Phase 2 customers 패턴. 통화 자체가 운영 감사 대상이라 보존, 발화/액션은 통화 종속 |
 | 4 | 통화 종료 후 최종 상태 | `status='ended' / 'missed' / 'dropped'` 셋. `in_progress`는 진행 중에만 | Phase 0.5 spike에서 `dropped` (네트워크 끊김) 케이스 발생 — 별도 status 필요 |
 | 5 | `customers.last_contacted_at` 갱신 | **call 종료 시 service 레이어에서 같은 트랜잭션 안에 UPDATE.** trigger 미사용 | trigger는 디버깅 어려움. service 레이어 명시적 갱신이 흐름 명확. `WHERE customer_id IS NOT NULL AND (last_contacted_at IS NULL OR call.ended_at > last_contacted_at)` |
 | 6 | `calls.summary` 위치 | calls 본 행에 컬럼 — `summary text`, `sentiment text`, `needs text`, `issues text` | 1:1 관계 + lazy AI 처리도 같은 행 UPDATE로 충분. `call_summaries` 분리 테이블은 향후 다버전(AI / 사람) 동시 보존이 필요해지면 도입 |
 | 7 | `call_action_items` 분리 | **분리 테이블 — 1:N.** 통화 1건당 액션 여러 개, 담당자 지정 + 상태 변경이 별개 라이프사이클 | 향후 personal todo 화면이 이 테이블에서 SELECT 받아 갈 entry point. `jsonb[]`로 두면 작성 후 수정 비용 큼 |
-| 8 | `call_action_items.assignee_user_id` ON DELETE 정책 | `ON DELETE SET NULL` (Phase 2 customers.assignee_user_id 패턴) | 담당자 떠나도 action item 자체는 보존 — 미할당 상태로 |
+| 8 | `call_action_items.assignee_user_id` ON DELETE 정책 | `(org_id, assignee_user_id) REFERENCES memberships(org_id, user_id) ON DELETE SET NULL (assignee_user_id)` | 담당자 떠나도 action item 자체는 보존 — 미할당 상태로. Membership composite FK로 다른 org 사용자 할당 차단 |
 | 9 | `transcripts` append 정책 | **`seq INT NOT NULL`, `UNIQUE(call_id, seq)`** — server-side counter로 발급 | 동시 append 없음 (call 한 번에 한 클라이언트). server가 `MAX(seq)+1` 발급 또는 sequence per call. 자세한 패턴은 Step 2 plan에서 |
 | 10 | WebSocket 영속 hook 책임 | **server-side `ws/persistence.ts`가 connect 후 listener로 wire — UI 클라이언트가 영속 호출 안 함.** WS 메시지 처리 핸들러가 동일 트랜잭션 단위로 DB write | 클라이언트가 별도 REST 호출하면 race·중복 위험. server-side에서 단일 출처 |
 | 11 | dashboard summary 구현 | **단일 endpoint `GET /dashboard/summary`** — 5~6 KPI를 단일 응답. 서버에서 미리 집계 | 각 KPI마다 별도 endpoint는 dashboard 로딩 N+1 요청 발생. Phase 2 `/customers/stats` 패턴과 일관 |
@@ -139,20 +139,20 @@ Phase 1~3까지 갖춰진 것:
 
 ### Step 1 — Schema 보강 (1.5~2일)
 
-**목표**: `calls` / `transcripts` / `call_action_items` 3개 테이블이 RLS FORCE + 인덱스 + grant + seed까지 깨끗이 깔린다.
+**목표**: `calls` / `transcripts` / `call_action_items` 3개 테이블이 RLS FORCE + 인덱스 + grant까지 깨끗이 깔린다. Demo seed는 schema-only 지시에 따라 후속 step에서 결정한다.
 
 **산출물**:
 - `server/migrations/<ts>_phase4_calls.sql` — `calls` 테이블 + RLS 4 정책 + 인덱스 4
 - `server/migrations/<ts>_phase4_transcripts.sql` — `transcripts` 테이블 + RLS 4 정책 + 인덱스 2
 - `server/migrations/<ts>_phase4_call_action_items.sql` — `call_action_items` 테이블 + RLS 4 정책 + 인덱스 2
 - `server/migrations/<ts>_phase4_grants.sql` — `app` role grant 추가 (calls / transcripts / call_action_items SELECT/INSERT/UPDATE/DELETE)
-- `server/seeds/0004_phase4_demo.sql` — 시드 통화 10~15건 / 발화 5~10건 / 액션 2~3건
+- `server/seeds/0004_phase4_demo.sql` — 후속 step에서 결정 (schema-only 작업에서는 미작성)
 - `PHASE_4_STEP_1_SCHEMA.md` (계획서, 이번 작업에서 작성) — 컬럼·정책·인덱스 사전 결정
-- `PHASE_4_STEP_1_FINDINGS.md` (구현 후 작성)
+- `PHASE_4_STEP_1_FINDINGS.md` — 구현 결과·검증·Step 2 인계 사항
 
 **완료 기준**:
 - `npm --prefix server run db:migrate:up` PASS
-- `npm --prefix server run db:seed` PASS
+- fresh DB에서 `npm --prefix server run db:migrate:up` PASS
 - raw SQL (admin URL)로 3 테이블 RLS FORCE 확인
 - app role + GUC 컨텍스트로 SELECT → 본 org 데이터만 노출, INSERT WITH CHECK이 cross-org 차단
 
@@ -272,8 +272,8 @@ Phase 1~3까지 갖춰진 것:
 CREATE TABLE calls (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id              uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  customer_id         uuid REFERENCES customers(id) ON DELETE SET NULL,
-  agent_user_id       uuid NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  customer_id         uuid,
+  agent_user_id       uuid,
   direction           text NOT NULL CHECK (direction IN ('inbound','outbound','meeting')),
   status              text NOT NULL CHECK (status IN ('in_progress','ended','missed','dropped')),
   started_at          timestamptz NOT NULL DEFAULT now(),
@@ -287,7 +287,12 @@ CREATE TABLE calls (
   notes               text,
   deleted_at          timestamptz,
   created_at          timestamptz NOT NULL DEFAULT now(),
-  updated_at          timestamptz NOT NULL DEFAULT now()
+  updated_at          timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (org_id, id),
+  FOREIGN KEY (org_id, customer_id)
+    REFERENCES customers(org_id, id) ON DELETE SET NULL (customer_id),
+  FOREIGN KEY (org_id, agent_user_id)
+    REFERENCES memberships(org_id, user_id) ON DELETE SET NULL (agent_user_id)
 );
 
 ALTER TABLE calls ENABLE ROW LEVEL SECURITY;
@@ -301,8 +306,8 @@ ALTER TABLE calls FORCE ROW LEVEL SECURITY;
 ```sql
 CREATE TABLE transcripts (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  call_id       uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
-  org_id        uuid NOT NULL,  -- 비정규화. calls.org_id와 동기 (Step 1 service layer가 강제)
+  call_id       uuid NOT NULL,
+  org_id        uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   seq           int NOT NULL,
   speaker       text NOT NULL CHECK (speaker IN ('agent','customer','system')),
   text          text NOT NULL,
@@ -310,7 +315,8 @@ CREATE TABLE transcripts (
   end_ms        int,
   confidence    numeric(4,3),
   created_at    timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (call_id, seq)
+  UNIQUE (call_id, seq),
+  FOREIGN KEY (org_id, call_id) REFERENCES calls(org_id, id) ON DELETE CASCADE
 );
 
 ALTER TABLE transcripts ENABLE ROW LEVEL SECURITY;
@@ -324,15 +330,18 @@ ALTER TABLE transcripts FORCE ROW LEVEL SECURITY;
 ```sql
 CREATE TABLE call_action_items (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  call_id           uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
-  org_id            uuid NOT NULL,
+  call_id           uuid NOT NULL,
+  org_id            uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   title             text NOT NULL,
   due_date          date,
-  assignee_user_id  uuid REFERENCES users(id) ON DELETE SET NULL,
+  assignee_user_id  uuid,
   status            text NOT NULL DEFAULT 'open' CHECK (status IN ('open','done','dropped')),
   completed_at      timestamptz,
   created_at        timestamptz NOT NULL DEFAULT now(),
-  updated_at        timestamptz NOT NULL DEFAULT now()
+  updated_at        timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (org_id, call_id) REFERENCES calls(org_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (org_id, assignee_user_id)
+    REFERENCES memberships(org_id, user_id) ON DELETE SET NULL (assignee_user_id)
 );
 
 ALTER TABLE call_action_items ENABLE ROW LEVEL SECURITY;
