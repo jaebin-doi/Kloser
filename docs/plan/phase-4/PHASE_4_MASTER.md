@@ -12,7 +12,7 @@
 > 이 섹션은 sub-step 진행 시 갱신된다. 본 plan은 master로, 각 sub-step은 별도 `PHASE_4_STEP_X_*.md` 문서에서 상세 설계.
 
 - [x] **Step 1** — Schema (`calls` / `transcripts` / `call_action_items`) + RLS + 인덱스 + app grants → `PHASE_4_STEP_1_SCHEMA.md` + `PHASE_4_STEP_1_FINDINGS.md` (2026-05-12 완료, demo seed는 schema-only 지시에 따라 후속 결정)
-- [ ] **Step 2** — Repository + unit tests (calls / transcripts / action items 저장소, RLS 격리 증명, soft delete 동작)
+- [ ] **Step 2** — Repository + unit tests (calls / transcripts / action items 저장소, RLS 격리 증명, soft delete 동작) → `PHASE_4_STEP_2_REPO.md` (계획 작성됨)
 - [ ] **Step 3** — Route layer (`/calls` REST + `/dashboard/summary` + WebSocket 영속 hook) + shared types + route tests
 - [ ] **Step 4** — Frontend wiring (live.html 영속 hook 추가 / calls.html mock 제거 → 실 API / dashboard.html mock 제거 → 실 KPI)
 - [ ] **Step 5** — Phase 4 통합 e2e + Phase 4 종합 findings
