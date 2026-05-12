@@ -1,0 +1,189 @@
+/* call_action_items repository — Phase 4 Step 2.
+ *
+ * Each row is one follow-up task attached to a call. Step 1 migration:
+ *   - denormalises org_id (RLS authority, no JOIN)
+ *   - (org_id, call_id) composite FK against calls(org_id, id) blocks
+ *     cross-org pointers at the DB layer
+ *   - (org_id, assignee_user_id) composite FK against
+ *     memberships(org_id, user_id) — assignees must belong to the org
+ *   - CHECK ((status='done' AND completed_at IS NOT NULL)
+ *           OR (status<>'done' AND completed_at IS NULL))
+ *
+ * The CHECK constraint is the source of truth for the status/timestamp
+ * relationship. The repository keeps the SQL aligned with that contract
+ * so the application never tries to write a forbidden combination.
+ *
+ * Cross-org or missing call ids surface as `null` from create/list, and
+ * `null` from patches when the action item id is invalid. This lets
+ * Step 3 routes map cleanly to 404 without exposing existence.
+ */
+import type { PoolClient } from "pg";
+
+// ---------- entity + input types ---------- //
+
+export type CallActionItemStatus = "open" | "done" | "dropped";
+
+export interface CallActionItem {
+  id: string;
+  call_id: string;
+  org_id: string;
+  title: string;
+  due_date: string | null; // pg returns DATE as YYYY-MM-DD string
+  assignee_user_id: string | null;
+  status: CallActionItemStatus;
+  completed_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ActionItemCreateInput {
+  title: string;
+  due_date?: string | null;
+  assignee_user_id?: string | null;
+}
+
+const ACTION_ITEM_COLUMNS =
+  "id, call_id, org_id, title, due_date, assignee_user_id, status," +
+  " completed_at, created_at, updated_at";
+
+// ---------- helpers ---------- //
+
+async function findCallOrgId(
+  client: PoolClient,
+  callId: string,
+): Promise<string | null> {
+  const r = await client.query<{ org_id: string }>(
+    `SELECT org_id FROM calls
+      WHERE id = $1 AND deleted_at IS NULL`,
+    [callId],
+  );
+  return r.rows[0]?.org_id ?? null;
+}
+
+async function lockCallOrgId(
+  client: PoolClient,
+  callId: string,
+): Promise<string | null> {
+  const r = await client.query<{ org_id: string }>(
+    `SELECT org_id FROM calls
+      WHERE id = $1 AND deleted_at IS NULL
+      FOR UPDATE`,
+    [callId],
+  );
+  return r.rows[0]?.org_id ?? null;
+}
+
+// ---------- write ---------- //
+
+export async function createForCallInCurrentOrg(
+  client: PoolClient,
+  callId: string,
+  input: ActionItemCreateInput,
+): Promise<CallActionItem | null> {
+  // RLS hides cross-org calls, so a missing row here means either the
+  // call really doesn't exist or it belongs to a different org. Either
+  // way, callers treat the answer as "not found" without leaking which.
+  const orgId = await lockCallOrgId(client, callId);
+  if (!orgId) return null;
+
+  const r = await client.query<CallActionItem>(
+    `INSERT INTO call_action_items (
+        org_id, call_id, title, due_date, assignee_user_id, status, completed_at
+     ) VALUES (
+        $1, $2, $3, $4, $5, 'open', NULL
+     )
+     RETURNING ${ACTION_ITEM_COLUMNS}`,
+    [
+      orgId,
+      callId,
+      input.title,
+      input.due_date ?? null,
+      input.assignee_user_id ?? null,
+    ],
+  );
+  return r.rows[0]!;
+}
+
+// `done` flips completed_at to now() inside the same UPDATE so the
+// CHECK constraint never sees a transient mismatch. open/dropped clear
+// completed_at for the same reason.
+export async function patchStatusInCurrentOrg(
+  client: PoolClient,
+  id: string,
+  status: CallActionItemStatus,
+): Promise<CallActionItem | null> {
+  if (status === "done") {
+    const r = await client.query<CallActionItem>(
+      `UPDATE call_action_items
+          SET status = 'done',
+              completed_at = now()
+        WHERE id = $1
+          AND EXISTS (
+            SELECT 1 FROM calls
+             WHERE calls.id = call_action_items.call_id
+               AND calls.deleted_at IS NULL
+          )
+        RETURNING ${ACTION_ITEM_COLUMNS}`,
+      [id],
+    );
+    return r.rows[0] ?? null;
+  }
+
+  const r = await client.query<CallActionItem>(
+    `UPDATE call_action_items
+        SET status = $1,
+            completed_at = NULL
+      WHERE id = $2
+        AND EXISTS (
+          SELECT 1 FROM calls
+           WHERE calls.id = call_action_items.call_id
+             AND calls.deleted_at IS NULL
+        )
+      RETURNING ${ACTION_ITEM_COLUMNS}`,
+    [status, id],
+  );
+  return r.rows[0] ?? null;
+}
+
+// Cross-org assignee values are rejected by the composite FK at the DB
+// layer (23503), so the repository does not need to pre-check. Same-org
+// nulls flow through unchanged.
+export async function patchAssigneeInCurrentOrg(
+  client: PoolClient,
+  id: string,
+  assigneeUserId: string | null,
+): Promise<CallActionItem | null> {
+  const r = await client.query<CallActionItem>(
+    `UPDATE call_action_items
+        SET assignee_user_id = $1
+      WHERE id = $2
+        AND EXISTS (
+          SELECT 1 FROM calls
+           WHERE calls.id = call_action_items.call_id
+             AND calls.deleted_at IS NULL
+        )
+      RETURNING ${ACTION_ITEM_COLUMNS}`,
+    [assigneeUserId, id],
+  );
+  return r.rows[0] ?? null;
+}
+
+// ---------- read ---------- //
+
+export async function listByCallInCurrentOrg(
+  client: PoolClient,
+  callId: string,
+): Promise<CallActionItem[] | null> {
+  const orgId = await findCallOrgId(client, callId);
+  if (!orgId) return null;
+
+  // due_date ASC (nulls last) + created_at to give "todo-feed" ordering
+  // by deadline, falling back to creation time for ties / undated items.
+  const r = await client.query<CallActionItem>(
+    `SELECT ${ACTION_ITEM_COLUMNS} FROM call_action_items
+      WHERE call_id = $1
+      ORDER BY due_date ASC NULLS LAST, created_at ASC`,
+    [callId],
+  );
+  return r.rows;
+}
