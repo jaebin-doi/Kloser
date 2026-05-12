@@ -15,7 +15,7 @@
 - [x] **Step 2** — Repository + unit tests (calls / transcripts / action items 저장소 + endCall service, RLS 격리·composite FK·soft delete·seq 동시 append·`customers.last_contacted_at` 갱신·트랜잭션 롤백 모두 단위 테스트로 증명) → `PHASE_4_STEP_2_REPO.md` + `PHASE_4_STEP_2_FINDINGS.md` (2026-05-12 완료, 25 신규 테스트 PASS, 누적 180/180)
 - [x] **Step 3** — Route layer (`/calls` REST 11 endpoint + `/dashboard/summary` + WS persistence hook) + shared types 4 entity (call / transcript / actionItem / dashboard) + `requireVerified` middleware + route/WS tests → `PHASE_4_STEP_3_ROUTES.md` + `PHASE_4_STEP_3_FINDINGS.md` (2026-05-12 완료, 32 신규 테스트 PASS, 누적 212/212, sync_shared_types 9 entity PASS)
 - [x] **Step 4** — Frontend wiring: `platform/api.js` Phase 4 helper 12개 + `live.html` callId 보관 + 종료/메모 wire + `calls.html` mock 제거 → `/calls` 실 API + URL sync + detail 병렬 fetch + `dashboard.html` KPI 4장 + 최근 통화 5건 → `/dashboard/summary` + 미인증 배너 wire (calls/dashboard) → `PHASE_4_STEP_4_FINDINGS.md` (2026-05-12 완료, Playwright manual 8/8 PASS, 회귀 typecheck/sync_shared_types/212 unit/phase 0.5·2·3 e2e 모두 PASS)
-- [ ] **Step 5** — Phase 4 통합 e2e + Phase 4 종합 findings → `PHASE_4_STEP_5_E2E.md`
+- [x] **Step 5** — Phase 4 통합 e2e + 종료 게이트 sync: `test/phase_4_e2e.mjs` 8 시나리오 + cleanup sweep PASS + 회귀(typecheck / sync_shared_types 9 entity / 212 unit / phase 0.5·2·3 e2e) 모두 PASS → `PHASE_4_STEP_5_E2E.md` + `PHASE_4_STEP_5_FINDINGS.md` (2026-05-12 완료, 콘솔 에러 0, residue 0)
 
 ---
 
@@ -433,26 +433,26 @@ Phase 3 findings에서 Phase 4 진입 시 처리하기로 한 항목:
 
 다음을 모두 만족하면 Phase 4 종료, Phase 5 (실 STT + AI 응대 추천)로 착수.
 
-- [ ] `npm --prefix server run typecheck` PASS
-- [ ] `npm --prefix server test` PASS — Phase 3의 155 + 신규 ~35~45 = 누적 ~190~200
-- [ ] `node test/phase_0_5_e2e.mjs` 16/16 회귀 PASS
-- [ ] `node test/phase_2_customers_e2e.mjs` 7/7 회귀 PASS
-- [ ] `node test/phase_3_e2e.mjs` 33 assertion 회귀 PASS
-- [ ] `node test/phase_4_e2e.mjs` 8~10 시나리오 + cleanup sweep PASS
-- [ ] `node test/sync_shared_types.mjs` PASS (9 entity: customers + signup + password-reset + team + invitation + call + transcript + actionItem + dashboard)
-- [ ] 4 신규 마이그레이션 적용 + raw SQL로 RLS FORCE 검증
-- [ ] 신규 endpoints 모두 200/4xx 정확히 — `GET/POST /calls` 계열 5 + `GET /dashboard/summary` + WS persistence hooks
-- [ ] **viewer의 calls mutation → 403 / employee의 다른 agent 통화 mutation → 403**
-- [ ] **cross-org calls ID로 mutation → 404 (존재 노출 없음)**
-- [ ] **call 종료 시 `customers.last_contacted_at` 동시 갱신** (단위 + e2e 둘 다 검증)
-- [ ] **미인증 user의 calls mutation → 403 `email_not_verified`** (`requireVerified` 적용)
-- [ ] **`platform/calls.html` mock 제거** — in-page `calls` array 0건
-- [ ] **`platform/dashboard.html` KPI 4장 + 최근 통화 5건 실 데이터** (정적 demo 영역은 코멘트로 라벨)
-- [ ] **`platform/live.html` start/end/notes 영속 hook** 동작
-- [ ] **AGENTS.md innerHTML XSS gate 위반 0건** — 모든 server-source 보간이 textContent 또는 escapeHtml 경유
-- [ ] `docs/plan/phase-4/PHASE_4_STEP_1~5_FINDINGS.md` 모두 작성됨
-- [ ] `docs/USER_GUIDE_PHASE_4.md` + `docs/product/PHASE_4_FOUNDATIONS.html` 작성됨
-- [ ] 루트 `README.md` + `server/README.md` 상태 블록 Phase 4 완료로 갱신
+- [x] `npm --prefix server run typecheck` PASS
+- [x] `npm --prefix server test` PASS — 누적 212/212 (Step 3에서 +32, Step 5 회귀 확인)
+- [x] `node test/phase_0_5_e2e.mjs` 16/16 회귀 PASS
+- [x] `node test/phase_2_customers_e2e.mjs` 7/7 회귀 PASS
+- [x] `node test/phase_3_e2e.mjs` 33 assertion 회귀 PASS
+- [x] `node test/phase_4_e2e.mjs` 8 시나리오 + cleanup sweep PASS (Step 5)
+- [x] `node test/sync_shared_types.mjs` PASS (9 entity: customers + signup + password-reset + team + invitation + call + transcript + actionItem + dashboard)
+- [x] 4 신규 마이그레이션 적용 + raw SQL로 RLS FORCE 검증 (Step 1 시점)
+- [x] 신규 endpoints 모두 200/4xx 정확히 — `GET/POST /calls` 계열 5 + `GET /dashboard/summary` + WS persistence hooks
+- [x] **viewer의 calls mutation → 403 / employee의 다른 agent 통화 mutation → 403** (Step 3 routes test + Step 5 e2e viewer scenario)
+- [x] **cross-org calls ID로 mutation → 404 (존재 노출 없음)** (Step 5 e2e Beta scenario)
+- [x] **call 종료 시 `customers.last_contacted_at` 동시 갱신** (Step 2 단위 + Step 5 e2e 둘 다 검증)
+- [x] **미인증 user의 calls mutation → 403 `email_not_verified`** (`requireVerified` 적용, Step 5 e2e scenario 7)
+- [x] **`platform/calls.html` mock 제거** — in-page `calls` array 0건 (Step 4)
+- [x] **`platform/dashboard.html` KPI 4장 + 최근 통화 5건 실 데이터** (Step 4)
+- [x] **`platform/live.html` start/end/notes 영속 hook** 동작 (Step 4 + Step 5 e2e scenario 1)
+- [x] **AGENTS.md innerHTML XSS gate 위반 0건** — Step 4 audit + Step 5 콘솔 에러 0 회귀
+- [x] `docs/plan/phase-4/PHASE_4_STEP_1~5_FINDINGS.md` 모두 작성됨
+- [ ] `docs/USER_GUIDE_PHASE_4.md` + `docs/product/PHASE_4_FOUNDATIONS.html` 작성됨 *(미작성 — Step 5에서는 e2e/closeout만 다룸. 사용자 결정 대기)*
+- [ ] 루트 `README.md` + `server/README.md` 상태 블록 Phase 4 완료로 갱신 *(미작성 — 동일하게 사용자 결정 대기)*
 
 하나라도 실패하면 해당 step에 머문다.
 

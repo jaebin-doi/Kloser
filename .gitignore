@@ -37,6 +37,7 @@ build/
 test/phase_0_5_e2e.png
 test/phase_2_customers_e2e.png
 test/phase_3_e2e.png
+test/phase_4_e2e.png
 
 # Claude Code local settings
 .claude/settings.local.json
