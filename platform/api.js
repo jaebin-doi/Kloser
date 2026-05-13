@@ -400,6 +400,12 @@
     );
   }
 
+  // Phase 6 Step 3 — hard delete. Server returns 204 No Content on
+  // success; the caller should reload the detail panel afterwards.
+  function deleteActionItem(id) {
+    return apiDelete('/call-action-items/' + encodeURIComponent(id));
+  }
+
   function getDashboardSummary() {
     return apiGet('/dashboard/summary');
   }
@@ -597,6 +603,7 @@
     createActionItem: createActionItem,
     patchActionItemStatus: patchActionItemStatus,
     patchActionItemAssignee: patchActionItemAssignee,
+    deleteActionItem: deleteActionItem,
     getDashboardSummary: getDashboardSummary,
 
     // Phase 5 — knowledge / checklist / suggestion / call meta.

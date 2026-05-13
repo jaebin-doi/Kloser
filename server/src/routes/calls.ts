@@ -58,6 +58,11 @@ import * as callsRepo from "../repositories/calls.js";
 import * as transcriptsRepo from "../repositories/transcripts.js";
 import * as actionItemsRepo from "../repositories/callActionItems.js";
 import * as callsService from "../services/calls.js";
+import * as callActionItemsService from "../services/callActionItems.js";
+import {
+  PermissionError,
+  type Actor,
+} from "../services/callPermissions.js";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -92,6 +97,14 @@ async function callsRoutes(app: FastifyInstance) {
       return reply
         .code(400)
         .send({ error: "invalid_input", issues: err.flatten() });
+    }
+    // Phase 6 Step 3 — DELETE /call-action-items/:id introduces the
+    // first assertCanMutateCall caller in this route file. The
+    // checklist / suggestion routes already map PermissionError → 403
+    // in callsPhase5.ts; keep the same code so the client error
+    // taxonomy stays uniform across mutation routes.
+    if (err instanceof PermissionError) {
+      return reply.code(403).send({ error: "forbidden" });
     }
     if (err instanceof AuthError) {
       const body: Record<string, unknown> = {
@@ -422,6 +435,40 @@ async function callsRoutes(app: FastifyInstance) {
       );
       if (!updated) return reply.code(404).send({ error: "not_found" });
       return reply.code(200).send({ action_item: updated });
+    },
+  );
+
+  // -------------------------------------------------------------- //
+  // DELETE /call-action-items/:id — hard delete (Phase 6 Step 3)
+  //
+  // Uses the Phase 5 `assertCanMutateCall` policy (admin / manager
+  // team-scope / employee-own / viewer-deny / manager-unassigned-deny).
+  // Cross-org and soft-deleted parents collapse to 404 — never 403 —
+  // so the response never leaks whether the action item exists
+  // elsewhere.
+  // -------------------------------------------------------------- //
+  app.delete(
+    "/call-action-items/:id",
+    {
+      preHandler: [
+        requireAuth,
+        orgContext,
+        requireVerified,
+        requireRole(...WRITER_ROLES),
+        requireFreshRole,
+      ],
+    },
+    async (request, reply) => {
+      const { id } = UuidParam.parse(request.params);
+      const user = request.user!;
+      const actor: Actor = { id: user.id, orgId: user.orgId, role: user.role };
+      const deleted = await callActionItemsService.deleteActionItem(
+        app,
+        actor,
+        id,
+      );
+      if (!deleted) return reply.code(404).send({ error: "not_found" });
+      return reply.code(204).send();
     },
   );
 }

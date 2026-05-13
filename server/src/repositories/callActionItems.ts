@@ -145,6 +145,32 @@ export async function patchStatusInCurrentOrg(
   return r.rows[0] ?? null;
 }
 
+// Hard delete by id within the current org context. Phase 6 Step 3.
+//
+// RLS hides cross-org rows, and the EXISTS-on-calls guard mirrors the
+// status / assignee patch path: a soft-deleted parent call freezes its
+// action items in place too. Returns true when one row was removed,
+// false otherwise (missing / cross-org / soft-deleted parent / repeated
+// delete). The service layer maps `false` to a 404 so the route never
+// leaks whether the action item existed in a different org.
+export async function deleteByIdInCurrentOrg(
+  client: PoolClient,
+  id: string,
+): Promise<boolean> {
+  const r = await client.query<{ id: string }>(
+    `DELETE FROM call_action_items
+      WHERE id = $1
+        AND EXISTS (
+          SELECT 1 FROM calls
+           WHERE calls.id = call_action_items.call_id
+             AND calls.deleted_at IS NULL
+        )
+      RETURNING id`,
+    [id],
+  );
+  return r.rowCount === 1;
+}
+
 // Cross-org assignee values are rejected by the composite FK at the DB
 // layer (23503), so the repository does not need to pre-check. Same-org
 // nulls flow through unchanged.

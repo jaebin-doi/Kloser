@@ -579,9 +579,10 @@
       document.getElementById('dIssues').textContent = call.issues  || '미해결 이슈가 등록되지 않았습니다.';
       document.getElementById('dNotes').textContent  = call.notes   || '메모가 없습니다.';
 
-      // Action items — Phase 5 Step 4: status toggle. No delete UI
-      // (no backend endpoint). Title and due_date are server-stored
-      // strings → escapeHtml + innerHTML, then status toggle wired by id.
+      // Action items — Phase 5 Step 4: status toggle. Phase 6 Step 3
+      // adds the row-level delete control (hard delete, 204 → reload
+      // detail). Title/due_date/id are server-returned strings →
+      // every interpolation flows through escapeHtml before innerHTML.
       renderActionItems(actionItems);
 
       // Summary source badge (manual vs ai) — Phase 5 Step 4.
@@ -662,12 +663,16 @@
         const isDone = a.status === 'done';
         const due = a.due_date ? ' (' + escapeHtml(a.due_date) + ')' : '';
         // data-action-id + data-action-status drive the click handler below.
+        // The trailing ✕ button is Phase 6 Step 3 — hard delete.
         return '<li class="flex items-start gap-1.5 ' + (isDone ? 'text-slate-400 line-through' : '') + '">' +
                  '<button type="button" data-action-id="' + escapeHtml(a.id) + '" data-action-status="' + escapeHtml(a.status) + '"' +
                  ' class="text-blue-500 font-black shrink-0 hover:text-blue-700" title="상태 토글">' +
                  (isDone ? '✓' : '→') +
                  '</button>' +
-                 '<span>' + escapeHtml(a.title || '') + due + '</span>' +
+                 '<span class="flex-1">' + escapeHtml(a.title || '') + due + '</span>' +
+                 '<button type="button" data-delete-action-id="' + escapeHtml(a.id) + '"' +
+                 ' class="text-slate-300 hover:text-rose-600 shrink-0 text-[.85rem] leading-none px-1"' +
+                 ' aria-label="삭제" title="삭제">✕</button>' +
                '</li>';
       }).join('');
 
@@ -689,6 +694,35 @@
             }
           } catch (err) {
             console.warn('[calls] action status failed', err);
+            document.getElementById('dActionStatus').textContent = '네트워크 오류';
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // Phase 6 Step 3 — hard delete handler. No confirmation modal
+      // (consistent with other mutation controls on this page); on
+      // success / 404 we reload the detail panel so the row reflects
+      // server state. 403 surfaces "권한 없음".
+      ul.querySelectorAll('button[data-delete-action-id]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-delete-action-id');
+          btn.disabled = true;
+          try {
+            const res = await window.kloserApi.deleteActionItem(id);
+            if (res.status === 204 || res.status === 404) {
+              // 204: gone. 404: someone else already removed it. Either
+              // way the right next state is "reload list from server".
+              if (currentCallId) await openDetail(currentCallId);
+            } else if (res.status === 403) {
+              document.getElementById('dActionStatus').textContent = '권한 없음';
+              btn.disabled = false;
+            } else {
+              document.getElementById('dActionStatus').textContent = '삭제 실패 (' + res.status + ')';
+              btn.disabled = false;
+            }
+          } catch (err) {
+            console.warn('[calls] action delete failed', err);
             document.getElementById('dActionStatus').textContent = '네트워크 오류';
             btn.disabled = false;
           }

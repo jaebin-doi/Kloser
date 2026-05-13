@@ -13,7 +13,7 @@
 
 - [x] **Step 1** — Worker infrastructure + AI summary 자동 생성 + 60s heartbeat sweep cron + WS suggestion persistence (mock providers, schema 무변경) — 2026-05-12 완료, `PHASE_6_STEP_1_FINDINGS.md` 참조
 - [x] **Step 2** — 실 provider client (Clova STT + Anthropic LLM + OpenAI Embedding) + `llm_usage_log` 신규 테이블 + cost log — 2026-05-13 완료, `PHASE_6_STEP_2_FINDINGS.md` 참조 (sub-unit: `PHASE_6_STEP_2_SCHEMA_FINDINGS.md` / `PHASE_6_STEP_2_WIRING_FINDINGS.md` / `PHASE_6_STEP_2_PROVIDER_FINDINGS.md`). Residual: `cost_usd_micros`는 현재 NULL — model→price map은 별도 cost-accuracy commit으로 분리. `phase_4_e2e` / `phase_5_e2e` 회귀는 Step 5 통합 e2e 또는 Codex review 시점에 일괄 검증.
-- [ ] **Step 3** — Action item DELETE endpoint + frontend 삭제 UI (schema 보강 또는 hard delete 결정)
+- [x] **Step 3** — Action item DELETE endpoint + frontend 삭제 UI (hard delete 채택, schema 무변경) — 2026-05-13 완료, `PHASE_6_STEP_3_FINDINGS.md` 참조
 - [ ] **Step 4** — Manager team-scope read/report 화면 (route + frontend, schema 무변경)
 - [ ] **Step 5** — Phase 6 통합 e2e + 종합 findings + Phase 7 인계
 
@@ -373,7 +373,7 @@ Phase 5 cleanup 패턴을 그대로 확장.
 - [ ] `node test/sync_shared_types.mjs` PASS (Step 4 후 16 entity 목표) — Step 2 시점 현재 14 entity PASS. Step 4에서 +2 → 16 후 최종 체크
 - [x] BullMQ 워커 boot + AI summary 자동 + heartbeat sweep + WS suggestion persistence 작동 — Step 1 + Step 2 wiring
 - [x] 실 provider 어댑터 3종 인터페이스 충족 + `llm_usage_log` 1행 INSERT 검증 — Step 2 완료. 단 `cost_usd_micros`는 현재 NULL (Step 2 plan §2 허용, `PHASE_6_STEP_2_FINDINGS.md §6.1` residual)
-- [ ] Action item DELETE endpoint + UI 동작 — Step 3 산출물
+- [x] Action item DELETE endpoint + UI 동작 — Step 3 완료 (`PHASE_6_STEP_3_FINDINGS.md`)
 - [ ] Manager team-scope read 보고서 + 권한 매트릭스 검증 — Step 4 산출물
 - [ ] AGENTS.md innerHTML XSS gate 위반 0건 — Step 2는 frontend 무수정. Step 3/4 frontend 변경 후 최종 재확인
 - [ ] `docs/plan/phase-6/PHASE_6_STEP_1~5_FINDINGS.md` 모두 작성 — Step 1·2 완료, 3·4·5 미진행
