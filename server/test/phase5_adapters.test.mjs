@@ -192,35 +192,189 @@ test("mock embedding embedBatch returns one vector per input + single usage row"
 //                          RESOLVERS
 // ============================================================
 
-test("resolveXxxAdapter defaults to mock when no env var is set", () => {
-    const prevStt = process.env.STT_PROVIDER;
-    const prevLlm = process.env.LLM_PROVIDER;
-    const prevEmb = process.env.EMBEDDING_PROVIDER;
+// Helper: scope env mutations to a single test case so the rest of the
+// suite (and other test files run in the same process) is unaffected.
+function withEnv(vars, fn) {
+    const prev = {};
+    for (const k of Object.keys(vars)) prev[k] = process.env[k];
     try {
-        delete process.env.STT_PROVIDER;
-        delete process.env.LLM_PROVIDER;
-        delete process.env.EMBEDDING_PROVIDER;
-        const stt = resolveSttAdapter();
-        const llm = resolveLlmAdapter();
-        const emb = resolveEmbeddingAdapter();
-        assert.equal(stt.provider, "mock");
-        assert.equal(llm.provider, "mock");
-        assert.equal(emb.provider, "mock");
-        assert.equal(emb.dimensions, 1536);
+        for (const [k, v] of Object.entries(vars)) {
+            if (v === undefined) delete process.env[k];
+            else process.env[k] = v;
+        }
+        return fn();
     } finally {
-        if (prevStt !== undefined) process.env.STT_PROVIDER = prevStt;
-        if (prevLlm !== undefined) process.env.LLM_PROVIDER = prevLlm;
-        if (prevEmb !== undefined) process.env.EMBEDDING_PROVIDER = prevEmb;
+        for (const [k, v] of Object.entries(prev)) {
+            if (v === undefined) delete process.env[k];
+            else process.env[k] = v;
+        }
     }
+}
+
+test("resolveXxxAdapter defaults to mock when no env var is set", () => {
+    withEnv(
+        {
+            STT_PROVIDER: undefined,
+            LLM_PROVIDER: undefined,
+            EMBEDDING_PROVIDER: undefined,
+        },
+        () => {
+            const stt = resolveSttAdapter();
+            const llm = resolveLlmAdapter();
+            const emb = resolveEmbeddingAdapter();
+            assert.equal(stt.provider, "mock");
+            assert.equal(llm.provider, "mock");
+            assert.equal(emb.provider, "mock");
+            assert.equal(emb.dimensions, 1536);
+        },
+    );
 });
 
-test("resolveSttAdapter throws when STT_PROVIDER is unknown", () => {
-    const prev = process.env.STT_PROVIDER;
-    try {
-        process.env.STT_PROVIDER = "clova";
+test("resolveXxxAdapter treats empty string the same as unset (mock default)", () => {
+    withEnv(
+        { STT_PROVIDER: "", LLM_PROVIDER: "", EMBEDDING_PROVIDER: "" },
+        () => {
+            assert.equal(resolveSttAdapter().provider, "mock");
+            assert.equal(resolveLlmAdapter().provider, "mock");
+            assert.equal(resolveEmbeddingAdapter().provider, "mock");
+        },
+    );
+});
+
+test("resolveSttAdapter throws on an unknown provider value", () => {
+    withEnv({ STT_PROVIDER: "whisper-cloud" }, () => {
         assert.throws(() => resolveSttAdapter(), /not implemented/);
-    } finally {
-        if (prev !== undefined) process.env.STT_PROVIDER = prev;
-        else delete process.env.STT_PROVIDER;
-    }
+    });
+});
+
+test("resolveLlmAdapter throws on an unknown provider value", () => {
+    withEnv({ LLM_PROVIDER: "gemini" }, () => {
+        assert.throws(() => resolveLlmAdapter(), /not implemented/);
+    });
+});
+
+test("resolveEmbeddingAdapter throws on an unknown provider value", () => {
+    withEnv({ EMBEDDING_PROVIDER: "voyage" }, () => {
+        assert.throws(() => resolveEmbeddingAdapter(), /not implemented/);
+    });
+});
+
+// ============================================================
+//                     Real-provider fail-fast
+// ============================================================
+
+test("resolveLlmAdapter throws when LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY is missing", () => {
+    withEnv(
+        { LLM_PROVIDER: "anthropic", ANTHROPIC_API_KEY: undefined },
+        () => {
+            assert.throws(
+                () => resolveLlmAdapter(),
+                /ANTHROPIC_API_KEY/,
+            );
+        },
+    );
+});
+
+test("resolveLlmAdapter throws when LLM_PROVIDER=anthropic and ANTHROPIC_API_KEY is whitespace", () => {
+    withEnv(
+        { LLM_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "   " },
+        () => {
+            assert.throws(() => resolveLlmAdapter(), /ANTHROPIC_API_KEY/);
+        },
+    );
+});
+
+test("resolveEmbeddingAdapter throws when EMBEDDING_PROVIDER=openai but OPENAI_API_KEY is missing", () => {
+    withEnv(
+        { EMBEDDING_PROVIDER: "openai", OPENAI_API_KEY: undefined },
+        () => {
+            assert.throws(() => resolveEmbeddingAdapter(), /OPENAI_API_KEY/);
+        },
+    );
+});
+
+test("resolveSttAdapter throws when STT_PROVIDER=clova but any of CLOVA_* env is missing", () => {
+    withEnv(
+        {
+            STT_PROVIDER: "clova",
+            CLOVA_STT_URL: "https://example.test/recog/v1/stt",
+            CLOVA_CLIENT_ID: "client-id",
+            CLOVA_CLIENT_SECRET: undefined,
+        },
+        () => {
+            assert.throws(() => resolveSttAdapter(), /CLOVA_CLIENT_SECRET/);
+        },
+    );
+});
+
+test("resolveSttAdapter throws and names every missing CLOVA_* env", () => {
+    withEnv(
+        {
+            STT_PROVIDER: "clova",
+            CLOVA_STT_URL: undefined,
+            CLOVA_CLIENT_ID: undefined,
+            CLOVA_CLIENT_SECRET: undefined,
+        },
+        () => {
+            try {
+                resolveSttAdapter();
+                assert.fail("expected resolver to throw");
+            } catch (err) {
+                assert.match(err.message, /CLOVA_STT_URL/);
+                assert.match(err.message, /CLOVA_CLIENT_ID/);
+                assert.match(err.message, /CLOVA_CLIENT_SECRET/);
+            }
+        },
+    );
+});
+
+// ============================================================
+//             Real-provider construction (no network)
+// ============================================================
+// These tests instantiate the real-provider adapter classes with stub
+// credentials and assert the `provider` property comes back tagged
+// correctly. They do NOT call .summarizeCall / .embed / .transcribeChunk,
+// so no outbound HTTP requests fire. Real network behaviour is gated by
+// E2E_ALLOW_REAL_PROVIDERS=1 in a future opt-in contract test.
+
+test("Anthropic adapter constructs from env with stub key (no network call)", () => {
+    withEnv(
+        {
+            LLM_PROVIDER: "anthropic",
+            ANTHROPIC_API_KEY: "sk-ant-test-noop-never-sent",
+        },
+        () => {
+            const llm = resolveLlmAdapter();
+            assert.equal(llm.provider, "anthropic");
+        },
+    );
+});
+
+test("OpenAI embedding adapter constructs from env with stub key (no network call)", () => {
+    withEnv(
+        {
+            EMBEDDING_PROVIDER: "openai",
+            OPENAI_API_KEY: "sk-test-noop-never-sent",
+        },
+        () => {
+            const emb = resolveEmbeddingAdapter();
+            assert.equal(emb.provider, "openai");
+            assert.equal(emb.dimensions, 1536);
+        },
+    );
+});
+
+test("Clova STT adapter constructs from env with stub credentials (no network call)", () => {
+    withEnv(
+        {
+            STT_PROVIDER: "clova",
+            CLOVA_STT_URL: "https://example.test/recog/v1/stt",
+            CLOVA_CLIENT_ID: "client-id",
+            CLOVA_CLIENT_SECRET: "client-secret",
+        },
+        () => {
+            const stt = resolveSttAdapter();
+            assert.equal(stt.provider, "clova");
+        },
+    );
 });
