@@ -11,7 +11,7 @@
 
 > 이 섹션은 sub-step 진행 시 갱신된다. 각 sub-step은 `PHASE_6_STEP_X_*.md` 문서에서 상세 설계.
 
-- [ ] **Step 1** — Worker infrastructure + AI summary 자동 생성 + 60s heartbeat sweep cron + WS suggestion persistence (mock providers, schema 무변경)
+- [x] **Step 1** — Worker infrastructure + AI summary 자동 생성 + 60s heartbeat sweep cron + WS suggestion persistence (mock providers, schema 무변경) — 2026-05-12 완료, `PHASE_6_STEP_1_FINDINGS.md` 참조
 - [ ] **Step 2** — 실 provider client (Clova STT + Anthropic LLM + OpenAI Embedding) + `llm_usage_log` 신규 테이블 + cost log
 - [ ] **Step 3** — Action item DELETE endpoint + frontend 삭제 UI (schema 보강 또는 hard delete 결정)
 - [ ] **Step 4** — Manager team-scope read/report 화면 (route + frontend, schema 무변경)

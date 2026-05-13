@@ -30,6 +30,7 @@ import type {
   Transcript,
   TranscriptAppendInput,
 } from "../repositories/transcripts.js";
+import { enqueueCallSummary } from "../queue/index.js";
 
 export interface CallListResult {
   items: Call[];
@@ -102,16 +103,16 @@ export async function endCall(
   const endedAt = opts.endedAt ?? new Date();
   const finalStatus = opts.finalStatus ?? "ended";
 
-  return app.withOrgContext(actorOrgId, async (client) => {
-    const updated = await callsRepo.endByIdInCurrentOrg(
+  const updated = await app.withOrgContext(actorOrgId, async (client) => {
+    const row = await callsRepo.endByIdInCurrentOrg(
       client,
       callId,
       endedAt,
       finalStatus,
     );
-    if (!updated) return null;
+    if (!row) return null;
 
-    if (updated.customer_id) {
+    if (row.customer_id) {
       await client.query(
         `UPDATE customers
             SET last_contacted_at = GREATEST(
@@ -120,10 +121,28 @@ export async function endCall(
                 )
           WHERE id = $2
             AND deleted_at IS NULL`,
-        [endedAt, updated.customer_id],
+        [endedAt, row.customer_id],
       );
     }
 
-    return updated;
+    return row;
   });
+
+  // Phase 6 Step 1 — best-effort AI summary enqueue. Runs *outside* the
+  // DB transaction so a Redis outage cannot block endCall (the WS /
+  // REST ack must land regardless). The worker's own SQL guard
+  // (`summary_source='manual'` WHERE) handles idempotency, so a
+  // duplicate enqueue on retry is safe.
+  if (updated) {
+    try {
+      await enqueueCallSummary({ orgId: actorOrgId, callId: updated.id });
+    } catch (err) {
+      app.log.warn(
+        { err: (err as Error).message, callId: updated.id },
+        "call summary enqueue failed",
+      );
+    }
+  }
+
+  return updated;
 }

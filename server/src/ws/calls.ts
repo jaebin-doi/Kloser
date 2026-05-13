@@ -34,6 +34,36 @@ import {
 } from "../services/auth.js";
 import * as callsService from "../services/calls.js";
 import * as callHeartbeatService from "../services/callHeartbeat.js";
+import * as callSuggestionsService from "../services/callSuggestions.js";
+import { resolveLlmAdapter } from "../adapters/index.js";
+
+// Phase 6 Step 1 — env-gated knobs. Imported as constants at module
+// load. Tests that need shorter intervals override the env *before*
+// requiring this module.
+const SUGGESTION_INTERVAL_MS = (() => {
+  const raw = process.env.KLOSER_SUGGESTION_INTERVAL_MS;
+  if (raw) {
+    const n = Number.parseInt(raw, 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 30000;
+})();
+
+// Demo replay gate (Phase 6 Step 1 / Codex implementation plan §2.6).
+//   "1" / "true"  → on
+//   "0" / "false" → off
+//   unset         → production=off, dev/test=on
+// Re-read at scheduleDemoReplay() call time so tests can toggle the env
+// per case without re-importing this module.
+function shouldDemoReplay(): boolean {
+  const raw = process.env.KLOSER_DEMO_REPLAY;
+  if (raw !== undefined) {
+    const norm = raw.trim().toLowerCase();
+    if (norm === "1" || norm === "true") return true;
+    if (norm === "0" || norm === "false") return false;
+  }
+  return process.env.NODE_ENV !== "production";
+}
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,6 +81,13 @@ interface CallContext {
   callId: string;
   startedAt: number;
   timers: NodeJS.Timeout[];
+  // Phase 6 Step 1 — suggestion timer state.
+  //   suggestionTimer    : pending one-shot setTimeout id (null when idle)
+  //   suggestionGroupSeq : next group_seq for persistSuggestionGroup
+  //   transcriptWindow   : rolling array of recently-seen text_chunk text
+  suggestionTimer: NodeJS.Timeout | null;
+  suggestionGroupSeq: number;
+  transcriptWindow: string[];
 }
 
 // One in-flight call per socket. Presence in this map IS the
@@ -62,6 +99,10 @@ function clearCall(socket: Socket): void {
   if (!ctx) return;
   for (const t of ctx.timers) clearTimeout(t);
   ctx.timers.length = 0;
+  if (ctx.suggestionTimer) {
+    clearTimeout(ctx.suggestionTimer);
+    ctx.suggestionTimer = null;
+  }
   calls.delete(socket);
 }
 
@@ -111,6 +152,64 @@ function scheduleDemoReplay(socket: Socket, ctx: CallContext): void {
 
 export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
   const ns = io.of("/calls");
+
+  // Phase 6 Step 1 — suggestion timer handler. Reads the current
+  // transcript window from the socket's CallContext, asks the mock
+  // LLM (Phase 5 adapter resolver returns a deterministic stub) for
+  // a suggestion group, persists the result via the service, and
+  // emits the persisted rows (with id) back over WS.
+  //
+  // Failure modes are all silent-success: the call may have ended,
+  // soft-deleted, vanished cross-org, or the LLM may return 0 items.
+  // None of those should kill the live socket. Persistence errors
+  // are logged + the timer is rearmed for the next window.
+  const llm = resolveLlmAdapter();
+  async function fireSuggestion(socket: Socket): Promise<void> {
+    const ctx = calls.get(socket);
+    if (!ctx) return;
+    // Always clear the timer slot first so a long LLM call cannot
+    // block subsequent text_chunk-driven re-arms.
+    ctx.suggestionTimer = null;
+    const user = socket.data.user as AuthenticatedUser | undefined;
+    if (!user) return;
+    const transcriptJoined = ctx.transcriptWindow.join("\n");
+    if (!transcriptJoined) return;
+    const atMs = Math.max(0, Date.now() - ctx.startedAt);
+    const groupSeq = ctx.suggestionGroupSeq;
+    try {
+      const generated = await llm.suggestForUtterance({
+        transcript: transcriptJoined,
+        groupSeq,
+        atMs,
+      });
+      if (!generated || generated.length === 0) return;
+      const persisted = await callSuggestionsService.persistSuggestionGroup(
+        app,
+        user.orgId,
+        ctx.callId,
+        generated,
+      );
+      if (!persisted || persisted.length === 0) return;
+      ctx.suggestionGroupSeq = groupSeq + 1;
+      socket.emit("suggestion", {
+        at: atMs,
+        suggestions: persisted.map((s) => ({
+          id: s.id,
+          group_seq: s.group_seq,
+          at_ms: s.at_ms,
+          tone: s.tone,
+          type: s.type,
+          title: s.title,
+          body: s.body,
+        })),
+      });
+    } catch (err) {
+      socket.data.log("suggestion persistence_failed", {
+        err: (err as Error)?.message,
+        callId: ctx.callId,
+      });
+    }
+  }
 
   // Handshake auth — runs before any `connection` event. Failures pass
   // a HandshakeAuthError to next(), which socket.io serialises onto the
@@ -170,11 +269,19 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
           callId: call.id,
           startedAt: Date.now(),
           timers: [],
+          suggestionTimer: null,
+          suggestionGroupSeq: 0,
+          transcriptWindow: [],
         };
         calls.set(socket, ctx);
         socket.data.log("start_call", { callId: call.id, customerId });
 
-        scheduleDemoReplay(socket, ctx);
+        // Phase 6 Step 1 — demo replay only when explicitly enabled
+        // (default on in dev/test, off in production). Existing Phase
+        // 0.5/4/5 e2e depend on the fixture so dev default stays on.
+        if (shouldDemoReplay()) {
+          scheduleDemoReplay(socket, ctx);
+        }
         if (typeof ack === "function") ack({ callId: call.id });
       } catch (err) {
         socket.data.log("start_call persistence_failed", {
@@ -249,6 +356,22 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
         clientSentAt: payload.clientSentAt,
         serverSentAt: Date.now(),
       });
+
+      // Phase 6 Step 1 — accumulate transcript window + schedule a
+      // suggestion generation on a debounce timer. Real LLM streaming
+      // belongs to Phase 7+; here we coalesce N text_chunks into a
+      // single LLM call every KLOSER_SUGGESTION_INTERVAL_MS.
+      ctx.transcriptWindow.push(payload.text);
+      // Keep the window bounded so a long call doesn't grow forever.
+      if (ctx.transcriptWindow.length > 50) {
+        ctx.transcriptWindow.splice(0, ctx.transcriptWindow.length - 50);
+      }
+      if (!ctx.suggestionTimer) {
+        ctx.suggestionTimer = setTimeout(
+          () => { void fireSuggestion(socket); },
+          SUGGESTION_INTERVAL_MS,
+        );
+      }
     });
 
     socket.on("end_call", async (_payload: unknown, ack?: (resp: unknown) => void) => {
