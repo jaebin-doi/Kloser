@@ -21,6 +21,7 @@ import dashboardRoutes from "./routes/dashboard.js";
 import invitationsRoutes from "./routes/invitations.js";
 import knowledgeBasesRoutes from "./routes/knowledgeBases.js";
 import meRoutes from "./routes/me.js";
+import reportsRoutes from "./routes/reports.js";
 import teamRoutes from "./routes/team.js";
 
 const PORT = Number(process.env.PORT ?? 32173);
@@ -65,6 +66,7 @@ await app.register(callsPhase5Routes);
 await app.register(checklistTemplatesRoutes);
 await app.register(knowledgeBasesRoutes);
 await app.register(dashboardRoutes);
+await app.register(reportsRoutes);
 
 app.get("/health", async () => ({
   ok: true,

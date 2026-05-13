@@ -162,6 +162,12 @@ const ENTITY_REGISTRY = [
             "CallSuggestionListResponse",
         ],
     },
+    {
+        name: "teamReport",
+        server: "server/src/types/teamReport.ts",
+        browser: "platform/types/teamReport.js",
+        types: ["TeamReportSummary", "TeamReportRecentCall"],
+    },
 ];
 
 // ---------- parsers ---------- //

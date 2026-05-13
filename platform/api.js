@@ -410,6 +410,18 @@
     return apiGet('/dashboard/summary');
   }
 
+  // Phase 6 Step 4 — manager / admin team-scope report.
+  // params.teamId is optional; admin without teamId returns the org-wide
+  // summary, manager omits it to get their own team. Server: 403 for
+  // employee/viewer or manager other-team, 404 for cross-org team_id.
+  function getTeamReportSummary(params) {
+    const p = params || {};
+    const qs = new URLSearchParams();
+    if (p.teamId) qs.set('team_id', String(p.teamId));
+    const query = qs.toString();
+    return apiGet('/reports/team-summary' + (query ? '?' + query : ''));
+  }
+
   // ─────────────────────────────────────────────
   // Phase 5 — knowledge bases / checklist templates / call checklist /
   // call suggestions / call meta (link, summary). Plan:
@@ -605,6 +617,7 @@
     patchActionItemAssignee: patchActionItemAssignee,
     deleteActionItem: deleteActionItem,
     getDashboardSummary: getDashboardSummary,
+    getTeamReportSummary: getTeamReportSummary,
 
     // Phase 5 — knowledge / checklist / suggestion / call meta.
     listKnowledgeBases: listKnowledgeBases,
