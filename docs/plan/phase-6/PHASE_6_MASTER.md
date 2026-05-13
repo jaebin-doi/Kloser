@@ -12,7 +12,7 @@
 > 이 섹션은 sub-step 진행 시 갱신된다. 각 sub-step은 `PHASE_6_STEP_X_*.md` 문서에서 상세 설계.
 
 - [x] **Step 1** — Worker infrastructure + AI summary 자동 생성 + 60s heartbeat sweep cron + WS suggestion persistence (mock providers, schema 무변경) — 2026-05-12 완료, `PHASE_6_STEP_1_FINDINGS.md` 참조
-- [ ] **Step 2** — 실 provider client (Clova STT + Anthropic LLM + OpenAI Embedding) + `llm_usage_log` 신규 테이블 + cost log
+- [x] **Step 2** — 실 provider client (Clova STT + Anthropic LLM + OpenAI Embedding) + `llm_usage_log` 신규 테이블 + cost log — 2026-05-13 완료, `PHASE_6_STEP_2_FINDINGS.md` 참조 (sub-unit: `PHASE_6_STEP_2_SCHEMA_FINDINGS.md` / `PHASE_6_STEP_2_WIRING_FINDINGS.md` / `PHASE_6_STEP_2_PROVIDER_FINDINGS.md`). Residual: `cost_usd_micros`는 현재 NULL — model→price map은 별도 cost-accuracy commit으로 분리. `phase_4_e2e` / `phase_5_e2e` 회귀는 Step 5 통합 e2e 또는 Codex review 시점에 일괄 검증.
 - [ ] **Step 3** — Action item DELETE endpoint + frontend 삭제 UI (schema 보강 또는 hard delete 결정)
 - [ ] **Step 4** — Manager team-scope read/report 화면 (route + frontend, schema 무변경)
 - [ ] **Step 5** — Phase 6 통합 e2e + 종합 findings + Phase 7 인계
@@ -362,22 +362,22 @@ Phase 5 cleanup 패턴을 그대로 확장.
 
 다음을 모두 만족하면 Phase 6 종료, Phase 7 (운영 도메인 + SMTP + MFA + activity_log + retention + 결제 + i18n) 진입.
 
-- [ ] `npm --prefix server run typecheck` PASS
-- [ ] `npm --prefix server test` PASS (Phase 5 결과 + 신규 Phase 6 단위 + 워커 통합)
-- [ ] `node test/phase_0_5_e2e.mjs` 회귀 PASS
-- [ ] `node test/phase_2_customers_e2e.mjs` 회귀 PASS
-- [ ] `node test/phase_3_e2e.mjs` 회귀 PASS
-- [ ] `node test/phase_4_e2e.mjs` 회귀 PASS
-- [ ] `node test/phase_5_e2e.mjs` 회귀 PASS (워커 ON / OFF 둘 다)
-- [ ] `node test/phase_6_e2e.mjs` 6~8 시나리오 + cleanup PASS
-- [ ] `node test/sync_shared_types.mjs` PASS (Step 4 후 16 entity)
-- [ ] BullMQ 워커 boot + AI summary 자동 + heartbeat sweep + WS suggestion persistence 작동
-- [ ] 실 provider 어댑터 3종 인터페이스 충족 + `llm_usage_log` 1행 INSERT 검증
-- [ ] Action item DELETE endpoint + UI 동작
-- [ ] Manager team-scope read 보고서 + 권한 매트릭스 검증
-- [ ] AGENTS.md innerHTML XSS gate 위반 0건
-- [ ] `docs/plan/phase-6/PHASE_6_STEP_1~5_FINDINGS.md` 모두 작성
-- [ ] 루트 `README.md` + `server/README.md` 상태 블록 Phase 6 완료로 갱신
+- [x] `npm --prefix server run typecheck` PASS — Step 2 closeout 시점 PASS, Step 5에서 재검증
+- [x] `npm --prefix server test` PASS (Phase 5 결과 + 신규 Phase 6 단위 + 워커 통합) — Step 2 closeout 시점 `355 pass / 3 skipped / 0 fail`. Step 3/4 추가 시 재검증
+- [ ] `node test/phase_0_5_e2e.mjs` 회귀 PASS — Step 5 통합 e2e에서 검증
+- [ ] `node test/phase_2_customers_e2e.mjs` 회귀 PASS — Step 5 통합 e2e에서 검증
+- [ ] `node test/phase_3_e2e.mjs` 회귀 PASS — Step 5 통합 e2e에서 검증
+- [ ] `node test/phase_4_e2e.mjs` 회귀 PASS — Step 5 통합 e2e에서 검증
+- [ ] `node test/phase_5_e2e.mjs` 회귀 PASS (워커 ON / OFF 둘 다) — Step 5 통합 e2e에서 검증
+- [ ] `node test/phase_6_e2e.mjs` 6~8 시나리오 + cleanup PASS — Step 5 산출물
+- [ ] `node test/sync_shared_types.mjs` PASS (Step 4 후 16 entity 목표) — Step 2 시점 현재 14 entity PASS. Step 4에서 +2 → 16 후 최종 체크
+- [x] BullMQ 워커 boot + AI summary 자동 + heartbeat sweep + WS suggestion persistence 작동 — Step 1 + Step 2 wiring
+- [x] 실 provider 어댑터 3종 인터페이스 충족 + `llm_usage_log` 1행 INSERT 검증 — Step 2 완료. 단 `cost_usd_micros`는 현재 NULL (Step 2 plan §2 허용, `PHASE_6_STEP_2_FINDINGS.md §6.1` residual)
+- [ ] Action item DELETE endpoint + UI 동작 — Step 3 산출물
+- [ ] Manager team-scope read 보고서 + 권한 매트릭스 검증 — Step 4 산출물
+- [ ] AGENTS.md innerHTML XSS gate 위반 0건 — Step 2는 frontend 무수정. Step 3/4 frontend 변경 후 최종 재확인
+- [ ] `docs/plan/phase-6/PHASE_6_STEP_1~5_FINDINGS.md` 모두 작성 — Step 1·2 완료, 3·4·5 미진행
+- [ ] 루트 `README.md` + `server/README.md` 상태 블록 Phase 6 완료로 갱신 — Step 5 closeout 시점에 일괄 처리
 
 하나라도 실패하면 해당 sub-step에 머문다.
 
