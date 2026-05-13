@@ -15,7 +15,9 @@
 - [x] **Step 2** — Repository + service + unit tests (체크리스트 / suggestions / knowledge ingest·검색 / heartbeat / customer linkage / manager team-scope 권한 helper) → `PHASE_5_STEP_2_REPO_SERVICE.md` + `PHASE_5_STEP_2_FINDINGS.md` (2026-05-12 완료, 14 신규 파일 + 5 수정. `withOrgContext` overload + 5 신규 repo + 7 신규 service. `npm test` 255/255 (212 기존 + 43 신규), sync_shared_types 9 entities PASS, phase_4_e2e 8 시나리오 + cleanup PASS)
 - [x] **Step 3** — STT/LLM/Embedding adapter interface + 3종 mock + resolver, REST 21 신규 endpoint (knowledge / checklist templates / call checklist items / call suggestions / heartbeat / customer link·unlink / manual summary), shared zod/JSDoc 5 신규 entity + `CallSummaryManualInput`, WS heartbeat persistence → `PHASE_5_STEP_3_ROUTES.md` + `PHASE_5_STEP_3_FINDINGS.md` (2026-05-12 완료, typecheck PASS, `npm test` 301/301 = 255 회귀 + 46 신규, `sync_shared_types` 14 entity PASS, `phase_4_e2e` 8 시나리오 회귀 PASS, RLS 정책 변경 0, 프런트엔드 변경 0, 실 provider client 0)
 - [x] **Step 4** — Frontend wiring (api.js + ws.js Phase 5 helpers, settings.html KB/체크리스트 관리, live.html customer picker + 실 체크리스트 + WS heartbeat 20s + suggestion use/dismiss + `__liveCallState`, calls.html suggestion 이력 + manual summary writer + action item create/status toggle) → `PHASE_5_STEP_4_CLIENT.md` + `PHASE_5_STEP_4_FINDINGS.md` (2026-05-12 완료, backend 변경 0, action item delete UI 0(엔드포인트 부재), XSS gate 위반 0, sync_shared_types 14/14·typecheck·phase_4_e2e 회귀 PASS, 브라우저 스모크 10 시나리오 console errors=0)
-- [ ] **Step 5** — Phase 5 통합 e2e + 종합 findings + Phase 6 인계
+- [x] **Step 5** — Phase 5 통합 e2e + 종합 findings + Phase 6 인계 → `PHASE_5_STEP_5_E2E.md` + `PHASE_5_STEP_5_FINDINGS.md` (2026-05-13 완료, `test/phase_5_e2e.mjs` 6 시나리오 + cleanup PASS console errors 0, residue 0, 좌석 시드 변화 0, `sync_shared_types` 14/14 / `typecheck` / `npm test` 301/301 / `phase_4_e2e` 8 시나리오 회귀 PASS. backend / frontend / 실 provider / worker / RLS 변경 0건, Phase 6 진입 준비 완료)
+
+**Phase 5 종료.** Phase 6 (worker + 실 provider + 운영 도메인 + 결제) 진입 가능.
 
 ---
 
