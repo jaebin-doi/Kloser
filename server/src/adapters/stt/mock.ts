@@ -1,6 +1,7 @@
-/* STT mock adapter — Phase 5 Step 3.
+/* STT mock adapter — Phase 5 Step 3, updated in Phase 6 Step 2.
  *
- * Plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.2.
+ * Phase 5 plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.2.
+ * Phase 6 plan: docs/plan/phase-6/PHASE_6_STEP_2_PLAN.md §4.
  *
  * Deterministic: same fixture key + options always produces the same
  * utterance. Used by:
@@ -10,6 +11,12 @@
  *
  * Real audio buffer input is rejected with SttUnsupportedInputError —
  * the mock is keyed only by short fixture identifiers.
+ *
+ * Step 6.2 change: returns ProviderResult<SttUtterance | null>. `.value`
+ * is the existing utterance (or null for an unknown fixture key);
+ * `.usage` carries provider='mock' / status='succeeded' even when the
+ * fixture lookup misses — recording the call cost is independent of
+ * whether the recognizer produced text.
  */
 import {
   type STTAdapter,
@@ -17,6 +24,9 @@ import {
   type SttTranscribeOptions,
   type SttUtterance,
 } from "./index.js";
+import type { ProviderResult, ProviderUsage } from "../usage.js";
+
+const MOCK_STT_MODEL = "mock-stt-v1";
 
 interface Fixture {
   speaker: "agent" | "customer" | "system";
@@ -65,26 +75,47 @@ const FIXTURES: Record<string, Fixture> = {
   },
 };
 
+function transcribeUsage(): ProviderUsage {
+  // STT pricing is per-second of audio, not per-token. Mock keeps
+  // tokens null and latency 0 so a future Clova adapter can populate
+  // accurate fields without breaking the contract.
+  return {
+    provider: "mock",
+    operation: "stt_transcribe",
+    model: MOCK_STT_MODEL,
+    status: "succeeded",
+    tokensIn: null,
+    tokensOut: null,
+    latencyMs: 0,
+    costUsdMicros: 0,
+  };
+}
+
 export function createMockSttAdapter(): STTAdapter {
   return {
     provider: "mock",
     async transcribeChunk(
       audio: Buffer | string,
       _options: SttTranscribeOptions,
-    ): Promise<SttUtterance | null> {
+    ): Promise<ProviderResult<SttUtterance | null>> {
       if (typeof audio !== "string") {
         throw new SttUnsupportedInputError(
           "mock STT adapter only accepts string fixture keys, got Buffer",
         );
       }
       const fixture = FIXTURES[audio];
-      if (!fixture) return null;
+      if (!fixture) {
+        return { value: null, usage: transcribeUsage() };
+      }
       return {
-        speaker: fixture.speaker,
-        text: fixture.text,
-        startMs: fixture.startMs,
-        endMs: fixture.endMs,
-        confidence: fixture.confidence,
+        value: {
+          speaker: fixture.speaker,
+          text: fixture.text,
+          startMs: fixture.startMs,
+          endMs: fixture.endMs,
+          confidence: fixture.confidence,
+        },
+        usage: transcribeUsage(),
       };
     },
   };

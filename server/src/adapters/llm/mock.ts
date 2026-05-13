@@ -1,6 +1,7 @@
-/* LLM mock adapter — Phase 5 Step 3.
+/* LLM mock adapter — Phase 5 Step 3, updated in Phase 6 Step 2.
  *
- * Plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.3.
+ * Phase 5 plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.3.
+ * Phase 6 plan: docs/plan/phase-6/PHASE_6_STEP_2_PLAN.md §4.
  *
  * Deterministic rule-based mock so route/WS tests and dev runs can
  * exercise the AI summary / suggestion pipeline without a real
@@ -8,6 +9,13 @@
  * frontend rendering (Step 4) snaps onto the same shapes.
  *
  * Same input → same output. No randomness, no clock reads.
+ *
+ * Step 6.2 change: returns ProviderResult<T>. `.value` carries the
+ * exact same domain payload Phase 5 returned; `.usage` is a deterministic
+ * envelope (provider='mock', cost=0, status='succeeded') so call sites
+ * can route the row to services/llmUsage without branching on adapter
+ * identity. Cost stays 0 for mock; real provider clients will populate
+ * tokens/cost from SDK response objects.
  */
 import {
   type LLMAdapter,
@@ -16,6 +24,10 @@ import {
   type LlmSummarizeInput,
   type LlmSuggestInput,
 } from "./index.js";
+import type { ProviderResult, ProviderUsage } from "../usage.js";
+
+const MOCK_SUMMARY_MODEL = "mock-llm-summary-v1";
+const MOCK_SUGGEST_MODEL = "mock-llm-suggest-v1";
 
 // Heuristic: very short transcripts read 'cautious' (the customer
 // barely engaged), long transcripts with positive markers read
@@ -28,14 +40,50 @@ function deriveSentiment(transcript: string): LlmGeneratedSummary["sentiment"] {
   return "neutral";
 }
 
+function summaryUsage(transcript: string): ProviderUsage {
+  // Deterministic: same transcript length always yields the same token
+  // counts. Real providers report actual SDK usage; mock uses a 4-char
+  // ≈ 1 token approximation so summary tests can still assert numbers.
+  const approxIn = Math.ceil(transcript.length / 4);
+  return {
+    provider: "mock",
+    operation: "call_summary",
+    model: MOCK_SUMMARY_MODEL,
+    status: "succeeded",
+    tokensIn: approxIn,
+    tokensOut: transcript.length === 0 ? 0 : Math.min(64, approxIn),
+    latencyMs: 0,
+    costUsdMicros: 0,
+  };
+}
+
+function suggestUsage(transcript: string, count: number): ProviderUsage {
+  const approxIn = Math.ceil(transcript.length / 4);
+  return {
+    provider: "mock",
+    operation: "call_suggestion",
+    model: MOCK_SUGGEST_MODEL,
+    status: "succeeded",
+    tokensIn: approxIn,
+    tokensOut: count * 16,
+    latencyMs: 0,
+    costUsdMicros: 0,
+  };
+}
+
 export function createMockLlmAdapter(): LLMAdapter {
   return {
     provider: "mock",
 
-    async summarizeCall(input: LlmSummarizeInput): Promise<LlmGeneratedSummary> {
+    async summarizeCall(
+      input: LlmSummarizeInput,
+    ): Promise<ProviderResult<LlmGeneratedSummary>> {
       const t = input.transcript ?? "";
       if (t.length === 0) {
-        return { summary: null, needs: null, issues: null, sentiment: null };
+        return {
+          value: { summary: null, needs: null, issues: null, sentiment: null },
+          usage: summaryUsage(t),
+        };
       }
       // Truncate to 200 chars for the summary so tests can assert
       // deterministically against transcript shape.
@@ -45,18 +93,23 @@ export function createMockLlmAdapter(): LLMAdapter {
         : null;
       const issues = /문제|불만|취소/.test(t) ? "고객 측 우려 확인" : null;
       return {
-        summary,
-        needs,
-        issues,
-        sentiment: deriveSentiment(t),
+        value: {
+          summary,
+          needs,
+          issues,
+          sentiment: deriveSentiment(t),
+        },
+        usage: summaryUsage(t),
       };
     },
 
     async suggestForUtterance(
       input: LlmSuggestInput,
-    ): Promise<LlmGeneratedSuggestion[]> {
+    ): Promise<ProviderResult<LlmGeneratedSuggestion[]>> {
       const t = input.transcript ?? "";
-      if (t.length === 0) return [];
+      if (t.length === 0) {
+        return { value: [], usage: suggestUsage(t, 0) };
+      }
       const suggestions: LlmGeneratedSuggestion[] = [];
 
       // Always emit a direction card so tests have one row to assert on.
@@ -89,7 +142,7 @@ export function createMockLlmAdapter(): LLMAdapter {
           body: "다음 주 화요일 14:00 또는 목요일 10:00 어떠신가요.",
         });
       }
-      return suggestions;
+      return { value: suggestions, usage: suggestUsage(t, suggestions.length) };
     },
   };
 }

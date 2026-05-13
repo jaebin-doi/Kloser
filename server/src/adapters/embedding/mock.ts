@@ -1,6 +1,7 @@
-/* Embedding mock adapter — Phase 5 Step 3.
+/* Embedding mock adapter — Phase 5 Step 3, updated in Phase 6 Step 2.
  *
- * Plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.4.
+ * Phase 5 plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.4.
+ * Phase 6 plan: docs/plan/phase-6/PHASE_6_STEP_2_PLAN.md §4.
  *
  * Deterministic 1536-dim vector derived from text content. Same input
  * → same output, and similar texts produce closer cosine distances so
@@ -13,13 +14,21 @@
  *     to bucket index `i % 1536`.
  *   - Vector is then L2-normalised so cosine distance ≈ 1 - cos(θ)
  *     stays in the expected range.
+ *
+ * Step 6.2 change: returns ProviderResult<T> so call sites can record
+ * provider usage. `.value` is unchanged; `.usage` carries deterministic
+ * provider='mock' / cost=0 metadata. embedBatch reports a single usage
+ * row spanning the whole batch (real APIs charge per call, not per
+ * input text).
  */
 import {
   type EmbeddingAdapter,
   EmbeddingDimensionError,
 } from "./index.js";
+import type { ProviderResult, ProviderUsage } from "../usage.js";
 
 const DIM = 1536 as const;
+const MOCK_EMBEDDING_MODEL = "mock-embedding-1536-v1";
 
 function embedDeterministic(text: string): number[] {
   const v = new Array<number>(DIM).fill(0);
@@ -43,15 +52,36 @@ function embedDeterministic(text: string): number[] {
   return v;
 }
 
+function embeddingUsage(totalChars: number): ProviderUsage {
+  // 4-char ≈ 1 token approximation so test assertions are deterministic.
+  return {
+    provider: "mock",
+    operation: "knowledge_embedding",
+    model: MOCK_EMBEDDING_MODEL,
+    status: "succeeded",
+    tokensIn: Math.ceil(totalChars / 4),
+    tokensOut: 0,
+    latencyMs: 0,
+    costUsdMicros: 0,
+  };
+}
+
 export function createMockEmbeddingAdapter(): EmbeddingAdapter {
   return {
     provider: "mock",
     dimensions: DIM,
-    async embed(text: string): Promise<number[]> {
-      return embedDeterministic(text);
+    async embed(text: string): Promise<ProviderResult<number[]>> {
+      return {
+        value: embedDeterministic(text),
+        usage: embeddingUsage(text.length),
+      };
     },
-    async embedBatch(texts: string[]): Promise<number[][]> {
-      return texts.map(embedDeterministic);
+    async embedBatch(texts: string[]): Promise<ProviderResult<number[][]>> {
+      const totalChars = texts.reduce((acc, t) => acc + t.length, 0);
+      return {
+        value: texts.map(embedDeterministic),
+        usage: embeddingUsage(totalChars),
+      };
     },
   };
 }

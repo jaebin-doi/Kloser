@@ -1,6 +1,7 @@
-/* LLM adapter interface — Phase 5 Step 3.
+/* LLM adapter interface — Phase 5 Step 3, extended in Phase 6 Step 2.
  *
- * Plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.3.
+ * Phase 5 plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1.3.
+ * Phase 6 plan: docs/plan/phase-6/PHASE_6_STEP_2_PLAN.md §4.
  *
  * Two surfaces:
  *   - summarizeCall: feeds the full transcript + optional knowledge
@@ -9,8 +10,10 @@
  *   - suggestForUtterance: live in-call suggestion generator. Returns
  *     0..N suggestions; each row maps onto call_suggestions schema.
  *
- * The Anthropic / OpenAI clients are NOT added in this step (see plan
- * §1.1). Step 3 ships interface + mock only.
+ * Phase 6 Step 2 wraps both return values in ProviderResult so callers
+ * can hand the optional `usage` envelope to services/llmUsage. The
+ * Anthropic real client lands in a follow-up commit — Step 2 first
+ * locks the contract + updates the mock.
  */
 
 export type CallSentiment =
@@ -65,10 +68,14 @@ export interface LlmSuggestInput {
 
 export type LlmProvider = "anthropic" | "openai" | "mock";
 
+import type { ProviderResult } from "../usage.js";
+
 export interface LLMAdapter {
   provider: LlmProvider;
-  summarizeCall(input: LlmSummarizeInput): Promise<LlmGeneratedSummary>;
+  summarizeCall(
+    input: LlmSummarizeInput,
+  ): Promise<ProviderResult<LlmGeneratedSummary>>;
   suggestForUtterance(
     input: LlmSuggestInput,
-  ): Promise<LlmGeneratedSuggestion[]>;
+  ): Promise<ProviderResult<LlmGeneratedSuggestion[]>>;
 }

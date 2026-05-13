@@ -1,11 +1,18 @@
-/* Phase 5 Step 3 — adapter mock unit tests.
+/* Phase 5 Step 3 — adapter mock unit tests, extended in Phase 6 Step 2.
  *
- * Plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1, §5.1.
+ * Phase 5 plan: docs/plan/phase-5/PHASE_5_STEP_3_ROUTES.md §1, §5.1.
+ * Phase 6 plan: docs/plan/phase-6/PHASE_6_STEP_2_PLAN.md §4, §8.2.
  *
  * Pure unit coverage of the mock STT / LLM / Embedding adapters. No
- * Fastify boot, no DB. The real provider clients are not wired in this
- * step (plan §1.1), so the resolver branch for non-mock providers
- * intentionally throws.
+ * Fastify boot, no DB. Step 6.2 added the ProviderResult envelope, so
+ * every adapter method now returns `{ value, usage }`. The domain
+ * payload assertions are unchanged; new cases assert the usage shape
+ * (provider='mock', deterministic model strings, status='succeeded',
+ * cost=0) so downstream services/llmUsage can rely on the contract.
+ *
+ * Real provider clients are not wired in this step (plan §1.1 / §5),
+ * so the resolver branch for non-mock providers intentionally throws.
+ * Default test runs make zero real network calls.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -19,29 +26,44 @@ import {
     resolveEmbeddingAdapter,
 } from "../src/adapters/index.js";
 
+function assertMockUsage(usage, expectedOperation) {
+    assert.ok(usage, "expected ProviderResult.usage to be present");
+    assert.equal(usage.provider, "mock");
+    assert.equal(usage.operation, expectedOperation);
+    assert.equal(usage.status, "succeeded");
+    assert.equal(typeof usage.model, "string");
+    assert.ok(usage.model.length > 0, "usage.model must be a non-empty string");
+    // Mock cost is always 0 — real providers populate this from SDK pricing.
+    assert.equal(usage.costUsdMicros, 0);
+}
+
 // ============================================================
 //                          STT MOCK
 // ============================================================
 
 test("mock STT returns the deterministic fixture for a known key", async () => {
     const stt = createMockSttAdapter();
-    const u = await stt.transcribeChunk("greeting", {
+    const r = await stt.transcribeChunk("greeting", {
         language: "ko-KR",
         sessionId: "test-1",
     });
+    assert.ok(r);
+    const u = r.value;
     assert.ok(u);
     assert.equal(u.speaker, mockSttFixtures.greeting.speaker);
     assert.equal(u.text, mockSttFixtures.greeting.text);
     assert.equal(u.confidence, mockSttFixtures.greeting.confidence);
+    assertMockUsage(r.usage, "stt_transcribe");
 });
 
-test("mock STT returns null for an unknown fixture key", async () => {
+test("mock STT returns null value for an unknown fixture key but still records usage", async () => {
     const stt = createMockSttAdapter();
-    const u = await stt.transcribeChunk("not-a-key", {
+    const r = await stt.transcribeChunk("not-a-key", {
         language: "ko-KR",
         sessionId: "test-2",
     });
-    assert.equal(u, null);
+    assert.equal(r.value, null);
+    assertMockUsage(r.usage, "stt_transcribe");
 });
 
 test("mock STT rejects a Buffer payload with SttUnsupportedInputError", async () => {
@@ -61,39 +83,55 @@ test("mock STT rejects a Buffer payload with SttUnsupportedInputError", async ()
 
 test("mock LLM summarizeCall returns null fields for empty transcript", async () => {
     const llm = createMockLlmAdapter();
-    const summary = await llm.summarizeCall({ transcript: "" });
-    assert.equal(summary.summary, null);
-    assert.equal(summary.needs, null);
-    assert.equal(summary.issues, null);
-    assert.equal(summary.sentiment, null);
+    const r = await llm.summarizeCall({ transcript: "" });
+    assert.equal(r.value.summary, null);
+    assert.equal(r.value.needs, null);
+    assert.equal(r.value.issues, null);
+    assert.equal(r.value.sentiment, null);
+    assertMockUsage(r.usage, "call_summary");
 });
 
 test("mock LLM summarizeCall derives sentiment + summary from transcript", async () => {
     const llm = createMockLlmAdapter();
-    const a = await llm.summarizeCall({
+    const a = (await llm.summarizeCall({
         transcript: "고객이 CRM 연동 시연을 요청했습니다. 계약 의사가 있습니다.",
-    });
+    })).value;
     assert.equal(a.sentiment, "positive");
     assert.ok(a.summary && a.summary.length > 0);
     assert.equal(a.needs, "CRM 연동 / 시연 일정 협의");
 
-    const b = await llm.summarizeCall({
+    const b = (await llm.summarizeCall({
         transcript: "고객이 취소 요청을 했고 강한 불만을 표출했습니다.",
-    });
+    })).value;
     assert.equal(b.sentiment, "negative");
     assert.equal(b.issues, "고객 측 우려 확인");
 
-    const c = await llm.summarizeCall({ transcript: "안녕" });
+    const c = (await llm.summarizeCall({ transcript: "안녕" })).value;
     assert.equal(c.sentiment, "cautious");
+});
+
+test("mock LLM summarizeCall usage envelope carries deterministic model + tokens", async () => {
+    const llm = createMockLlmAdapter();
+    const r = await llm.summarizeCall({
+        transcript: "고객사 CRM 연동 시연 요청",
+    });
+    assertMockUsage(r.usage, "call_summary");
+    // Deterministic: same transcript → same tokensIn. Real providers
+    // populate from SDK; mock uses chars/4 ≈ tokens approximation.
+    assert.ok(
+        r.usage.tokensIn !== null && r.usage.tokensIn > 0,
+        "tokensIn must be a positive integer for a non-empty transcript",
+    );
 });
 
 test("mock LLM suggestForUtterance respects group_seq / at_ms and emits at least direction", async () => {
     const llm = createMockLlmAdapter();
-    const suggestions = await llm.suggestForUtterance({
+    const r = await llm.suggestForUtterance({
         transcript: "고객사 CRM 연동을 위한 시연 일정을 잡고 싶습니다.",
         groupSeq: 3,
         atMs: 8400,
     });
+    const suggestions = r.value;
     assert.ok(suggestions.length >= 2);
     for (const s of suggestions) {
         assert.equal(s.group_seq, 3);
@@ -102,6 +140,18 @@ test("mock LLM suggestForUtterance respects group_seq / at_ms and emits at least
     assert.ok(suggestions.some((s) => s.type === "direction"));
     assert.ok(suggestions.some((s) => s.type === "script"));
     assert.ok(suggestions.some((s) => s.type === "next"));
+    assertMockUsage(r.usage, "call_suggestion");
+});
+
+test("mock LLM suggestForUtterance returns empty value for empty transcript with usage logged", async () => {
+    const llm = createMockLlmAdapter();
+    const r = await llm.suggestForUtterance({
+        transcript: "",
+        groupSeq: 0,
+        atMs: 0,
+    });
+    assert.deepEqual(r.value, []);
+    assertMockUsage(r.usage, "call_suggestion");
 });
 
 // ============================================================
@@ -110,27 +160,32 @@ test("mock LLM suggestForUtterance respects group_seq / at_ms and emits at least
 
 test("mock embedding produces a length-1536 unit vector", async () => {
     const adapter = createMockEmbeddingAdapter();
-    const v = await adapter.embed("회사 가이드 본문");
+    const r = await adapter.embed("회사 가이드 본문");
+    const v = r.value;
     assert.equal(v.length, 1536);
     let sumSq = 0;
     for (const x of v) sumSq += x * x;
     assert.ok(Math.abs(sumSq - 1) < 1e-6, `not L2-normalised: ${sumSq}`);
+    assertMockUsage(r.usage, "knowledge_embedding");
 });
 
 test("mock embedding is deterministic across calls", async () => {
     const adapter = createMockEmbeddingAdapter();
-    const a = await adapter.embed("동일 입력");
-    const b = await adapter.embed("동일 입력");
+    const a = (await adapter.embed("동일 입력")).value;
+    const b = (await adapter.embed("동일 입력")).value;
     for (let i = 0; i < 1536; i++) {
         assert.equal(a[i], b[i]);
     }
 });
 
-test("mock embedding embedBatch returns one vector per input", async () => {
+test("mock embedding embedBatch returns one vector per input + single usage row", async () => {
     const adapter = createMockEmbeddingAdapter();
-    const vs = await adapter.embedBatch(["one", "two", "three"]);
-    assert.equal(vs.length, 3);
-    for (const v of vs) assert.equal(v.length, 1536);
+    const r = await adapter.embedBatch(["one", "two", "three"]);
+    assert.equal(r.value.length, 3);
+    for (const v of r.value) assert.equal(v.length, 1536);
+    // embedBatch reports one usage envelope for the whole batch — real
+    // APIs charge per call, not per input text.
+    assertMockUsage(r.usage, "knowledge_embedding");
 });
 
 // ============================================================

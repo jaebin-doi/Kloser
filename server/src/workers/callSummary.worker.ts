@@ -70,7 +70,10 @@ export function makeCallSummaryProcessor(app: FastifyInstance) {
       return { skipped: true, reason: "call_not_found" };
     }
 
-    const generated = await llm.summarizeCall({ transcript });
+    // Phase 6 Step 2: adapter returns ProviderResult. Usage logging
+    // wiring lands in a follow-up commit; for now we just unwrap the
+    // domain value so existing summary behaviour is preserved.
+    const generated = (await llm.summarizeCall({ transcript })).value;
 
     const updated = await callSummaryService.applyAiSummary(
       app,

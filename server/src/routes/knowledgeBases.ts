@@ -252,11 +252,13 @@ async function knowledgeBaseRoutes(
 
       // If a chunk lacks an embedding, ask the adapter for one. Caller
       // can also pre-compute and pass embedding inline (kept for tests
-      // that want to assert a specific vector).
+      // that want to assert a specific vector). Phase 6 Step 2 wraps
+      // adapter output in ProviderResult; unwrap the domain vector here
+      // and let the usage-wiring commit add the llm_usage_log insert.
       const enriched = await Promise.all(
         chunks.map(async (c) => {
           if (c.embedding) return c;
-          const vec = await embedding.embed(c.text);
+          const vec = (await embedding.embed(c.text)).value;
           return { ...c, embedding: vec };
         }),
       );
@@ -283,7 +285,7 @@ async function knowledgeBaseRoutes(
     { preHandler: [requireAuth, orgContext] },
     async (request, reply) => {
       const { query, limit } = KnowledgeChunkSearchQuery.parse(request.body);
-      const vec = await embedding.embed(query);
+      const vec = (await embedding.embed(query)).value;
       const items = await knowledgeService.searchKnowledge(
         app,
         request.orgId!,

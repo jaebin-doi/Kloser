@@ -177,11 +177,17 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
     const atMs = Math.max(0, Date.now() - ctx.startedAt);
     const groupSeq = ctx.suggestionGroupSeq;
     try {
-      const generated = await llm.suggestForUtterance({
-        transcript: transcriptJoined,
-        groupSeq,
-        atMs,
-      });
+      // Phase 6 Step 2: adapter returns ProviderResult. Usage logging
+      // wiring lands in a follow-up commit; unwrap the domain value
+      // here so the existing suggestion persistence behaviour is
+      // preserved.
+      const generated = (
+        await llm.suggestForUtterance({
+          transcript: transcriptJoined,
+          groupSeq,
+          atMs,
+        })
+      ).value;
       if (!generated || generated.length === 0) return;
       const persisted = await callSuggestionsService.persistSuggestionGroup(
         app,
