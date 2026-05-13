@@ -35,6 +35,7 @@ import {
 import * as callsService from "../services/calls.js";
 import * as callHeartbeatService from "../services/callHeartbeat.js";
 import * as callSuggestionsService from "../services/callSuggestions.js";
+import * as llmUsageService from "../services/llmUsage.js";
 import { resolveLlmAdapter } from "../adapters/index.js";
 
 // Phase 6 Step 1 — env-gated knobs. Imported as constants at module
@@ -177,17 +178,34 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
     const atMs = Math.max(0, Date.now() - ctx.startedAt);
     const groupSeq = ctx.suggestionGroupSeq;
     try {
-      // Phase 6 Step 2: adapter returns ProviderResult. Usage logging
-      // wiring lands in a follow-up commit; unwrap the domain value
-      // here so the existing suggestion persistence behaviour is
-      // preserved.
-      const generated = (
-        await llm.suggestForUtterance({
-          transcript: transcriptJoined,
-          groupSeq,
-          atMs,
-        })
-      ).value;
+      // Phase 6 Step 2: adapter returns ProviderResult. Unwrap the
+      // domain value for suggestion persistence and hand the usage
+      // envelope to services/llmUsage. The logging service swallows
+      // its own failures so suggestion emit / DB writes proceed
+      // regardless. The order here matters: log the cost as soon as
+      // the provider call returns (even if downstream emit drops the
+      // group) so we never under-count what the provider charged us.
+      const result = await llm.suggestForUtterance({
+        transcript: transcriptJoined,
+        groupSeq,
+        atMs,
+      });
+      if (result.usage) {
+        await llmUsageService.recordProviderUsage(
+          app,
+          user.orgId,
+          ctx.callId,
+          result.usage,
+          {
+            metadata: {
+              source: "ws:suggestion",
+              group_seq: groupSeq,
+              at_ms: atMs,
+            },
+          },
+        );
+      }
+      const generated = result.value;
       if (!generated || generated.length === 0) return;
       const persisted = await callSuggestionsService.persistSuggestionGroup(
         app,

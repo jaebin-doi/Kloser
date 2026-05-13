@@ -30,6 +30,7 @@ import { resolveLlmAdapter } from "../adapters/index.js";
 import * as callsRepo from "../repositories/calls.js";
 import * as transcriptsRepo from "../repositories/transcripts.js";
 import * as callSummaryService from "../services/callSummary.js";
+import * as llmUsageService from "../services/llmUsage.js";
 
 // Build a single transcript string from the persisted utterances so
 // the LLM has the same view a human would see scrolling the panel.
@@ -70,10 +71,22 @@ export function makeCallSummaryProcessor(app: FastifyInstance) {
       return { skipped: true, reason: "call_not_found" };
     }
 
-    // Phase 6 Step 2: adapter returns ProviderResult. Usage logging
-    // wiring lands in a follow-up commit; for now we just unwrap the
-    // domain value so existing summary behaviour is preserved.
-    const generated = (await llm.summarizeCall({ transcript })).value;
+    // Phase 6 Step 2: adapter returns ProviderResult. We unwrap the
+    // domain value to keep the summary behaviour, then hand the usage
+    // envelope to services/llmUsage so the cost row lands in
+    // llm_usage_log. Logging failure is non-blocking — the service
+    // catches and returns null so the worker job result is unaffected.
+    const result = await llm.summarizeCall({ transcript });
+    const generated = result.value;
+    if (result.usage) {
+      await llmUsageService.recordProviderUsage(
+        app,
+        orgId,
+        callId,
+        result.usage,
+        { metadata: { source: "worker:callSummary" } },
+      );
+    }
 
     const updated = await callSummaryService.applyAiSummary(
       app,

@@ -22,6 +22,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import "dotenv/config";
 import Fastify from "fastify";
+import pg from "pg";
 import { Server as IOServer } from "socket.io";
 import { io as ioClient } from "socket.io-client";
 import authPlugin from "../src/plugins/auth.js";
@@ -78,6 +79,30 @@ before(async () => {
 });
 
 after(async () => {
+    // Phase 6 Step 2 wiring: llm_usage_log is app-role append-only, so
+    // its cleanup runs through the admin migration URL. Scoped by
+    // metadata->>'source' = 'worker:callSummary' | 'ws:suggestion' (the
+    // wiring layer sets these for every row this file's tests create).
+    if (process.env.MIGRATE_DATABASE_URL) {
+        const adminClient = new pg.Client({
+            connectionString: process.env.MIGRATE_DATABASE_URL,
+        });
+        try {
+            await adminClient.connect();
+            await adminClient.query(
+                `DELETE FROM llm_usage_log
+                   WHERE metadata->>'source' IN ('worker:callSummary','ws:suggestion')
+                     AND call_id IN (
+                        SELECT id FROM calls WHERE notes LIKE $1 OR title LIKE $1
+                     )`,
+                [`${PREFIX}%`],
+            );
+        } catch (_e) { /* ignore — defensive sweep */ }
+        finally {
+            try { await adminClient.end(); } catch (_e2) {}
+        }
+    }
+
     // Sweep phase6test rows from both orgs (RLS-scoped via withOrgContext).
     for (const orgId of [ORG_ACME, ORG_BETA]) {
         try {
@@ -118,6 +143,22 @@ after(async () => {
     if (io) io.close();
     if (app) await app.close();
 });
+
+// Helper: read the llm_usage_log rows for a given call (within its org
+// context, so RLS applies the right scope).
+async function readUsageRowsForCall(orgId, callId) {
+    return app.withOrgContext(orgId, async (client) => {
+        const r = await client.query(
+            `SELECT operation, provider, model, status, tokens_in, tokens_out,
+                    cost_usd_micros, metadata
+               FROM llm_usage_log
+              WHERE call_id = $1
+              ORDER BY created_at ASC`,
+            [callId],
+        );
+        return r.rows;
+    });
+}
 
 // ─────────────────────────────────────────────
 // helpers
@@ -237,6 +278,17 @@ test("callSummary worker fills summary fields from mock LLM transcript", async (
     assert.equal(updated.summary_source, "ai");
     assert.ok(updated.summary && updated.summary.length > 0);
     assert.ok(updated.summary_generated_at instanceof Date);
+
+    // Phase 6 Step 2 wiring: one llm_usage_log row created for this
+    // summary call. Provider='mock' because LLM_PROVIDER is unset and
+    // resolveLlmAdapter() defaults to mock; operation distinguishes
+    // this row from any future suggestion rows for the same call.
+    const usage = await readUsageRowsForCall(ORG_ACME, call.id);
+    const summaryRow = usage.find((r) => r.operation === "call_summary");
+    assert.ok(summaryRow, "expected one call_summary usage row");
+    assert.equal(summaryRow.provider, "mock");
+    assert.equal(summaryRow.status, "succeeded");
+    assert.equal(summaryRow.metadata.source, "worker:callSummary");
 });
 
 test("callSummary worker is a no-op when summary_source='manual'", async () => {
@@ -257,6 +309,19 @@ test("callSummary worker is a no-op when summary_source='manual'", async () => {
     const updated = await readCall(ORG_ACME, call.id);
     assert.equal(updated.summary_source, "manual");
     assert.equal(updated.summary, `${PREFIX}user wrote this`);
+
+    // Provider was still invoked (the worker can't know summary is
+    // locked until applyAiSummary runs), so the usage row must exist
+    // even though applyAiSummary no-ops. Step 2 plan §6 explicitly
+    // requires usage logging to be independent of the business-outcome
+    // SQL — provider cost was already incurred.
+    const usage = await readUsageRowsForCall(ORG_ACME, call.id);
+    const summaryRow = usage.find((r) => r.operation === "call_summary");
+    assert.ok(
+        summaryRow,
+        "usage row must be recorded even when applyAiSummary skips the manual-locked row",
+    );
+    assert.equal(summaryRow.provider, "mock");
 });
 
 test("callSummary worker no-op when call vanished", async () => {
@@ -427,6 +492,18 @@ test("text_chunk timer fires → call_suggestions row persisted + WS event has i
         });
         assert.ok(rows.length >= 1);
         assert.equal(rows[0].group_seq, 0);
+
+        // Phase 6 Step 2 wiring: one llm_usage_log row also written for
+        // the suggestion provider call. groupSeq/atMs metadata lets
+        // operators correlate the cost row with the persisted suggestion
+        // group via the live UI timestamp.
+        const usage = await readUsageRowsForCall(ORG_ACME, callId);
+        const suggestionRow = usage.find((r) => r.operation === "call_suggestion");
+        assert.ok(suggestionRow, "expected one call_suggestion usage row");
+        assert.equal(suggestionRow.provider, "mock");
+        assert.equal(suggestionRow.status, "succeeded");
+        assert.equal(suggestionRow.metadata.source, "ws:suggestion");
+        assert.equal(suggestionRow.metadata.group_seq, 0);
     } finally {
         socket.disconnect();
     }

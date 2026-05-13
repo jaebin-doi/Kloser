@@ -41,6 +41,7 @@ import {
 import { InvalidEmbeddingError } from "../repositories/knowledgeChunks.js";
 import { resolveEmbeddingAdapter } from "../adapters/index.js";
 import type { EmbeddingAdapter } from "../adapters/index.js";
+import * as llmUsageService from "../services/llmUsage.js";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -252,14 +253,31 @@ async function knowledgeBaseRoutes(
 
       // If a chunk lacks an embedding, ask the adapter for one. Caller
       // can also pre-compute and pass embedding inline (kept for tests
-      // that want to assert a specific vector). Phase 6 Step 2 wraps
-      // adapter output in ProviderResult; unwrap the domain vector here
-      // and let the usage-wiring commit add the llm_usage_log insert.
+      // that want to assert a specific vector). Phase 6 Step 2 records
+      // one llm_usage_log row per *adapter call* — precomputed chunks
+      // are skipped because no provider call happened for them. We
+      // preserve original chunk order via index tracking so search
+      // ranking and chunk row order stay stable.
       const enriched = await Promise.all(
-        chunks.map(async (c) => {
+        chunks.map(async (c, idx) => {
           if (c.embedding) return c;
-          const vec = (await embedding.embed(c.text)).value;
-          return { ...c, embedding: vec };
+          const result = await embedding.embed(c.text);
+          if (result.usage) {
+            await llmUsageService.recordProviderUsage(
+              app,
+              request.orgId!,
+              null,
+              result.usage,
+              {
+                metadata: {
+                  source: "route:knowledge.chunks.replace",
+                  knowledge_base_id: id,
+                  chunk_index: idx,
+                },
+              },
+            );
+          }
+          return { ...c, embedding: result.value };
         }),
       );
 
@@ -285,7 +303,22 @@ async function knowledgeBaseRoutes(
     { preHandler: [requireAuth, orgContext] },
     async (request, reply) => {
       const { query, limit } = KnowledgeChunkSearchQuery.parse(request.body);
-      const vec = (await embedding.embed(query)).value;
+      const embedResult = await embedding.embed(query);
+      if (embedResult.usage) {
+        await llmUsageService.recordProviderUsage(
+          app,
+          request.orgId!,
+          null,
+          embedResult.usage,
+          {
+            metadata: {
+              source: "route:knowledge.search",
+              query_length: query.length,
+            },
+          },
+        );
+      }
+      const vec = embedResult.value;
       const items = await knowledgeService.searchKnowledge(
         app,
         request.orgId!,
