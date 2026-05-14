@@ -25,6 +25,7 @@ import {
   invalidateActiveTokens,
   mintToken,
   TTL_EMAIL_VERIFICATION_MS,
+  TTL_MFA_CHALLENGE_MS,
   TTL_PASSWORD_RESET_MS,
 } from "./auth-tokens.js";
 import {
@@ -83,6 +84,31 @@ export interface RefreshResult {
   accessPayload: AccessTokenPayload;
   refreshToken?: string;
 }
+
+// Phase 7 Step 2 — `login()` no longer always returns a session. When MFA
+// is required for the resolved org/user, the service mints an
+// `mfa_challenge` auth token and returns the challenge-only branches. The
+// route layer turns those into a 202 response with no access token and
+// no refresh cookie. Plan §2.2 / §2.3.
+//
+// `challengeToken` is the raw bearer the client must echo back to
+// /auth/mfa/totp/verify-login. It is response-only — DB stores only
+// sha256(rawToken) on auth_tokens.token_hash.
+export type LoginMfaMethod = "totp";
+
+export type LoginResult =
+  | { kind: "authenticated"; auth: AuthResult }
+  | {
+      kind: "mfa_required";
+      challengeToken: string;
+      method: LoginMfaMethod;
+      expiresAt: Date;
+    }
+  | {
+      kind: "mfa_setup_required";
+      challengeToken: string;
+      expiresAt: Date;
+    };
 
 export class AuthError extends Error {
   constructor(
@@ -713,13 +739,79 @@ export async function resetPassword(input: {
   client.release();
 }
 
+// Phase 7 Step 2 — invalidate every active `mfa_challenge` for a user
+// across all orgs.
+//
+// Why service pool: auth_tokens has FORCE RLS scoped to the row's
+// org_id. The runtime app role can only see rows in the current GUC's
+// org, so invalidating from inside the login transaction would miss a
+// stale challenge from another org the user belongs to. That stale row
+// would then collide with the new mint via the partial UNIQUE index
+// `auth_tokens_user_purpose_active_idx (user_id, purpose) WHERE
+// consumed_at IS NULL AND invalidated_at IS NULL`, throwing 23505 from
+// the mint and surfacing as an opaque 500 to the user.
+//
+// Service pool has BYPASSRLS via its dedicated role and the Phase 3
+// service_grants migration already gives it SELECT/INSERT/UPDATE on
+// `auth_tokens` — no new grant needed.
+//
+// Trade-off: if the surrounding login transaction rolls back after this
+// runs, the invalidated_at flips are NOT undone. That's fine because
+// any row we touched here was already not the user's intended in-flight
+// challenge (the new login flow about to start replaces it).
+async function invalidateStaleMfaChallenges(userId: string): Promise<void> {
+  await getServicePool().query(
+    `UPDATE auth_tokens
+        SET invalidated_at = now()
+      WHERE user_id        = $1
+        AND purpose        = 'mfa_challenge'
+        AND consumed_at    IS NULL
+        AND invalidated_at IS NULL`,
+    [userId],
+  );
+}
+
+// Phase 7 Step 2 — read the two MFA flags after membership is resolved.
+// `users` and `organizations` are not RLS-scoped, so this runs as the
+// same app role inside the login transaction. We trust the user/org
+// ids that have just survived `resolveMembershipForLogin` — never the
+// request body.
+async function loadLoginMfaState(
+  client: PoolClient,
+  input: { userId: string; orgId: string },
+): Promise<{ userMfaEnabledAt: Date | null; orgRequiresMfa: boolean }> {
+  const r = await client.query<{
+    user_mfa_enabled_at: Date | null;
+    org_mfa_required: boolean;
+  }>(
+    `SELECT u.mfa_enabled_at AS user_mfa_enabled_at,
+            o.mfa_required   AS org_mfa_required
+       FROM users u
+       JOIN organizations o ON o.id = $2
+      WHERE u.id = $1`,
+    [input.userId, input.orgId],
+  );
+  const row = r.rows[0];
+  if (!row) {
+    // Both id lookups already succeeded in resolveMembershipForLogin —
+    // this would be a server-side invariant violation, not a user-
+    // visible auth failure.
+    throw new AuthError(500, "login_internal_inconsistency",
+      "user or org missing after membership resolution");
+  }
+  return {
+    userMfaEnabledAt: row.user_mfa_enabled_at,
+    orgRequiresMfa: row.org_mfa_required,
+  };
+}
+
 export async function login(input: {
   email: string;
   password: string;
   orgId?: string;
   userAgent?: string | null;
   ip?: string | null;
-}): Promise<AuthResult> {
+}): Promise<LoginResult> {
   return withTransaction(async (client) => {
     const user = await getByEmailWithPasswordHash(client, input.email);
     if (!user || user.disabled_at) {
@@ -731,10 +823,74 @@ export async function login(input: {
       throw new AuthError(401, "invalid_credentials", "invalid credentials");
     }
 
+    // Multi-org orgId-required / account_disabled / invalid_credentials
+    // all surface from here. No challenge mint above this line — wrong
+    // password / missing orgId never advances to MFA evaluation.
     const { membership, organization } = await resolveMembershipForLogin(client, {
       userId: user.id,
       orgId: input.orgId,
     });
+
+    // resolveMembershipForLogin's cross-org probe loop
+    // (listActiveMembershipsAcrossOrgs) iterates every organization row
+    // to find the user's memberships and leaves the GUC at whichever
+    // org came last in `ORDER BY created_at`. The legacy single-org
+    // happy path didn't care because it only INSERTs into `sessions`,
+    // which has no RLS. Phase 7 Step 2 changes that: `mintToken` writes
+    // into `auth_tokens`, which has FORCE RLS + a WITH CHECK on
+    // `org_id = current_app_org_id()`. Pin the GUC to the resolved org
+    // before any RLS-scoped mutation.
+    await setOrgContext(client, organization.id);
+
+    // Phase 7 Step 2 — decide whether to issue a session now or hand
+    // back an mfa_challenge instead. Per plan §2.2 the trigger is
+    // `org.mfa_required OR user.mfa_enabled_at IS NOT NULL`; the kind
+    // depends on which condition fires:
+    //   user enabled                       -> mfa_required (verify TOTP)
+    //   user not enabled + org required    -> mfa_setup_required (setup TOTP)
+    //   neither                            -> authenticated (existing path)
+    const mfa = await loadLoginMfaState(client, {
+      userId: user.id,
+      orgId: organization.id,
+    });
+    const userMfaEnabled    = mfa.userMfaEnabledAt !== null;
+    const orgRequiresMfa    = mfa.orgRequiresMfa;
+    const mfaChallengeNeeded = userMfaEnabled || orgRequiresMfa;
+
+    if (mfaChallengeNeeded) {
+      // Cross-org sweep first (see helper docstring for why), then
+      // invalidate inside the current org's GUC for completeness — the
+      // service-pool sweep already covers it but doing both keeps the
+      // log trail consistent (current-org invalidation is observable
+      // from the app role).
+      await invalidateStaleMfaChallenges(user.id);
+      await invalidateActiveTokens({
+        client,
+        userId:  user.id,
+        purpose: "mfa_challenge",
+      });
+      const challenge = await mintToken({
+        client,
+        orgId:   organization.id,
+        userId:  user.id,
+        purpose: "mfa_challenge",
+        ttlMs:   TTL_MFA_CHALLENGE_MS,
+      });
+
+      if (userMfaEnabled) {
+        return {
+          kind: "mfa_required" as const,
+          challengeToken: challenge.rawToken,
+          method: "totp" as const,
+          expiresAt: challenge.expiresAt,
+        };
+      }
+      return {
+        kind: "mfa_setup_required" as const,
+        challengeToken: challenge.rawToken,
+        expiresAt: challenge.expiresAt,
+      };
+    }
 
     const { session, refreshToken } = await createSessionWithToken(client, {
       userId: user.id,
@@ -745,12 +901,15 @@ export async function login(input: {
     });
 
     return {
-      user: toPublicAuthUser(user),
-      organization,
-      membership,
-      session,
-      accessPayload: buildAccessPayload(session, membership.role),
-      refreshToken,
+      kind: "authenticated" as const,
+      auth: {
+        user: toPublicAuthUser(user),
+        organization,
+        membership,
+        session,
+        accessPayload: buildAccessPayload(session, membership.role),
+        refreshToken,
+      },
     };
   });
 }

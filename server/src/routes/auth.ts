@@ -190,7 +190,21 @@ async function authRoutes(app: FastifyInstance) {
           userAgent: request.headers["user-agent"] ?? null,
           ip:        request.ip,
         });
-        return sendAuthResult(app, reply, 200, result);
+        if (result.kind === "authenticated") {
+          return sendAuthResult(app, reply, 200, result.auth);
+        }
+        // Phase 7 Step 2 — MFA challenge branch. Status 202 (Accepted)
+        // signals "credentials OK, but another step is required before
+        // we can issue a session". No access token, no refresh cookie —
+        // shared types + frontend wiring land in a follow-up commit.
+        return reply.code(202).send({
+          mfa: {
+            kind: result.kind,
+            method: result.kind === "mfa_required" ? result.method : null,
+            challengeToken: result.challengeToken,
+            expiresAt: result.expiresAt.toISOString(),
+          },
+        });
       } catch (err) {
         return sendAuthError(reply, err);
       }
