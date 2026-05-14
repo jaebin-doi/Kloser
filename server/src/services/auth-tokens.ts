@@ -21,7 +21,20 @@ import { AuthError } from "./auth.js";
 export type TokenPurpose =
   | "email_verification"
   | "password_reset"
-  | "invitation";
+  | "invitation"
+  | "mfa_challenge";
+
+// Phase 7 Step 2 note: `mfa_challenge` rides on the same auth_tokens table
+// as the Phase 3 purposes. The CHECK constraint accepts it (migration
+// 1715000023000) and `auth_tokens_invitation_purpose_check` already
+// requires `invitation_id IS NULL AND user_id IS NOT NULL` for every
+// non-invitation purpose, which is exactly the shape we want here.
+//
+// Plan §2.3: code verification failures must NOT consume the challenge —
+// callers therefore use the split helper trio
+// (`findTokenByRaw` → `lockAndValidateTokenById` → `markTokenConsumed`)
+// instead of the atomic `consumeToken`, so a wrong TOTP within the 5-min
+// window leaves the row available for retry until lockout.
 
 export interface MintTokenInput {
   client: PoolClient;
@@ -306,3 +319,7 @@ export async function markTokenConsumed(
 export const TTL_EMAIL_VERIFICATION_MS = 24 * 60 * 60 * 1000;       // 24h
 export const TTL_PASSWORD_RESET_MS     = 1 * 60 * 60 * 1000;        // 1h
 export const TTL_INVITATION_MS         = 7 * 24 * 60 * 60 * 1000;   // 7d
+// Phase 7 Step 2 — short-lived bearer token issued after password success
+// when MFA is required. Plan §2.3: 5 minutes; the user must enter the
+// TOTP code within this window or restart login.
+export const TTL_MFA_CHALLENGE_MS      = 5 * 60 * 1000;             // 5m
