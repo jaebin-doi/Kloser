@@ -15,15 +15,18 @@
  */
 import {
   getCallSummaryQueue,
+  getEmailDeliveryQueue,
   getHeartbeatSweepQueue,
   type CallSummaryJobData,
+  type EmailDeliveryJobData,
   type HeartbeatSweepJobData,
+  EMAIL_DELIVERY_QUEUE,
   HEARTBEAT_SWEEP_QUEUE,
 } from "./queues.js";
 
 export { closeQueues } from "./queues.js";
 export { closeRedis } from "./redis.js";
-export type { CallSummaryJobData, HeartbeatSweepJobData };
+export type { CallSummaryJobData, EmailDeliveryJobData, HeartbeatSweepJobData };
 
 export async function enqueueCallSummary(
   data: CallSummaryJobData,
@@ -56,7 +59,24 @@ export async function scheduleHeartbeatSweep(intervalMs: number): Promise<void> 
   );
 }
 
+const EMAIL_DELIVERY_REPEAT_KEY = "email-delivery-singleton";
+
+export async function scheduleEmailDelivery(intervalMs: number): Promise<void> {
+  const queue = getEmailDeliveryQueue();
+  // Same singleton-repeatable pattern as heartbeat sweep. Idempotent
+  // across boots: BullMQ dedupes on (queue, jobId).
+  await queue.add(
+    EMAIL_DELIVERY_REPEAT_KEY,
+    {},
+    {
+      repeat: { every: intervalMs },
+      jobId: EMAIL_DELIVERY_REPEAT_KEY,
+    },
+  );
+}
+
 export const QUEUE_NAMES = {
   callSummary: "call-summary",
   heartbeatSweep: HEARTBEAT_SWEEP_QUEUE,
+  emailDelivery: EMAIL_DELIVERY_QUEUE,
 } as const;

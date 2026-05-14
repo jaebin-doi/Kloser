@@ -21,13 +21,24 @@ import dbPlugin from "../plugins/db.js";
 import { createCallSummaryWorker } from "./callSummary.worker.js";
 import { createHeartbeatSweepWorker } from "./heartbeatSweep.worker.js";
 import {
+  createEmailDeliveryWorker,
+  loadEmailDeliveryConfigFromEnv,
+} from "./emailDelivery.worker.js";
+import {
   closeQueues,
   closeRedis,
+  scheduleEmailDelivery,
   scheduleHeartbeatSweep,
 } from "../queue/index.js";
 
 const SWEEP_INTERVAL_MS =
   Number.parseInt(process.env.KLOSER_HEARTBEAT_SWEEP_INTERVAL_SEC ?? "30", 10) * 1000;
+
+// Phase 7 Step 1 — email delivery tick interval. Default 10s matches
+// Plan §2.4. Only used when EMAIL_PROVIDER=resend; otherwise the
+// scheduler entry is skipped.
+const EMAIL_DELIVERY_INTERVAL_MS =
+  Number.parseInt(process.env.KLOSER_EMAIL_DELIVERY_INTERVAL_SEC ?? "10", 10) * 1000;
 
 async function main(): Promise<void> {
   const app = Fastify({ logger: { level: "info" } });
@@ -37,11 +48,35 @@ async function main(): Promise<void> {
   const summaryWorker = createCallSummaryWorker(app);
   const sweepWorker = createHeartbeatSweepWorker(app);
 
+  // Email delivery: resolve config from env. Returns null for the dev
+  // provider. Unknown providers, or resend with missing/invalid env,
+  // fail boot so production cannot silently stop sending. The Worker is
+  // created either way; with null config the processor returns no-op and
+  // we skip the repeatable schedule.
+  let emailDeliveryConfig: ReturnType<typeof loadEmailDeliveryConfigFromEnv>;
+  try {
+    emailDeliveryConfig = loadEmailDeliveryConfigFromEnv();
+  } catch (err) {
+    // EmailDeliveryConfigError / EmailEncryptionConfigError surface here.
+    // Fail the worker boot; silent real-provider fallback is not allowed.
+    console.error(
+      `[workers] email-delivery config invalid: ${(err as Error).message}`,
+    );
+    throw err;
+  }
+  const emailWorker = createEmailDeliveryWorker(app, emailDeliveryConfig);
+
   // Register the singleton repeatable sweep. Idempotent across boots.
   await scheduleHeartbeatSweep(SWEEP_INTERVAL_MS);
+  if (emailDeliveryConfig) {
+    await scheduleEmailDelivery(EMAIL_DELIVERY_INTERVAL_MS);
+  }
 
+  const emailMode = emailDeliveryConfig
+    ? `resend (interval=${EMAIL_DELIVERY_INTERVAL_MS}ms, max=${emailDeliveryConfig.maxAttempts})`
+    : "no-op (EMAIL_PROVIDER=dev_outbox)";
   console.log(
-    `[workers] up — call-summary + heartbeat-sweep (interval=${SWEEP_INTERVAL_MS}ms, cutoff=${process.env.KLOSER_HEARTBEAT_CUTOFF_SEC ?? "60"}s)`,
+    `[workers] up — call-summary + heartbeat-sweep (interval=${SWEEP_INTERVAL_MS}ms, cutoff=${process.env.KLOSER_HEARTBEAT_CUTOFF_SEC ?? "60"}s) + email-delivery ${emailMode}`,
   );
 
   let shuttingDown = false;
@@ -52,6 +87,7 @@ async function main(): Promise<void> {
     try {
       await summaryWorker.close();
       await sweepWorker.close();
+      await emailWorker.close();
       await closeQueues();
       await closeRedis();
       await app.close();

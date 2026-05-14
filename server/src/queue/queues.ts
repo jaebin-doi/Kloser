@@ -18,6 +18,11 @@ import { getRedisConnection } from "./redis.js";
 
 export const CALL_SUMMARY_QUEUE = "call-summary";
 export const HEARTBEAT_SWEEP_QUEUE = "heartbeat-sweep";
+// Phase 7 Step 1 — email delivery queue. Singleton repeatable job ticks
+// every KLOSER_EMAIL_DELIVERY_INTERVAL_SEC and the worker processes due
+// rows from email_outbox. Only scheduled when EMAIL_PROVIDER=resend
+// (see workers/index.ts).
+export const EMAIL_DELIVERY_QUEUE = "email-delivery";
 
 export interface CallSummaryJobData {
   orgId: string;
@@ -28,8 +33,15 @@ export interface HeartbeatSweepJobData {
   cutoffSec?: number;
 }
 
+export interface EmailDeliveryJobData {
+  // Reserved for future per-org or per-row scheduling. Empty for the
+  // singleton repeatable tick that scans every org.
+  orgId?: string;
+}
+
 let callSummaryQueue: BullQueue<CallSummaryJobData> | null = null;
 let heartbeatSweepQueue: BullQueue<HeartbeatSweepJobData> | null = null;
+let emailDeliveryQueue: BullQueue<EmailDeliveryJobData> | null = null;
 
 export function getCallSummaryQueue(): BullQueue<CallSummaryJobData> {
   if (callSummaryQueue) return callSummaryQueue;
@@ -62,6 +74,23 @@ export function getHeartbeatSweepQueue(): BullQueue<HeartbeatSweepJobData> {
   return heartbeatSweepQueue;
 }
 
+export function getEmailDeliveryQueue(): BullQueue<EmailDeliveryJobData> {
+  if (emailDeliveryQueue) return emailDeliveryQueue;
+  emailDeliveryQueue = new Queue<EmailDeliveryJobData>(EMAIL_DELIVERY_QUEUE, {
+    connection: getRedisConnection(),
+    defaultJobOptions: {
+      // The processor itself does row-level retry/dead-letter through
+      // email_outbox.attempt_count + KLOSER_EMAIL_MAX_ATTEMPTS. Job-level
+      // retry would double-count, so we keep attempts=1 — re-running on
+      // the next interval is fine because leases skip 'sending' rows.
+      attempts: 1,
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 200 },
+    },
+  });
+  return emailDeliveryQueue;
+}
+
 export async function closeQueues(): Promise<void> {
   const tasks: Array<Promise<void>> = [];
   if (callSummaryQueue) {
@@ -71,6 +100,10 @@ export async function closeQueues(): Promise<void> {
   if (heartbeatSweepQueue) {
     tasks.push(heartbeatSweepQueue.close());
     heartbeatSweepQueue = null;
+  }
+  if (emailDeliveryQueue) {
+    tasks.push(emailDeliveryQueue.close());
+    emailDeliveryQueue = null;
   }
   await Promise.all(tasks);
 }
