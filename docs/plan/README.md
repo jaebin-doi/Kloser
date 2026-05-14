@@ -28,7 +28,7 @@
 | Phase 4 status (complete) | [`phase-4/PHASE_4_MASTER.md`](phase-4/PHASE_4_MASTER.md) + [`phase-4/PHASE_4_STEP_5_FINDINGS.md`](phase-4/PHASE_4_STEP_5_FINDINGS.md) |
 | Phase 5 status (complete) | [`phase-5/PHASE_5_MASTER.md`](phase-5/PHASE_5_MASTER.md) + [`phase-5/PHASE_5_STEP_5_FINDINGS.md`](phase-5/PHASE_5_STEP_5_FINDINGS.md) |
 | Phase 6 status (complete) | [`phase-6/PHASE_6_MASTER.md`](phase-6/PHASE_6_MASTER.md) + [`phase-6/PHASE_6_STEP_5_FINDINGS.md`](phase-6/PHASE_6_STEP_5_FINDINGS.md) |
-| Phase 7 current entry point | [`phase-7/PHASE_7_MASTER.md`](phase-7/PHASE_7_MASTER.md) + [`phase-7/PHASE_7_STEP_1_PLAN.md`](phase-7/PHASE_7_STEP_1_PLAN.md) |
+| Phase 7 current entry point | [`phase-7/PHASE_7_MASTER.md`](phase-7/PHASE_7_MASTER.md) + [`phase-7/PHASE_7_STEP_1_FINDINGS.md`](phase-7/PHASE_7_STEP_1_FINDINGS.md). Next implementation step: MFA / session hardening. |
 | Final `customers.plan` decision | [`phase-2/PHASE_2_STEP_5_FINDINGS.md`](phase-2/PHASE_2_STEP_5_FINDINGS.md) |
 | Phase 2 closure findings | [`phase-2/PHASE_2_STEP_6_FINDINGS.md`](phase-2/PHASE_2_STEP_6_FINDINGS.md) |
 

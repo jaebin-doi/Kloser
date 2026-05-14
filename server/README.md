@@ -1,4 +1,4 @@
-# Kloser server (Phase 6 complete)
+# Kloser server (Phase 7 Step 1 complete)
 
 > **Status**:
 > - **Phase 0.5 spike** complete (live stream pipeline verified, RTT 1ms, e2e PASS).
@@ -8,8 +8,9 @@
 > - **Phase 4 complete** (Steps 1~5): three new tables `calls` / `transcripts` / `call_action_items` with FORCE RLS + partial indexes + composite FK to `customers(org_id, id)` and `memberships(org_id, user_id)`. `endCall` service transaction (calls status / ended_at / duration_seconds + `customers.last_contacted_at = GREATEST(...)` in one go). REST `/calls` (11 endpoints) + `/dashboard/summary`. WebSocket persistence hook for `start_call` / `text_chunk` / `end_call`. `requireVerified` middleware applied to every Phase 4 mutation. Browser side: `calls.html` / `dashboard.html` / `live.html` all wired to real API. `phase_4_e2e` 8-scenario regression. Details under `docs/plan/phase-4/`.
 > - **Phase 5 complete** (Steps 1~5): knowledge base (`knowledge_documents` + RAG embeddings) + checklist + suggestion persistence + customer selection in live flow + manager team-scope mutation (`assertCanMutateCall`) + call detail panels wired to real API. `phase_5_e2e` 5-scenario regression. Details under `docs/plan/phase-5/`.
 > - **Phase 6 complete** (Steps 1~5): BullMQ + Redis worker infrastructure with `callSummary` queue (enqueued from `endCall` post-commit hook), 60s heartbeat sweep worker (`status='in_progress' AND last_seen_at < now() - 60s` → `dropped/server_timeout`), WS `text_chunk` hook persists into `call_suggestions` + emits `suggestion` event with server id. Real provider adapters: `adapters/llm/anthropic.ts`, `adapters/embedding/openai.ts`, `adapters/stt/clova.ts` — provider env unset/`mock` uses mock; selecting a real provider without required keys fails fast. New `llm_usage_log` table (FORCE RLS, append-only — no UPDATE/DELETE policy) + `services/llmUsage.ts` `recordProviderUsage` helper wired into worker finished hooks and WS suggestion path. `DELETE /call-action-items/:id` (hard delete, `assertCanMutateCall`) + `calls.html` row delete button. `GET /reports/team-summary?team_id=<uuid>` + `services/teamReports.ts` (admin org-wide / manager own-team / 403 for other same-org / 404 cross-org) + `platform/reports.html` (KPI cards + recent 10 calls table, all server fields escaped). Shared types **15 entities** (`teamReport` added). `phase_6_e2e` 7-scenario regression + cleanup sweep. Details under `docs/plan/phase-6/`.
-> - **Verification baseline**: `npm --prefix server test` **384 total / 381 pass / 3 skipped / 0 fail** (3 skipped = Phase 6 Step 2 real-provider opt-in, `E2E_ALLOW_REAL_PROVIDERS` not set) + `node test/sync_shared_types.mjs` **15 entities** + `node test/phase_0_5_e2e.mjs` 16/16 + `node test/phase_2_customers_e2e.mjs` 7/7 + `node test/phase_3_e2e.mjs` 33-assertion + `node test/phase_4_e2e.mjs` 8-scenario + `node test/phase_5_e2e.mjs` 5-scenario + `node test/phase_6_e2e.mjs` 7-scenario + cleanup sweep all PASS. Phase 7 is next (SMTP / MFA / activity_log / retention enforce / cost model price map / billing — operational launch gates, see `docs/plan/phase-6/PHASE_7_HANDOFF.md`).
-> - Master plans: `docs/plan/phase-{1,2,3,4,5,6}/PHASE_{n}_MASTER.md`. User guides: `docs/USER_GUIDE_PHASE_{1,2,3,4,6}.md`. Visual guides: `docs/product/PHASE_{1,2,3,4}_FOUNDATIONS.html`.
+> - **Phase 7 Step 1 complete — SMTP / Resend real email adapter**: forward migration `1715000022000_phase7_email_delivery.sql` extends `email_outbox` to a transactional delivery outbox (status/provider/attempt_count/next_attempt_at/locked_at/lock_token + sensitive_payload_{ciphertext,iv,tag,key_version} + due/provider_message/dead_letter partial indexes; existing dev rows backfilled to `(delivered, dev_outbox)`). Repository `repositories/emailOutbox.ts` owns the state machine: `insertDeliveredDevEmail` / `insertPendingEmail` / `leaseDueEmail` (FOR UPDATE SKIP LOCKED + status='sending') / `markDelivered` / `markRetryableFailure` / `markDeadLetter` / `scrubSensitivePayload`. `services/emailSensitivePayload.ts` implements AES-256-GCM (32-byte base64 key) with config / failure error classes that never echo plaintext. `services/email.ts` refactored — shared body builders, `DevOutboxEmailProvider` (Phase 3 dev archive preserved: raw URL kept in body_text + metadata for e2e token extraction), `QueuedEmailProvider` (`?token=[redacted]` in archive + encrypted raw URL in sensitive_payload), `resolveEmailProvider(env?)` with fail-fast on missing `EMAIL_FROM` / `RESEND_API_KEY` / `EMAIL_OUTBOX_ENCRYPTION_KEY` when `EMAIL_PROVIDER=resend`. `adapters/email/resend.ts` ships the live Resend HTTP adapter (native fetch, 4xx → `PermanentEmailDeliveryError`, 5xx/network → `RetryableEmailDeliveryError`, error messages echo only status + Resend `name`). `workers/emailDelivery.worker.ts` registers a BullMQ singleton repeatable tick (default 10s) that iterates orgs through `withOrgContext`, leases due rows, decrypts the sensitive payload, restores the raw token segment into the rendered body, calls `adapter.send`, then `markDelivered`+scrub on success or `markRetryableFailure`/`markDeadLetter`+scrub per attempt_count + exponential backoff (cap 1h). Worker no-ops only for dev provider modes (`EMAIL_PROVIDER` unset / empty / `dev_outbox`); resend misconfig and unknown provider values fail fast. Phase 3 verify/reset/invite routes unchanged. Details under `docs/plan/phase-7/`.
+> - **Verification baseline**: `npm --prefix server test` **443 total / 440 pass / 3 skipped / 0 fail** (3 skipped = Phase 6 Step 2 real-provider opt-in, `E2E_ALLOW_REAL_PROVIDERS` not set) + `node test/sync_shared_types.mjs` **15 entities** + `node test/phase_0_5_e2e.mjs` 16/16 + `node test/phase_2_customers_e2e.mjs` 7/7 + `node test/phase_3_e2e.mjs` 33-assertion + `node test/phase_4_e2e.mjs` 8-scenario + `node test/phase_5_e2e.mjs` 5-scenario + `node test/phase_6_e2e.mjs` 7-scenario + cleanup sweep all PASS. Phase 7 next (Step 2 MFA / session hardening, then activity_log, retention enforce cron, cost model price map, billing — operational launch gates, see `docs/plan/phase-6/PHASE_7_HANDOFF.md` + `docs/plan/phase-7/PHASE_7_MASTER.md`).
+> - Master plans: `docs/plan/phase-{1,2,3,4,5,6}/PHASE_{n}_MASTER.md` + `docs/plan/phase-7/PHASE_7_MASTER.md` + `docs/plan/phase-7/PHASE_7_STEP_1_FINDINGS.md`. User guides: `docs/USER_GUIDE_PHASE_{1,2,3,4,6}.md`. Visual guides: `docs/product/PHASE_{1,2,3,4}_FOUNDATIONS.html`.
 
 ## What this provides
 
@@ -18,10 +19,12 @@
   - **client → server**: `start_call`, `text_chunk`, `end_call`, `heartbeat` (snake_case)
   - **server → client**: `transcript`, `suggestion` (server-id'd, persisted), `sentiment`, `error`
 - WebSocket persistence (Phase 4+): `start_call` inserts a `calls` row, `text_chunk` appends a `transcripts` row before echoing **and** triggers a Phase 6 LLM suggestion that persists into `call_suggestions` before fanning out the `suggestion` event with the server id. `end_call` runs `service.endCall` which marks the call ended and bumps `customers.last_contacted_at` in the same transaction, then best-effort enqueues a `callSummary` BullMQ job for AI summary generation.
-- Worker (Phase 6, `server/src/workers/index.ts`):
+- Worker (Phase 6 + Phase 7 Step 1, `server/src/workers/index.ts`):
   - **callSummary** consumer — picks `{ orgId, callId }` jobs, calls LLM (mock or real Anthropic) inside `withOrgContext`, UPDATEs `calls.summary / needs / issues / sentiment` with SQL guard `WHERE summary_source IS DISTINCT FROM 'manual'`, then logs to `llm_usage_log`.
   - **heartbeatSweep** cron — every interval, scans all orgs and marks stale `in_progress` calls (no heartbeat in 60s) as `dropped / server_timeout` with `ended_at` + `duration_seconds`.
+  - **emailDelivery** cron (Phase 7 Step 1) — singleton repeatable BullMQ tick (default `KLOSER_EMAIL_DELIVERY_INTERVAL_SEC=10`). Per tick: iterate orgs via `listAllOrgIds`, `withOrgContext(orgId)` → `leaseDueEmail` (FOR UPDATE SKIP LOCKED, status='sending', lock_token set). Decrypt `sensitive_payload_*` → restore `?token=[redacted]` to the raw token in the rendered body → `adapter.send`. Outcomes: `markDelivered` + `scrubSensitivePayload` on success, `markRetryableFailure` with `next_attempt_at = now + baseBackoffMs * 2^(attempt-1)` (cap 1h) under max attempts, `markDeadLetter` + scrub on `PermanentEmailDeliveryError` / decrypt failure / attempt cap reached. **No-op only for dev provider modes** (`EMAIL_PROVIDER` unset / empty / `dev_outbox`). If `EMAIL_PROVIDER=resend` is selected and `EMAIL_FROM`, `RESEND_API_KEY`, or `EMAIL_OUTBOX_ENCRYPTION_KEY` is missing/malformed, worker boot fails fast. Unknown provider values fail fast too. Phase 3 dev outbox flow is untouched. Stuck `status='sending'` recovery (worker crash between lease and mark) is intentionally deferred to Phase 7 Step 4 retention.
 - Provider adapters (Phase 6 Step 2): `adapters/llm/anthropic.ts`, `adapters/embedding/openai.ts`, `adapters/stt/clova.ts`. Resolver uses mock when `LLM_PROVIDER` / `EMBEDDING_PROVIDER` / `STT_PROVIDER` are unset, empty, or `mock`; it picks a real adapter only when the provider name matches and required env keys are present. Real provider selected with missing keys is fail-fast, not silent mock fallback. Every provider call is recorded in `llm_usage_log` with `provider` / `model` / `operation` / `tokens_in` / `tokens_out` / `latency_ms` (cost map deferred to Phase 7+).
+- Email delivery adapter (Phase 7 Step 1): `adapters/email/index.ts` exports the `EmailDeliveryAdapter` interface + `RetryableEmailDeliveryError` / `PermanentEmailDeliveryError`. `adapters/email/resend.ts` is the live Resend HTTP implementation (native fetch, `redirect: "manual"`, error messages echo only HTTP status + Resend `name` field). `adapters/email/fake.ts` is the in-memory test fake. The worker resolves the adapter at boot via `EMAIL_PROVIDER` + the encryption helper; missing or malformed env on a `EMAIL_PROVIDER=resend` deploy throws `EmailDeliveryConfigError` / `EmailEncryptionConfigError` at worker boot rather than silently no-op.
 - REST surface:
   - Auth/me: `/auth/{signup,login,refresh,logout,verify,password/forgot,password/reset}` + `/me`
   - Customers (Phase 2): `/customers` (list / stats / get / create / patch / delete)
@@ -75,7 +78,7 @@ authenticated WebSocket, and you should see:
 # (servers running) — full regression baseline used to gate every phase
 npm --prefix server run typecheck
 node test/sync_shared_types.mjs          # 15 entities
-npm --prefix server test                 # 384 total / 381 pass / 3 skipped / 0 fail
+npm --prefix server test                 # 443 total / 440 pass / 3 skipped / 0 fail
 node test/phase_0_5_e2e.mjs              # 16 assertion — Phase 1 live regression
 node test/phase_2_customers_e2e.mjs      # 7 scenarios — Phase 2 regression + leftover sweep
 node test/phase_3_e2e.mjs                # 6 scenarios / 33 assertion — Phase 3 regression
@@ -229,12 +232,59 @@ server/
         └── demo-call.ts    # conversation + aiSequence (with sentiment)
 ```
 
+## Phase 7 Step 1 — Email delivery (Resend) operational notes
+
+```bash
+# 1. Generate a 32-byte encryption key once per deploy and store it securely.
+openssl rand -base64 32
+
+# 2. Set the four resend-mode env vars (see .env.example):
+#      EMAIL_PROVIDER=resend
+#      EMAIL_FROM="Kloser <no-reply@yourdomain.example>"
+#      RESEND_API_KEY=re_xxx
+#      EMAIL_OUTBOX_ENCRYPTION_KEY=<openssl output>
+#    The worker / API will fail boot with EmailEncryptionConfigError or
+#    EmailProviderConfigError if any of these are missing or malformed.
+
+# 3. Run the worker process — separate from the API.
+npm --prefix server run dev:worker      # tsx watch, dev
+npm --prefix server run start:worker    # built, prod
+```
+
+Outbox state machine (one row per send attempt):
+
+```
+   insertPendingEmail
+            │  status=pending, provider=resend, sensitive_payload populated
+            ▼
+        pending ─────── leaseDueEmail ──────► sending
+            ▲                                    │
+            │                                    ├─► markDelivered + scrub      → delivered (terminal)
+            │                                    │
+            │                                    ├─► PermanentEmailDeliveryError
+            │                                    │   markDeadLetter + scrub     → dead_lettered (terminal)
+            │                                    │
+            │                                    ├─► attempt_count+1 ≥ max
+            │                                    │   markDeadLetter + scrub     → dead_lettered (terminal)
+            │                                    │
+            └──────── markRetryableFailure ◄─────┘   next_attempt_at = now + base*2^(attempt-1)
+                       (status=failed, no scrub — payload kept for retry)
+```
+
+Dev (`EMAIL_PROVIDER=dev_outbox`) skips the queued path entirely: rows go in as `status='delivered'` with `body_text` + `metadata.<*>Url` carrying the raw token. The worker is no-op.
+
+`sensitive_payload_{ciphertext, iv, tag, key_version}` lives only while a row is in `pending` / `sending` / `failed`. The worker calls `scrubSensitivePayload` immediately after `markDelivered` and after every `markDeadLetter` so a row in a terminal state never carries the raw token on disk.
+
 ## Not done on purpose
 
-Phase 7+ scope, intentionally not yet implemented (full priority list in `docs/plan/phase-6/PHASE_7_HANDOFF.md`):
+Phase 7+ scope, intentionally not yet implemented (full priority list in `docs/plan/phase-7/PHASE_7_MASTER.md`):
 
-- **Real SMTP / Resend** — Phase 3 dev `email_outbox` (raw token kept in metadata for e2e extraction) stays for now. Production provider lands in Phase 7; outbox becomes archive-only.
-- **MFA / WebAuthn / session hardening** — password + JWT only today; TOTP first, WebAuthn second.
+- **Staging Resend smoke test** — code path is implemented and fake-adapter tests pass, but real Resend credentials/domain delivery still need an operator-run staging smoke test.
+- **Email webhook/idempotency handling** — `provider_message_id` is stored, but provider webhook ingestion is a later step.
+- **Email stuck-row recovery** — worker crash between lease and mark can leave `status='sending'`; recovery sweep is deferred to Phase 7 Step 4 retention.
+
+- **SMTP fallback** — Phase 7 Step 1 ships the Resend adapter only. Self-hosted SMTP (with bounce handling and SPF/DKIM/DMARC tooling) is deferred. dev_outbox remains the default for local + e2e.
+- **MFA / WebAuthn / session hardening** — password + JWT only today; TOTP first, WebAuthn second. Phase 7 Step 2 is the next active commit.
 - **activity_log + audit log** — schema slot exists; population not wired. Phase 7.
 - **Retention enforce cron** — `transcripts` 3-year / `call_recordings` 90-day enforcement not running. Phase 7.
 - **`llm_usage_log.cost_usd_micros`** — column exists, all rows NULL today. Phase 7 cost-accuracy commit introduces the model→price map plus daily cap.

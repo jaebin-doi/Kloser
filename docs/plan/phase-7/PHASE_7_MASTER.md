@@ -9,7 +9,7 @@
 
 ## 0. 진행 상태
 
-- [ ] **Step 1 — SMTP / Resend 실 email adapter**: 계획 수립 중. 정본 계획은 `PHASE_7_STEP_1_PLAN.md`.
+- [x] **Step 1 — SMTP / Resend 실 email adapter**: 구현 완료. 정본 결과는 `PHASE_7_STEP_1_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_1_PLAN.md`.
 - [ ] **Step 2 — MFA / 세션 강화**: TOTP 우선, WebAuthn은 후속.
 - [ ] **Step 3 — activity_log + 감사 로그**: schema 자리만 있는 `activity_log`를 실제 mutation/auth/audit 이벤트로 채운다.
 - [ ] **Step 4 — retention enforce cron**: transcript 3년, call recording 90일 보존 정책을 워커 cron으로 강제한다.
@@ -137,7 +137,7 @@ P0가 닫힌 뒤 순서를 다시 확정한다. 기본 순서:
 
 Phase 7을 닫으려면 최소 다음이 필요하다.
 
-- [ ] verify/reset/invite email이 dev outbox와 실 provider mode 양쪽에서 검증됨.
+- [x] verify/reset/invite email이 dev outbox와 실 provider mode 양쪽에서 검증됨. Dev path는 Phase 3 e2e로 확인했고, real-provider path는 fake adapter worker tests로 검증됨. Real Resend credentials/domain smoke test는 staging 운영 검증으로 남김.
 - [ ] MFA required org에서 password-only access issuance가 차단됨.
 - [ ] audit target events가 org-scoped row로 기록됨.
 - [ ] retention worker가 deterministic test cutoff로 검증됨.
@@ -151,5 +151,5 @@ Phase 7을 닫으려면 최소 다음이 필요하다.
 
 ## 7. 바로 다음 작업
 
-`PHASE_7_STEP_1_PLAN.md`에 따라 Step 1 schema migration부터 시작한다.
+다음 작업은 Step 2 MFA / session hardening이다. Step 1 구현 결과는 `PHASE_7_STEP_1_FINDINGS.md`를 기준으로 본다.
 

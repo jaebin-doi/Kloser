@@ -143,8 +143,8 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 6 완료** (Step 1~5) — Phase 5까지의 통화 영속화·체크리스트·관리자 권한 위에 운영 루프 4개(워커 + 실 provider + action item delete + 매니저 보고서)를 닫았다. **Step 1**: BullMQ + Redis 기반 워커 인프라 + `callSummary` 큐 (endCall 후크에서 best-effort enqueue) + 60s heartbeat sweep + WS `text_chunk` → `call_suggestions` 영속화. **Step 2**: 실 provider 어댑터 3종(Anthropic / OpenAI / Clova) + `llm_usage_log` 신규 테이블 (RLS FORCE, append-only) + provider resolver의 throw branch 채움 (mock fallback 유지). **Step 3**: `DELETE /call-action-items/:id` + `calls.html` ✕ 버튼 (hard delete, `assertCanMutateCall` 그대로). **Step 4**: `GET /reports/team-summary` + `platform/reports.html` (매니저 자기 팀 분기, admin 전체 조직, viewer/employee 403). shared types 14 → **15 entity** (`teamReport` +1). `npm test` 384 total / 381 pass / 3 skipped / 0 fail + `sync_shared_types` 15 entity + `phase_0_5_e2e` 16/16 + `phase_2_customers_e2e` 7/7 + `phase_3_e2e` 33 assertion + `phase_4_e2e` 8 시나리오 + `phase_5_e2e` 5 시나리오 + `phase_6_e2e` 7 시나리오 + cleanup sweep 모두 PASS. Phase 6 Step 5에서 `platform/live.html`의 viewer role gate를 적용해 Phase 3 e2e의 pre-existing 403 console error를 제거. 다음은 Phase 7 (SMTP / MFA / activity_log / retention / cost model + 결제·구독 — 운영 출시 직전 게이트).
-> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-3/PHASE_3_MASTER.md`](docs/plan/phase-3/PHASE_3_MASTER.md), [`docs/plan/phase-4/PHASE_4_MASTER.md`](docs/plan/phase-4/PHASE_4_MASTER.md), [`docs/plan/phase-5/PHASE_5_MASTER.md`](docs/plan/phase-5/PHASE_5_MASTER.md), [`docs/plan/phase-6/PHASE_6_MASTER.md`](docs/plan/phase-6/PHASE_6_MASTER.md), [`docs/plan/phase-6/PHASE_6_STEP_5_FINDINGS.md`](docs/plan/phase-6/PHASE_6_STEP_5_FINDINGS.md), [`docs/plan/phase-6/PHASE_7_HANDOFF.md`](docs/plan/phase-6/PHASE_7_HANDOFF.md). 사용자 가이드: [`docs/USER_GUIDE_PHASE_6.md`](docs/USER_GUIDE_PHASE_6.md) · 시각 가이드: [`docs/product/PHASE_4_FOUNDATIONS.html`](docs/product/PHASE_4_FOUNDATIONS.html).
+> **현재 단계**: **Phase 7 Step 1 완료** — Phase 6 운영 루프 위에 실 이메일 발송 경로(Resend)를 transactional outbox 패턴으로 닫았다. (1) **스키마**: `email_outbox`에 status/provider/attempt_count/next_attempt_at/locked_at/lock_token + sensitive_payload_{ciphertext,iv,tag,key_version} 13개 컬럼 + due/provider_message/dead_letter partial index 추가. 기존 dev row는 `(delivered, dev_outbox)`로 backfill. (2) **Repository + AES-256-GCM helper**: `insertDeliveredDevEmail`/`insertPendingEmail`/`leaseDueEmail`(FOR UPDATE SKIP LOCKED)/`markDelivered`/`markRetryableFailure`/`markDeadLetter`/`scrubSensitivePayload` + `encryptEmailSensitivePayload`/`decryptEmailSensitivePayload` (base64 32-byte 키, plaintext 미노출 에러). (3) **Provider 리팩터**: 공유 body builder + `DevOutboxEmailProvider`(Phase 3 dev archive 그대로) / `QueuedEmailProvider`(`?token=[redacted]` 보관 + sensitive_payload 암호화) + `resolveEmailProvider(env?)` (resend 모드 env 누락 시 fail-fast). (4) **Resend HTTP adapter + 워커**: native fetch + 4xx → `PermanentEmailDeliveryError` / 5xx·네트워크 → `RetryableEmailDeliveryError` / 에러 메시지에 api key·raw token·raw URL 미노출. BullMQ 싱글톤 repeatable tick (기본 10s) 워커가 org별 `withOrgContext`로 lease → decrypt → adapter.send → `markDelivered`+scrub / `markRetryableFailure`(지수 백오프, cap 1h) / `markDeadLetter`+scrub. dev provider 모드(`EMAIL_PROVIDER` unset/empty/`dev_outbox`)에서는 워커 no-op이라 Phase 3 verify/reset/invite 흐름 무변이고, resend misconfig나 unknown provider는 fail-fast다. `npm test` **443 total / 440 pass / 3 skipped / 0 fail** + `sync_shared_types` 15 entity + Phase 0.5/2/3/4/5/6 e2e 회귀 모두 PASS. 다음은 **Phase 7 Step 2 (MFA / 세션 강화)** — TOTP 1차, WebAuthn 후속.
+> 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-3/PHASE_3_MASTER.md`](docs/plan/phase-3/PHASE_3_MASTER.md), [`docs/plan/phase-4/PHASE_4_MASTER.md`](docs/plan/phase-4/PHASE_4_MASTER.md), [`docs/plan/phase-5/PHASE_5_MASTER.md`](docs/plan/phase-5/PHASE_5_MASTER.md), [`docs/plan/phase-6/PHASE_6_MASTER.md`](docs/plan/phase-6/PHASE_6_MASTER.md), [`docs/plan/phase-7/PHASE_7_MASTER.md`](docs/plan/phase-7/PHASE_7_MASTER.md), [`docs/plan/phase-7/PHASE_7_STEP_1_FINDINGS.md`](docs/plan/phase-7/PHASE_7_STEP_1_FINDINGS.md), [`docs/plan/phase-6/PHASE_7_HANDOFF.md`](docs/plan/phase-6/PHASE_7_HANDOFF.md). 사용자 가이드: [`docs/USER_GUIDE_PHASE_6.md`](docs/USER_GUIDE_PHASE_6.md) · 시각 가이드: [`docs/product/PHASE_4_FOUNDATIONS.html`](docs/product/PHASE_4_FOUNDATIONS.html).
 
 ---
 
@@ -383,20 +383,22 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 6 완료, Phase 7 대기)
+### 백엔드 (`server/` — Phase 7 Step 1 완료, Step 2 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript, dev 포트 `:32173`
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스, JWT handshake + WS persistence + WS suggestion hook)
 - **REST 표면**: `/auth/*` · `/me` · `/customers` · `/teams` · `/memberships` · `/invitations` · `/calls` (+ `DELETE /call-action-items/:id`) · `/knowledge/*` · `/dashboard/summary` · `/reports/team-summary`
 - **인프라 결정**: 자체 온프레미스 (Supabase managed 미채택 — `docs/decision/SUPABASE_VS_ONPREM.md`)
 - **DB**: 직접 운영 PostgreSQL + RLS FORCE default-deny (Phase 1부터, Phase 6 신규 `llm_usage_log` 포함 모든 테이블 동일 패턴)
-- **큐/캐시**: Redis + BullMQ (Phase 6에서 `callSummary` 큐 + heartbeat sweep + WS suggestion 영속화 본격 도입)
-- **워커**: `server/src/workers/index.ts` 엔트리 — `dev:worker` script로 별 process 실행. e2e는 inline drain helper(`server/scripts/phase6E2eDrain.ts`)로 처리
-- **외부 provider**: Anthropic (LLM) / OpenAI (Embedding) / Clova (STT) 어댑터 wire 완료. provider env unset/`mock`이면 mock, real provider 선택 시 필수 키 누락은 fail-fast
+- **큐/캐시**: Redis + BullMQ (Phase 6에서 `callSummary` 큐 + heartbeat sweep + WS suggestion 영속화 도입, Phase 7 Step 1에서 `email-delivery` 싱글톤 repeatable tick 추가)
+- **워커**: `server/src/workers/index.ts` 엔트리 — `dev:worker` script로 별 process 실행. callSummary + heartbeatSweep + emailDelivery 3종. e2e는 inline drain helper(`server/scripts/phase6E2eDrain.ts`)로 처리
+- **외부 provider**: Anthropic (LLM) / OpenAI (Embedding) / Clova (STT) + **Resend (Email, Phase 7 Step 1)** 어댑터 wire 완료. provider env unset/`mock`/`dev_outbox`이면 기본 dev/mock, real provider 선택 시 필수 키 누락은 fail-fast
+- **이메일 전송 (Phase 7 Step 1)**: `email_outbox`를 transactional delivery outbox로 확장. `EMAIL_PROVIDER=resend` 모드에서는 raw URL을 AES-256-GCM으로 `sensitive_payload_*`에만 저장하고 archive(`body_text`/`metadata`)는 `?token=[redacted]`로 마스킹. 워커가 lease(`FOR UPDATE SKIP LOCKED`) → decrypt → adapter.send → markDelivered+scrub / markRetryableFailure(지수 백오프, 1h cap) / markDeadLetter+scrub. 기본 `dev_outbox` 모드는 Phase 3 동작 그대로 유지
 - **Reverse proxy**: Nginx 또는 Caddy (Phase 1+ — `ops/Caddyfile.dev`로 single-origin 변형 제공)
 
-### 외부 연동 (Phase 5~6)
+### 외부 연동 (Phase 5~7)
 - **STT**: Naver Clova Speech (한국어 영업 도메인 정확도 우선)
 - **LLM**: Anthropic Claude / OpenAI GPT — 회사 가이드 RAG 기반
+- **Email**: Resend (`EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + `EMAIL_FROM` + `EMAIL_OUTBOX_ENCRYPTION_KEY` 세팅 시 활성, 미설정이면 dev outbox)
 - **벡터 검색**: pgvector
 - **데스크톱 앱**: Electron 또는 Tauri (Windows + WASAPI 오디오 캡처) — `docs/plan/roadmap/DESKTOP_APP_PLAN.md`
 
@@ -416,14 +418,15 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - 수동 RTT 1ms · 자동 데모 재생 · sentiment 자동 전이 · 14/14 e2e PASS
 - 결과 정리: [`docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md`](docs/plan/phase-0.5/PHASE_0_5_FINDINGS.md)
 
-### v1 — MVP (Phase 1~6)
+### v1 — MVP (Phase 1~6 + Phase 7 진행)
 - **Phase 1** ✅: PostgreSQL 부트스트랩 + RLS default-deny + 자체 Auth (Argon2id + JWT + refresh rotation) + 클라이언트 wiring + Caddy reverse proxy (Step 1~5)
 - **Phase 2** ✅: Customers CRUD + RLS 격리 + 실 API UI + e2e
 - **Phase 3** ✅: 회원가입 + 이메일 인증 + 비밀번호 재설정 + 동료 초대 + 팀·멤버 관리 + 마지막 admin 보호
 - **Phase 4** ✅: 통화/발화/액션 영속화 + `/calls` REST + `/dashboard/summary` + WS persistence hook + 미인증 mutation 차단 + `phase_4_e2e` 8 시나리오
 - **Phase 5** ✅: knowledge base + 체크리스트 + suggestion 영속화 + 통화 detail + manager team-scope mutation + customer selection + `phase_5_e2e`
 - **Phase 6** ✅: BullMQ + Redis 워커 (AI 자동 요약 + heartbeat sweep + WS suggestion persistence) + 실 provider 어댑터(Anthropic/OpenAI/Clova) + `llm_usage_log` + action item DELETE + 매니저 보고서(`/reports/team-summary` + `platform/reports.html`) + `phase_6_e2e` 7 시나리오
-- **Phase 7** (다음): SMTP / Resend + MFA + activity_log + retention enforce + `llm_usage_log` cost model price map + 결제·구독 + role-based 메뉴 가시성 (운영 출시 직전 게이트)
+- **Phase 7 Step 1** ✅: Resend 실 이메일 어댑터 + transactional `email_outbox` (status / sensitive_payload AES-256-GCM 암호화 / partial index) + `QueuedEmailProvider` + `emailDelivery` BullMQ 워커 (lease + decrypt + adapter.send + 지수 백오프 + scrub). 기본 `dev_outbox` 모드는 Phase 3 동작 그대로
+- **Phase 7 Step 2~5** (다음): MFA / 세션 강화 → activity_log → retention enforce cron → `llm_usage_log` cost model price map → 결제·구독 → role-based 메뉴 가시성 (운영 출시 직전 게이트)
 - Windows 데스크톱 앱 (오디오 캡처)
 - Claude RAG 기반 응대 추천 엔진
 - 단일 회사·1~5명 직원 기준 PoC
