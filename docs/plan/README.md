@@ -12,6 +12,9 @@
 | [`phase-2/`](phase-2/) | Customers CRUD 계획과 Step 1~6 findings |
 | [`phase-3/`](phase-3/) | 회원가입 · 이메일 인증 · 비밀번호 재설정 · 팀/초대 계획/결과 |
 | [`phase-4/`](phase-4/) | calls / transcripts 영속화 + dashboard 실 KPI 전환 계획·결과 (Step 1~5 완료, 통합 e2e 8 시나리오 PASS) |
+| [`phase-5/`](phase-5/) | knowledge base · checklist · suggestion persistence · call detail 계획/결과 |
+| [`phase-6/`](phase-6/) | worker runtime · real provider adapters · action item delete · manager reports 계획/결과 |
+| [`phase-7/`](phase-7/) | 운영 출시 게이트: email delivery · MFA · audit · retention 계획 |
 
 ## Current Entry Points
 
@@ -23,6 +26,9 @@
 | Phase 2 status | [`phase-2/PHASE_2_MASTER.md`](phase-2/PHASE_2_MASTER.md) |
 | Phase 3 status (complete) | [`phase-3/PHASE_3_MASTER.md`](phase-3/PHASE_3_MASTER.md) + [`phase-3/PHASE_3_STEP_7_FINDINGS.md`](phase-3/PHASE_3_STEP_7_FINDINGS.md) |
 | Phase 4 status (complete) | [`phase-4/PHASE_4_MASTER.md`](phase-4/PHASE_4_MASTER.md) + [`phase-4/PHASE_4_STEP_5_FINDINGS.md`](phase-4/PHASE_4_STEP_5_FINDINGS.md) |
+| Phase 5 status (complete) | [`phase-5/PHASE_5_MASTER.md`](phase-5/PHASE_5_MASTER.md) + [`phase-5/PHASE_5_STEP_5_FINDINGS.md`](phase-5/PHASE_5_STEP_5_FINDINGS.md) |
+| Phase 6 status (complete) | [`phase-6/PHASE_6_MASTER.md`](phase-6/PHASE_6_MASTER.md) + [`phase-6/PHASE_6_STEP_5_FINDINGS.md`](phase-6/PHASE_6_STEP_5_FINDINGS.md) |
+| Phase 7 current entry point | [`phase-7/PHASE_7_MASTER.md`](phase-7/PHASE_7_MASTER.md) + [`phase-7/PHASE_7_STEP_1_PLAN.md`](phase-7/PHASE_7_STEP_1_PLAN.md) |
 | Final `customers.plan` decision | [`phase-2/PHASE_2_STEP_5_FINDINGS.md`](phase-2/PHASE_2_STEP_5_FINDINGS.md) |
 | Phase 2 closure findings | [`phase-2/PHASE_2_STEP_6_FINDINGS.md`](phase-2/PHASE_2_STEP_6_FINDINGS.md) |
 
