@@ -26,6 +26,7 @@ import {
   resetPassword,
   signup,
   verifyEmail,
+  verifyLoginMfa,
   type AuthResult,
 } from "../services/auth.js";
 import { sendAuthError, sendTokenError } from "./_tokenErrorMap.js";
@@ -172,6 +173,43 @@ async function authRoutes(app: FastifyInstance) {
           ip:               request.ip,
         });
         return sendAuthResult(app, reply, 201, result);
+      } catch (err) {
+        return sendAuthError(reply, err);
+      }
+    },
+  );
+
+  // Phase 7 Step 2 — second step of MFA login. The user obtained
+  // challengeToken from POST /auth/login's 202 response and now sends
+  // their 6-digit authenticator code. Success mints a real session
+  // (access token + refresh cookie); failure goes through the standard
+  // AuthError surface (401 mfa_invalid_code / 423 mfa_locked / 401
+  // mfa_invalid_challenge / 500 mfa_secret_corrupt).
+  //
+  // Body schema pins `code` to exactly 6 digits to give zod-style
+  // validation before we touch the service. The service still re-checks
+  // via verifyTotp's strict regex, but the route-level guard means we
+  // never burn a failed-attempt slot on a structurally malformed input.
+  const VERIFY_LOGIN_MFA_BODY = {
+    type: "object",
+    required: ["challengeToken", "code"],
+    properties: {
+      challengeToken: { type: "string", minLength: 1, maxLength: 512 },
+      code:           { type: "string", pattern: "^[0-9]{6}$" },
+    },
+  } as const;
+  app.post<{ Body: { challengeToken: string; code: string } }>(
+    "/auth/mfa/totp/verify-login",
+    { schema: { body: VERIFY_LOGIN_MFA_BODY } },
+    async (request, reply) => {
+      try {
+        const result = await verifyLoginMfa({
+          challengeToken: request.body.challengeToken,
+          code:           request.body.code,
+          userAgent:      request.headers["user-agent"] ?? null,
+          ip:             request.ip,
+        });
+        return sendAuthResult(app, reply, 200, result);
       } catch (err) {
         return sendAuthError(reply, err);
       }

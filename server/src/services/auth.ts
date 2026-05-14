@@ -22,7 +22,10 @@ import {
 } from "../repositories/sessions.js";
 import {
   consumeToken,
+  findTokenByRaw,
   invalidateActiveTokens,
+  lockAndValidateTokenById,
+  markTokenConsumed,
   mintToken,
   TTL_EMAIL_VERIFICATION_MS,
   TTL_MFA_CHALLENGE_MS,
@@ -33,6 +36,14 @@ import {
   buildVerifyUrl,
   emailProvider,
 } from "./email.js";
+import * as mfaUsers from "../repositories/mfaUsers.js";
+import {
+  decryptMfaSecret,
+  loadMfaSecretEncryptionKey,
+  MfaSecretEncryptionConfigError,
+  MfaSecretEncryptionFailureError,
+} from "./mfaSecretEncryption.js";
+import { base32Encode, verifyTotp } from "./totp.js";
 
 export interface AccessTokenPayload {
   sub: string;
@@ -404,6 +415,13 @@ export async function createSessionWithToken(
     userAgent?: string | null;
     ip?: string | null;
     tokenFamilyId?: string;
+    // Phase 7 Step 2 — verify-login passes both fields after a
+    // successful TOTP check; refresh rotation copies them from the
+    // leased session into its replacement. The sessions repository
+    // (createSession) enforces both-or-neither at the boundary, so
+    // forwarding either alone here would throw — by design.
+    mfaVerifiedAt?: Date | null;
+    mfaMethod?: "totp" | "webauthn" | "recovery_code" | null;
   },
 ): Promise<{ session: AuthSession; refreshToken: string }> {
   const refreshToken = createRefreshToken();
@@ -416,6 +434,8 @@ export async function createSessionWithToken(
     userAgent: input.userAgent,
     ip: input.ip,
     tokenFamilyId: input.tokenFamilyId,
+    mfaVerifiedAt: input.mfaVerifiedAt,
+    mfaMethod: input.mfaMethod,
   });
   return { session, refreshToken };
 }
@@ -912,6 +932,301 @@ export async function login(input: {
       },
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// MFA verify-login (Phase 7 Step 2)
+// ---------------------------------------------------------------------------
+
+// Plan: docs/plan/phase-7/PHASE_7_STEP_2_PLAN.md §4.4.
+//
+// Second step of the login flow for an already-enrolled MFA user. The user
+// has the `challengeToken` returned by `POST /auth/login` (202 response) and
+// types the 6-digit TOTP code from their authenticator app.
+//
+// Anonymous endpoint — no JWT yet — so we run on the BYPASSRLS service pool
+// just like `verifyEmail` and `resetPassword`. The challenge token row's
+// user_id + org_id are the only authority we have to decide what session to
+// mint; we trust nothing from the client beyond the raw token + 6-digit
+// code.
+//
+// Lockout policy (plan §4.4): five wrong codes inside one MFA-enabled user
+// trigger a 10-minute `mfa_locked_until`. Locked attempts return 423
+// (Locked) and DO NOT consume the challenge token — that way the user can
+// finish logging in once the lock expires without restarting from
+// password.
+//
+// Wrong-code path: increment `mfa_failed_attempt_count` AND COMMIT before
+// throwing. The counter would silently roll back under the default
+// "throw -> ROLLBACK" pattern and the lockout could never trip.
+
+export const MFA_LOCKOUT_THRESHOLD     = 5;
+export const MFA_LOCKOUT_DURATION_MS   = 10 * 60 * 1000; // 10 min
+
+interface ChallengeUserContext {
+  user: PublicAuthUser;
+  organization: AuthOrganization;
+  membership: AuthMembership;
+}
+
+// Load the user / membership / org tied to a challenge row that just
+// passed `lockAndValidateTokenById`. Verifies the membership is still
+// active and the user is not globally disabled. Returns invalid_credentials
+// if either invariant has broken since the original login.
+async function loadChallengeContext(
+  client: PoolClient,
+  input: { userId: string; orgId: string },
+): Promise<ChallengeUserContext> {
+  // users / organizations are not RLS-scoped. memberships IS — we need
+  // the GUC pointing at the right org before reading it.
+  await setOrgContext(client, input.orgId);
+
+  const userRow = await client.query<{
+    id: string;
+    email: string;
+    name: string;
+    avatar_url: string | null;
+    email_verified_at: Date | null;
+    disabled_at: Date | null;
+  }>(
+    `SELECT id, email, name, avatar_url, email_verified_at, disabled_at
+       FROM users
+      WHERE id = $1`,
+    [input.userId],
+  );
+  if (!userRow.rows[0] || userRow.rows[0].disabled_at) {
+    throw new AuthError(401, "invalid_credentials", "invalid credentials");
+  }
+  const u = userRow.rows[0];
+
+  const found = await getActiveMembershipInCurrentOrg(client, {
+    userId: input.userId,
+    orgId: input.orgId,
+  });
+  if (!found) {
+    // Membership disabled between the original login and the verify
+    // step. Surface the same 401 the login path would — we don't want
+    // verify-login to leak "your account got revoked since you typed
+    // your password" via a different code.
+    throw new AuthError(401, "invalid_credentials", "invalid credentials");
+  }
+
+  return {
+    user: {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      avatar_url: u.avatar_url,
+      email_verified_at: u.email_verified_at,
+    },
+    organization: found.organization,
+    membership: found.membership,
+  };
+}
+
+export async function verifyLoginMfa(input: {
+  challengeToken: string;
+  code: string;
+  userAgent?: string | null;
+  ip?: string | null;
+}): Promise<AuthResult> {
+  // The encryption key MUST exist for verify-login to work. Loading it up
+  // front so a misconfigured deploy returns a stable 500 before we even
+  // touch the DB, instead of throwing midway after a partial UPDATE.
+  // MfaSecretEncryptionConfigError is operator misconfig, not a user
+  // failure (plan §2.4).
+  let encryptionKey: Buffer;
+  try {
+    encryptionKey = loadMfaSecretEncryptionKey();
+  } catch (err) {
+    if (err instanceof MfaSecretEncryptionConfigError) {
+      throw new AuthError(500, "mfa_unconfigured",
+        "MFA verification is not configured on this deploy");
+    }
+    throw err;
+  }
+
+  // Anonymous endpoint — no JWT yet — so we use the BYPASSRLS service
+  // pool, same pattern as verifyEmail / resetPassword. CommitAuthError
+  // is the existing escape hatch that tells the outer try/catch to
+  // COMMIT before re-throwing (so a wrong-code increment to
+  // mfa_failed_attempt_count persists even though we throw 401).
+  const client = await getServicePool().connect();
+  try {
+    await client.query("BEGIN");
+
+    // ---- 1. validate the challenge token (no consume yet) ----
+    const lookup = await findTokenByRaw(client, input.challengeToken, "mfa_challenge");
+    if (!lookup) {
+      throw new AuthError(401, "mfa_invalid_challenge",
+        "invalid or expired MFA challenge");
+    }
+    if (!lookup.userId) {
+      // CHECK auth_tokens_invitation_purpose_check forces non-invitation
+      // purposes to carry user_id NOT NULL. Defensive — unreachable.
+      throw new AuthError(500, "mfa_internal_inconsistency",
+        "challenge token missing user_id");
+    }
+    try {
+      await lockAndValidateTokenById(client, lookup.tokenId, "mfa_challenge");
+    } catch (err) {
+      // Collapse the four token-state errors (not_found / already_used
+      // / invalidated / expired) into one user-visible code. Plan §2.3
+      // (no premature consume) is honored because we never reach
+      // markTokenConsumed on any of these branches.
+      if (err instanceof AuthError && err.statusCode >= 400 && err.statusCode < 500) {
+        throw new AuthError(401, "mfa_invalid_challenge",
+          "invalid or expired MFA challenge");
+      }
+      throw err;
+    }
+
+    const userId = lookup.userId;
+    const orgId  = lookup.orgId;
+
+    // ---- 2. load MFA state + handle lockout window ----
+    const mfaState = await mfaUsers.getMfaState(client, userId);
+    if (!mfaState) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const now = new Date();
+
+    // Lockout still in effect: refuse without consuming the token and
+    // without incrementing the counter. No mutations to commit on this
+    // branch — plain AuthError (rollback path) is correct.
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until > now) {
+      throw new AuthError(423, "mfa_locked",
+        "MFA temporarily locked due to too many failed attempts");
+    }
+
+    // Lockout expired: clear the lock and the counter so a now-correct
+    // attempt isn't immediately re-locked by the stale count of 5.
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until <= now) {
+      await mfaUsers.setLockedUntil(client, userId, null);
+      await mfaUsers.resetFailedAttempts(client, userId);
+    }
+
+    // ---- 3. enforce "user must have MFA enabled" for this endpoint ----
+    // Plan: setup-required flow is the next commit. verify-login only
+    // closes the path for already-enrolled users.
+    if (!mfaState.mfa_enabled_at) {
+      throw new AuthError(409, "mfa_not_enrolled",
+        "user has not enrolled MFA; use the setup flow");
+    }
+    if (
+      !mfaState.mfa_secret_ciphertext ||
+      !mfaState.mfa_secret_iv ||
+      !mfaState.mfa_secret_tag
+    ) {
+      // DB CHECK guarantees this is unreachable when mfa_enabled_at is
+      // set, but a future migration loosening the check should not let
+      // verify-login fall through to verifyTotp(secret=NaN).
+      throw new AuthError(500, "mfa_internal_inconsistency",
+        "MFA enabled without secret");
+    }
+
+    // ---- 4. decrypt the stored TOTP secret ----
+    let rawSecret: Buffer;
+    try {
+      rawSecret = decryptMfaSecret(
+        {
+          ciphertext: mfaState.mfa_secret_ciphertext,
+          iv:         mfaState.mfa_secret_iv,
+          tag:        mfaState.mfa_secret_tag,
+        },
+        encryptionKey,
+      );
+    } catch (err) {
+      // Decrypt failure (wrong key post-rotation, tampered ciphertext)
+      // is server-side data damage, not a user mistake. Surface as 500
+      // with a sanitised code — never echo the underlying message which
+      // may include byte-level hints.
+      if (err instanceof MfaSecretEncryptionFailureError ||
+          err instanceof MfaSecretEncryptionConfigError) {
+        throw new AuthError(500, "mfa_secret_corrupt",
+          "MFA secret could not be decoded");
+      }
+      throw err;
+    }
+
+    // ---- 5. verify the TOTP code ----
+    const secretBase32 = base32Encode(rawSecret);
+    const ok = verifyTotp({ secretBase32, code: input.code, now });
+    if (!ok) {
+      // Wrong code: bump the counter and possibly trip the lockout.
+      // Both writes must persist even though we're about to throw,
+      // so use CommitAuthError — the outer catch commits before
+      // re-raising, mirroring refresh()'s family-revoke pattern.
+      const newCount = await mfaUsers.incrementFailedAttempts(client, userId);
+      if (newCount >= MFA_LOCKOUT_THRESHOLD) {
+        await mfaUsers.setLockedUntil(
+          client,
+          userId,
+          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
+        );
+        throw new CommitAuthError(423, "mfa_locked",
+          "MFA temporarily locked due to too many failed attempts");
+      }
+      throw new CommitAuthError(401, "mfa_invalid_code", "invalid TOTP code");
+    }
+
+    // ---- 6. happy path: consume + reset + mint session ----
+    await markTokenConsumed(client, lookup.tokenId);
+    await mfaUsers.resetFailedAttempts(client, userId);
+    // Defensive — clear any leftover lockout. The "expired-lockout"
+    // branch above already does this, but a future exit point added
+    // before §6 should still leave the user clean after success.
+    await mfaUsers.setLockedUntil(client, userId, null);
+
+    const ctx = await loadChallengeContext(client, { userId, orgId });
+    // GUC is now pinned to orgId by loadChallengeContext.
+
+    const { session, refreshToken } = await createSessionWithToken(client, {
+      userId:        ctx.user.id,
+      orgId:         ctx.organization.id,
+      membershipId:  ctx.membership.id,
+      userAgent:     input.userAgent,
+      ip:            input.ip,
+      mfaVerifiedAt: now,
+      mfaMethod:     "totp",
+    });
+
+    await client.query("COMMIT");
+    client.release();
+
+    return {
+      user:          ctx.user,
+      organization:  ctx.organization,
+      membership:    ctx.membership,
+      session,
+      accessPayload: buildAccessPayload(session, ctx.membership.role),
+      refreshToken,
+    };
+  } catch (err) {
+    if (err instanceof CommitAuthError) {
+      // Wrong-code path: persist the counter increment + optional
+      // lockout, then surface the AuthError unchanged. If the COMMIT
+      // itself fails we fall through to release(err) and re-throw the
+      // original CommitAuthError — the counter just didn't persist.
+      try {
+        await client.query("COMMIT");
+        client.release();
+      } catch {
+        client.release(err as Error);
+      }
+      throw err;
+    }
+    try {
+      await client.query("ROLLBACK");
+      client.release();
+    } catch (rollbackErr) {
+      // Rollback failed on a poisoned connection — release(truthy)
+      // tells pg to destroy it rather than returning it to the pool.
+      client.release(rollbackErr as Error);
+    }
+    throw err;
+  }
 }
 
 export async function refresh(refreshToken: string): Promise<RefreshResult> {
