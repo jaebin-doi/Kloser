@@ -1229,6 +1229,40 @@ export async function verifyLoginMfa(input: {
   }
 }
 
+// Phase 7 Step 2 — refresh-time MFA gate.
+//
+// Plan §2.5: if the current org/user requires MFA but the session whose
+// refresh token we're trying to rotate was never MFA-verified
+// (mfa_verified_at IS NULL), do NOT issue a new access token. The session
+// row + token family stay intact so the user can re-login through the
+// proper TOTP flow without an admin having to manually rebuild trust;
+// the route layer's existing 401 clearCookie still drops the now-useless
+// cookie from the browser.
+//
+// MFA-verified sessions skip the gate entirely — they represent a
+// completed factor confirmation and refresh just rotates them.
+//
+// `loadLoginMfaState` lives in this file and reads users + organizations
+// (both non-RLS-scoped), so no GUC setup is required up here. The caller
+// has already pinned the GUC inside `getSessionMembershipRole` for its
+// own membership check.
+async function assertRefreshMfaGate(
+  client: PoolClient,
+  session: AuthSession,
+): Promise<void> {
+  if (session.mfa_verified_at !== null) return;
+  const state = await loadLoginMfaState(client, {
+    userId: session.user_id,
+    orgId:  session.org_id,
+  });
+  if (state.userMfaEnabledAt !== null || state.orgRequiresMfa) {
+    // Plain AuthError (not CommitAuthError) — the withTransaction
+    // wrapper rolls back, so no UPDATE / INSERT lingers. Family revoke
+    // is intentionally NOT issued (plan §2.5 default).
+    throw new AuthError(401, "mfa_required", "MFA verification required");
+  }
+}
+
 export async function refresh(refreshToken: string): Promise<RefreshResult> {
   return withTransaction(async (client) => {
     const session = await findByRefreshTokenHashForUpdate(
@@ -1275,6 +1309,11 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
       }
 
       const role = await getSessionMembershipRole(client, replacement);
+      // Phase 7 Step 2 — gate the grace return on the REPLACEMENT
+      // session's MFA fields (it's the row backing the access token we
+      // would issue here). The original `session` is already rotated;
+      // its mfa_verified_at no longer matters for this call.
+      await assertRefreshMfaGate(client, replacement);
       await touchLastUsed(client, replacement.id);
       return {
         session: replacement,
@@ -1300,6 +1339,12 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
       throw err;
     }
 
+    // Phase 7 Step 2 — gate the fresh-rotation path on the LEASED
+    // session's MFA fields. If the gate trips the AuthError unwinds
+    // the transaction, so no INSERT / UPDATE has run yet; the family
+    // and the leased row stay untouched.
+    await assertRefreshMfaGate(client, session);
+
     const replacement = await createSessionWithToken(client, {
       userId: session.user_id,
       orgId: session.org_id,
@@ -1307,6 +1352,13 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
       userAgent: session.user_agent,
       ip: session.ip,
       tokenFamilyId: session.token_family_id,
+      // Phase 7 Step 2 — forward the MFA verification stamps so the
+      // replacement carries the same factor record across rotation.
+      // Both fields move together (the sessions repository enforces
+      // both-or-neither at the boundary), and on a password-only
+      // session both are null which is exactly the legacy shape.
+      mfaVerifiedAt: session.mfa_verified_at,
+      mfaMethod:     session.mfa_method,
     });
 
     await revokeSession(client, {
