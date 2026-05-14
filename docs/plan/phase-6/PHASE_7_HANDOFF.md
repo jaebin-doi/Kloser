@@ -7,6 +7,24 @@
 
 ---
 
+## Next Session Entry Point
+
+다음 세션은 **Phase 7 Step 1 계획 수립**부터 시작한다.
+
+1. 새 문서 `docs/plan/phase-7/PHASE_7_MASTER.md`를 만든다.
+2. 첫 구현 단위는 `SMTP / Resend 실 adapter`로 잡는다.
+3. Step 1 계획 문서 `docs/plan/phase-7/PHASE_7_STEP_1_PLAN.md`를 작성한다.
+4. 구현 순서는 schema-first를 따른다. 예상 첫 레이어는 `email_outbox`를 유지하면서 provider 설정/전송 이력/실패 retry에 필요한 schema 변경 여부를 확정하는 것이다.
+5. Phase 6 residual 중 `llm_usage_log.cost_usd_micros` price map은 Phase 7 P1 follow-up으로 남긴다. SMTP보다 먼저 하지 않는다.
+
+작업 재개 시 기준 파일:
+
+- `docs/plan/phase-6/PHASE_7_HANDOFF.md`
+- `docs/plan/phase-6/PHASE_6_MASTER.md`
+- `AGENTS.md`
+
+---
+
 ## 0. 우선순위 요약
 
 | # | 항목 | 우선 | 노력(추정) | 카테고리 |
