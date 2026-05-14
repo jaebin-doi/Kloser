@@ -16,9 +16,12 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { authEnv } from "../config/authEnv.js";
 import { requireAuth } from "../middleware/auth.js";
+import { orgContext } from "../middleware/orgContext.js";
 import {
   AuthError,
+  confirmAuthenticatedTotp,
   confirmLoginMfaChallenge,
+  disableTotp,
   login,
   logout,
   refresh,
@@ -27,6 +30,7 @@ import {
   resetPassword,
   setupLoginMfaChallenge,
   signup,
+  startAuthenticatedTotpSetup,
   verifyEmail,
   verifyLoginMfa,
   type AuthResult,
@@ -212,6 +216,127 @@ async function authRoutes(app: FastifyInstance) {
           ip:             request.ip,
         });
         return sendAuthResult(app, reply, 200, result);
+      } catch (err) {
+        return sendAuthError(reply, err);
+      }
+    },
+  );
+
+  // Phase 7 Step 2 — authenticated MFA management.
+  //
+  // These three endpoints run AFTER a real session exists (requireAuth).
+  // The JWT is the proof of identity; current-password gates setup +
+  // disable to make stolen-cookie attackers prove they have the
+  // password too. /confirm does not re-prompt for password — the user
+  // just typed it into /setup seconds earlier inside the same tab.
+  //
+  // /setup returns secret material with NO cookie / NO access token —
+  // the user is already logged in; nothing about session lifetime
+  // changes at setup time. /confirm stamps the CURRENT session as
+  // MFA-verified (mfa_verified_at + mfa_method='totp') so refresh +
+  // downstream policy treat it as a real factor confirmation. /disable
+  // clears the user's MFA secret + counters but leaves the current
+  // session's stamps intact (audit fact, not live capability).
+
+  const AUTH_MFA_SETUP_BODY = {
+    type: "object",
+    required: ["currentPassword"],
+    properties: {
+      currentPassword: { type: "string", minLength: 1, maxLength: 1024 },
+    },
+  } as const;
+  app.post<{ Body: { currentPassword: string } }>(
+    "/auth/mfa/totp/setup",
+    {
+      preHandler: [requireAuth, orgContext],
+      schema:     { body: AUTH_MFA_SETUP_BODY },
+    },
+    async (request, reply) => {
+      if (!request.user || !request.orgId) {
+        return reply
+          .code(401)
+          .send({ error: "authentication required", code: "auth_required" });
+      }
+      try {
+        const result = await startAuthenticatedTotpSetup({
+          userId:          request.user.id,
+          orgId:           request.orgId,
+          currentPassword: request.body.currentPassword,
+        });
+        return reply.code(200).send({
+          otpauthUri:   result.otpauthUri,
+          secretBase32: result.secretBase32,
+        });
+      } catch (err) {
+        return sendAuthError(reply, err);
+      }
+    },
+  );
+
+  const AUTH_MFA_CONFIRM_BODY = {
+    type: "object",
+    required: ["code"],
+    properties: {
+      code: { type: "string", pattern: "^[0-9]{6}$" },
+    },
+  } as const;
+  app.post<{ Body: { code: string } }>(
+    "/auth/mfa/totp/confirm",
+    {
+      preHandler: [requireAuth, orgContext],
+      schema:     { body: AUTH_MFA_CONFIRM_BODY },
+    },
+    async (request, reply) => {
+      if (!request.user || !request.orgId) {
+        return reply
+          .code(401)
+          .send({ error: "authentication required", code: "auth_required" });
+      }
+      try {
+        const result = await confirmAuthenticatedTotp({
+          userId:    request.user.id,
+          orgId:     request.orgId,
+          sessionId: request.user.sessionId,
+          code:      request.body.code,
+        });
+        return reply.code(200).send({
+          ok:             true,
+          mfa_enabled_at: result.mfaEnabledAt.toISOString(),
+        });
+      } catch (err) {
+        return sendAuthError(reply, err);
+      }
+    },
+  );
+
+  const AUTH_MFA_DISABLE_BODY = {
+    type: "object",
+    required: ["currentPassword", "code"],
+    properties: {
+      currentPassword: { type: "string", minLength: 1, maxLength: 1024 },
+      code:            { type: "string", pattern: "^[0-9]{6}$" },
+    },
+  } as const;
+  app.delete<{ Body: { currentPassword: string; code: string } }>(
+    "/auth/mfa/totp",
+    {
+      preHandler: [requireAuth, orgContext],
+      schema:     { body: AUTH_MFA_DISABLE_BODY },
+    },
+    async (request, reply) => {
+      if (!request.user || !request.orgId) {
+        return reply
+          .code(401)
+          .send({ error: "authentication required", code: "auth_required" });
+      }
+      try {
+        await disableTotp({
+          userId:          request.user.id,
+          orgId:           request.orgId,
+          currentPassword: request.body.currentPassword,
+          code:            request.body.code,
+        });
+        return reply.code(204).send();
       } catch (err) {
         return sendAuthError(reply, err);
       }

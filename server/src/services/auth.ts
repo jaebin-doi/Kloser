@@ -15,6 +15,7 @@ import {
   createSession,
   findByRefreshTokenHashForUpdate,
   getByIdForUpdate,
+  markMfaVerified,
   revokeSession,
   revokeTokenFamily,
   touchLastUsed,
@@ -1571,6 +1572,422 @@ export async function confirmLoginMfaChallenge(input: {
   } catch (err) {
     if (err instanceof CommitAuthError) {
       // Wrong-code path: persist counter / lockout, then re-raise.
+      try {
+        await client.query("COMMIT");
+        client.release();
+      } catch {
+        client.release(err as Error);
+      }
+      throw err;
+    }
+    try {
+      await client.query("ROLLBACK");
+      client.release();
+    } catch (rollbackErr) {
+      client.release(rollbackErr as Error);
+    }
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Authenticated MFA setup / confirm / disable (Phase 7 Step 2)
+// ---------------------------------------------------------------------------
+
+// Plan: docs/plan/phase-7/PHASE_7_STEP_2_PLAN.md §2.7.
+//
+// Authenticated counterparts of the login-time setup/confirm flow. The
+// user already has a real session (JWT carries `sid`), so we use the
+// regular app pool with an org GUC instead of the BYPASSRLS service
+// pool. There is no `mfa_challenge` token — the JWT is the proof of
+// identity for setup/confirm/disable.
+//
+// Current-password verification gates `setup` and `disable`, but NOT
+// `confirm` — by the time the user is typing their TOTP code into the
+// confirm form they have already produced the password inside the same
+// browser tab, and re-prompting would be friction without a meaningful
+// security gain.
+//
+// Disable extras (per plan §2.7):
+//   - org.mfa_required = true → 409 mfa_required_by_org. The user cannot
+//     opt out of a policy their organization enforces.
+//   - current TOTP code is mandatory (not just password). This stops a
+//     stolen-cookie attacker who happens to know the password from
+//     unilaterally tearing MFA off the account.
+//
+// Failed-attempt counter + 10-minute lockout apply to BOTH confirm and
+// disable wrong codes (shared with the login-time flow). A locked user
+// cannot enroll OR disable until the window expires.
+
+export async function startAuthenticatedTotpSetup(input: {
+  userId: string;
+  orgId: string;
+  currentPassword: string;
+}): Promise<{ otpauthUri: string; secretBase32: string }> {
+  // Same fail-fast as the login-time flow — operator misconfig surfaces
+  // as a stable 500 before any DB work.
+  let encryptionKey: Buffer;
+  try {
+    encryptionKey = loadMfaSecretEncryptionKey();
+  } catch (err) {
+    if (err instanceof MfaSecretEncryptionConfigError) {
+      throw new AuthError(500, "mfa_unconfigured",
+        "MFA verification is not configured on this deploy");
+    }
+    throw err;
+  }
+
+  return withTransaction(async (client) => {
+    await setOrgContext(client, input.orgId);
+
+    // Membership in the current org must still be active. JWT just says
+    // "at issuance time, user X was a member of org Y" — between then
+    // and now the membership could have been disabled.
+    const found = await getActiveMembershipInCurrentOrg(client, {
+      userId: input.userId,
+      orgId:  input.orgId,
+    });
+    if (!found) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const userResult = await client.query<{
+      email: string;
+      password_hash: string;
+      disabled_at: Date | null;
+    }>(
+      `SELECT email, password_hash, disabled_at FROM users WHERE id = $1`,
+      [input.userId],
+    );
+    const userRow = userResult.rows[0];
+    if (!userRow || userRow.disabled_at) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const passwordOk = await verifyPassword(userRow.password_hash, input.currentPassword);
+    if (!passwordOk) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    // Already-enrolled users go through the disable flow first, then
+    // re-setup. We do NOT allow setup to silently overwrite an enabled
+    // secret — that would let a stolen-password (no TOTP) attacker
+    // factor-replace the legitimate user's device.
+    const mfaState = await mfaUsers.getMfaState(client, input.userId);
+    if (mfaState?.mfa_enabled_at) {
+      throw new AuthError(409, "mfa_already_enrolled",
+        "user already enrolled in MFA");
+    }
+
+    const secret  = generateTotpSecret();
+    const wrapped = encryptMfaSecret(secret.raw, encryptionKey);
+    await mfaUsers.storePendingSecret(client, input.userId, {
+      ciphertext: wrapped.ciphertext,
+      iv:         wrapped.iv,
+      tag:        wrapped.tag,
+      keyVersion: 1,
+    });
+
+    const otpauthUri = buildOtpauthUri({
+      issuer:       "Kloser",
+      accountEmail: userRow.email,
+      secretBase32: secret.base32,
+    });
+
+    return { otpauthUri, secretBase32: secret.base32 };
+  });
+}
+
+export async function confirmAuthenticatedTotp(input: {
+  userId: string;
+  orgId: string;
+  sessionId: string;
+  code: string;
+}): Promise<{ mfaEnabledAt: Date }> {
+  let encryptionKey: Buffer;
+  try {
+    encryptionKey = loadMfaSecretEncryptionKey();
+  } catch (err) {
+    if (err instanceof MfaSecretEncryptionConfigError) {
+      throw new AuthError(500, "mfa_unconfigured",
+        "MFA verification is not configured on this deploy");
+    }
+    throw err;
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await setOrgContext(client, input.orgId);
+
+    const found = await getActiveMembershipInCurrentOrg(client, {
+      userId: input.userId,
+      orgId:  input.orgId,
+    });
+    if (!found) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const mfaState = await mfaUsers.getMfaState(client, input.userId);
+    if (!mfaState) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const now = new Date();
+
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until > now) {
+      throw new AuthError(423, "mfa_locked",
+        "MFA temporarily locked due to too many failed attempts");
+    }
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until <= now) {
+      await mfaUsers.setLockedUntil(client, input.userId, null);
+      await mfaUsers.resetFailedAttempts(client, input.userId);
+    }
+
+    if (mfaState.mfa_enabled_at) {
+      throw new AuthError(409, "mfa_already_enrolled",
+        "user already enrolled in MFA");
+    }
+    if (
+      !mfaState.mfa_secret_ciphertext ||
+      !mfaState.mfa_secret_iv ||
+      !mfaState.mfa_secret_tag
+    ) {
+      throw new AuthError(409, "mfa_setup_not_started",
+        "no pending TOTP secret; call setup first");
+    }
+
+    let rawSecret: Buffer;
+    try {
+      rawSecret = decryptMfaSecret(
+        {
+          ciphertext: mfaState.mfa_secret_ciphertext,
+          iv:         mfaState.mfa_secret_iv,
+          tag:        mfaState.mfa_secret_tag,
+        },
+        encryptionKey,
+      );
+    } catch (err) {
+      if (err instanceof MfaSecretEncryptionFailureError ||
+          err instanceof MfaSecretEncryptionConfigError) {
+        throw new AuthError(500, "mfa_secret_corrupt",
+          "MFA secret could not be decoded");
+      }
+      throw err;
+    }
+
+    const secretBase32 = base32Encode(rawSecret);
+    const ok = verifyTotp({ secretBase32, code: input.code, now });
+    if (!ok) {
+      const newCount = await mfaUsers.incrementFailedAttempts(client, input.userId);
+      if (newCount >= MFA_LOCKOUT_THRESHOLD) {
+        await mfaUsers.setLockedUntil(
+          client,
+          input.userId,
+          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
+        );
+        throw new CommitAuthError(423, "mfa_locked",
+          "MFA temporarily locked due to too many failed attempts");
+      }
+      throw new CommitAuthError(401, "mfa_invalid_code", "invalid TOTP code");
+    }
+
+    const enabledCount = await mfaUsers.enableMfa(client, input.userId, now);
+    if (enabledCount !== 1) {
+      // Pending secret was wiped between our state-load and this UPDATE.
+      throw new AuthError(500, "mfa_internal_inconsistency",
+        "MFA could not be enabled");
+    }
+
+    // Stamp the CURRENT session. markMfaVerified excludes revoked rows
+    // — rowCount=0 means the JWT's session got revoked while the user
+    // was filling in the confirm form (logout in another tab, password
+    // reset, etc.). We refuse rather than leave a half-state where
+    // mfa_enabled_at is set but no session is marked: the throw rolls
+    // the whole transaction back, including enableMfa. The user
+    // re-logs in and re-runs setup → confirm cleanly.
+    const markedCount = await markMfaVerified(client, {
+      sessionId: input.sessionId,
+      method:    "totp",
+      now,
+    });
+    if (markedCount !== 1) {
+      throw new AuthError(401, "invalid_session",
+        "current session is no longer active");
+    }
+
+    await mfaUsers.resetFailedAttempts(client, input.userId);
+    await mfaUsers.setLockedUntil(client, input.userId, null);
+
+    await client.query("COMMIT");
+    client.release();
+    return { mfaEnabledAt: now };
+  } catch (err) {
+    if (err instanceof CommitAuthError) {
+      try {
+        await client.query("COMMIT");
+        client.release();
+      } catch {
+        client.release(err as Error);
+      }
+      throw err;
+    }
+    try {
+      await client.query("ROLLBACK");
+      client.release();
+    } catch (rollbackErr) {
+      client.release(rollbackErr as Error);
+    }
+    throw err;
+  }
+}
+
+export async function disableTotp(input: {
+  userId: string;
+  orgId: string;
+  currentPassword: string;
+  code: string;
+}): Promise<void> {
+  let encryptionKey: Buffer;
+  try {
+    encryptionKey = loadMfaSecretEncryptionKey();
+  } catch (err) {
+    if (err instanceof MfaSecretEncryptionConfigError) {
+      throw new AuthError(500, "mfa_unconfigured",
+        "MFA verification is not configured on this deploy");
+    }
+    throw err;
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await setOrgContext(client, input.orgId);
+
+    const found = await getActiveMembershipInCurrentOrg(client, {
+      userId: input.userId,
+      orgId:  input.orgId,
+    });
+    if (!found) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const userResult = await client.query<{
+      password_hash: string;
+      disabled_at:   Date | null;
+    }>(
+      `SELECT password_hash, disabled_at FROM users WHERE id = $1`,
+      [input.userId],
+    );
+    const userRow = userResult.rows[0];
+    if (!userRow || userRow.disabled_at) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const passwordOk = await verifyPassword(userRow.password_hash, input.currentPassword);
+    if (!passwordOk) {
+      // Password gate first — never reveal anything about MFA state or
+      // org policy to someone who can't prove their identity.
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    // Org-level lock: cannot opt out of an enforced policy.
+    const orgRow = await client.query<{ mfa_required: boolean }>(
+      `SELECT mfa_required FROM organizations WHERE id = $1`,
+      [input.orgId],
+    );
+    if (orgRow.rows[0]?.mfa_required) {
+      throw new AuthError(409, "mfa_required_by_org",
+        "MFA is required by this organization and cannot be disabled");
+    }
+
+    const mfaState = await mfaUsers.getMfaState(client, input.userId);
+    if (!mfaState || !mfaState.mfa_enabled_at) {
+      throw new AuthError(409, "mfa_not_enrolled",
+        "user is not enrolled in MFA");
+    }
+
+    const now = new Date();
+
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until > now) {
+      throw new AuthError(423, "mfa_locked",
+        "MFA temporarily locked due to too many failed attempts");
+    }
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until <= now) {
+      await mfaUsers.setLockedUntil(client, input.userId, null);
+      await mfaUsers.resetFailedAttempts(client, input.userId);
+    }
+
+    if (
+      !mfaState.mfa_secret_ciphertext ||
+      !mfaState.mfa_secret_iv ||
+      !mfaState.mfa_secret_tag
+    ) {
+      // DB CHECK guarantees this is unreachable when mfa_enabled_at is
+      // set, but a future migration loosening the check should not let
+      // disable fall through to verifyTotp(secret=NaN).
+      throw new AuthError(500, "mfa_internal_inconsistency",
+        "MFA enabled without secret");
+    }
+
+    let rawSecret: Buffer;
+    try {
+      rawSecret = decryptMfaSecret(
+        {
+          ciphertext: mfaState.mfa_secret_ciphertext,
+          iv:         mfaState.mfa_secret_iv,
+          tag:        mfaState.mfa_secret_tag,
+        },
+        encryptionKey,
+      );
+    } catch (err) {
+      if (err instanceof MfaSecretEncryptionFailureError ||
+          err instanceof MfaSecretEncryptionConfigError) {
+        throw new AuthError(500, "mfa_secret_corrupt",
+          "MFA secret could not be decoded");
+      }
+      throw err;
+    }
+
+    const secretBase32 = base32Encode(rawSecret);
+    const ok = verifyTotp({ secretBase32, code: input.code, now });
+    if (!ok) {
+      const newCount = await mfaUsers.incrementFailedAttempts(client, input.userId);
+      if (newCount >= MFA_LOCKOUT_THRESHOLD) {
+        await mfaUsers.setLockedUntil(
+          client,
+          input.userId,
+          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
+        );
+        throw new CommitAuthError(423, "mfa_locked",
+          "MFA temporarily locked due to too many failed attempts");
+      }
+      throw new CommitAuthError(401, "mfa_invalid_code", "invalid TOTP code");
+    }
+
+    // Drop the secret triple + key_version + enabled_at + counters in
+    // one UPDATE. Current session's mfa_verified_at / mfa_method are
+    // intentionally NOT cleared.
+    //
+    // Policy: an MFA-stamped session keeps its stamp until expiry or
+    // logout — that record is an audit fact about how the session was
+    // established, and `assertRefreshMfaGate` deliberately short-
+    // circuits ("session.mfa_verified_at !== null → pass") to preserve
+    // continuity for the active rotation chain. So a user who disables
+    // MFA in this tab keeps refreshing cleanly through their current
+    // refresh family; any FUTURE login (password-only because MFA is
+    // off now) creates a fresh non-MFA session, and if an admin later
+    // flips `mfa_required=true` again, refresh on those new sessions
+    // hits the gate as expected. Clearing the stamp here would also
+    // force a contortion to keep the both-or-neither check-constraint
+    // pairing intact without breaking the active session.
+    await mfaUsers.clearMfa(client, input.userId);
+
+    await client.query("COMMIT");
+    client.release();
+    return;
+  } catch (err) {
+    if (err instanceof CommitAuthError) {
       try {
         await client.query("COMMIT");
         client.release();
