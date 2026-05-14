@@ -39,11 +39,17 @@ import {
 import * as mfaUsers from "../repositories/mfaUsers.js";
 import {
   decryptMfaSecret,
+  encryptMfaSecret,
   loadMfaSecretEncryptionKey,
   MfaSecretEncryptionConfigError,
   MfaSecretEncryptionFailureError,
 } from "./mfaSecretEncryption.js";
-import { base32Encode, verifyTotp } from "./totp.js";
+import {
+  base32Encode,
+  buildOtpauthUri,
+  generateTotpSecret,
+  verifyTotp,
+} from "./totp.js";
 
 export interface AccessTokenPayload {
   sub: string;
@@ -1223,6 +1229,360 @@ export async function verifyLoginMfa(input: {
     } catch (rollbackErr) {
       // Rollback failed on a poisoned connection — release(truthy)
       // tells pg to destroy it rather than returning it to the pool.
+      client.release(rollbackErr as Error);
+    }
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// MFA setup / confirm during login (Phase 7 Step 2)
+// ---------------------------------------------------------------------------
+
+// Plan: docs/plan/phase-7/PHASE_7_STEP_2_PLAN.md §2.7 / §4.4.
+//
+// Closes the "org requires MFA but user has not enrolled" door that login
+// opens with a `mfa_setup_required` challenge. Two endpoints in series:
+//
+//   POST /auth/mfa/totp/setup-challenge
+//     Mints a fresh TOTP secret for the user, encrypts it, stores it as
+//     PENDING (`mfa_enabled_at` stays NULL), and returns the otpauth URI
+//     + base32 string so the client can render a QR code or show the
+//     secret for manual entry. The challenge token is NOT consumed — the
+//     user must come back with a valid TOTP code to actually finish.
+//
+//   POST /auth/mfa/totp/confirm-challenge
+//     Verifies the TOTP code against the pending secret. On success:
+//     promotes the pending secret to enabled, consumes the challenge,
+//     mints a real session stamped with mfa_verified_at / mfa_method.
+//     On wrong code: increments the failed-attempt counter (and trips
+//     the 10-minute lockout at threshold) without consuming.
+//
+// Both endpoints reuse the same `mfa_challenge` token issued by /auth/
+// login, so a user who walked away mid-setup can come back inside the
+// 5-minute TTL and pick up where they left off. After TTL expiry the
+// user re-enters their password and gets a fresh challenge — the
+// pending secret in `users` is overwritten by the next setup-challenge
+// call (storePendingSecret nulls mfa_enabled_at by design).
+//
+// Service-pool (BYPASSRLS) connection mirrors verifyLoginMfa: the user
+// has no JWT yet and `auth_tokens` is FORCE-RLS-scoped on org_id, so the
+// regular app pool would need a GUC dance every step. The CommitAuthError
+// pattern is reused for the wrong-code path so the counter increment
+// persists even though we throw.
+
+export async function setupLoginMfaChallenge(input: {
+  challengeToken: string;
+}): Promise<{ otpauthUri: string; secretBase32: string }> {
+  // Fail-fast on operator misconfig before opening a DB connection. Plan
+  // §2.4: a deploy with no MFA_SECRET_ENCRYPTION_KEY must return a stable
+  // 500 instead of half-encrypting then half-failing.
+  let encryptionKey: Buffer;
+  try {
+    encryptionKey = loadMfaSecretEncryptionKey();
+  } catch (err) {
+    if (err instanceof MfaSecretEncryptionConfigError) {
+      throw new AuthError(500, "mfa_unconfigured",
+        "MFA verification is not configured on this deploy");
+    }
+    throw err;
+  }
+
+  const client = await getServicePool().connect();
+  try {
+    await client.query("BEGIN");
+
+    // ---- 1. validate the challenge token (no consume yet) ----
+    const lookup = await findTokenByRaw(client, input.challengeToken, "mfa_challenge");
+    if (!lookup) {
+      throw new AuthError(401, "mfa_invalid_challenge",
+        "invalid or expired MFA challenge");
+    }
+    if (!lookup.userId) {
+      throw new AuthError(500, "mfa_internal_inconsistency",
+        "challenge token missing user_id");
+    }
+    try {
+      await lockAndValidateTokenById(client, lookup.tokenId, "mfa_challenge");
+    } catch (err) {
+      if (err instanceof AuthError && err.statusCode >= 400 && err.statusCode < 500) {
+        throw new AuthError(401, "mfa_invalid_challenge",
+          "invalid or expired MFA challenge");
+      }
+      throw err;
+    }
+
+    const userId = lookup.userId;
+    const orgId  = lookup.orgId;
+
+    // ---- 2. user must NOT already be enrolled ----
+    // verify-login owns the post-enrollment path; setup is single-use.
+    const mfaState = await mfaUsers.getMfaState(client, userId);
+    if (!mfaState) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+    if (mfaState.mfa_enabled_at) {
+      throw new AuthError(409, "mfa_already_enrolled",
+        "user already enrolled in MFA; use verify-login");
+    }
+
+    // ---- 3. load user + membership + org (pins GUC) ----
+    const ctx = await loadChallengeContext(client, { userId, orgId });
+
+    // ---- 4. org policy must still require MFA ----
+    // Race: org admin flipped `mfa_required` off between /auth/login and
+    // this call. The challenge token is valid (still inside TTL), but
+    // the "you must enrol" justification has gone away. Refuse rather
+    // than silently force-enrol — the user can re-login and will now
+    // get a normal session.
+    const orgRow = await client.query<{ mfa_required: boolean }>(
+      `SELECT mfa_required FROM organizations WHERE id = $1`,
+      [orgId],
+    );
+    if (!orgRow.rows[0]?.mfa_required) {
+      throw new AuthError(409, "mfa_setup_not_required",
+        "MFA is no longer required for this organization");
+    }
+
+    // ---- 5. generate + encrypt + store pending secret ----
+    // `storePendingSecret` nulls `mfa_enabled_at` + zeros the counter,
+    // so calling setup-challenge twice in a row replaces the previous
+    // pending secret cleanly — the user might have scanned the first
+    // QR into the wrong account and is restarting.
+    const secret    = generateTotpSecret();
+    const wrapped   = encryptMfaSecret(secret.raw, encryptionKey);
+    await mfaUsers.storePendingSecret(client, userId, {
+      ciphertext: wrapped.ciphertext,
+      iv:         wrapped.iv,
+      tag:        wrapped.tag,
+      keyVersion: 1,
+    });
+
+    // Challenge is NOT marked consumed — the user must come back with a
+    // valid TOTP code via confirm-challenge to actually complete.
+
+    await client.query("COMMIT");
+    client.release();
+
+    const otpauthUri = buildOtpauthUri({
+      issuer:       "Kloser",
+      accountEmail: ctx.user.email,
+      secretBase32: secret.base32,
+    });
+
+    return { otpauthUri, secretBase32: secret.base32 };
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+      client.release();
+    } catch (rollbackErr) {
+      client.release(rollbackErr as Error);
+    }
+    throw err;
+  }
+}
+
+export async function confirmLoginMfaChallenge(input: {
+  challengeToken: string;
+  code: string;
+  userAgent?: string | null;
+  ip?: string | null;
+}): Promise<AuthResult> {
+  // Same fail-fast as setup-challenge.
+  let encryptionKey: Buffer;
+  try {
+    encryptionKey = loadMfaSecretEncryptionKey();
+  } catch (err) {
+    if (err instanceof MfaSecretEncryptionConfigError) {
+      throw new AuthError(500, "mfa_unconfigured",
+        "MFA verification is not configured on this deploy");
+    }
+    throw err;
+  }
+
+  const client = await getServicePool().connect();
+  try {
+    await client.query("BEGIN");
+
+    // ---- 1. validate the challenge token (no consume yet) ----
+    const lookup = await findTokenByRaw(client, input.challengeToken, "mfa_challenge");
+    if (!lookup) {
+      throw new AuthError(401, "mfa_invalid_challenge",
+        "invalid or expired MFA challenge");
+    }
+    if (!lookup.userId) {
+      throw new AuthError(500, "mfa_internal_inconsistency",
+        "challenge token missing user_id");
+    }
+    try {
+      await lockAndValidateTokenById(client, lookup.tokenId, "mfa_challenge");
+    } catch (err) {
+      if (err instanceof AuthError && err.statusCode >= 400 && err.statusCode < 500) {
+        throw new AuthError(401, "mfa_invalid_challenge",
+          "invalid or expired MFA challenge");
+      }
+      throw err;
+    }
+
+    const userId = lookup.userId;
+    const orgId  = lookup.orgId;
+
+    // ---- 2. load MFA state + handle lockout window ----
+    const mfaState = await mfaUsers.getMfaState(client, userId);
+    if (!mfaState) {
+      throw new AuthError(401, "invalid_credentials", "invalid credentials");
+    }
+
+    const now = new Date();
+
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until > now) {
+      throw new AuthError(423, "mfa_locked",
+        "MFA temporarily locked due to too many failed attempts");
+    }
+    if (mfaState.mfa_locked_until && mfaState.mfa_locked_until <= now) {
+      await mfaUsers.setLockedUntil(client, userId, null);
+      await mfaUsers.resetFailedAttempts(client, userId);
+    }
+
+    // ---- 3. enforce setup discipline ----
+    // Already enrolled — wrong endpoint, route the user to verify-login.
+    if (mfaState.mfa_enabled_at) {
+      throw new AuthError(409, "mfa_already_enrolled",
+        "user already enrolled in MFA; use verify-login");
+    }
+    // Must have called setup-challenge first — no pending secret means
+    // we have nothing to verify against.
+    if (
+      !mfaState.mfa_secret_ciphertext ||
+      !mfaState.mfa_secret_iv ||
+      !mfaState.mfa_secret_tag
+    ) {
+      throw new AuthError(409, "mfa_setup_not_started",
+        "no pending TOTP secret; call setup-challenge first");
+    }
+
+    // ---- 4. decrypt the pending secret ----
+    let rawSecret: Buffer;
+    try {
+      rawSecret = decryptMfaSecret(
+        {
+          ciphertext: mfaState.mfa_secret_ciphertext,
+          iv:         mfaState.mfa_secret_iv,
+          tag:        mfaState.mfa_secret_tag,
+        },
+        encryptionKey,
+      );
+    } catch (err) {
+      if (err instanceof MfaSecretEncryptionFailureError ||
+          err instanceof MfaSecretEncryptionConfigError) {
+        throw new AuthError(500, "mfa_secret_corrupt",
+          "MFA secret could not be decoded");
+      }
+      throw err;
+    }
+
+    // ---- 5. verify the TOTP code ----
+    const secretBase32 = base32Encode(rawSecret);
+    const ok = verifyTotp({ secretBase32, code: input.code, now });
+    if (!ok) {
+      // Wrong code: bump counter + maybe lock. CommitAuthError so the
+      // outer try/catch commits before re-raising, mirroring verify-
+      // login. We don't promote the pending secret to enabled here —
+      // the user can retry with the same secret and same challenge
+      // (the challenge is NOT consumed on failure).
+      const newCount = await mfaUsers.incrementFailedAttempts(client, userId);
+      if (newCount >= MFA_LOCKOUT_THRESHOLD) {
+        await mfaUsers.setLockedUntil(
+          client,
+          userId,
+          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
+        );
+        throw new CommitAuthError(423, "mfa_locked",
+          "MFA temporarily locked due to too many failed attempts");
+      }
+      throw new CommitAuthError(401, "mfa_invalid_code", "invalid TOTP code");
+    }
+
+    // ---- 6. policy still requires MFA? (race: org flipped off after setup) ----
+    // setup-challenge had the same gate (mfa_setup_not_required) but the
+    // admin can flip `organizations.mfa_required = false` after the
+    // pending secret was stored. Without this re-check the user would
+    // be force-enrolled by their now-valid TOTP code even though the
+    // policy no longer demands it. Re-read inside the SAME transaction
+    // as enableMfa so there's no further race window.
+    //
+    // Disposition on rejection:
+    //   - challenge: NOT consumed (transaction rolls back).
+    //   - pending secret: PRESERVED. It's AES-GCM-wrapped, useless
+    //     without the challenge token (which expires in 5 minutes),
+    //     and the next setup-challenge call cleanly overwrites it.
+    //     Clearing here would force a CommitAuthError + extra UPDATE
+    //     for no meaningful security gain (the secret is already
+    //     practically unreachable).
+    const orgRow = await client.query<{ mfa_required: boolean }>(
+      `SELECT mfa_required FROM organizations WHERE id = $1`,
+      [orgId],
+    );
+    if (!orgRow.rows[0]?.mfa_required) {
+      throw new AuthError(409, "mfa_setup_not_required",
+        "MFA is no longer required for this organization");
+    }
+
+    // ---- 7. happy path: enable + consume + mint MFA-verified session ----
+    const enabledCount = await mfaUsers.enableMfa(client, userId, now);
+    if (enabledCount !== 1) {
+      // The WHERE guard inside enableMfa requires mfa_secret_ciphertext
+      // IS NOT NULL — we just verified that above. A 0 row count would
+      // mean a concurrent process wiped the secret between our state
+      // load and this UPDATE.
+      throw new AuthError(500, "mfa_internal_inconsistency",
+        "MFA could not be enabled");
+    }
+    await markTokenConsumed(client, lookup.tokenId);
+    await mfaUsers.resetFailedAttempts(client, userId);
+    await mfaUsers.setLockedUntil(client, userId, null);
+
+    const ctx = await loadChallengeContext(client, { userId, orgId });
+
+    const { session, refreshToken } = await createSessionWithToken(client, {
+      userId:        ctx.user.id,
+      orgId:         ctx.organization.id,
+      membershipId:  ctx.membership.id,
+      userAgent:     input.userAgent,
+      ip:            input.ip,
+      // Setup-then-confirm IS a factor confirmation — stamp the
+      // session so refresh's MFA gate (assertRefreshMfaGate) and any
+      // downstream policy see this as a real MFA-verified session.
+      mfaVerifiedAt: now,
+      mfaMethod:     "totp",
+    });
+
+    await client.query("COMMIT");
+    client.release();
+
+    return {
+      user:          ctx.user,
+      organization:  ctx.organization,
+      membership:    ctx.membership,
+      session,
+      accessPayload: buildAccessPayload(session, ctx.membership.role),
+      refreshToken,
+    };
+  } catch (err) {
+    if (err instanceof CommitAuthError) {
+      // Wrong-code path: persist counter / lockout, then re-raise.
+      try {
+        await client.query("COMMIT");
+        client.release();
+      } catch {
+        client.release(err as Error);
+      }
+      throw err;
+    }
+    try {
+      await client.query("ROLLBACK");
+      client.release();
+    } catch (rollbackErr) {
       client.release(rollbackErr as Error);
     }
     throw err;

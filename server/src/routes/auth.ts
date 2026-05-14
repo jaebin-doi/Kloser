@@ -18,12 +18,14 @@ import { authEnv } from "../config/authEnv.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
   AuthError,
+  confirmLoginMfaChallenge,
   login,
   logout,
   refresh,
   requestPasswordReset,
   resendVerificationEmail,
   resetPassword,
+  setupLoginMfaChallenge,
   signup,
   verifyEmail,
   verifyLoginMfa,
@@ -204,6 +206,75 @@ async function authRoutes(app: FastifyInstance) {
     async (request, reply) => {
       try {
         const result = await verifyLoginMfa({
+          challengeToken: request.body.challengeToken,
+          code:           request.body.code,
+          userAgent:      request.headers["user-agent"] ?? null,
+          ip:             request.ip,
+        });
+        return sendAuthResult(app, reply, 200, result);
+      } catch (err) {
+        return sendAuthError(reply, err);
+      }
+    },
+  );
+
+  // Phase 7 Step 2 — login-time MFA enrollment. A user whose org has
+  // `mfa_required=true` but has not enrolled yet receives a 202
+  // `mfa_setup_required` from POST /auth/login. They call setup-challenge
+  // first to obtain `{otpauthUri, secretBase32}` (no cookie, no access
+  // token — enrollment is not yet complete) and then confirm-challenge
+  // with a 6-digit TOTP code from their authenticator app. Success on
+  // confirm closes the loop: pending secret promoted to enabled, real
+  // session minted with mfa_verified_at / mfa_method stamps, access
+  // token + refresh cookie returned just like /auth/login's happy path.
+  //
+  // Both endpoints share `mfa_challenge` token discipline: setup does
+  // NOT consume it (the user must come back for confirm), confirm
+  // consumes only on success. All token-state failures collapse to
+  // `mfa_invalid_challenge` so error responses don't disclose whether
+  // the token was expired vs invalidated vs unknown.
+  const SETUP_CHALLENGE_BODY = {
+    type: "object",
+    required: ["challengeToken"],
+    properties: {
+      challengeToken: { type: "string", minLength: 1, maxLength: 512 },
+    },
+  } as const;
+  app.post<{ Body: { challengeToken: string } }>(
+    "/auth/mfa/totp/setup-challenge",
+    { schema: { body: SETUP_CHALLENGE_BODY } },
+    async (request, reply) => {
+      try {
+        const result = await setupLoginMfaChallenge({
+          challengeToken: request.body.challengeToken,
+        });
+        // 200 with secret material — no cookie / no access token. The
+        // client renders a QR code (from otpauthUri) or shows the
+        // base32 string for manual entry into the authenticator app.
+        return reply.code(200).send({
+          otpauthUri:   result.otpauthUri,
+          secretBase32: result.secretBase32,
+        });
+      } catch (err) {
+        return sendAuthError(reply, err);
+      }
+    },
+  );
+
+  const CONFIRM_CHALLENGE_BODY = {
+    type: "object",
+    required: ["challengeToken", "code"],
+    properties: {
+      challengeToken: { type: "string", minLength: 1, maxLength: 512 },
+      code:           { type: "string", pattern: "^[0-9]{6}$" },
+    },
+  } as const;
+  app.post<{ Body: { challengeToken: string; code: string } }>(
+    "/auth/mfa/totp/confirm-challenge",
+    { schema: { body: CONFIRM_CHALLENGE_BODY } },
+    async (request, reply) => {
+      try {
+        const result = await confirmLoginMfaChallenge({
           challengeToken: request.body.challengeToken,
           code:           request.body.code,
           userAgent:      request.headers["user-agent"] ?? null,
