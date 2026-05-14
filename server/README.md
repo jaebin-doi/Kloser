@@ -1,28 +1,36 @@
-# Kloser server (Phase 4 complete)
+# Kloser server (Phase 6 complete)
 
 > **Status**:
 > - **Phase 0.5 spike** complete (live stream pipeline verified, RTT 1ms, e2e PASS).
 > - **Phase 1 complete** (Steps 1~5): docker-compose + RLS FORCE migrations, `app` role with `SET LOCAL app.org_id` context, Argon2id + Bearer access JWT + HttpOnly refresh cookie + family-rotation + grace window, `platform/api.js` memory-token fetch wrapper, WS handshake JWT auth, Caddy single-origin reverse proxy. Details under `docs/plan/phase-1/`.
 > - **Phase 2 complete** (Steps 1~6): `customers` schema + RLS + Acme/Beta 24 seed, `customersRepo` + `customersService`, REST `/customers` (list/stats/get/create/patch/delete), shared types via `test/sync_shared_types.mjs`, `platform/customers.html` real API CRUD with URL query sync, `customers.plan` domain cleanup, `phase_2_customers_e2e` 7-scenario regression. Details under `docs/plan/phase-2/`.
 > - **Phase 3 complete** (Steps 1~7): `auth_tokens` (unified purpose) + `email_outbox` (dev provider) + `invitations` enrich + `memberships.status` CHECK + service-role grants. Self-service signup with one-transaction org/user/admin/verification-token mint, email verify, password reset (sha256-only `auth_tokens.token_hash`, revoke-all-sessions on success), team invite (anonymous accept with multi-org membership reuse, 7-day TTL, resend/cancel + 410-Gone on stale tokens), team CRUD + member role/status patch with last-admin protection (`lockActiveAdminIds`), `requireFreshRole` middleware for admin-only mutations, enumeration parity on `/auth/password/forgot`, sidebar profile + logout popover wired to `/me`. `phase_3_e2e` 6-scenario / 33-assertion regression. Details under `docs/plan/phase-3/`.
-> - **Phase 4 complete** (Steps 1~5): three new tables `calls` / `transcripts` / `call_action_items` with FORCE RLS + partial indexes + composite FK to `customers(org_id, id)` and `memberships(org_id, user_id)`. `endCall` service transaction (calls status / ended_at / duration_seconds + `customers.last_contacted_at = GREATEST(...)` in one go). REST `/calls` (11 endpoints: list / create / get / notes / end / transcript GET+POST / action-items GET+POST + per-action-item status/assignee) + `/dashboard/summary`. WebSocket persistence hook for `start_call` / `text_chunk` / `end_call` so the Phase 0.5 flow now writes through to DB. `requireVerified` middleware applied to every Phase 4 mutation (read endpoints stay open, mutations return 403 `email_not_verified` until users verify). Browser side: `platform/calls.html` mock removed (real `/calls` with URL sync + parallel detail fetch), `platform/dashboard.html` KPI 4 + recent 5 wired to `/dashboard/summary`, `platform/live.html` quick-note + end-call persist. Shared types added for call / transcript / actionItem / dashboard (9 total entities under `test/sync_shared_types.mjs`). `phase_4_e2e` 8-scenario regression + cleanup sweep. Details under `docs/plan/phase-4/`.
-> - **Verification baseline**: `npm --prefix server test` **212/212** + `node test/sync_shared_types.mjs` (9 entities) + `node test/phase_0_5_e2e.mjs` 16/16 + `node test/phase_2_customers_e2e.mjs` 7/7 + `node test/phase_3_e2e.mjs` 33-assertion + `node test/phase_4_e2e.mjs` 8-scenario + cleanup sweep all PASS. Phase 5 is next (real STT + AI suggestion/summary + checklist/suggestions persistence + disconnect→dropped policy + customer selection + manager team-scope).
-> - Master plans: `docs/plan/phase-1/PHASE_1_MASTER.md`, `docs/plan/phase-2/PHASE_2_MASTER.md`, `docs/plan/phase-3/PHASE_3_MASTER.md`, `docs/plan/phase-4/PHASE_4_MASTER.md`. User guides: `docs/USER_GUIDE_PHASE_{1,2,3,4}.md`. Visual guides: `docs/product/PHASE_{1,2,3,4}_FOUNDATIONS.html`.
+> - **Phase 4 complete** (Steps 1~5): three new tables `calls` / `transcripts` / `call_action_items` with FORCE RLS + partial indexes + composite FK to `customers(org_id, id)` and `memberships(org_id, user_id)`. `endCall` service transaction (calls status / ended_at / duration_seconds + `customers.last_contacted_at = GREATEST(...)` in one go). REST `/calls` (11 endpoints) + `/dashboard/summary`. WebSocket persistence hook for `start_call` / `text_chunk` / `end_call`. `requireVerified` middleware applied to every Phase 4 mutation. Browser side: `calls.html` / `dashboard.html` / `live.html` all wired to real API. `phase_4_e2e` 8-scenario regression. Details under `docs/plan/phase-4/`.
+> - **Phase 5 complete** (Steps 1~5): knowledge base (`knowledge_documents` + RAG embeddings) + checklist + suggestion persistence + customer selection in live flow + manager team-scope mutation (`assertCanMutateCall`) + call detail panels wired to real API. `phase_5_e2e` 5-scenario regression. Details under `docs/plan/phase-5/`.
+> - **Phase 6 complete** (Steps 1~5): BullMQ + Redis worker infrastructure with `callSummary` queue (enqueued from `endCall` post-commit hook), 60s heartbeat sweep worker (`status='in_progress' AND last_seen_at < now() - 60s` → `dropped/server_timeout`), WS `text_chunk` hook persists into `call_suggestions` + emits `suggestion` event with server id. Real provider adapters: `adapters/llm/anthropic.ts`, `adapters/embedding/openai.ts`, `adapters/stt/clova.ts` — provider env unset/`mock` uses mock; selecting a real provider without required keys fails fast. New `llm_usage_log` table (FORCE RLS, append-only — no UPDATE/DELETE policy) + `services/llmUsage.ts` `recordProviderUsage` helper wired into worker finished hooks and WS suggestion path. `DELETE /call-action-items/:id` (hard delete, `assertCanMutateCall`) + `calls.html` row delete button. `GET /reports/team-summary?team_id=<uuid>` + `services/teamReports.ts` (admin org-wide / manager own-team / 403 for other same-org / 404 cross-org) + `platform/reports.html` (KPI cards + recent 10 calls table, all server fields escaped). Shared types **15 entities** (`teamReport` added). `phase_6_e2e` 7-scenario regression + cleanup sweep. Details under `docs/plan/phase-6/`.
+> - **Verification baseline**: `npm --prefix server test` **384 total / 381 pass / 3 skipped / 0 fail** (3 skipped = Phase 6 Step 2 real-provider opt-in, `E2E_ALLOW_REAL_PROVIDERS` not set) + `node test/sync_shared_types.mjs` **15 entities** + `node test/phase_0_5_e2e.mjs` 16/16 + `node test/phase_2_customers_e2e.mjs` 7/7 + `node test/phase_3_e2e.mjs` 33-assertion + `node test/phase_4_e2e.mjs` 8-scenario + `node test/phase_5_e2e.mjs` 5-scenario + `node test/phase_6_e2e.mjs` 7-scenario + cleanup sweep all PASS. Phase 7 is next (SMTP / MFA / activity_log / retention enforce / cost model price map / billing — operational launch gates, see `docs/plan/phase-6/PHASE_7_HANDOFF.md`).
+> - Master plans: `docs/plan/phase-{1,2,3,4,5,6}/PHASE_{n}_MASTER.md`. User guides: `docs/USER_GUIDE_PHASE_{1,2,3,4,6}.md`. Visual guides: `docs/product/PHASE_{1,2,3,4}_FOUNDATIONS.html`.
 
 ## What this provides
 
 - Fastify HTTP server on `:32173` (default; override via `PORT`) with `/health`
 - Socket.io namespace `/calls` (handshake JWT auth):
-  - **client → server**: `start_call`, `text_chunk`, `end_call` (snake_case)
-  - **server → client**: `transcript`, `suggestion`, `sentiment`, `error`
-- WebSocket persistence (Phase 4): `start_call` inserts a `calls` row, `text_chunk` appends a `transcripts` row before echoing, `end_call` runs `service.endCall` which marks the call ended and bumps `customers.last_contacted_at` in the same transaction. Demo fixture (`src/fixtures/demo-call.ts`) drives the visual replay during `start_call` for parity with the Phase 0.5 spike; real STT replaces it in Phase 5.
+  - **client → server**: `start_call`, `text_chunk`, `end_call`, `heartbeat` (snake_case)
+  - **server → client**: `transcript`, `suggestion` (server-id'd, persisted), `sentiment`, `error`
+- WebSocket persistence (Phase 4+): `start_call` inserts a `calls` row, `text_chunk` appends a `transcripts` row before echoing **and** triggers a Phase 6 LLM suggestion that persists into `call_suggestions` before fanning out the `suggestion` event with the server id. `end_call` runs `service.endCall` which marks the call ended and bumps `customers.last_contacted_at` in the same transaction, then best-effort enqueues a `callSummary` BullMQ job for AI summary generation.
+- Worker (Phase 6, `server/src/workers/index.ts`):
+  - **callSummary** consumer — picks `{ orgId, callId }` jobs, calls LLM (mock or real Anthropic) inside `withOrgContext`, UPDATEs `calls.summary / needs / issues / sentiment` with SQL guard `WHERE summary_source IS DISTINCT FROM 'manual'`, then logs to `llm_usage_log`.
+  - **heartbeatSweep** cron — every interval, scans all orgs and marks stale `in_progress` calls (no heartbeat in 60s) as `dropped / server_timeout` with `ended_at` + `duration_seconds`.
+- Provider adapters (Phase 6 Step 2): `adapters/llm/anthropic.ts`, `adapters/embedding/openai.ts`, `adapters/stt/clova.ts`. Resolver uses mock when `LLM_PROVIDER` / `EMBEDDING_PROVIDER` / `STT_PROVIDER` are unset, empty, or `mock`; it picks a real adapter only when the provider name matches and required env keys are present. Real provider selected with missing keys is fail-fast, not silent mock fallback. Every provider call is recorded in `llm_usage_log` with `provider` / `model` / `operation` / `tokens_in` / `tokens_out` / `latency_ms` (cost map deferred to Phase 7+).
 - REST surface:
   - Auth/me: `/auth/{signup,login,refresh,logout,verify,password/forgot,password/reset}` + `/me`
   - Customers (Phase 2): `/customers` (list / stats / get / create / patch / delete)
-  - Team + invitations (Phase 3): `/teams` (list / create / patch / delete), `/teams/:id/members`, `/memberships/:id` (role/status patch with last-admin protection), `/invitations` (create / resend / cancel / accept)
-  - Calls + dashboard (Phase 4): `/calls` (11 endpoints — list / create / get / notes / end / transcript GET+POST / action-items GET+POST + per-action-item status & assignee) + `/dashboard/summary`
+  - Team + invitations (Phase 3): `/teams` (list / create / patch / delete), `/teams/:id/members`, `/memberships/:id`, `/invitations` (create / resend / cancel / accept)
+  - Calls + dashboard (Phase 4): `/calls` (11 endpoints) + `/dashboard/summary`
+  - Knowledge base + checklist + suggestions (Phase 5): `/knowledge/*`, `/calls/:id/checklist*`, `/calls/:id/suggestions`
+  - Phase 6: `DELETE /call-action-items/:id` (hard delete, `assertCanMutateCall`) + `GET /reports/team-summary?team_id=<uuid>` (admin org-wide / manager own-team)
 - All mutation endpoints gate through `requireAuth → orgContext → requireVerified (Phase 4+) → requireRole → requireFreshRole` (added by phase).
-- Shared types: server zod source-of-truth under `src/types/*` mirrors `platform/types/*.js` JSDoc, validated by `test/sync_shared_types.mjs` for **9 entities** (customers / signup / password-reset / team / invitation / call / transcript / actionItem / dashboard).
+- Shared types: server zod source-of-truth under `src/types/*` mirrors `platform/types/*.js` JSDoc, validated by `test/sync_shared_types.mjs` for **15 entities** (customers / signup / password-reset / team / invitation / call / transcript / actionItem / dashboard / knowledge / checklist / suggestion / customerSelect / heartbeat / teamReport).
 
 ## Run
 
@@ -66,13 +74,17 @@ authenticated WebSocket, and you should see:
 ```bash
 # (servers running) — full regression baseline used to gate every phase
 npm --prefix server run typecheck
-node test/sync_shared_types.mjs          # 9 entities
-npm --prefix server test                 # 212/212
+node test/sync_shared_types.mjs          # 15 entities
+npm --prefix server test                 # 384 total / 381 pass / 3 skipped / 0 fail
 node test/phase_0_5_e2e.mjs              # 16 assertion — Phase 1 live regression
 node test/phase_2_customers_e2e.mjs      # 7 scenarios — Phase 2 regression + leftover sweep
 node test/phase_3_e2e.mjs                # 6 scenarios / 33 assertion — Phase 3 regression
 node test/phase_4_e2e.mjs                # 8 scenarios + cleanup sweep — Phase 4 closeout
+node test/phase_5_e2e.mjs                # 5 scenarios + cleanup sweep — Phase 5 closeout
+node test/phase_6_e2e.mjs                # 7 scenarios + cleanup sweep — Phase 6 closeout
 ```
+
+The Phase 6 e2e forces `LLM_PROVIDER=mock` / `EMBEDDING_PROVIDER=mock` / `STT_PROVIDER=mock` and uses inline worker draining (`server/scripts/phase6E2eDrain.ts`) — no separate `dev:worker` process is required to run it.
 
 Each Playwright e2e writes a screenshot artifact next to itself (`test/phase_*_e2e.png`) for visual evidence of the final state.
 
@@ -219,18 +231,19 @@ server/
 
 ## Not done on purpose
 
-Phase 5+ scope, intentionally not yet implemented:
+Phase 7+ scope, intentionally not yet implemented (full priority list in `docs/plan/phase-6/PHASE_7_HANDOFF.md`):
 
-- **Real STT (Naver Clova)** — Phase 0.5 fixture still drives the `transcript` replay during `start_call`. Phase 5 swaps in a real STT adapter; the persistence path (`text_chunk → transcripts insert + echo`) is already in place.
-- **AI suggestion / call-summary generation** — `calls.summary` / `needs` / `issues` / `sentiment` columns exist but are populated by user notes only. Phase 5 wires the LLM pipeline.
-- **Checklist / live suggestion persistence** — the 5-item checklist and AI suggestion cards in `live.html` are still static; persistence comes with Phase 5.
-- **Disconnect → `dropped` automatic marking** — abnormal browser exit leaves a call as `in_progress` until manually ended. Phase 5 introduces a heartbeat / drop policy that marks orphaned calls.
-- **Customer selection in live flow** — `start_call` accepts `customerId` but the UI does not present a picker yet; left-side customer card in `live.html` is still static demo.
-- **Action item / transcript authoring UI** — `calls.html` detail panel is read-only. Backend mutation endpoints exist; only the UI wiring is deferred.
-- **Manager team-scope permission** — Phase 4 grants any role read access to all org calls. Manager team-scope (`memberships.team_id`-based RLS) lands with Phase 5 manager reports.
-- **CSV export from `calls.html`** — placeholder button, Phase 6+.
-- **Org-level timezone** — dashboard "today" uses UTC midnight. Phase 6+ introduces `organizations.timezone`.
-- **Real SMTP / Resend** — Phase 3 ships a dev `email_outbox` (raw token kept in metadata for e2e extraction). Production provider lands in Phase 6+; the outbox becomes archive-only.
+- **Real SMTP / Resend** — Phase 3 dev `email_outbox` (raw token kept in metadata for e2e extraction) stays for now. Production provider lands in Phase 7; outbox becomes archive-only.
+- **MFA / WebAuthn / session hardening** — password + JWT only today; TOTP first, WebAuthn second.
+- **activity_log + audit log** — schema slot exists; population not wired. Phase 7.
+- **Retention enforce cron** — `transcripts` 3-year / `call_recordings` 90-day enforcement not running. Phase 7.
+- **`llm_usage_log.cost_usd_micros`** — column exists, all rows NULL today. Phase 7 cost-accuracy commit introduces the model→price map plus daily cap.
+- **Role-based sidebar nav visibility** — `platform/reports.html` link is currently visible to every role (backend 403 blocks employee/viewer). Phase 7 menu polish.
+- **Report date-window / agent drilldown** — `GET /reports/team-summary` returns full-history team KPI only; per-day/per-agent slicing is Phase 7.
+- **Billing / subscription caps** — `organizations.plan` column exists; no cap enforcement and no Stripe/Toss integration.
+- **Demo-to-real frontend cleanup** — `dashboard.html` market-trend / To-Do / team-activity widgets, plus `newsletter.html` and `daily.html`, remain `(demo)` labelled. Phase 7+ UX.
+- **`call_recordings` audio storage** — schema columns exist; S3/MinIO adapter, encoding, signed URL playback all deferred.
+- **Enterprise SSO (Keycloak)** + **multilingual transcripts** + **`organizations.timezone`** — Phase 8+.
 
 ## Endpoints / events reference
 
@@ -280,6 +293,25 @@ POST   /call-action-items/:id/status           → 200 { action_item } (open / d
 POST   /call-action-items/:id/assignee         → 200 { action_item }
 GET    /dashboard/summary                      → 200 { today_calls, response_rate, avg_duration_seconds,
                                                           active_calls, recent_calls[] }
+
+# Phase 5 — knowledge / checklist / suggestion / customer selection
+GET    /knowledge                              → 200 { items[] }
+POST   /knowledge                              → 201 { document } (admin/manager)
+PATCH  /knowledge/:id                          → 200 { document }
+DELETE /knowledge/:id                          → 204
+GET    /calls/:id/checklist                    → 200 { items[] }
+POST   /calls/:id/checklist/initialize         → 201 { items[] } (denied for viewer)
+POST   /call-checklist-items/:id/toggle        → 200 { item }
+GET    /calls/:id/suggestions                  → 200 { items[] }
+
+# Phase 6 — action item delete + manager team report
+DELETE /call-action-items/:id                  → 204; hard delete with assertCanMutateCall
+GET    /reports/team-summary?team_id=<uuid?>   → 200 { scope, team_id, team_name, generated_at,
+                                                          total_calls, ended_calls, missed_calls, dropped_calls,
+                                                          active_calls, response_rate, avg_duration_seconds,
+                                                          recent_calls[] }
+                                                   manager: own team only (other same-org → 403, cross-org → 404)
+                                                   admin: any team_id or omit for org-wide scope
 
 # WebSocket — /calls namespace (handshake JWT)
 WS   /calls   (auth: { token: <Bearer access JWT> }, NO userId query)

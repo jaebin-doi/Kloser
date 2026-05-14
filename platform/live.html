@@ -737,11 +737,22 @@
 
       // Unverified email banner (Phase 3 Step 6). /me responds with the
       // public user shape including email_verified_at.
+      //
+      // Phase 6 Step 5: also stash the membership role so non-writer
+      // roles (viewer) can skip server mutations that would 403 — most
+      // notably `POST /calls/:id/checklist/initialize`. Without this
+      // gate the page still works, but the browser logs a console error
+      // for the 403 which the historical e2e captures as a failure.
       try {
         const meRes = await window.kloserApi.apiGet('/me');
-        if (meRes.ok && typeof window.renderUnverifiedBanner === 'function') {
+        if (meRes.ok) {
           const meBody = await meRes.json();
-          window.renderUnverifiedBanner(meBody.user);
+          if (typeof window.renderUnverifiedBanner === 'function') {
+            window.renderUnverifiedBanner(meBody.user);
+          }
+          if (meBody && meBody.membership && meBody.membership.role) {
+            callState.role = meBody.membership.role;
+          }
         }
       } catch (err) {
         console.warn('[live] /me failed', err);
@@ -1101,16 +1112,22 @@
         if (!callState.callId) return;
         try {
           // Initialize creates rows for active templates (idempotent),
-          // then returns the current list.
-          const initRes = await api.initializeCallChecklist(callState.callId);
-          if (initRes.ok) {
-            const body = await initRes.json();
-            callState.checklist = await enrichChecklistTitles(body.items || []);
-            renderChecklist();
-            return;
+          // then returns the current list. The mutation is writer-gated
+          // (admin / manager / employee) — Phase 6 Step 5 added the
+          // `callState.role !== 'viewer'` short-circuit so viewer pages
+          // don't fire a guaranteed-403 POST that the browser surfaces
+          // as a console error.
+          if (callState.role !== 'viewer') {
+            const initRes = await api.initializeCallChecklist(callState.callId);
+            if (initRes.ok) {
+              const body = await initRes.json();
+              callState.checklist = await enrichChecklistTitles(body.items || []);
+              renderChecklist();
+              return;
+            }
           }
-          // 403/404 falls through to plain GET (read endpoint is open
-          // to any same-org user even if mutation is blocked).
+          // 403/404 (or viewer skipped init) falls through to plain GET —
+          // the read endpoint is open to any same-org user.
           const listRes = await api.listCallChecklist(callState.callId);
           if (listRes.ok) {
             const body = await listRes.json();
