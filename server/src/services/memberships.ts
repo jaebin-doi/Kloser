@@ -28,6 +28,10 @@ import {
   type MembershipRole,
   updateRoleStatus,
 } from "../repositories/memberships.js";
+import {
+  recordMembershipRoleChanged,
+  recordMembershipStatusChanged,
+} from "./activityLog.js";
 
 export interface UpdateMembershipInput {
   membershipId: string;
@@ -35,6 +39,10 @@ export interface UpdateMembershipInput {
     role?:   MembershipRole;
     status?: "active" | "disabled";
   };
+  // Phase 7 Step 3 — actor for the audit row(s). The route layer pulls
+  // it from request.user.id; PATCH /memberships/:id is admin-only so
+  // this is always populated by the time we reach the service.
+  actorUserId: string;
 }
 
 export async function updateMembership(
@@ -104,6 +112,31 @@ export async function updateMembership(
         WHERE org_id = $2 AND manager_id = $1`,
       [target.user_id, orgId],
     );
+  }
+
+  // Phase 7 Step 3 — audit. Only fire helpers for fields that actually
+  // changed (a PATCH may send role+status both unchanged from current —
+  // route schema disallows fully-empty PATCH but a same-value PATCH
+  // still reaches here). Same transaction as the UPDATE, so an audit
+  // failure rolls the mutation back together with the writes above —
+  // the "high-risk mutation audit must commit together" contract.
+  if (input.patch.role !== undefined && input.patch.role !== target.role) {
+    await recordMembershipRoleChanged(client, {
+      orgId,
+      actorUserId:  input.actorUserId,
+      membershipId: updated.id,
+      fromRole:     target.role,
+      toRole:       input.patch.role,
+    });
+  }
+  if (input.patch.status !== undefined && input.patch.status !== target.status) {
+    await recordMembershipStatusChanged(client, {
+      orgId,
+      actorUserId:  input.actorUserId,
+      membershipId: updated.id,
+      fromStatus:   target.status as ("active" | "disabled"),
+      toStatus:     input.patch.status,
+    });
   }
 
   return updated;

@@ -76,6 +76,12 @@ import {
 } from "../repositories/invitations.js";
 import type { MembershipRole } from "../repositories/memberships.js";
 import type { PublicAuthUser } from "../repositories/authUsers.js";
+import {
+  recordActivityVoid,
+  recordInvitationCancelled,
+  recordInvitationCreated,
+  recordInvitationResent,
+} from "./activityLog.js";
 const PARTIAL_UNIQUE_INVITATION_IDX = "invitations_active_org_email_idx";
 
 function is23505(err: unknown, constraint?: string): boolean {
@@ -187,6 +193,18 @@ export async function createInvitation(
     ttlMs: TTL_INVITATION_MS,
   });
 
+  // Phase 7 Step 3 — audit invitation.created. Same transaction as the
+  // invitation/token INSERTs + email outbox write (below), so an audit
+  // failure rolls the whole invite back. Payload deliberately carries
+  // role + team_id only — no email, no raw token, no acceptUrl.
+  await recordInvitationCreated(client, {
+    orgId,
+    actorUserId:  invitedByUserId,
+    invitationId: invitation.id,
+    role:         input.role,
+    teamId,
+  });
+
   // 6) Send the invitation email (writes the outbox row inside this tx).
   const inviter = await client.query<{ name: string }>(
     `SELECT name FROM users WHERE id = $1`,
@@ -238,6 +256,10 @@ export async function resendInvitation(
   client: PoolClient,
   orgId: string,
   invitationId: string,
+  // Phase 7 Step 3 — actor for invitation.resent audit row. POST /:id/
+  // resend is admin-only at the route layer, so request.user.id is
+  // always populated.
+  actorUserId: string,
 ): Promise<void> {
   // Lock order: invitations first.
   const row = await getByIdForUpdate(client, invitationId);
@@ -295,6 +317,14 @@ export async function resendInvitation(
     invitationId: row.id,
     rawToken: tok.rawToken,
   });
+
+  // Phase 7 Step 3 — audit invitation.resent. payload carries the
+  // invitation id only; no raw token, no acceptUrl, no email.
+  await recordInvitationResent(client, {
+    orgId,
+    actorUserId,
+    invitationId: row.id,
+  });
 }
 
 // ===========================================================================
@@ -304,6 +334,11 @@ export async function resendInvitation(
 export async function cancelInvitation(
   client: PoolClient,
   invitationId: string,
+  // Phase 7 Step 3 — orgId + actor for the audit row. orgId is needed
+  // because the audit row's org_id column must be set explicitly; the
+  // service no longer relies on `current_app_org_id()` for the audit
+  // insert. DELETE /:id is admin-only at the route layer.
+  audit: { orgId: string; actorUserId: string },
 ): Promise<void> {
   // Lock order: invitations first.
   const row = await getByIdForUpdate(client, invitationId);
@@ -325,6 +360,14 @@ export async function cancelInvitation(
       [existing.id],
     );
   }
+
+  // Phase 7 Step 3 — audit invitation.cancelled. payload carries the
+  // invitation id only; no raw token, no acceptUrl, no email.
+  await recordInvitationCancelled(client, {
+    orgId:        audit.orgId,
+    actorUserId:  audit.actorUserId,
+    invitationId: row.id,
+  });
 }
 
 // ===========================================================================
@@ -571,6 +614,27 @@ export async function acceptInvitation(
     // any ROLLBACK undoes consume, but at this point only post-commit
     // failures can interfere (and we go straight to COMMIT below).
     await markTokenConsumed(client, tok.tokenId);
+
+    // Phase 7 Step 3 — audit invitation.accepted. recordActivityVoid
+    // because this runs on the servicePool whose role has INSERT-only
+    // privilege on activity_log (no RETURNING allowed). actor=user who
+    // just accepted (they are the subject of the new membership too).
+    // Payload carries the operational shape — invitation/membership/
+    // role/team — but no email, no raw token, no acceptUrl, no
+    // password (already discarded as hash above).
+    await recordActivityVoid(client, {
+      orgId:       inv.org_id,
+      actorUserId: userId,
+      action:      "invitation.accepted",
+      targetType:  "invitation",
+      targetId:    inv.id,
+      payload: {
+        invitation_id: inv.id,
+        membership_id: membership.id,
+        role:          inv.role,
+        team_id:       teamIdForMembership,
+      },
+    });
 
     // (11) Organization metadata for AuthResult.
     const orgRes = await client.query<AuthOrganization>(

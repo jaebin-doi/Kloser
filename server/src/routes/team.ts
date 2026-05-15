@@ -108,6 +108,7 @@ async function teamRoutes(app: FastifyInstance) {
         (client) => updateMembership(client, request.orgId!, {
           membershipId: id,
           patch,
+          actorUserId:  request.user!.id,
         }),
       );
       return reply.code(200).send({ membership: updated });

@@ -196,7 +196,7 @@ async function invitationsRoutes(app: FastifyInstance) {
       const { id } = UuidParam.parse(request.params);
       await app.withOrgContext(
         request.orgId!,
-        (client) => resendInvitation(client, request.orgId!, id),
+        (client) => resendInvitation(client, request.orgId!, id, request.user!.id),
       );
       return reply.code(200).send({ ok: true });
     },
@@ -220,7 +220,10 @@ async function invitationsRoutes(app: FastifyInstance) {
       const { id } = UuidParam.parse(request.params);
       await app.withOrgContext(
         request.orgId!,
-        (client) => cancelInvitation(client, id),
+        (client) => cancelInvitation(client, id, {
+          orgId:       request.orgId!,
+          actorUserId: request.user!.id,
+        }),
       );
       return reply.code(204).send();
     },

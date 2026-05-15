@@ -539,3 +539,121 @@ export async function recordMembershipRoleChanged(
     },
   });
 }
+
+export type MembershipStatus = "active" | "disabled";
+
+export interface RecordMembershipStatusChangedInput {
+  orgId:        string;
+  actorUserId:  string;
+  membershipId: string;
+  fromStatus:   MembershipStatus;
+  toStatus:     MembershipStatus;
+}
+
+/** membership.status_changed — admin enabled/disabled a member. */
+export async function recordMembershipStatusChanged(
+  client: PoolClient,
+  input: RecordMembershipStatusChangedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "membership.status_changed",
+    targetType:  "membership",
+    targetId:    input.membershipId,
+    payload: {
+      from_status: input.fromStatus,
+      to_status:   input.toStatus,
+    },
+  });
+}
+
+// ---------------------------------------------------------------- //
+// invitations
+// ---------------------------------------------------------------- //
+//
+// invitation.* events all share `target_type='invitation'`, `target_id=
+// invitations.id`. The created/resent/cancelled helpers run on the app
+// pool (admin actions); `invitation.accepted` runs on the servicePool
+// (anonymous endpoint) and uses recordActivityVoid inline — kept out of
+// the helper list so the helper API stays single-pool.
+
+export type MembershipRoleForInvitation = MembershipRole;
+
+export interface RecordInvitationCreatedInput {
+  orgId:        string;
+  actorUserId:  string;
+  invitationId: string;
+  role:         MembershipRoleForInvitation;
+  teamId:       string | null;
+}
+
+/** invitation.created — admin invited a new member.
+ *
+ * Payload deliberately carries no email, no raw token, no acceptUrl —
+ * those are sensitive credentials. role + team_id is enough operational
+ * context; the email + invitation_id can be joined from invitations
+ * via target_id at audit-view time.
+ */
+export async function recordInvitationCreated(
+  client: PoolClient,
+  input: RecordInvitationCreatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "invitation.created",
+    targetType:  "invitation",
+    targetId:    input.invitationId,
+    payload: {
+      role:    input.role,
+      team_id: input.teamId,
+    },
+  });
+}
+
+export interface RecordInvitationResentInput {
+  orgId:        string;
+  actorUserId:  string;
+  invitationId: string;
+}
+
+/** invitation.resent — admin re-issued a fresh token for the same invitation. */
+export async function recordInvitationResent(
+  client: PoolClient,
+  input: RecordInvitationResentInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "invitation.resent",
+    targetType:  "invitation",
+    targetId:    input.invitationId,
+    payload: {
+      invitation_id: input.invitationId,
+    },
+  });
+}
+
+export interface RecordInvitationCancelledInput {
+  orgId:        string;
+  actorUserId:  string;
+  invitationId: string;
+}
+
+/** invitation.cancelled — admin canceled a pending invitation. */
+export async function recordInvitationCancelled(
+  client: PoolClient,
+  input: RecordInvitationCancelledInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "invitation.cancelled",
+    targetType:  "invitation",
+    targetId:    input.invitationId,
+    payload: {
+      invitation_id: input.invitationId,
+    },
+  });
+}
