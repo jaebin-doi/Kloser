@@ -54,6 +54,10 @@ async function meRoutes(app: FastifyInstance) {
           name:              result.user.name,
           avatar_url:        result.user.avatar_url,
           email_verified_at: result.user.email_verified_at,
+          // Phase 7 Step 2 — settings page reads this to render the
+          // personal MFA panel ("등록" vs "해제"). Stays null for users
+          // who never enrolled. ISO-8601 string over the wire.
+          mfa_enabled_at:    result.user.mfa_enabled_at,
         },
         organization: {
           id:   result.organization.id,

@@ -10,6 +10,13 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <!-- Phase 7 Step 2 — qrcode-generator (~5 KB) for the MFA setup
+       panel's QR rendering. Same pinned version + integrity hash as
+       login.html. window.qrcode is the global. -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"
+    integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k"
+    crossorigin="anonymous"></script>
   <link rel="stylesheet" href="_shared.css" />
   <script>
     tailwind.config = { theme: { extend: { fontFamily: { sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'] } } } };
@@ -720,12 +727,114 @@
                   <button class="btn-secondary">변경</button>
                 </div>
 
-                <div class="set-row">
+                <!-- Phase 7 Step 2 — personal MFA (TOTP) management.
+                     Status, enroll, disable. Real /auth/mfa/totp/*. -->
+                <div class="set-row" id="mfa-status-row">
                   <div class="set-row-info">
                     <div class="set-row-title">2단계 인증 (2FA)</div>
-                    <div class="set-row-desc">로그인 시 인증 앱(Authenticator) 6자리 코드 추가 입력.</div>
+                    <div class="set-row-desc" id="mfa-status-desc">상태를 확인하는 중…</div>
                   </div>
-                  <span class="badge badge-emerald">활성</span>
+                  <div class="flex items-center gap-2">
+                    <span id="mfa-status-badge" class="badge" hidden></span>
+                    <button id="mfa-enroll-btn" type="button" class="btn-secondary" hidden>등록</button>
+                    <button id="mfa-disable-btn" type="button" class="btn-secondary" hidden
+                            style="color: rgb(190 18 60); border-color: rgb(254 205 211);">해제</button>
+                  </div>
+                </div>
+
+                <!-- MFA enroll panel — opens under the status row. -->
+                <div id="mfa-enroll-panel" hidden
+                     class="px-3 py-3 rounded-lg bg-slate-50 border border-slate-200 my-2 text-[.8rem] space-y-3">
+                  <!-- Step 1: current password to start setup -->
+                  <div id="mfa-enroll-step-password">
+                    <div class="font-semibold text-slate-800 mb-1.5">현재 비밀번호 확인</div>
+                    <input id="mfa-enroll-password" type="password" class="field-input"
+                           autocomplete="current-password" placeholder="현재 비밀번호">
+                    <div class="flex gap-2 mt-2">
+                      <button id="mfa-enroll-start-btn" type="button" class="btn-primary"
+                              style="width:auto;padding:8px 14px;">다음</button>
+                      <button class="btn-secondary mfa-enroll-cancel" type="button">취소</button>
+                    </div>
+                  </div>
+
+                  <!-- Step 2: QR + secret + 6-digit confirm -->
+                  <div id="mfa-enroll-step-confirm" hidden>
+                    <div class="font-semibold text-slate-800 mb-1.5">인증 앱에 등록</div>
+                    <div class="grid sm:grid-cols-[140px_1fr] gap-3 items-start">
+                      <div id="mfa-enroll-qr"
+                           class="w-[140px] h-[140px] bg-white border border-slate-200 rounded p-1 flex items-center justify-center"></div>
+                      <div class="text-[.75rem] text-slate-600 space-y-1.5">
+                        <div>
+                          QR 코드를 인증 앱(Google Authenticator, 1Password 등)으로 스캔하거나, 아래 시크릿을 수동 입력하세요.
+                        </div>
+                        <div>
+                          <div class="text-[.65rem] font-bold text-slate-500 uppercase tracking-wider mb-0.5">시크릿</div>
+                          <div id="mfa-enroll-secret"
+                               class="font-mono text-[.78rem] text-slate-800 break-all select-all bg-white border border-slate-200 rounded px-2 py-1"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <label for="mfa-enroll-code" class="block text-[.7rem] font-bold text-slate-600 uppercase tracking-wider mb-1">앱에 표시된 6자리 코드</label>
+                      <input id="mfa-enroll-code" type="text"
+                             inputmode="numeric" autocomplete="one-time-code"
+                             pattern="[0-9]{6}" minlength="6" maxlength="6"
+                             class="field-input font-mono tracking-[0.4em] text-center"
+                             placeholder="000000">
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                      <button id="mfa-enroll-confirm-btn" type="button" class="btn-primary"
+                              style="width:auto;padding:8px 14px;">등록 완료</button>
+                      <button class="btn-secondary mfa-enroll-cancel" type="button">취소</button>
+                    </div>
+                  </div>
+
+                  <div id="mfa-enroll-error" hidden
+                       class="px-3 py-2 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[.78rem]"></div>
+                </div>
+
+                <!-- MFA disable panel — opens under the status row. -->
+                <div id="mfa-disable-panel" hidden
+                     class="px-3 py-3 rounded-lg bg-slate-50 border border-slate-200 my-2 text-[.8rem] space-y-3">
+                  <div class="font-semibold text-slate-800">2단계 인증 해제</div>
+                  <p class="text-[.75rem] text-slate-600">
+                    현재 비밀번호와 인증 앱의 6자리 코드를 입력해 주세요. 조직이 MFA를 필수로 설정한 경우 해제할 수 없습니다.
+                  </p>
+                  <div class="grid sm:grid-cols-2 gap-3">
+                    <input id="mfa-disable-password" type="password" class="field-input"
+                           autocomplete="current-password" placeholder="현재 비밀번호">
+                    <input id="mfa-disable-code" type="text"
+                           inputmode="numeric" autocomplete="one-time-code"
+                           pattern="[0-9]{6}" minlength="6" maxlength="6"
+                           class="field-input font-mono tracking-[0.4em] text-center"
+                           placeholder="000000">
+                  </div>
+                  <div class="flex gap-2">
+                    <button id="mfa-disable-confirm-btn" type="button" class="btn-primary"
+                            style="width:auto;padding:8px 14px;background:rgb(190 18 60);box-shadow:0 4px 12px -4px rgba(190,18,60,.4);">해제 확인</button>
+                    <button id="mfa-disable-cancel-btn" type="button" class="btn-secondary">취소</button>
+                  </div>
+                  <div id="mfa-disable-error" hidden
+                       class="px-3 py-2 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[.78rem]"></div>
+                </div>
+
+                <!-- Phase 7 Step 2 — admin-only org security block.
+                     Visible only after /me reveals role=admin AND
+                     GET /organization/security returns 200. -->
+                <div id="org-security-block" hidden class="set-row">
+                  <div class="set-row-info">
+                    <div class="set-row-title">조직 전체 2단계 인증 필수화 <span class="badge badge-blue ml-1" style="font-size:.62rem;">관리자</span></div>
+                    <div class="set-row-desc">
+                      <span id="org-mfa-state-text">상태 확인 중…</span>
+                      <span id="org-mfa-members-text" class="text-slate-400 ml-2" hidden></span>
+                    </div>
+                    <div id="org-mfa-error" hidden
+                         class="mt-2 px-2.5 py-1.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[.72rem]"></div>
+                  </div>
+                  <label class="switch">
+                    <input id="org-mfa-toggle" type="checkbox" disabled>
+                    <span class="slider"></span>
+                  </label>
                 </div>
 
                 <div class="set-row">
@@ -1110,6 +1219,360 @@
         }
       });
     }
+
+    // ─────────────────────────────────────────────
+    // Phase 7 Step 2 — security section wiring.
+    //
+    // Two surfaces:
+    //   (1) personal MFA (TOTP) — every user can enroll / disable.
+    //   (2) org-wide mfa_required toggle — admin only; surface 409
+    //       admin_mfa_required if the admin themselves hasn't enrolled.
+    //
+    // All secrets and challenge tokens stay in closure variables only —
+    // never localStorage / sessionStorage. server-returned strings
+    // (secretBase32, otpauthUri, error messages) are rendered via
+    // textContent only; the QR canvas uses qrcode-generator's
+    // createSvgTag (no innerHTML interpolation of server data).
+    // ─────────────────────────────────────────────
+    (function wireSecuritySection() {
+      const api = window.kloserApi;
+      if (!api) return;
+
+      // ── DOM refs ────────────────────────────────
+      const statusDesc = document.getElementById('mfa-status-desc');
+      const statusBadge = document.getElementById('mfa-status-badge');
+      const enrollBtn  = document.getElementById('mfa-enroll-btn');
+      const disableBtn = document.getElementById('mfa-disable-btn');
+
+      const enrollPanel        = document.getElementById('mfa-enroll-panel');
+      const enrollStepPassword = document.getElementById('mfa-enroll-step-password');
+      const enrollStepConfirm  = document.getElementById('mfa-enroll-step-confirm');
+      const enrollPasswordInput = document.getElementById('mfa-enroll-password');
+      const enrollStartBtn     = document.getElementById('mfa-enroll-start-btn');
+      const enrollQrBox        = document.getElementById('mfa-enroll-qr');
+      const enrollSecretEl     = document.getElementById('mfa-enroll-secret');
+      const enrollCodeInput    = document.getElementById('mfa-enroll-code');
+      const enrollConfirmBtn   = document.getElementById('mfa-enroll-confirm-btn');
+      const enrollError        = document.getElementById('mfa-enroll-error');
+      const enrollCancelBtns   = document.querySelectorAll('.mfa-enroll-cancel');
+
+      const disablePanel        = document.getElementById('mfa-disable-panel');
+      const disablePasswordInput = document.getElementById('mfa-disable-password');
+      const disableCodeInput     = document.getElementById('mfa-disable-code');
+      const disableConfirmBtn    = document.getElementById('mfa-disable-confirm-btn');
+      const disableCancelBtn     = document.getElementById('mfa-disable-cancel-btn');
+      const disableError         = document.getElementById('mfa-disable-error');
+
+      const orgBlock        = document.getElementById('org-security-block');
+      const orgStateText    = document.getElementById('org-mfa-state-text');
+      const orgMembersText  = document.getElementById('org-mfa-members-text');
+      const orgToggle       = document.getElementById('org-mfa-toggle');
+      const orgError        = document.getElementById('org-mfa-error');
+
+      // Held only for the duration of one enroll session.
+      let isAdmin = false;
+      let mfaEnabledAt = null; // ISO string from /me; null = not enrolled
+
+      // ── helpers ─────────────────────────────────
+      function setHidden(el, hidden) { if (el) el.hidden = !!hidden; }
+      function showText(el, text) { if (el) el.textContent = text; }
+
+      function describeMfaError(status, body, fallback) {
+        const code = (body && body.code) || null;
+        if (code === 'admin_mfa_required')      return '관리자 본인이 먼저 2단계 인증을 등록해야 조직 전체 필수화를 켤 수 있습니다.';
+        if (code === 'mfa_required_by_org')     return '조직이 2단계 인증을 필수로 설정해 두어 해제할 수 없습니다. 관리자에게 문의하세요.';
+        if (code === 'mfa_invalid_code')        return '인증 코드가 올바르지 않습니다. 다시 입력해 주세요.';
+        if (code === 'mfa_locked')              return '잠시 후 다시 시도해 주세요. (계정이 일시적으로 잠겼습니다.)';
+        if (code === 'mfa_already_enrolled')    return '이미 2단계 인증이 등록돼 있습니다.';
+        if (code === 'invalid_credentials')     return '현재 비밀번호가 올바르지 않습니다.';
+        if (code === 'mfa_secret_corrupt')      return '서버 오류가 발생했습니다. 관리자에게 문의해 주세요.';
+        if (status === 401)                     return '인증에 실패했습니다.';
+        if (status === 403)                     return '권한이 없습니다.';
+        if (status === 409 && body && body.error) return String(body.error);
+        if (status === 400)                     return '입력값을 다시 확인해 주세요.';
+        return fallback || '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+      }
+
+      function renderMfaStatus() {
+        if (mfaEnabledAt) {
+          showText(statusDesc, '로그인 시 인증 앱(Authenticator) 6자리 코드 추가 입력. 활성 상태.');
+          statusBadge.textContent = '활성';
+          statusBadge.className = 'badge badge-emerald';
+          setHidden(statusBadge, false);
+          setHidden(enrollBtn, true);
+          setHidden(disableBtn, false);
+        } else {
+          showText(statusDesc, '로그인 시 인증 앱(Authenticator) 6자리 코드 추가 입력. 아직 등록되지 않았습니다.');
+          statusBadge.textContent = '비활성';
+          statusBadge.className = 'badge badge-slate';
+          setHidden(statusBadge, false);
+          setHidden(enrollBtn, false);
+          setHidden(disableBtn, true);
+        }
+      }
+
+      // ── /me bootstrap ───────────────────────────
+      async function loadMe() {
+        try {
+          const res = await api.apiGet('/me');
+          if (!res.ok) return;
+          const body = await res.json();
+          isAdmin = body && body.membership && body.membership.role === 'admin';
+          mfaEnabledAt = body && body.user && body.user.mfa_enabled_at
+            ? body.user.mfa_enabled_at : null;
+          renderMfaStatus();
+          if (isAdmin) await loadOrgSecurity();
+        } catch (err) {
+          console.warn('[settings] /me load failed', err);
+        }
+      }
+
+      // ── enroll flow ─────────────────────────────
+      function closeEnrollPanel() {
+        setHidden(enrollPanel, true);
+        setHidden(enrollStepPassword, false);
+        setHidden(enrollStepConfirm, true);
+        setHidden(enrollError, true);
+        enrollError.textContent = '';
+        enrollPasswordInput.value = '';
+        enrollCodeInput.value = '';
+        enrollSecretEl.textContent = '';
+        enrollQrBox.replaceChildren(); // drop QR DOM
+      }
+
+      function renderQr(otpauthUri) {
+        // qrcode-generator: typeNumber=0 (auto-size), errorCorrection 'M'.
+        // createSvgTag returns a <svg> markup string built from numeric
+        // coords — no caller-controlled string interpolation, so safe.
+        try {
+          const qr = window.qrcode(0, 'M');
+          qr.addData(String(otpauthUri || ''));
+          qr.make();
+          const svg = qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+          enrollQrBox.innerHTML = svg; // server data is already encoded as path coords inside qrcode lib
+          const svgEl = enrollQrBox.querySelector('svg');
+          if (svgEl) {
+            svgEl.style.width = '100%';
+            svgEl.style.height = '100%';
+          }
+        } catch (err) {
+          console.warn('[settings] QR render failed', err);
+          enrollQrBox.replaceChildren(document.createTextNode('QR 생성 실패'));
+        }
+      }
+
+      enrollBtn.addEventListener('click', () => {
+        setHidden(enrollPanel, false);
+        setHidden(disablePanel, true);
+        setHidden(enrollStepPassword, false);
+        setHidden(enrollStepConfirm, true);
+        setHidden(enrollError, true);
+        enrollPasswordInput.value = '';
+        enrollPasswordInput.focus();
+      });
+
+      enrollCancelBtns.forEach(btn => btn.addEventListener('click', closeEnrollPanel));
+
+      enrollStartBtn.addEventListener('click', async () => {
+        setHidden(enrollError, true);
+        const pw = enrollPasswordInput.value;
+        if (!pw) {
+          enrollError.textContent = '현재 비밀번호를 입력해 주세요.';
+          setHidden(enrollError, false);
+          return;
+        }
+        enrollStartBtn.disabled = true;
+        enrollStartBtn.textContent = '확인 중…';
+        try {
+          const res = await api.startAuthenticatedTotpSetup(pw);
+          let body = null;
+          try { body = await res.json(); } catch (_) { /* empty */ }
+          if (!res.ok || !body || !body.secretBase32 || !body.otpauthUri) {
+            enrollError.textContent = describeMfaError(res.status, body, '등록 정보를 받지 못했습니다.');
+            setHidden(enrollError, false);
+            return;
+          }
+          enrollSecretEl.textContent = String(body.secretBase32);
+          renderQr(body.otpauthUri);
+          setHidden(enrollStepPassword, true);
+          setHidden(enrollStepConfirm, false);
+          enrollCodeInput.value = '';
+          enrollCodeInput.focus();
+        } catch (err) {
+          console.error('[settings mfa setup] failed', err);
+          enrollError.textContent = '네트워크 오류가 발생했습니다.';
+          setHidden(enrollError, false);
+        } finally {
+          enrollStartBtn.disabled = false;
+          enrollStartBtn.textContent = '다음';
+        }
+      });
+
+      enrollConfirmBtn.addEventListener('click', async () => {
+        setHidden(enrollError, true);
+        const code = enrollCodeInput.value.trim();
+        if (!/^\d{6}$/.test(code)) {
+          enrollError.textContent = '6자리 숫자를 입력해 주세요.';
+          setHidden(enrollError, false);
+          return;
+        }
+        enrollConfirmBtn.disabled = true;
+        enrollConfirmBtn.textContent = '등록 중…';
+        try {
+          const res = await api.confirmAuthenticatedTotp(code);
+          let body = null;
+          try { body = await res.json(); } catch (_) { /* empty */ }
+          if (!res.ok) {
+            enrollError.textContent = describeMfaError(res.status, body, '등록에 실패했습니다.');
+            setHidden(enrollError, false);
+            return;
+          }
+          mfaEnabledAt = body && body.mfa_enabled_at ? body.mfa_enabled_at : new Date().toISOString();
+          renderMfaStatus();
+          closeEnrollPanel();
+          showToast('✓ 2단계 인증이 등록되었습니다');
+          // Refresh org block — admin count goes down by one.
+          if (isAdmin) await loadOrgSecurity();
+        } catch (err) {
+          console.error('[settings mfa confirm] failed', err);
+          enrollError.textContent = '네트워크 오류가 발생했습니다.';
+          setHidden(enrollError, false);
+        } finally {
+          enrollConfirmBtn.disabled = false;
+          enrollConfirmBtn.textContent = '등록 완료';
+        }
+      });
+
+      // ── disable flow ────────────────────────────
+      function closeDisablePanel() {
+        setHidden(disablePanel, true);
+        setHidden(disableError, true);
+        disableError.textContent = '';
+        disablePasswordInput.value = '';
+        disableCodeInput.value = '';
+      }
+
+      disableBtn.addEventListener('click', () => {
+        setHidden(disablePanel, false);
+        setHidden(enrollPanel, true);
+        setHidden(disableError, true);
+        disablePasswordInput.value = '';
+        disableCodeInput.value = '';
+        disablePasswordInput.focus();
+      });
+
+      disableCancelBtn.addEventListener('click', closeDisablePanel);
+
+      disableConfirmBtn.addEventListener('click', async () => {
+        setHidden(disableError, true);
+        const pw = disablePasswordInput.value;
+        const code = disableCodeInput.value.trim();
+        if (!pw) {
+          disableError.textContent = '현재 비밀번호를 입력해 주세요.';
+          setHidden(disableError, false);
+          return;
+        }
+        if (!/^\d{6}$/.test(code)) {
+          disableError.textContent = '6자리 숫자를 입력해 주세요.';
+          setHidden(disableError, false);
+          return;
+        }
+        disableConfirmBtn.disabled = true;
+        disableConfirmBtn.textContent = '해제 중…';
+        try {
+          const res = await api.disableTotp(pw, code);
+          if (res.status === 204) {
+            mfaEnabledAt = null;
+            renderMfaStatus();
+            closeDisablePanel();
+            showToast('✓ 2단계 인증이 해제되었습니다');
+            if (isAdmin) await loadOrgSecurity();
+            return;
+          }
+          let body = null;
+          try { body = await res.json(); } catch (_) { /* empty */ }
+          disableError.textContent = describeMfaError(res.status, body, '해제에 실패했습니다.');
+          setHidden(disableError, false);
+        } catch (err) {
+          console.error('[settings mfa disable] failed', err);
+          disableError.textContent = '네트워크 오류가 발생했습니다.';
+          setHidden(disableError, false);
+        } finally {
+          disableConfirmBtn.disabled = false;
+          disableConfirmBtn.textContent = '해제 확인';
+        }
+      });
+
+      // ── admin org-security block ────────────────
+      async function loadOrgSecurity() {
+        setHidden(orgError, true);
+        orgError.textContent = '';
+        try {
+          const res = await api.getOrganizationSecurity();
+          if (res.status === 403) {
+            // Not admin after all (race with role change). Hide block.
+            setHidden(orgBlock, true);
+            return;
+          }
+          if (!res.ok) {
+            setHidden(orgBlock, false);
+            showText(orgStateText, '상태를 불러오지 못했습니다.');
+            return;
+          }
+          const body = await res.json();
+          setHidden(orgBlock, false);
+          orgToggle.checked = !!body.mfa_required;
+          orgToggle.disabled = false;
+          showText(orgStateText,
+            body.mfa_required
+              ? '활성 — 모든 멤버가 로그인 시 2단계 인증을 요구받습니다.'
+              : '비활성 — 사용자별 선택입니다.'
+          );
+          if (typeof body.members_without_mfa_count === 'number') {
+            showText(orgMembersText, `· 미등록 멤버 ${body.members_without_mfa_count}명`);
+            setHidden(orgMembersText, false);
+          } else {
+            setHidden(orgMembersText, true);
+          }
+        } catch (err) {
+          console.error('[settings org-security] load failed', err);
+          setHidden(orgBlock, false);
+          showText(orgStateText, '상태를 불러오지 못했습니다.');
+        }
+      }
+
+      orgToggle.addEventListener('change', async () => {
+        const desired = !!orgToggle.checked;
+        setHidden(orgError, true);
+        orgError.textContent = '';
+        orgToggle.disabled = true;
+        try {
+          const res = await api.setOrganizationMfaRequired(desired);
+          let body = null;
+          try { body = await res.json(); } catch (_) { /* empty */ }
+          if (!res.ok) {
+            // Revert visual state on failure so the switch reflects DB.
+            orgToggle.checked = !desired;
+            orgError.textContent = describeMfaError(res.status, body, '설정 변경에 실패했습니다.');
+            setHidden(orgError, false);
+            return;
+          }
+          // Re-read so members_without_mfa_count + state text refresh.
+          await loadOrgSecurity();
+          showToast(desired ? '✓ 조직 2단계 인증 필수화가 켜졌습니다' : '✓ 조직 2단계 인증 필수화가 꺼졌습니다');
+        } catch (err) {
+          console.error('[settings org-security] toggle failed', err);
+          orgToggle.checked = !desired;
+          orgError.textContent = '네트워크 오류가 발생했습니다.';
+          setHidden(orgError, false);
+        } finally {
+          orgToggle.disabled = false;
+        }
+      });
+
+      // Boot.
+      loadMe();
+    })();
 
     // TOC scroll spy
     const sections = document.querySelectorAll('main section[id]');

@@ -24,6 +24,7 @@ export interface User {
   name: string;
   avatar_url: string | null;
   email_verified_at: Date | null;
+  mfa_enabled_at: Date | null;
   disabled_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -31,7 +32,7 @@ export interface User {
 
 const USER_COLUMNS =
   "u.id, u.email, u.name, u.avatar_url, u.email_verified_at," +
-  " u.disabled_at, u.created_at, u.updated_at";
+  " u.mfa_enabled_at, u.disabled_at, u.created_at, u.updated_at";
 
 export async function listForCurrentOrg(client: PoolClient): Promise<User[]> {
   const r = await client.query<User>(

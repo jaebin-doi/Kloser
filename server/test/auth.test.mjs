@@ -252,6 +252,7 @@ test("/me: with valid Bearer returns scoped user/org/membership and no password_
     assert.equal(r.statusCode, 200);
     const body = r.json();
     assert.equal(body.user.email, "admin@acme.test");
+    assert.equal(body.user.mfa_enabled_at, null);
     assert.equal(body.organization.id, ACME_ID);
     assert.equal(body.membership.role, "admin");
     assert.ok(!("password_hash" in body.user), "no password_hash leak");
