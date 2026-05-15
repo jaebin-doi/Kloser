@@ -178,6 +178,31 @@ const ENTITY_REGISTRY = [
         // parser's bare `})` close still matches.
         types: ["OrganizationSecurityResponse", "OrganizationSecurityPatchInput"],
     },
+    {
+        name: "authMfa",
+        server: "server/src/types/authMfa.ts",
+        browser: "platform/types/authMfa.js",
+        // Phase 7 Step 2. The 200 auth happy-path response
+        // ({ accessToken, user, organization, membership }) is the
+        // pre-existing /auth/login shape and is intentionally NOT
+        // declared as a shared type - /verify-login and
+        // /confirm-challenge reuse it via sendAuthResult(). The
+        // shared types here cover only the MFA-specific surface:
+        // request bodies + the 202 challenge envelope + the
+        // setup / confirm response shapes.
+        types: [
+            "MfaTotpVerifyLoginInput",
+            "MfaTotpSetupInput",
+            "MfaTotpConfirmInput",
+            "MfaTotpDisableInput",
+            "MfaTotpSetupChallengeInput",
+            "MfaTotpConfirmChallengeInput",
+            "LoginMfaChallengePayload",
+            "LoginMfaChallengeResponse",
+            "MfaTotpSetupResponse",
+            "MfaTotpConfirmResponse",
+        ],
+    },
 ];
 
 // ---------- parsers ---------- //
