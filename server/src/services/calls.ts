@@ -31,6 +31,10 @@ import type {
   TranscriptAppendInput,
 } from "../repositories/transcripts.js";
 import { enqueueCallSummary } from "../queue/index.js";
+import {
+  recordCallCreated,
+  recordCallEnded,
+} from "./activityLog.js";
 
 export interface CallListResult {
   items: Call[];
@@ -62,11 +66,27 @@ export async function getCallById(
 export async function createCall(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   input: CallCreateInput,
 ): Promise<Call> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    callsRepo.insertInCurrentOrg(client, actorOrgId, input),
-  );
+  return app.withOrgContext(actorOrgId, async (client) => {
+    const created = await callsRepo.insertInCurrentOrg(
+      client,
+      actorOrgId,
+      input,
+    );
+    // Phase 7 Step 3 — audit. Same transaction as the INSERT so a
+    // schema-mismatched audit row aborts the create together.
+    await recordCallCreated(client, {
+      orgId:        actorOrgId,
+      actorUserId,
+      callId:       created.id,
+      direction:    created.direction,
+      customerId:   created.customer_id,
+      agentUserId:  created.agent_user_id,
+    });
+    return created;
+  });
 }
 
 export async function appendTranscript(
@@ -97,6 +117,7 @@ export interface EndCallOptions {
 export async function endCall(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   callId: string,
   opts: EndCallOptions = {},
 ): Promise<Call | null> {
@@ -124,6 +145,17 @@ export async function endCall(
         [endedAt, row.customer_id],
       );
     }
+
+    // Phase 7 Step 3 — audit. Inside the same transaction as the calls
+    // UPDATE + the conditional customers UPDATE, so a failing audit
+    // row aborts every state change end-to-end.
+    await recordCallEnded(client, {
+      orgId:           actorOrgId,
+      actorUserId,
+      callId:          row.id,
+      finalStatus:     row.status as ("ended" | "missed" | "dropped"),
+      durationSeconds: row.duration_seconds,
+    });
 
     return row;
   });

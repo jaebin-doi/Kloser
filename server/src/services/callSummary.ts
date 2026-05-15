@@ -28,6 +28,7 @@ import type {
   CallSentiment,
   CallSummaryPatch,
 } from "../repositories/calls.js";
+import { recordCallManualSummaryUpdated } from "./activityLog.js";
 
 export interface GeneratedCallSummary {
   summary: string | null;
@@ -73,6 +74,26 @@ export async function applyManualSummary(
     await assertCanMutateCall(client, actor, {
       agent_user_id: current.agent_user_id,
     });
-    return callsRepo.updateManualSummaryInCurrentOrg(client, callId, patch);
+    const updated = await callsRepo.updateManualSummaryInCurrentOrg(
+      client,
+      callId,
+      patch,
+    );
+    if (updated) {
+      // Phase 7 Step 3 — audit names the columns the user touched, never
+      // the values (summary / needs / issues bodies can hold sensitive
+      // customer details). CallSummaryManualInput zod always sends the
+      // four columns, but we still build `fields` defensively in case
+      // the patch shape narrows later.
+      const fields = (Object.keys(patch) as (keyof CallSummaryPatch)[])
+        .filter((k) => (patch as unknown as Record<string, unknown>)[k] !== undefined);
+      await recordCallManualSummaryUpdated(client, {
+        orgId:       actor.orgId,
+        actorUserId: actor.id,
+        callId:      updated.id,
+        fields,
+      });
+    }
+    return updated;
   });
 }

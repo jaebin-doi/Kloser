@@ -29,6 +29,11 @@ import {
   type CustomerPatch,
   type CustomerStats,
 } from "../types/customers.js";
+import {
+  recordCustomerCreated,
+  recordCustomerDeleted,
+  recordCustomerUpdated,
+} from "./activityLog.js";
 
 export class InvalidListOptionError extends Error {
   constructor(
@@ -117,32 +122,71 @@ export async function getCustomerById(
 export async function createCustomer(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   input: CustomerCreateInput,
 ): Promise<Customer> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    repo.insertInCurrentOrg(client, actorOrgId, input),
-  );
+  return app.withOrgContext(actorOrgId, async (client) => {
+    const created = await repo.insertInCurrentOrg(client, actorOrgId, input);
+    // Phase 7 Step 3 — audit. Same transaction as the INSERT so an
+    // audit-row failure rolls the customer write back as one unit.
+    await recordCustomerCreated(client, {
+      orgId:       actorOrgId,
+      actorUserId,
+      customerId:  created.id,
+      status:      created.status,
+    });
+    return created;
+  });
 }
 
 export async function updateCustomer(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   id: string,
   patch: CustomerPatch,
 ): Promise<Customer | null> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    repo.updateByIdInCurrentOrg(client, id, patch),
-  );
+  return app.withOrgContext(actorOrgId, async (client) => {
+    const updated = await repo.updateByIdInCurrentOrg(client, id, patch);
+    if (!updated) return null;
+    // Phase 7 Step 3 — audit names the patched fields only, never
+    // their values (customer name/email/phone are PII). CustomerPatch
+    // zod schema already rejects empty objects, so `fields` is always
+    // non-empty here.
+    const fields = Object.keys(patch).filter(
+      (k) => (patch as Record<string, unknown>)[k] !== undefined,
+    );
+    if (fields.length > 0) {
+      await recordCustomerUpdated(client, {
+        orgId:       actorOrgId,
+        actorUserId,
+        customerId:  updated.id,
+        fields,
+      });
+    }
+    return updated;
+  });
 }
 
 export async function deleteCustomer(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   id: string,
 ): Promise<boolean> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    repo.softDeleteByIdInCurrentOrg(client, id),
-  );
+  return app.withOrgContext(actorOrgId, async (client) => {
+    const ok = await repo.softDeleteByIdInCurrentOrg(client, id);
+    // Only audit a real delete — repeat DELETEs / cross-org / already-
+    // soft-deleted return false and produce no audit noise.
+    if (ok) {
+      await recordCustomerDeleted(client, {
+        orgId:       actorOrgId,
+        actorUserId,
+        customerId:  id,
+      });
+    }
+    return ok;
+  });
 }
 
 // Re-export so existing call sites (Step 4 route catch, tests) can import

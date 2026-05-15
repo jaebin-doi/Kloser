@@ -220,7 +220,7 @@ test("endCall enqueues a call-summary job with { orgId, callId }", async () => {
         agent_user_id: USER_ACME_ADMIN,
     });
     try {
-        const ended = await callsService.endCall(app, ORG_ACME, call.id);
+        const ended = await callsService.endCall(app, ORG_ACME, USER_ACME_ADMIN, call.id);
         assert.ok(ended);
         assert.equal(ended.status, "ended");
 
@@ -245,7 +245,7 @@ test("endCall succeeds even if enqueueCallSummary throws", async () => {
     const origAdd = queue.add.bind(queue);
     queue.add = async () => { throw new Error("simulated redis down"); };
     try {
-        const ended = await callsService.endCall(app, ORG_ACME, call.id);
+        const ended = await callsService.endCall(app, ORG_ACME, USER_ACME_ADMIN, call.id);
         assert.ok(ended);
         assert.equal(ended.status, "ended");
     } finally {

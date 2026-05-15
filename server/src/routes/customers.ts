@@ -125,7 +125,12 @@ async function customersRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const input = CustomerCreateInput.parse(request.body);
-      const customer = await createCustomer(app, request.orgId!, input);
+      const customer = await createCustomer(
+        app,
+        request.orgId!,
+        request.user!.id,
+        input,
+      );
       return reply.code(201).send({ customer });
     },
   );
@@ -142,7 +147,13 @@ async function customersRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { id } = UuidParam.parse(request.params);
       const patch = CustomerPatch.parse(request.body);
-      const customer = await updateCustomer(app, request.orgId!, id, patch);
+      const customer = await updateCustomer(
+        app,
+        request.orgId!,
+        request.user!.id,
+        id,
+        patch,
+      );
       if (!customer) {
         return reply.code(404).send({ error: "not_found" });
       }
@@ -161,7 +172,12 @@ async function customersRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { id } = UuidParam.parse(request.params);
-      const ok = await deleteCustomer(app, request.orgId!, id);
+      const ok = await deleteCustomer(
+        app,
+        request.orgId!,
+        request.user!.id,
+        id,
+      );
       if (!ok) {
         return reply.code(404).send({ error: "not_found" });
       }

@@ -17,6 +17,10 @@ import {
   type Actor,
 } from "./callPermissions.js";
 import type { Call } from "../repositories/calls.js";
+import {
+  recordCallCustomerLinked,
+  recordCallCustomerUnlinked,
+} from "./activityLog.js";
 
 export async function linkCustomerToCall(
   app: FastifyInstance,
@@ -31,13 +35,23 @@ export async function linkCustomerToCall(
     await assertCanMutateCall(client, actor, {
       agent_user_id: current.agent_user_id,
     });
-    return callsRepo.linkCustomerInCurrentOrg(
+    const updated = await callsRepo.linkCustomerInCurrentOrg(
       client,
       callId,
       customerId,
       actor.id,
       linkedAt,
     );
+    if (updated) {
+      // Phase 7 Step 3 — same tx as the UPDATE.
+      await recordCallCustomerLinked(client, {
+        orgId:       actor.orgId,
+        actorUserId: actor.id,
+        callId:      updated.id,
+        customerId,
+      });
+    }
+    return updated;
   });
 }
 
@@ -53,12 +67,25 @@ export async function unlinkCustomerFromCall(
     await assertCanMutateCall(client, actor, {
       agent_user_id: current.agent_user_id,
     });
-    return callsRepo.linkCustomerInCurrentOrg(
+    // Capture the prior customer_id BEFORE the UPDATE so the audit row
+    // can show the auditor what binding was just removed. `current` was
+    // fetched in the same transaction so RLS / read-consistency is fine.
+    const previousCustomerId = current.customer_id;
+    const updated = await callsRepo.linkCustomerInCurrentOrg(
       client,
       callId,
       null,
       actor.id,
       linkedAt,
     );
+    if (updated) {
+      await recordCallCustomerUnlinked(client, {
+        orgId:       actor.orgId,
+        actorUserId: actor.id,
+        callId:      updated.id,
+        previousCustomerId,
+      });
+    }
+    return updated;
   });
 }

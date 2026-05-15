@@ -284,7 +284,7 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
           : null;
 
       try {
-        const call = await callsService.createCall(app, user.orgId, {
+        const call = await callsService.createCall(app, user.orgId, user.id, {
           customer_id: customerId,
           agent_user_id: user.id,
           direction: "inbound",
@@ -409,7 +409,7 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
       }
       socket.data.log("end_call", { callId: ctx.callId });
       try {
-        await callsService.endCall(app, user.orgId, ctx.callId);
+        await callsService.endCall(app, user.orgId, user.id, ctx.callId);
       } catch (err) {
         socket.data.log("end_call persistence_failed", {
           err: (err as Error)?.message,

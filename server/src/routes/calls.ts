@@ -63,6 +63,12 @@ import {
   PermissionError,
   type Actor,
 } from "../services/callPermissions.js";
+import {
+  recordActionItemAssigneeChanged,
+  recordActionItemCreated,
+  recordActionItemStatusChanged,
+  recordCallNotesUpdated,
+} from "../services/activityLog.js";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -168,6 +174,7 @@ async function callsRoutes(app: FastifyInstance) {
       const call = await callsService.createCall(
         app,
         request.orgId!,
+        request.user!.id,
         normalised,
       );
       return reply.code(201).send({ call });
@@ -215,9 +222,21 @@ async function callsRoutes(app: FastifyInstance) {
       const denied = denyForEmployeeNonOwner(request, reply, existing);
       if (denied) return denied;
 
-      const updated = await app.withOrgContext(request.orgId!, (client) =>
-        callsRepo.patchNotesByIdInCurrentOrg(client, id, notes),
-      );
+      const updated = await app.withOrgContext(request.orgId!, async (client) => {
+        const row = await callsRepo.patchNotesByIdInCurrentOrg(client, id, notes);
+        if (row) {
+          // Phase 7 Step 3 — audit inside the same tx as the UPDATE.
+          // Payload carries notes_length only — never the body, which
+          // a salesperson may have typed sensitive customer details into.
+          await recordCallNotesUpdated(client, {
+            orgId:       request.orgId!,
+            actorUserId: request.user!.id,
+            callId:      row.id,
+            notesLength: notes === null ? 0 : notes.length,
+          });
+        }
+        return row;
+      });
       if (!updated) return reply.code(404).send({ error: "not_found" });
       return reply.code(200).send({ call: updated });
     },
@@ -250,10 +269,16 @@ async function callsRoutes(app: FastifyInstance) {
       const denied = denyForEmployeeNonOwner(request, reply, existing);
       if (denied) return denied;
 
-      const ended = await callsService.endCall(app, request.orgId!, id, {
-        endedAt: input.ended_at,
-        finalStatus: input.final_status,
-      });
+      const ended = await callsService.endCall(
+        app,
+        request.orgId!,
+        request.user!.id,
+        id,
+        {
+          endedAt: input.ended_at,
+          finalStatus: input.final_status,
+        },
+      );
       if (!ended) return reply.code(404).send({ error: "not_found" });
       return reply.code(200).send({ call: ended });
     },
@@ -353,9 +378,24 @@ async function callsRoutes(app: FastifyInstance) {
       const denied = denyForEmployeeNonOwner(request, reply, existing);
       if (denied) return denied;
 
-      const actionItem = await app.withOrgContext(request.orgId!, (client) =>
-        actionItemsRepo.createForCallInCurrentOrg(client, id, input),
-      );
+      const actionItem = await app.withOrgContext(request.orgId!, async (client) => {
+        const created = await actionItemsRepo.createForCallInCurrentOrg(
+          client,
+          id,
+          input,
+        );
+        if (created) {
+          // Phase 7 Step 3 — audit inside the same tx as the INSERT.
+          await recordActionItemCreated(client, {
+            orgId:           request.orgId!,
+            actorUserId:     request.user!.id,
+            actionItemId:    created.id,
+            callId:          created.call_id,
+            assigneeUserId:  created.assignee_user_id,
+          });
+        }
+        return created;
+      });
       if (!actionItem) return reply.code(404).send({ error: "not_found" });
       return reply.code(201).send({ action_item: actionItem });
     },
@@ -391,9 +431,32 @@ async function callsRoutes(app: FastifyInstance) {
       });
       if (denied) return denied;
 
-      const updated = await app.withOrgContext(request.orgId!, (client) =>
-        actionItemsRepo.patchStatusInCurrentOrg(client, id, status),
-      );
+      const updated = await app.withOrgContext(request.orgId!, async (client) => {
+        // Read the prior status in the same tx so the audit row can
+        // record from→to. RLS scopes the SELECT; cross-org rows yield
+        // no row and the route returns 404 below.
+        const beforeRow = await client.query<{ status: "open" | "done" | "dropped" }>(
+          `SELECT status FROM call_action_items WHERE id = $1`,
+          [id],
+        );
+        const before = beforeRow.rows[0];
+        const row = await actionItemsRepo.patchStatusInCurrentOrg(
+          client,
+          id,
+          status,
+        );
+        if (row && before && before.status !== status) {
+          await recordActionItemStatusChanged(client, {
+            orgId:        request.orgId!,
+            actorUserId:  request.user!.id,
+            actionItemId: row.id,
+            callId:       row.call_id,
+            fromStatus:   before.status,
+            toStatus:     status,
+          });
+        }
+        return row;
+      });
       if (!updated) return reply.code(404).send({ error: "not_found" });
       return reply.code(200).send({ action_item: updated });
     },
@@ -426,13 +489,29 @@ async function callsRoutes(app: FastifyInstance) {
       });
       if (denied) return denied;
 
-      const updated = await app.withOrgContext(request.orgId!, (client) =>
-        actionItemsRepo.patchAssigneeInCurrentOrg(
+      const updated = await app.withOrgContext(request.orgId!, async (client) => {
+        const beforeRow = await client.query<{ assignee_user_id: string | null }>(
+          `SELECT assignee_user_id FROM call_action_items WHERE id = $1`,
+          [id],
+        );
+        const before = beforeRow.rows[0];
+        const row = await actionItemsRepo.patchAssigneeInCurrentOrg(
           client,
           id,
           assignee_user_id,
-        ),
-      );
+        );
+        if (row && before && before.assignee_user_id !== assignee_user_id) {
+          await recordActionItemAssigneeChanged(client, {
+            orgId:               request.orgId!,
+            actorUserId:         request.user!.id,
+            actionItemId:        row.id,
+            callId:              row.call_id,
+            fromAssigneeUserId:  before.assignee_user_id,
+            toAssigneeUserId:    assignee_user_id,
+          });
+        }
+        return row;
+      });
       if (!updated) return reply.code(404).send({ error: "not_found" });
       return reply.code(200).send({ action_item: updated });
     },

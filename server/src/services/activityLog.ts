@@ -657,3 +657,378 @@ export async function recordInvitationCancelled(
     },
   });
 }
+
+// ---------------------------------------------------------------- //
+// customers
+// ---------------------------------------------------------------- //
+//
+// All customer.* events share `target_type='customer'`, `target_id=
+// customers.id`. Payloads deliberately omit customer name / company /
+// email / phone — those are PII (and can be joined back from customers
+// via target_id at audit-view time). `status` for created is operational
+// metadata, `fields` for updated names the patched columns only.
+
+export type CustomerStatus = "active" | "review" | "pending";
+
+export interface RecordCustomerCreatedInput {
+  orgId:       string;
+  actorUserId: string;
+  customerId:  string;
+  status:      CustomerStatus;
+}
+
+/** customer.created — admin / manager / employee added a new customer. */
+export async function recordCustomerCreated(
+  client: PoolClient,
+  input: RecordCustomerCreatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "customer.created",
+    targetType:  "customer",
+    targetId:    input.customerId,
+    payload: {
+      status: input.status,
+    },
+  });
+}
+
+export interface RecordCustomerUpdatedInput {
+  orgId:       string;
+  actorUserId: string;
+  customerId:  string;
+  /** Names of patched columns only — never their values. The customers
+   *  row itself is the canonical source for value history (or a future
+   *  customers_audit table); the audit feed only records "what was
+   *  touched" to avoid leaking PII into the activity_log payload. */
+  fields:      string[];
+}
+
+/** customer.updated — PATCH /customers/:id with at least one field. */
+export async function recordCustomerUpdated(
+  client: PoolClient,
+  input: RecordCustomerUpdatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "customer.updated",
+    targetType:  "customer",
+    targetId:    input.customerId,
+    payload: {
+      fields: input.fields,
+    },
+  });
+}
+
+export interface RecordCustomerDeletedInput {
+  orgId:       string;
+  actorUserId: string;
+  customerId:  string;
+}
+
+/** customer.deleted — soft delete via DELETE /customers/:id. */
+export async function recordCustomerDeleted(
+  client: PoolClient,
+  input: RecordCustomerDeletedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "customer.deleted",
+    targetType:  "customer",
+    targetId:    input.customerId,
+    payload: {},
+  });
+}
+
+// ---------------------------------------------------------------- //
+// calls
+// ---------------------------------------------------------------- //
+//
+// All call.* events share `target_type='call'`, `target_id=calls.id`.
+// Payloads keep operational fields only — never notes content, never
+// transcript text, never summary text. notes_updated stores
+// `notes_length` so an auditor can distinguish "cleared" (0) from
+// "edited" (>0) without leaking the body.
+
+export type CallDirection = "inbound" | "outbound" | "meeting";
+export type CallFinalStatus = "ended" | "missed" | "dropped";
+
+export interface RecordCallCreatedInput {
+  orgId:         string;
+  actorUserId:   string;
+  callId:        string;
+  direction:     CallDirection;
+  customerId:    string | null;
+  agentUserId:   string | null;
+}
+
+/** call.created — POST /calls created a new call row. */
+export async function recordCallCreated(
+  client: PoolClient,
+  input: RecordCallCreatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call.created",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      direction:      input.direction,
+      customer_id:    input.customerId,
+      agent_user_id:  input.agentUserId,
+    },
+  });
+}
+
+export interface RecordCallEndedInput {
+  orgId:            string;
+  actorUserId:      string;
+  callId:           string;
+  finalStatus:      CallFinalStatus;
+  durationSeconds:  number | null;
+}
+
+/** call.ended — POST /calls/:id/end stamped the final status / timing. */
+export async function recordCallEnded(
+  client: PoolClient,
+  input: RecordCallEndedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call.ended",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      final_status:     input.finalStatus,
+      duration_seconds: input.durationSeconds,
+    },
+  });
+}
+
+export interface RecordCallCustomerLinkedInput {
+  orgId:       string;
+  actorUserId: string;
+  callId:      string;
+  customerId:  string;
+}
+
+/** call.customer_linked — POST /calls/:id/link-customer attached a customer. */
+export async function recordCallCustomerLinked(
+  client: PoolClient,
+  input: RecordCallCustomerLinkedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call.customer_linked",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      customer_id: input.customerId,
+    },
+  });
+}
+
+export interface RecordCallCustomerUnlinkedInput {
+  orgId:               string;
+  actorUserId:         string;
+  callId:              string;
+  /** The customer the call was linked to before this unlink. May be null
+   *  when the route was called on a call that already had no binding —
+   *  the route still goes through the SQL UPDATE so the audit row stamps
+   *  who clicked "unlink" even if no real unbinding happened. */
+  previousCustomerId:  string | null;
+}
+
+/** call.customer_unlinked — POST /calls/:id/unlink-customer cleared the binding. */
+export async function recordCallCustomerUnlinked(
+  client: PoolClient,
+  input: RecordCallCustomerUnlinkedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call.customer_unlinked",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      previous_customer_id: input.previousCustomerId,
+    },
+  });
+}
+
+export interface RecordCallNotesUpdatedInput {
+  orgId:       string;
+  actorUserId: string;
+  callId:      string;
+  /** Length of the new notes string (0 when cleared). Never include the
+   *  notes body itself — that can contain sensitive customer details a
+   *  salesperson typed during the call. */
+  notesLength: number;
+}
+
+/** call.notes_updated — POST /calls/:id/notes touched the notes column. */
+export async function recordCallNotesUpdated(
+  client: PoolClient,
+  input: RecordCallNotesUpdatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call.notes_updated",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      notes_length: input.notesLength,
+    },
+  });
+}
+
+export interface RecordCallManualSummaryUpdatedInput {
+  orgId:       string;
+  actorUserId: string;
+  callId:      string;
+  /** Names of the four manual-summary columns the user touched
+   *  (summary / needs / issues / sentiment) — never their values. */
+  fields:      string[];
+}
+
+/** call.manual_summary_updated — POST /calls/:id/summary/manual. */
+export async function recordCallManualSummaryUpdated(
+  client: PoolClient,
+  input: RecordCallManualSummaryUpdatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call.manual_summary_updated",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      fields: input.fields,
+    },
+  });
+}
+
+// ---------------------------------------------------------------- //
+// call_action_items
+// ---------------------------------------------------------------- //
+//
+// All call_action_item.* events share `target_type='call_action_item'`,
+// `target_id=call_action_items.id`. The parent `call_id` is included
+// in the payload because the action item itself doesn't carry a stable
+// human label — the auditor needs the parent call to find the row in
+// context.
+
+export type CallActionItemStatus = "open" | "done" | "dropped";
+
+export interface RecordActionItemCreatedInput {
+  orgId:           string;
+  actorUserId:     string;
+  actionItemId:    string;
+  callId:          string;
+  assigneeUserId:  string | null;
+}
+
+/** call_action_item.created — POST /calls/:id/action-items. */
+export async function recordActionItemCreated(
+  client: PoolClient,
+  input: RecordActionItemCreatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call_action_item.created",
+    targetType:  "call_action_item",
+    targetId:    input.actionItemId,
+    payload: {
+      call_id:           input.callId,
+      assignee_user_id:  input.assigneeUserId,
+    },
+  });
+}
+
+export interface RecordActionItemStatusChangedInput {
+  orgId:        string;
+  actorUserId:  string;
+  actionItemId: string;
+  callId:       string;
+  fromStatus:   CallActionItemStatus;
+  toStatus:     CallActionItemStatus;
+}
+
+/** call_action_item.status_changed — POST /call-action-items/:id/status. */
+export async function recordActionItemStatusChanged(
+  client: PoolClient,
+  input: RecordActionItemStatusChangedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call_action_item.status_changed",
+    targetType:  "call_action_item",
+    targetId:    input.actionItemId,
+    payload: {
+      call_id:     input.callId,
+      from_status: input.fromStatus,
+      to_status:   input.toStatus,
+    },
+  });
+}
+
+export interface RecordActionItemAssigneeChangedInput {
+  orgId:               string;
+  actorUserId:         string;
+  actionItemId:        string;
+  callId:              string;
+  fromAssigneeUserId:  string | null;
+  toAssigneeUserId:    string | null;
+}
+
+/** call_action_item.assignee_changed — POST /call-action-items/:id/assignee. */
+export async function recordActionItemAssigneeChanged(
+  client: PoolClient,
+  input: RecordActionItemAssigneeChangedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call_action_item.assignee_changed",
+    targetType:  "call_action_item",
+    targetId:    input.actionItemId,
+    payload: {
+      call_id:               input.callId,
+      from_assignee_user_id: input.fromAssigneeUserId,
+      to_assignee_user_id:   input.toAssigneeUserId,
+    },
+  });
+}
+
+export interface RecordActionItemDeletedInput {
+  orgId:        string;
+  actorUserId:  string;
+  actionItemId: string;
+  callId:       string;
+}
+
+/** call_action_item.deleted — DELETE /call-action-items/:id. */
+export async function recordActionItemDeleted(
+  client: PoolClient,
+  input: RecordActionItemDeletedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "call_action_item.deleted",
+    targetType:  "call_action_item",
+    targetId:    input.actionItemId,
+    payload: {
+      call_id: input.callId,
+    },
+  });
+}

@@ -28,6 +28,7 @@ import {
   assertCanMutateCall,
   type Actor,
 } from "./callPermissions.js";
+import { recordActionItemDeleted } from "./activityLog.js";
 
 // Returns true when a row was deleted; false otherwise (missing /
 // cross-org / soft-deleted parent / already deleted). Throws
@@ -51,6 +52,19 @@ export async function deleteActionItem(
     await assertCanMutateCall(client, actor, {
       agent_user_id: parent.agent_user_id,
     });
-    return actionItemsRepo.deleteByIdInCurrentOrg(client, id);
+    const ok = await actionItemsRepo.deleteByIdInCurrentOrg(client, id);
+    if (ok) {
+      // Phase 7 Step 3 — audit inside the same tx as the DELETE so a
+      // hook-row failure rolls the delete back together. The parent
+      // call id comes from the look-up above; it stays meaningful for
+      // the auditor even after the row itself is gone.
+      await recordActionItemDeleted(client, {
+        orgId:        actor.orgId,
+        actorUserId:  actor.id,
+        actionItemId: id,
+        callId:       parent.call_id,
+      });
+    }
+    return ok;
   });
 }

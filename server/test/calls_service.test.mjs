@@ -25,6 +25,11 @@ const ORG_BETA = "22222222-2222-2222-2222-222222222222";
 
 const CUSTOMER_ACME_KIM = "eeeeeeee-1111-0001-0001-eeeeeeeeeeee";
 
+// Phase 7 Step 3 — service-layer audit hook requires a real actor user
+// id for the activity_log INSERT. Seeded admin for ORG_ACME / ORG_BETA.
+const ACME_ADMIN = "aaaaaaaa-0001-0001-0001-aaaaaaaaaaaa";
+const BETA_ADMIN = "bbbbbbbb-0001-0001-0001-bbbbbbbbbbbb";
+
 let app;
 
 before(async () => {
@@ -78,7 +83,7 @@ test("endCall sets status=ended, ended_at, duration_seconds", async () => {
 
     try {
         const endedAt = new Date();
-        const ended = await callsService.endCall(app, ORG_ACME, created.id, {
+        const ended = await callsService.endCall(app, ORG_ACME, ACME_ADMIN, created.id, {
             endedAt,
         });
         assert.ok(ended);
@@ -119,7 +124,7 @@ test("endCall advances customers.last_contacted_at for the linked customer", asy
             );
 
             const endedAt = new Date();
-            await callsService.endCall(app, ORG_ACME, created.id, { endedAt });
+            await callsService.endCall(app, ORG_ACME, ACME_ADMIN, created.id, { endedAt });
 
             const newContact = await readCustomerLastContact(
                 ORG_ACME,
@@ -166,6 +171,7 @@ test("endCall keeps customers.last_contacted_at monotonic with older endedAt", a
             const ended = await callsService.endCall(
                 app,
                 ORG_ACME,
+                ACME_ADMIN,
                 created.id,
                 { endedAt: olderEndedAt },
             );
@@ -206,7 +212,7 @@ test("endCall with customer_id NULL leaves customers untouched", async () => {
         }),
     );
     try {
-        await callsService.endCall(app, ORG_ACME, created.id, {
+        await callsService.endCall(app, ORG_ACME, ACME_ADMIN, created.id, {
             endedAt: new Date(),
         });
 
@@ -233,6 +239,7 @@ test("endCall against a cross-org call returns null and does not end it", async 
         const result = await callsService.endCall(
             app,
             ORG_BETA,
+            BETA_ADMIN,
             acmeCall.id,
             { endedAt: new Date() },
         );
@@ -301,7 +308,7 @@ test("withOrgContext rollback: throw after endByIdInCurrentOrg leaves call unmod
 // ---------- 7. createCall / listCalls / getCallById quick happy path ---------- //
 
 test("createCall + listCalls + getCallById round-trip", async () => {
-    const created = await callsService.createCall(app, ORG_ACME, {
+    const created = await callsService.createCall(app, ORG_ACME, ACME_ADMIN, {
         direction: "outbound",
         title: "phase4-svc-test/roundtrip",
     });
