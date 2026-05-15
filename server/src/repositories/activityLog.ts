@@ -199,6 +199,44 @@ export async function insertActivity(
   return r.rows[0]!;
 }
 
+/** Same INSERT as `insertActivity`, minus the RETURNING clause.
+ *
+ * Why a separate helper: PostgreSQL evaluates `INSERT ... RETURNING`
+ * against the table's SELECT privilege as well as INSERT. The
+ * `kloser_service` role (used by anonymous login-time MFA flows in
+ * `services/auth.ts`) is granted INSERT-only on `activity_log`
+ * (migration `1715000025000_phase7_activity_log_service_insert_grant.sql`,
+ * which deliberately withholds SELECT/UPDATE/DELETE per plan §3.2).
+ * Calling `insertActivity()` from a kloser_service connection fails
+ * with `permission denied for table activity_log` even though the
+ * INSERT itself is permitted, because RETURNING needs SELECT.
+ *
+ * `insertActivityVoid()` is the matching service-pool entry point:
+ * same row, same sanitization contract (the service-layer caller
+ * applies the sanitizer), no RETURNING, no read-back. Use it from
+ * service-pool transactions only; app-pool callers should keep using
+ * `insertActivity()` so they can inspect the row.
+ */
+export async function insertActivityVoid(
+  client: PoolClient,
+  input: InsertActivityInput,
+): Promise<void> {
+  const payload = normalizePayload(input.payload);
+  await client.query(
+    `INSERT INTO activity_log (
+        org_id, user_id, action, target_type, target_id, payload
+     ) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      input.orgId,
+      input.userId ?? null,
+      input.action,
+      input.targetType ?? null,
+      input.targetId ?? null,
+      payload,
+    ],
+  );
+}
+
 // ============================================================ //
 // listForCurrentOrg / countForCurrentOrg
 // ============================================================ //

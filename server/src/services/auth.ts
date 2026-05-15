@@ -53,6 +53,7 @@ import {
 } from "./totp.js";
 import {
   recordActivity,
+  recordActivityVoid,
   recordMfaDisabled,
   recordMfaEnabled,
 } from "./activityLog.js";
@@ -1190,12 +1191,40 @@ export async function verifyLoginMfa(input: {
       // so use CommitAuthError — the outer catch commits before
       // re-raising, mirroring refresh()'s family-revoke pattern.
       const newCount = await mfaUsers.incrementFailedAttempts(client, userId);
+      // Phase 7 Step 3 — audit the failed attempt. recordActivityVoid
+      // (no RETURNING) because this runs on the servicePool whose role
+      // has INSERT-only privilege on activity_log. CommitAuthError
+      // below makes the outer catch COMMIT before re-raising, so the
+      // counter / lock / audit rows all persist together. Payload never
+      // carries the user-typed code or the raw challenge token.
+      await recordActivityVoid(client, {
+        orgId:       orgId,
+        actorUserId: userId,
+        action:      "mfa.failed_attempt",
+        targetType:  "user",
+        targetId:    userId,
+        payload: {
+          flow:                 "login_verify",
+          failed_attempt_count: newCount,
+        },
+      });
       if (newCount >= MFA_LOCKOUT_THRESHOLD) {
-        await mfaUsers.setLockedUntil(
-          client,
-          userId,
-          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
-        );
+        const lockedUntil = new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS);
+        await mfaUsers.setLockedUntil(client, userId, lockedUntil);
+        // Lock transition-only: subsequent attempts while locked throw
+        // at the "lockout still in effect" branch up top and never reach
+        // this code, so this audit fires exactly once per lockout.
+        await recordActivityVoid(client, {
+          orgId:       orgId,
+          actorUserId: userId,
+          action:      "mfa.locked",
+          targetType:  "user",
+          targetId:    userId,
+          payload: {
+            flow:         "login_verify",
+            locked_until: lockedUntil,
+          },
+        });
         throw new CommitAuthError(423, "mfa_locked",
           "MFA temporarily locked due to too many failed attempts");
       }
@@ -1221,6 +1250,18 @@ export async function verifyLoginMfa(input: {
       ip:            input.ip,
       mfaVerifiedAt: now,
       mfaMethod:     "totp",
+    });
+
+    // Phase 7 Step 3 — audit successful MFA login. target is the freshly
+    // minted session row so an admin can pivot from "which sessions
+    // crossed the MFA gate" via the org+target index.
+    await recordActivityVoid(client, {
+      orgId:       ctx.organization.id,
+      actorUserId: ctx.user.id,
+      action:      "mfa.login_verified",
+      targetType:  "session",
+      targetId:    session.id,
+      payload:     { method: "totp" },
     });
 
     await client.query("COMMIT");
@@ -1383,6 +1424,24 @@ export async function setupLoginMfaChallenge(input: {
       keyVersion: 1,
     });
 
+    // Phase 7 Step 3 — audit setup-started for the login-time flow.
+    // recordActivityVoid because we're on the servicePool. Payload
+    // carries flow + method only; the secret material (raw / ciphertext
+    // / iv / tag / otpauthUri / base32) is forbidden from audit by the
+    // sanitizer's key rules AND we don't construct it into payload —
+    // defense in depth.
+    await recordActivityVoid(client, {
+      orgId:       orgId,
+      actorUserId: userId,
+      action:      "mfa.setup_started",
+      targetType:  "user",
+      targetId:    userId,
+      payload: {
+        flow:   "login_challenge",
+        method: "totp",
+      },
+    });
+
     // Challenge is NOT marked consumed — the user must come back with a
     // valid TOTP code via confirm-challenge to actually complete.
 
@@ -1516,12 +1575,34 @@ export async function confirmLoginMfaChallenge(input: {
       // the user can retry with the same secret and same challenge
       // (the challenge is NOT consumed on failure).
       const newCount = await mfaUsers.incrementFailedAttempts(client, userId);
+      // Phase 7 Step 3 — audit. recordActivityVoid because of the
+      // servicePool INSERT-only privilege; CommitAuthError carries the
+      // increment + audit through commit before the error surfaces.
+      await recordActivityVoid(client, {
+        orgId:       orgId,
+        actorUserId: userId,
+        action:      "mfa.failed_attempt",
+        targetType:  "user",
+        targetId:    userId,
+        payload: {
+          flow:                 "login_setup_confirm",
+          failed_attempt_count: newCount,
+        },
+      });
       if (newCount >= MFA_LOCKOUT_THRESHOLD) {
-        await mfaUsers.setLockedUntil(
-          client,
-          userId,
-          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
-        );
+        const lockedUntil = new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS);
+        await mfaUsers.setLockedUntil(client, userId, lockedUntil);
+        await recordActivityVoid(client, {
+          orgId:       orgId,
+          actorUserId: userId,
+          action:      "mfa.locked",
+          targetType:  "user",
+          targetId:    userId,
+          payload: {
+            flow:         "login_setup_confirm",
+            locked_until: lockedUntil,
+          },
+        });
         throw new CommitAuthError(423, "mfa_locked",
           "MFA temporarily locked due to too many failed attempts");
       }
@@ -1580,6 +1661,19 @@ export async function confirmLoginMfaChallenge(input: {
       // downstream policy see this as a real MFA-verified session.
       mfaVerifiedAt: now,
       mfaMethod:     "totp",
+    });
+
+    // Phase 7 Step 3 — audit completed enrollment via login-time flow.
+    // recordActivityVoid (servicePool INSERT-only). target=user matches
+    // the app-pool `mfa.enabled` shape so the admin audit view can
+    // group both flows under a single "MFA enabled" row per user.
+    await recordActivityVoid(client, {
+      orgId:       ctx.organization.id,
+      actorUserId: ctx.user.id,
+      action:      "mfa.enabled",
+      targetType:  "user",
+      targetId:    ctx.user.id,
+      payload:     { method: "totp" },
     });
 
     await client.query("COMMIT");

@@ -41,6 +41,7 @@
 import type { PoolClient } from "pg";
 import {
   insertActivity,
+  insertActivityVoid,
   type ActivityAction,
   type ActivityTargetType,
 } from "../repositories/activityLog.js";
@@ -303,6 +304,45 @@ export async function recordActivity(
 ): Promise<void> {
   const safePayload = sanitizeActivityPayload(input.payload);
   await insertActivity(client, {
+    orgId:      input.orgId,
+    userId:     input.actorUserId ?? null,
+    action:     input.action,
+    targetType: input.targetType ?? null,
+    targetId:   input.targetId ?? null,
+    payload:    safePayload,
+  });
+}
+
+/** Same contract as `recordActivity`, but for service-pool transactions
+ *  whose role has INSERT-only privilege on `activity_log`.
+ *
+ *  The `kloser_service` runtime role (migration `1715000025000_phase7_
+ *  activity_log_service_insert_grant.sql`) is intentionally granted
+ *  INSERT only — no SELECT/UPDATE/DELETE — per plan §3.2. PostgreSQL
+ *  evaluates `INSERT ... RETURNING` against SELECT as well, so the
+ *  app-pool `recordActivity()` path (which uses `insertActivity()` with
+ *  RETURNING) fails with `permission denied for table activity_log`
+ *  even for permitted INSERTs.
+ *
+ *  `recordActivityVoid()` is the service-pool entry point:
+ *    - same sanitizer (sanitizeActivityPayload), same forbidden-key /
+ *      truncation / Date-normalisation rules,
+ *    - same transactional contract — sanitizer error throws before any
+ *      SQL, DB failure bubbles up so the caller's servicePool
+ *      transaction rolls back,
+ *    - calls `insertActivityVoid()` (no RETURNING) so INSERT-only
+ *      privilege is enough.
+ *
+ *  Use from anonymous login-time MFA flows in `services/auth.ts`
+ *  (verifyLoginMfa / setupLoginMfaChallenge / confirmLoginMfaChallenge).
+ *  App-pool callers should keep using `recordActivity()`.
+ */
+export async function recordActivityVoid(
+  client: PoolClient,
+  input: RecordActivityInput,
+): Promise<void> {
+  const safePayload = sanitizeActivityPayload(input.payload);
+  await insertActivityVoid(client, {
     orgId:      input.orgId,
     userId:     input.actorUserId ?? null,
     action:     input.action,
