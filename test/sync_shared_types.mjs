@@ -168,6 +168,16 @@ const ENTITY_REGISTRY = [
         browser: "platform/types/teamReport.js",
         types: ["TeamReportSummary", "TeamReportRecentCall"],
     },
+    {
+        name: "organizationSecurity",
+        server: "server/src/types/organizationSecurity.ts",
+        browser: "platform/types/organizationSecurity.js",
+        // Stray-field rejection on the PATCH body is enforced at the
+        // route layer via zod `.strict()` (see routes/organizationSecurity.ts) —
+        // the source schema below stays a plain z.object literal so the
+        // parser's bare `})` close still matches.
+        types: ["OrganizationSecurityResponse", "OrganizationSecurityPatchInput"],
+    },
 ];
 
 // ---------- parsers ---------- //

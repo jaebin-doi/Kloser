@@ -21,6 +21,7 @@ import dashboardRoutes from "./routes/dashboard.js";
 import invitationsRoutes from "./routes/invitations.js";
 import knowledgeBasesRoutes from "./routes/knowledgeBases.js";
 import meRoutes from "./routes/me.js";
+import organizationSecurityRoutes from "./routes/organizationSecurity.js";
 import reportsRoutes from "./routes/reports.js";
 import teamRoutes from "./routes/team.js";
 
@@ -67,6 +68,7 @@ await app.register(checklistTemplatesRoutes);
 await app.register(knowledgeBasesRoutes);
 await app.register(dashboardRoutes);
 await app.register(reportsRoutes);
+await app.register(organizationSecurityRoutes);
 
 app.get("/health", async () => ({
   ok: true,
