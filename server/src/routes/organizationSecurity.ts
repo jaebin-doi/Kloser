@@ -127,6 +127,7 @@ async function organizationSecurityRoutes(app: FastifyInstance) {
       const result = await app.withOrgContext(
         request.orgId,
         (client) => setOrganizationMfaRequired(client, {
+          orgId:    request.orgId!,
           userId:   request.user!.id,
           required: parsed.mfa_required,
         }),

@@ -10,7 +10,7 @@
  *       Used by GET /organization/security (admin-only at the route
  *       layer).
  *
- *   setOrganizationMfaRequired(client, { userId, required })
+ *   setOrganizationMfaRequired(client, { orgId, userId, required })
  *     → flips the toggle. When `required=true` the caller MUST already
  *       have their own MFA enabled (plan §5.2: admin cannot impose a
  *       policy they themselves haven't satisfied). `required=false` is
@@ -34,6 +34,7 @@ import {
   getCurrentOrgSecurity,
   setCurrentOrgMfaRequired,
 } from "../repositories/organizations.js";
+import { recordOrgMfaRequiredChanged } from "./activityLog.js";
 
 export interface OrganizationSecurityResult {
   mfa_required:              boolean;
@@ -93,7 +94,11 @@ export async function getOrganizationSecurity(
 
 export async function setOrganizationMfaRequired(
   client: PoolClient,
-  input: { userId: string; required: boolean },
+  // Phase 7 Step 3 — orgId added so the audit row can carry an explicit
+  // org/target rather than relying on `current_app_org_id()` plumbing.
+  // The route already has it from `request.orgId`; passing it down is a
+  // one-line change that keeps the audit insert deterministic.
+  input: { orgId: string; userId: string; required: boolean },
 ): Promise<OrganizationSecurityResult> {
   if (input.required) {
     // The "admin must already have MFA" gate. Plan §5.2: locking the
@@ -120,5 +125,20 @@ export async function setOrganizationMfaRequired(
       "could not update organization security");
   }
 
-  return loadResult(client, input.userId);
+  // Load the post-update snapshot first so the audit row can stamp the
+  // member-count at the moment of change.
+  const result = await loadResult(client, input.userId);
+
+  // Phase 7 Step 3 — audit the toggle. Same transaction as the UPDATE
+  // (caller's `app.withOrgContext`), so an audit failure rolls the
+  // mfa_required flip back together with this insert — the desired
+  // high-risk behavior for an org-wide security policy change.
+  await recordOrgMfaRequiredChanged(client, {
+    orgId:                  input.orgId,
+    actorUserId:            input.userId,
+    required:               input.required,
+    membersWithoutMfaCount: result.members_without_mfa_count,
+  });
+
+  return result;
 }

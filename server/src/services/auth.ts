@@ -51,6 +51,11 @@ import {
   generateTotpSecret,
   verifyTotp,
 } from "./totp.js";
+import {
+  recordActivity,
+  recordMfaDisabled,
+  recordMfaEnabled,
+} from "./activityLog.js";
 
 export interface AccessTokenPayload {
   sub: string;
@@ -904,6 +909,25 @@ export async function login(input: {
         ttlMs:   TTL_MFA_CHALLENGE_MS,
       });
 
+      // Phase 7 Step 3 — audit the challenge issuance. Inside the same
+      // withTransaction so an audit failure rolls back the token mint
+      // (high-risk: the alternative is silently issuing a challenge with
+      // no audit trail). target_id is the auth_tokens row id; the raw
+      // token is NEVER recorded — it would be a bearer credential for
+      // the next 5 minutes.
+      await recordActivity(client, {
+        orgId:       organization.id,
+        actorUserId: user.id,
+        action:      "mfa.login_challenge_issued",
+        targetType:  "auth_token",
+        targetId:    challenge.tokenId,
+        payload: {
+          kind:       userMfaEnabled ? "mfa_required" : "mfa_setup_required",
+          method:     userMfaEnabled ? "totp" : null,
+          expires_at: challenge.expiresAt,
+        },
+      });
+
       if (userMfaEnabled) {
         return {
           kind: "mfa_required" as const,
@@ -1688,6 +1712,23 @@ export async function startAuthenticatedTotpSetup(input: {
       keyVersion: 1,
     });
 
+    // Phase 7 Step 3 — audit the start of authenticated enrollment.
+    // Payload carries only the flow tag + method; the secret material
+    // (raw / ciphertext / iv / tag / otpauthUri / base32) is forbidden
+    // from audit by the sanitizer's key rules anyway, but we don't
+    // construct it into payload either — defense in depth.
+    await recordActivity(client, {
+      orgId:       input.orgId,
+      actorUserId: input.userId,
+      action:      "mfa.setup_started",
+      targetType:  "user",
+      targetId:    input.userId,
+      payload: {
+        flow:   "authenticated",
+        method: "totp",
+      },
+    });
+
     const otpauthUri = buildOtpauthUri({
       issuer:       "Kloser",
       accountEmail: userRow.email,
@@ -1780,12 +1821,41 @@ export async function confirmAuthenticatedTotp(input: {
     const ok = verifyTotp({ secretBase32, code: input.code, now });
     if (!ok) {
       const newCount = await mfaUsers.incrementFailedAttempts(client, input.userId);
+      // Phase 7 Step 3 — audit the failed attempt. CommitAuthError below
+      // makes the outer catch COMMIT before re-raising, so the counter
+      // UPDATE + this audit row + any lockout UPDATE all persist together.
+      // payload carries only the flow + the new counter value; the user-
+      // typed code is NEVER recorded (audit must not echo credentials).
+      await recordActivity(client, {
+        orgId:       input.orgId,
+        actorUserId: input.userId,
+        action:      "mfa.failed_attempt",
+        targetType:  "user",
+        targetId:    input.userId,
+        payload: {
+          flow:                 "authenticated_confirm",
+          failed_attempt_count: newCount,
+        },
+      });
       if (newCount >= MFA_LOCKOUT_THRESHOLD) {
-        await mfaUsers.setLockedUntil(
-          client,
-          input.userId,
-          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
-        );
+        const lockedUntil = new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS);
+        await mfaUsers.setLockedUntil(client, input.userId, lockedUntil);
+        // Phase 7 Step 3 — only record `mfa.locked` on the transition
+        // (this branch fires only when newCount JUST hit the threshold).
+        // Subsequent attempts while locked throw at the top-of-function
+        // `mfa_locked_until > now` check and never reach this branch,
+        // so there's no spam-on-retry.
+        await recordActivity(client, {
+          orgId:       input.orgId,
+          actorUserId: input.userId,
+          action:      "mfa.locked",
+          targetType:  "user",
+          targetId:    input.userId,
+          payload: {
+            flow:         "authenticated_confirm",
+            locked_until: lockedUntil,
+          },
+        });
         throw new CommitAuthError(423, "mfa_locked",
           "MFA temporarily locked due to too many failed attempts");
       }
@@ -1818,6 +1888,16 @@ export async function confirmAuthenticatedTotp(input: {
 
     await mfaUsers.resetFailedAttempts(client, input.userId);
     await mfaUsers.setLockedUntil(client, input.userId, null);
+
+    // Phase 7 Step 3 — audit successful enrollment. actor=target because
+    // authenticated confirm is self-enrollment; helper writes
+    // action='mfa.enabled', target_type='user', payload={method:'totp'}.
+    await recordMfaEnabled(client, {
+      orgId:        input.orgId,
+      actorUserId:  input.userId,
+      targetUserId: input.userId,
+      method:       "totp",
+    });
 
     await client.query("COMMIT");
     client.release();
@@ -1953,12 +2033,31 @@ export async function disableTotp(input: {
     const ok = verifyTotp({ secretBase32, code: input.code, now });
     if (!ok) {
       const newCount = await mfaUsers.incrementFailedAttempts(client, input.userId);
+      await recordActivity(client, {
+        orgId:       input.orgId,
+        actorUserId: input.userId,
+        action:      "mfa.failed_attempt",
+        targetType:  "user",
+        targetId:    input.userId,
+        payload: {
+          flow:                 "disable",
+          failed_attempt_count: newCount,
+        },
+      });
       if (newCount >= MFA_LOCKOUT_THRESHOLD) {
-        await mfaUsers.setLockedUntil(
-          client,
-          input.userId,
-          new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS),
-        );
+        const lockedUntil = new Date(now.getTime() + MFA_LOCKOUT_DURATION_MS);
+        await mfaUsers.setLockedUntil(client, input.userId, lockedUntil);
+        await recordActivity(client, {
+          orgId:       input.orgId,
+          actorUserId: input.userId,
+          action:      "mfa.locked",
+          targetType:  "user",
+          targetId:    input.userId,
+          payload: {
+            flow:         "disable",
+            locked_until: lockedUntil,
+          },
+        });
         throw new CommitAuthError(423, "mfa_locked",
           "MFA temporarily locked due to too many failed attempts");
       }
@@ -1982,6 +2081,16 @@ export async function disableTotp(input: {
     // force a contortion to keep the both-or-neither check-constraint
     // pairing intact without breaking the active session.
     await mfaUsers.clearMfa(client, input.userId);
+
+    // Phase 7 Step 3 — audit successful disable. self-disable, so
+    // actor=target. Helper writes action='mfa.disabled', target_type=
+    // 'user', payload={method:'totp'}.
+    await recordMfaDisabled(client, {
+      orgId:        input.orgId,
+      actorUserId:  input.userId,
+      targetUserId: input.userId,
+      method:       "totp",
+    });
 
     await client.query("COMMIT");
     client.release();
@@ -2033,10 +2142,34 @@ async function assertRefreshMfaGate(
     orgId:  session.org_id,
   });
   if (state.userMfaEnabledAt !== null || state.orgRequiresMfa) {
-    // Plain AuthError (not CommitAuthError) — the withTransaction
-    // wrapper rolls back, so no UPDATE / INSERT lingers. Family revoke
-    // is intentionally NOT issued (plan §2.5 default).
-    throw new AuthError(401, "mfa_required", "MFA verification required");
+    // Phase 7 Step 3 — record the gated refresh. CommitAuthError makes
+    // the withTransaction wrapper COMMIT before re-raising so the audit
+    // row persists; the original plan §2.5 "no UPDATE/INSERT lingers"
+    // intent is preserved because the only DB write on this path IS
+    // the audit row (the refresh path never touched sessions/auth_tokens
+    // before we got here). Family revoke is still NOT issued.
+    //
+    // GUC is already pinned on session.org_id by the upstream
+    // getSessionMembershipRole call in refresh() (both the grace branch
+    // and the fresh-rotation branch run it before this gate).
+    //
+    // payload is reason-only — no refresh token, no session token, no
+    // raw cookie material. target_type=session anchors the audit row to
+    // the session whose rotation was blocked, so an admin can pivot
+    // "which session got bounced" via the org+target index.
+    await recordActivity(client, {
+      orgId:       session.org_id,
+      actorUserId: session.user_id,
+      action:      "auth.refresh_mfa_required",
+      targetType:  "session",
+      targetId:    session.id,
+      payload: {
+        reason: state.userMfaEnabledAt !== null
+          ? "user_mfa_enabled_session_not_verified"
+          : "org_mfa_required_session_not_verified",
+      },
+    });
+    throw new CommitAuthError(401, "mfa_required", "MFA verification required");
   }
 }
 
@@ -2117,8 +2250,8 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
     }
 
     // Phase 7 Step 2 — gate the fresh-rotation path on the LEASED
-    // session's MFA fields. If the gate trips the AuthError unwinds
-    // the transaction, so no INSERT / UPDATE has run yet; the family
+    // session's MFA fields. If the gate trips, it commits only the
+    // auth.refresh_mfa_required audit row before rethrowing; the family
     // and the leased row stay untouched.
     await assertRefreshMfaGate(client, session);
 
