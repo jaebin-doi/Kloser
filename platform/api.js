@@ -182,10 +182,117 @@
       err.body = body;
       throw err;
     }
+    // Phase 7 Step 2 — 200 happy-path body carries `accessToken`; the
+    // 202 MFA challenge body carries `{ mfa: {...} }` instead and we
+    // must NOT set an access token. The caller branches on body.mfa.
     if (body && typeof body.accessToken === 'string') {
       setAccessToken(body.accessToken);
     }
     return body;
+  }
+
+  // ─────────────────────────────────────────────
+  // Phase 7 Step 2 — MFA login helpers.
+  //
+  // All three are anonymous (no Bearer header) — they consume a
+  // short-lived `challengeToken` from /auth/login's 202 response in
+  // its place. The token lives 5 minutes server-side; do NOT persist
+  // it to localStorage / sessionStorage. The login page should hold
+  // it in a closure variable for the duration of the MFA step and
+  // drop it once the flow completes (success or back-to-password).
+  //
+  // verifyLoginMfa / confirmLoginMfaChallenge return AuthResult on 200
+  // (same shape as /auth/login happy path). They auto-stash the
+  // accessToken so the caller can navigate immediately, mirroring
+  // signup() / acceptInvitation().
+  //
+  // setupLoginMfaChallenge returns { otpauthUri, secretBase32 } and
+  // does NOT mint a session — the user must come back through
+  // /auth/mfa/totp/confirm-challenge to actually get an access token.
+  //
+  // All three return { status, body } (no throw on 4xx) so the page
+  // can branch on body.code for error variants like:
+  //   401 mfa_invalid_challenge / mfa_invalid_code
+  //   423 mfa_locked
+  //   500 mfa_secret_corrupt
+  // ─────────────────────────────────────────────
+  async function verifyLoginMfa(challengeToken, code) {
+    const res = await rawFetch('/auth/mfa/totp/verify-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeToken: challengeToken, code: code }),
+    });
+    const body = await parseJsonResponse(res);
+    if (res.ok && body && typeof body.accessToken === 'string') {
+      setAccessToken(body.accessToken);
+    }
+    return { status: res.status, body: body };
+  }
+
+  async function setupLoginMfaChallenge(challengeToken) {
+    const res = await rawFetch('/auth/mfa/totp/setup-challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeToken: challengeToken }),
+    });
+    return { status: res.status, body: await parseJsonResponse(res) };
+  }
+
+  async function confirmLoginMfaChallenge(challengeToken, code) {
+    const res = await rawFetch('/auth/mfa/totp/confirm-challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeToken: challengeToken, code: code }),
+    });
+    const body = await parseJsonResponse(res);
+    if (res.ok && body && typeof body.accessToken === 'string') {
+      setAccessToken(body.accessToken);
+    }
+    return { status: res.status, body: body };
+  }
+
+  // ─────────────────────────────────────────────
+  // Phase 7 Step 2 — Authenticated MFA management.
+  //
+  // These ride on the existing session (Bearer + auto-refresh), so
+  // they return the raw Response like other Phase 4/5 helpers. The
+  // caller is expected to inspect res.ok and read res.json() — error
+  // bodies follow the AuthError shape `{ error, code }`.
+  //
+  // disableTotp sends a body on DELETE, which the in-tree apiDelete
+  // helper doesn't support, so it calls authFetch directly with the
+  // explicit Content-Type header.
+  // ─────────────────────────────────────────────
+  function startAuthenticatedTotpSetup(currentPassword) {
+    return apiPost('/auth/mfa/totp/setup', { currentPassword: currentPassword });
+  }
+
+  function confirmAuthenticatedTotp(code) {
+    return apiPost('/auth/mfa/totp/confirm', { code: code });
+  }
+
+  function disableTotp(currentPassword, code) {
+    return authFetch('/auth/mfa/totp', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: currentPassword, code: code }),
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // Phase 7 Step 2 — Organization security (admin-only on PATCH).
+  //
+  // GET surfaces { mfa_required, current_user_mfa_enabled,
+  // members_without_mfa_count? }. PATCH body is strict — only
+  // `mfa_required` is accepted; stray fields hit 400. Non-admin
+  // callers get 403 on both endpoints.
+  // ─────────────────────────────────────────────
+  function getOrganizationSecurity() {
+    return apiGet('/organization/security');
+  }
+
+  function setOrganizationMfaRequired(required) {
+    return apiPatch('/organization/security', { mfa_required: !!required });
   }
 
   // ─────────────────────────────────────────────
@@ -585,6 +692,20 @@
     login: login,
     logout: logout,
     refreshAccessToken: refreshAccessToken,
+
+    // Phase 7 Step 2 — MFA login (anonymous, 5-min challengeToken).
+    verifyLoginMfa: verifyLoginMfa,
+    setupLoginMfaChallenge: setupLoginMfaChallenge,
+    confirmLoginMfaChallenge: confirmLoginMfaChallenge,
+
+    // Phase 7 Step 2 — MFA management (authenticated).
+    startAuthenticatedTotpSetup: startAuthenticatedTotpSetup,
+    confirmAuthenticatedTotp: confirmAuthenticatedTotp,
+    disableTotp: disableTotp,
+
+    // Phase 7 Step 2 — Organization security (admin-only PATCH).
+    getOrganizationSecurity: getOrganizationSecurity,
+    setOrganizationMfaRequired: setOrganizationMfaRequired,
 
     // Phase 3 Step 6 — anonymous endpoint wrappers, all return
     // { status, body } so pages can branch without a try/catch.

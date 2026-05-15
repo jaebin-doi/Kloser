@@ -10,6 +10,10 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script
+    src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"
+    integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k"
+    crossorigin="anonymous"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -127,6 +131,11 @@
         </span>
       </div>
 
+      <!-- Phase 7 Step 2 — three sibling cards, only one visible at a
+           time. Step is controlled in JS via the `hidden` attribute on
+           each section. Order: password → mfa-verify | mfa-setup. -->
+
+      <!-- Step 1: email/password -->
       <form id="login-form" class="card p-7 sm:p-8" novalidate>
         <h1 class="text-[1.25rem] font-black tracking-tight">로그인</h1>
         <p class="mt-1 text-[.82rem] text-slate-500">
@@ -203,6 +212,109 @@
         </div>
       </form>
 
+      <!-- Step 2: MFA verify (mfa_required) — user already has TOTP enrolled. -->
+      <form id="mfa-verify-form" class="card p-7 sm:p-8" hidden novalidate>
+        <h1 class="text-[1.25rem] font-black tracking-tight">2단계 인증</h1>
+        <p class="mt-1 text-[.82rem] text-slate-500">
+          인증 앱(Google Authenticator, 1Password 등)에 표시된 6자리 코드를 입력하세요.
+        </p>
+
+        <div class="mt-6 space-y-4">
+          <div>
+            <label for="mfa-verify-code" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">
+              인증 코드
+            </label>
+            <input id="mfa-verify-code" name="code" type="text"
+                   inputmode="numeric" autocomplete="one-time-code"
+                   pattern="[0-9]{6}" minlength="6" maxlength="6"
+                   class="field tracking-[0.5em] text-center font-mono text-lg"
+                   placeholder="000000" required>
+            <p class="mt-1.5 text-[.7rem] text-slate-500">
+              코드는 30초마다 갱신됩니다.
+            </p>
+          </div>
+        </div>
+
+        <button id="mfa-verify-submit" type="submit" class="btn-primary mt-6">
+          확인
+        </button>
+
+        <button id="mfa-verify-back" type="button"
+                class="mt-3 w-full text-[.78rem] text-slate-500 hover:text-slate-700 underline-offset-4 hover:underline">
+          이메일/비밀번호로 돌아가기
+        </button>
+
+        <div id="mfa-verify-error" hidden
+             class="mt-4 px-3 py-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[.8rem]">
+        </div>
+      </form>
+
+      <!-- Step 3: MFA setup (mfa_setup_required) — org requires MFA, user not enrolled. -->
+      <form id="mfa-setup-form" class="card p-7 sm:p-8" hidden novalidate>
+        <h1 class="text-[1.25rem] font-black tracking-tight">2단계 인증 등록</h1>
+        <p class="mt-1 text-[.82rem] text-slate-500">
+          조직 정책에 따라 2단계 인증 등록이 필요합니다. 인증 앱에서 아래 QR 코드를 스캔하세요.
+        </p>
+
+        <div id="mfa-setup-loading" class="mt-6 text-[.82rem] text-slate-500">
+          등록 정보를 준비하는 중…
+        </div>
+
+        <div id="mfa-setup-body" hidden class="mt-6 space-y-4">
+          <div id="mfa-setup-qr-wrap"
+               class="flex flex-col items-center gap-2 px-4 py-4 rounded-lg bg-white border border-slate-200">
+            <img id="mfa-setup-qr" alt="Kloser 2단계 인증 QR 코드"
+                 class="w-48 h-48 border border-slate-100 rounded-md bg-white p-2">
+            <p class="text-[.72rem] text-slate-500 text-center leading-relaxed">
+              Microsoft Authenticator, Google Authenticator, 1Password 등에서 계정 추가 후 QR을 스캔하세요.
+            </p>
+          </div>
+
+          <div class="px-3 py-3 rounded-lg bg-slate-50 border border-slate-200">
+            <div class="text-[.7rem] font-bold text-slate-600 uppercase tracking-wider mb-1.5">수동 입력 시크릿</div>
+            <div id="mfa-setup-secret"
+                 class="font-mono text-[.85rem] text-slate-800 break-all select-all"></div>
+          </div>
+
+          <details>
+            <summary class="cursor-pointer text-[.72rem] font-medium text-slate-500 hover:text-slate-700 select-none">
+              otpauth URI 보기
+            </summary>
+            <div class="mt-2 px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-200">
+              <div id="mfa-setup-uri"
+                   class="font-mono text-[.7rem] text-slate-700 break-all select-all"></div>
+            </div>
+          </details>
+
+          <div>
+            <label for="mfa-setup-code" class="block text-[.78rem] font-bold text-slate-700 mb-1.5">
+              인증 코드 입력
+            </label>
+            <input id="mfa-setup-code" name="code" type="text"
+                   inputmode="numeric" autocomplete="one-time-code"
+                   pattern="[0-9]{6}" minlength="6" maxlength="6"
+                   class="field tracking-[0.5em] text-center font-mono text-lg"
+                   placeholder="000000" required>
+            <p class="mt-1.5 text-[.7rem] text-slate-500">
+              앱에 시크릿을 등록한 뒤 표시되는 6자리 코드를 입력하세요.
+            </p>
+          </div>
+        </div>
+
+        <button id="mfa-setup-submit" type="submit" class="btn-primary mt-6" disabled>
+          등록 완료
+        </button>
+
+        <button id="mfa-setup-back" type="button"
+                class="mt-3 w-full text-[.78rem] text-slate-500 hover:text-slate-700 underline-offset-4 hover:underline">
+          이메일/비밀번호로 돌아가기
+        </button>
+
+        <div id="mfa-setup-error" hidden
+             class="mt-4 px-3 py-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[.8rem]">
+        </div>
+      </form>
+
       <div class="mt-5 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 text-[.78rem] text-slate-500">
         <span>아직 계정이 없으신가요?
           <a href="signup.html" class="font-bold text-blue-600 hover:underline">회원가입</a>
@@ -221,6 +333,7 @@
     (function () {
       'use strict';
 
+      // ── Step 1: password ───────────────────────────────────────
       const form = document.getElementById('login-form');
       const emailInput = document.getElementById('email');
       const passwordInput = document.getElementById('password');
@@ -230,6 +343,32 @@
       const orgListItems = document.getElementById('org-list-items');
       const submitBtn = document.getElementById('submit');
       const devFixture = document.getElementById('dev-fixture');
+
+      // ── Step 2: MFA verify (mfa_required) ──────────────────────
+      const mfaVerifyForm = document.getElementById('mfa-verify-form');
+      const mfaVerifyCode = document.getElementById('mfa-verify-code');
+      const mfaVerifySubmit = document.getElementById('mfa-verify-submit');
+      const mfaVerifyBack = document.getElementById('mfa-verify-back');
+      const mfaVerifyError = document.getElementById('mfa-verify-error');
+
+      // ── Step 3: MFA setup (mfa_setup_required) ─────────────────
+      const mfaSetupForm = document.getElementById('mfa-setup-form');
+      const mfaSetupLoading = document.getElementById('mfa-setup-loading');
+      const mfaSetupBody = document.getElementById('mfa-setup-body');
+      const mfaSetupQrWrap = document.getElementById('mfa-setup-qr-wrap');
+      const mfaSetupQr = document.getElementById('mfa-setup-qr');
+      const mfaSetupSecret = document.getElementById('mfa-setup-secret');
+      const mfaSetupUri = document.getElementById('mfa-setup-uri');
+      const mfaSetupCode = document.getElementById('mfa-setup-code');
+      const mfaSetupSubmit = document.getElementById('mfa-setup-submit');
+      const mfaSetupBack = document.getElementById('mfa-setup-back');
+      const mfaSetupError = document.getElementById('mfa-setup-error');
+
+      // Page-memory only. The 5-min server-side TTL is the source of
+      // truth — we just hold it in a closure variable so back/forward
+      // navigation or a tab close drops it. NEVER persist this to
+      // localStorage/sessionStorage.
+      let mfaChallengeToken = null;
 
       function isLocalhost() {
         const h = window.location.hostname;
@@ -281,6 +420,86 @@
         orgListItems.innerHTML = '';
       }
 
+      // ── Step transitions ───────────────────────────────────────
+      function showStep(name) {
+        form.hidden            = (name !== 'password');
+        mfaVerifyForm.hidden   = (name !== 'verify');
+        mfaSetupForm.hidden    = (name !== 'setup');
+      }
+
+      function resetToPasswordStep() {
+        // Drop in-memory challenge state so a back-button trip can't
+        // accidentally replay an old token.
+        mfaChallengeToken = null;
+        mfaVerifyCode.value = '';
+        mfaSetupCode.value = '';
+        mfaSetupQr.removeAttribute('src');
+        mfaSetupQrWrap.hidden = false;
+        mfaSetupSecret.textContent = '';
+        mfaSetupUri.textContent = '';
+        mfaSetupBody.hidden = true;
+        mfaSetupLoading.hidden = false;
+        mfaSetupSubmit.disabled = true;
+        hideMfaVerifyError();
+        hideMfaSetupError();
+        showStep('password');
+        passwordInput.focus();
+      }
+
+      function showMfaVerifyError(msg) {
+        mfaVerifyError.textContent = msg;
+        mfaVerifyError.hidden = false;
+      }
+      function hideMfaVerifyError() {
+        mfaVerifyError.hidden = true;
+        mfaVerifyError.textContent = '';
+      }
+      function showMfaSetupError(msg) {
+        mfaSetupError.textContent = msg;
+        mfaSetupError.hidden = false;
+      }
+      function hideMfaSetupError() {
+        mfaSetupError.hidden = true;
+        mfaSetupError.textContent = '';
+      }
+
+      // Map AuthError codes (or 4xx without a code) to user-facing
+      // Korean. challengeToken expiry / invalidation surfaces as
+      // `mfa_invalid_challenge` — we drop the user back to the password
+      // step so they can start fresh.
+      function describeMfaError(status, body, fallback) {
+        const code = (body && body.code) || null;
+        if (code === 'mfa_invalid_code')      return '코드가 올바르지 않습니다. 다시 입력해 주세요.';
+        if (code === 'mfa_locked')             return '잠시 후 다시 시도해 주세요. (계정이 일시적으로 잠겼습니다.)';
+        if (code === 'mfa_invalid_challenge') return '인증 세션이 만료됐습니다. 처음부터 다시 로그인해 주세요.';
+        if (code === 'mfa_secret_corrupt')    return '서버 오류가 발생했습니다. 관리자에게 문의해 주세요.';
+        if (status === 401)                    return '인증에 실패했습니다.';
+        if (status === 423 || status === 429)  return '잠시 후 다시 시도해 주세요.';
+        if (status === 400)                    return '입력값을 다시 확인해 주세요.';
+        return fallback || '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+      }
+
+      function renderMfaQr(otpauthUri) {
+        mfaSetupQr.removeAttribute('src');
+        mfaSetupQrWrap.hidden = false;
+        if (typeof window.qrcode !== 'function') {
+          mfaSetupQrWrap.hidden = true;
+          showMfaSetupError('QR 코드를 불러오지 못했습니다. 아래 수동 입력 시크릿을 인증 앱에 직접 입력해 주세요.');
+          return;
+        }
+        try {
+          const qr = window.qrcode(0, 'M');
+          qr.addData(otpauthUri);
+          qr.make();
+          mfaSetupQr.src = qr.createDataURL(6, 8);
+        } catch (err) {
+          console.error('[login mfa setup] QR render failed', err);
+          mfaSetupQrWrap.hidden = true;
+          showMfaSetupError('QR 코드를 만들지 못했습니다. 아래 수동 입력 시크릿을 인증 앱에 직접 입력해 주세요.');
+        }
+      }
+
+      // ── Step 1 → submit ────────────────────────────────────────
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         hideError();
@@ -289,12 +508,31 @@
         submitBtn.textContent = '로그인 중…';
         try {
           const orgId = orgIdInput.value.trim();
-          await window.kloserApi.login({
+          const body = await window.kloserApi.login({
             email: emailInput.value.trim(),
             password: passwordInput.value,
             orgId: orgId.length > 0 ? orgId : undefined,
           });
-          // Token is now in memory; refresh cookie set by Set-Cookie.
+          // Phase 7 Step 2 — server may return 202 with a challenge
+          // instead of an access token. login() does NOT set the token
+          // in that case, so checking body.mfa is the safe branch.
+          if (body && body.mfa && typeof body.mfa.kind === 'string') {
+            mfaChallengeToken = body.mfa.challengeToken;
+            if (body.mfa.kind === 'mfa_required') {
+              showStep('verify');
+              mfaVerifyCode.focus();
+            } else if (body.mfa.kind === 'mfa_setup_required') {
+              showStep('setup');
+              await bootstrapMfaSetup();
+            } else {
+              // Future-proofing: unknown kind. Bounce back so the user
+              // is not stuck on a blank screen.
+              resetToPasswordStep();
+              showError('지원하지 않는 인증 방식입니다. 관리자에게 문의해 주세요.');
+            }
+            return;
+          }
+          // 200 happy path — token is now in memory, refresh cookie set.
           window.location.replace(getReturnUrl());
         } catch (err) {
           const status = err && err.status;
@@ -318,6 +556,131 @@
           submitBtn.disabled = false;
           submitBtn.textContent = '로그인';
         }
+      });
+
+      // ── Step 2 → verify ────────────────────────────────────────
+      mfaVerifyForm.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        hideMfaVerifyError();
+        if (!mfaChallengeToken) {
+          // Shouldn't happen — defensive against direct submit.
+          resetToPasswordStep();
+          showError('인증 세션이 만료됐습니다. 다시 로그인해 주세요.');
+          return;
+        }
+        const code = mfaVerifyCode.value.trim();
+        if (!/^\d{6}$/.test(code)) {
+          showMfaVerifyError('6자리 숫자를 입력해 주세요.');
+          return;
+        }
+        mfaVerifySubmit.disabled = true;
+        mfaVerifySubmit.textContent = '확인 중…';
+        try {
+          const res = await window.kloserApi.verifyLoginMfa(mfaChallengeToken, code);
+          if (res.status === 200 && res.body && typeof res.body.accessToken === 'string') {
+            // api.js auto-stashed the token; cookie is set. Drop
+            // challenge state and navigate.
+            mfaChallengeToken = null;
+            window.location.replace(getReturnUrl());
+            return;
+          }
+          // Error branches.
+          if (res.body && res.body.code === 'mfa_invalid_challenge') {
+            resetToPasswordStep();
+            showError(describeMfaError(res.status, res.body));
+            return;
+          }
+          showMfaVerifyError(describeMfaError(res.status, res.body, '확인에 실패했습니다.'));
+        } catch (err) {
+          console.error('[login mfa verify] unexpected error', err);
+          showMfaVerifyError('네트워크 오류가 발생했습니다.');
+        } finally {
+          mfaVerifySubmit.disabled = false;
+          mfaVerifySubmit.textContent = '확인';
+        }
+      });
+
+      mfaVerifyBack.addEventListener('click', () => {
+        resetToPasswordStep();
+      });
+
+      // ── Step 3 → setup challenge ───────────────────────────────
+      async function bootstrapMfaSetup() {
+        hideMfaSetupError();
+        mfaSetupLoading.hidden = false;
+        mfaSetupBody.hidden = true;
+        mfaSetupSubmit.disabled = true;
+        if (!mfaChallengeToken) {
+          resetToPasswordStep();
+          showError('인증 세션이 만료됐습니다. 다시 로그인해 주세요.');
+          return;
+        }
+        try {
+          const res = await window.kloserApi.setupLoginMfaChallenge(mfaChallengeToken);
+          if (res.status !== 200 || !res.body) {
+            if (res.body && res.body.code === 'mfa_invalid_challenge') {
+              resetToPasswordStep();
+              showError(describeMfaError(res.status, res.body));
+              return;
+            }
+            showMfaSetupError(describeMfaError(res.status, res.body, '등록 정보를 불러오지 못했습니다.'));
+            return;
+          }
+          // Server values — render with textContent only.
+          const secretBase32 = String(res.body.secretBase32 || '');
+          const otpauthUri = String(res.body.otpauthUri || '');
+          mfaSetupSecret.textContent = secretBase32;
+          mfaSetupUri.textContent = otpauthUri;
+          renderMfaQr(otpauthUri);
+          mfaSetupLoading.hidden = true;
+          mfaSetupBody.hidden = false;
+          mfaSetupSubmit.disabled = false;
+          mfaSetupCode.focus();
+        } catch (err) {
+          console.error('[login mfa setup] unexpected error', err);
+          showMfaSetupError('네트워크 오류가 발생했습니다.');
+        }
+      }
+
+      mfaSetupForm.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        hideMfaSetupError();
+        if (!mfaChallengeToken) {
+          resetToPasswordStep();
+          showError('인증 세션이 만료됐습니다. 다시 로그인해 주세요.');
+          return;
+        }
+        const code = mfaSetupCode.value.trim();
+        if (!/^\d{6}$/.test(code)) {
+          showMfaSetupError('6자리 숫자를 입력해 주세요.');
+          return;
+        }
+        mfaSetupSubmit.disabled = true;
+        mfaSetupSubmit.textContent = '등록 중…';
+        try {
+          const res = await window.kloserApi.confirmLoginMfaChallenge(mfaChallengeToken, code);
+          if (res.status === 200 && res.body && typeof res.body.accessToken === 'string') {
+            mfaChallengeToken = null;
+            window.location.replace(getReturnUrl());
+            return;
+          }
+          if (res.body && res.body.code === 'mfa_invalid_challenge') {
+            resetToPasswordStep();
+            showError(describeMfaError(res.status, res.body));
+            return;
+          }
+          showMfaSetupError(describeMfaError(res.status, res.body, '등록에 실패했습니다.'));
+        } catch (err) {
+          console.error('[login mfa confirm] unexpected error', err);
+          showMfaSetupError('네트워크 오류가 발생했습니다.');
+        } finally {
+          mfaSetupSubmit.disabled = false;
+          mfaSetupSubmit.textContent = '등록 완료';
+        }
+      });
+
+      mfaSetupBack.addEventListener('click', () => {
+        resetToPasswordStep();
       });
     })();
   </script>
