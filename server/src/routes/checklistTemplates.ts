@@ -25,6 +25,11 @@ import {
   CallChecklistTemplatePatchInput,
 } from "../types/checklistTemplate.js";
 import * as templatesRepo from "../repositories/callChecklistTemplates.js";
+import {
+  recordChecklistTemplateCreated,
+  recordChecklistTemplateDeleted,
+  recordChecklistTemplateUpdated,
+} from "../services/activityLog.js";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -91,7 +96,25 @@ async function checklistTemplateRoutes(app: FastifyInstance) {
       const input = CallChecklistTemplateCreateInput.parse(request.body);
       const created = await app.withOrgContext(
         request.orgId!,
-        (client) => templatesRepo.insertInCurrentOrg(client, request.orgId!, input),
+        async (client) => {
+          const row = await templatesRepo.insertInCurrentOrg(
+            client,
+            request.orgId!,
+            input,
+          );
+          // Phase 7 Step 3 — audit inside the same tx as the INSERT.
+          // Payload carries the operational toggles (is_active /
+          // sort_order) only; never the `title` which is user-typed
+          // playbook copy.
+          await recordChecklistTemplateCreated(client, {
+            orgId:       request.orgId!,
+            actorUserId: request.user!.id,
+            templateId:  row.id,
+            isActive:    row.active,
+            sortOrder:   row.sort_order,
+          });
+          return row;
+        },
       );
       return reply.code(201).send({ template: created });
     },
@@ -111,9 +134,24 @@ async function checklistTemplateRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { id } = UuidParam.parse(request.params);
       const input = CallChecklistTemplatePatchInput.parse(request.body);
-      const updated = await app.withOrgContext(request.orgId!, (client) =>
-        templatesRepo.patchInCurrentOrg(client, id, input),
-      );
+      const updated = await app.withOrgContext(request.orgId!, async (client) => {
+        const row = await templatesRepo.patchInCurrentOrg(client, id, input);
+        if (!row) return null;
+        // Phase 7 Step 3 — audit names patched fields only, never the
+        // values (title is user-typed copy).
+        const fields = Object.keys(input).filter(
+          (k) => (input as Record<string, unknown>)[k] !== undefined,
+        );
+        if (fields.length > 0) {
+          await recordChecklistTemplateUpdated(client, {
+            orgId:       request.orgId!,
+            actorUserId: request.user!.id,
+            templateId:  row.id,
+            fields,
+          });
+        }
+        return row;
+      });
       if (!updated) return reply.code(404).send({ error: "not_found" });
       return reply.code(200).send({ template: updated });
     },
@@ -132,9 +170,17 @@ async function checklistTemplateRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { id } = UuidParam.parse(request.params);
-      const ok = await app.withOrgContext(request.orgId!, (client) =>
-        templatesRepo.deleteByIdInCurrentOrg(client, id),
-      );
+      const ok = await app.withOrgContext(request.orgId!, async (client) => {
+        const deleted = await templatesRepo.deleteByIdInCurrentOrg(client, id);
+        if (deleted) {
+          await recordChecklistTemplateDeleted(client, {
+            orgId:       request.orgId!,
+            actorUserId: request.user!.id,
+            templateId:  id,
+          });
+        }
+        return deleted;
+      });
       if (!ok) return reply.code(404).send({ error: "not_found" });
       return reply.code(204).send();
     },

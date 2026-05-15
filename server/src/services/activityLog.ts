@@ -1032,3 +1032,171 @@ export async function recordActionItemDeleted(
     },
   });
 }
+
+// ---------------------------------------------------------------- //
+// knowledge_bases
+// ---------------------------------------------------------------- //
+//
+// All knowledge_base.* events share `target_type='knowledge_base'`,
+// `target_id=knowledge_bases.id`. Payloads carry no title / description /
+// source_uri / chunk text — those are user-authored documentation the
+// admin may have pasted sensitive policy text into. The KB row stays
+// the canonical source for value history; the audit feed only records
+// "what was touched".
+//
+// `knowledge_chunk.replaced` is in the action allow-list (migration
+// 1715000024000) but intentionally NOT wired in this commit — the
+// chunk-replace flow has its own LLM-usage audit trail and adds noise
+// to the per-mutation audit feed. Revisit when the audit-view UI ships.
+
+export interface RecordKnowledgeBaseCreatedInput {
+  orgId:           string;
+  actorUserId:     string;
+  knowledgeBaseId: string;
+}
+
+/** knowledge_base.created — admin added a new KB. */
+export async function recordKnowledgeBaseCreated(
+  client: PoolClient,
+  input: RecordKnowledgeBaseCreatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "knowledge_base.created",
+    targetType:  "knowledge_base",
+    targetId:    input.knowledgeBaseId,
+    payload:     {},
+  });
+}
+
+export interface RecordKnowledgeBaseUpdatedInput {
+  orgId:           string;
+  actorUserId:     string;
+  knowledgeBaseId: string;
+  /** Names of patched columns only — never their values. The KB row is
+   *  the canonical source for value history. */
+  fields:          string[];
+}
+
+/** knowledge_base.updated — PATCH /knowledge-bases/:id with at least one field. */
+export async function recordKnowledgeBaseUpdated(
+  client: PoolClient,
+  input: RecordKnowledgeBaseUpdatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "knowledge_base.updated",
+    targetType:  "knowledge_base",
+    targetId:    input.knowledgeBaseId,
+    payload: {
+      fields: input.fields,
+    },
+  });
+}
+
+export interface RecordKnowledgeBaseDeletedInput {
+  orgId:           string;
+  actorUserId:     string;
+  knowledgeBaseId: string;
+}
+
+/** knowledge_base.deleted — admin soft-deleted a KB. */
+export async function recordKnowledgeBaseDeleted(
+  client: PoolClient,
+  input: RecordKnowledgeBaseDeletedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "knowledge_base.deleted",
+    targetType:  "knowledge_base",
+    targetId:    input.knowledgeBaseId,
+    payload:     {},
+  });
+}
+
+// ---------------------------------------------------------------- //
+// checklist_templates
+// ---------------------------------------------------------------- //
+//
+// All checklist_template.* events share `target_type='checklist_template'`,
+// `target_id=org_call_checklist_templates.id`. The template label
+// (`title` column) is user-typed copy that may carry org-sensitive
+// playbook hints, so it is NEVER echoed into the audit payload. Only
+// the operational toggles (`is_active`, `sort_order`) are recorded on
+// create, and only the patched field names on update.
+
+export interface RecordChecklistTemplateCreatedInput {
+  orgId:       string;
+  actorUserId: string;
+  templateId:  string;
+  isActive:    boolean;
+  sortOrder:   number;
+}
+
+/** checklist_template.created — admin added a new checklist item template. */
+export async function recordChecklistTemplateCreated(
+  client: PoolClient,
+  input: RecordChecklistTemplateCreatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "checklist_template.created",
+    targetType:  "checklist_template",
+    targetId:    input.templateId,
+    payload: {
+      is_active:  input.isActive,
+      sort_order: input.sortOrder,
+    },
+  });
+}
+
+export interface RecordChecklistTemplateUpdatedInput {
+  orgId:       string;
+  actorUserId: string;
+  templateId:  string;
+  /** Names of patched columns only — never their values (title is
+   *  user-typed copy). */
+  fields:      string[];
+}
+
+/** checklist_template.updated — PATCH /call-checklist-templates/:id. */
+export async function recordChecklistTemplateUpdated(
+  client: PoolClient,
+  input: RecordChecklistTemplateUpdatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "checklist_template.updated",
+    targetType:  "checklist_template",
+    targetId:    input.templateId,
+    payload: {
+      fields: input.fields,
+    },
+  });
+}
+
+export interface RecordChecklistTemplateDeletedInput {
+  orgId:       string;
+  actorUserId: string;
+  templateId:  string;
+}
+
+/** checklist_template.deleted — admin removed a template row. */
+export async function recordChecklistTemplateDeleted(
+  client: PoolClient,
+  input: RecordChecklistTemplateDeletedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "checklist_template.deleted",
+    targetType:  "checklist_template",
+    targetId:    input.templateId,
+    payload:     {},
+  });
+}

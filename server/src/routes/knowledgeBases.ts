@@ -147,6 +147,7 @@ async function knowledgeBaseRoutes(
       const kb = await knowledgeService.createKnowledgeBase(
         app,
         request.orgId!,
+        request.user!.id,
         { ...input, created_by_user_id: request.user!.id },
       );
       return reply.code(201).send({ knowledge_base: kb });
@@ -196,6 +197,7 @@ async function knowledgeBaseRoutes(
       const kb = await knowledgeService.patchKnowledgeBase(
         app,
         request.orgId!,
+        request.user!.id,
         id,
         input,
       );
@@ -223,6 +225,7 @@ async function knowledgeBaseRoutes(
       const ok = await knowledgeService.softDeleteKnowledgeBase(
         app,
         request.orgId!,
+        request.user!.id,
         id,
       );
       if (!ok) return reply.code(404).send({ error: "not_found" });

@@ -26,6 +26,11 @@ import type {
   KnowledgeChunkSearchOptions,
   KnowledgeChunkSearchResult,
 } from "../repositories/knowledgeChunks.js";
+import {
+  recordKnowledgeBaseCreated,
+  recordKnowledgeBaseDeleted,
+  recordKnowledgeBaseUpdated,
+} from "./activityLog.js";
 
 export async function listKnowledgeBases(
   app: FastifyInstance,
@@ -50,32 +55,69 @@ export async function getKnowledgeBase(
 export async function createKnowledgeBase(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   input: KnowledgeBaseCreateInput,
 ): Promise<KnowledgeBase> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    kbRepo.insertInCurrentOrg(client, actorOrgId, input),
-  );
+  return app.withOrgContext(actorOrgId, async (client) => {
+    const created = await kbRepo.insertInCurrentOrg(client, actorOrgId, input);
+    // Phase 7 Step 3 — audit. Same transaction as the INSERT so an
+    // audit-row failure rolls the create back together.
+    await recordKnowledgeBaseCreated(client, {
+      orgId:           actorOrgId,
+      actorUserId,
+      knowledgeBaseId: created.id,
+    });
+    return created;
+  });
 }
 
 export async function patchKnowledgeBase(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   id: string,
   input: KnowledgeBasePatchInput,
 ): Promise<KnowledgeBase | null> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    kbRepo.patchInCurrentOrg(client, id, input),
-  );
+  return app.withOrgContext(actorOrgId, async (client) => {
+    const updated = await kbRepo.patchInCurrentOrg(client, id, input);
+    if (!updated) return null;
+    // Phase 7 Step 3 — audit names the patched fields only, never
+    // their values. Title / source_uri can carry sensitive playbook
+    // text the admin pasted in.
+    const fields = Object.keys(input).filter(
+      (k) => (input as Record<string, unknown>)[k] !== undefined,
+    );
+    if (fields.length > 0) {
+      await recordKnowledgeBaseUpdated(client, {
+        orgId:           actorOrgId,
+        actorUserId,
+        knowledgeBaseId: updated.id,
+        fields,
+      });
+    }
+    return updated;
+  });
 }
 
 export async function softDeleteKnowledgeBase(
   app: FastifyInstance,
   actorOrgId: string,
+  actorUserId: string,
   id: string,
 ): Promise<boolean> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    kbRepo.softDeleteByIdInCurrentOrg(client, id),
-  );
+  return app.withOrgContext(actorOrgId, async (client) => {
+    const ok = await kbRepo.softDeleteByIdInCurrentOrg(client, id);
+    // Only audit a real delete — repeat / cross-org / already-deleted
+    // returns false and produces no audit noise.
+    if (ok) {
+      await recordKnowledgeBaseDeleted(client, {
+        orgId:           actorOrgId,
+        actorUserId,
+        knowledgeBaseId: id,
+      });
+    }
+    return ok;
+  });
 }
 
 // Replace all chunks for a knowledge base. Returns null when the parent
