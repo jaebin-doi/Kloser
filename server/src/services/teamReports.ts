@@ -33,6 +33,7 @@ import type {
   TeamReportRecentCall,
   TeamReportSummary,
 } from "../types/teamReport.js";
+import { recordReportTeamViewed } from "./activityLog.js";
 
 export type TeamReportRole =
   | "admin"
@@ -302,6 +303,18 @@ export async function getTeamReportSummary(
     const respDenom = metrics.ended_calls + metrics.missed_calls;
     const response_rate =
       respDenom > 0 ? metrics.ended_calls / respDenom : null;
+
+    // Phase 7 Step 3 — best-effort audit. tryRecordActivity inside the
+    // helper wraps the INSERT in a SAVEPOINT so any sanitizer / DB
+    // failure stays local: the report response is unaffected. The
+    // boolean return is intentionally discarded — losing one audit row
+    // must never block a user-visible read.
+    await recordReportTeamViewed(client, {
+      orgId:       actor.orgId,
+      actorUserId: actor.userId,
+      scope,
+      teamId:      targetTeamId,
+    });
 
     return {
       scope,

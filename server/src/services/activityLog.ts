@@ -1200,3 +1200,56 @@ export async function recordChecklistTemplateDeleted(
     payload:     {},
   });
 }
+
+// ---------------------------------------------------------------- //
+// reports
+// ---------------------------------------------------------------- //
+//
+// `report.team_viewed` is the first (and so far only) read-event the
+// audit feed records. Per plan §6 / §7.4, view events go through
+// `tryRecordActivity` — the user must not see a 500 just because the
+// audit row could not land. The SAVEPOINT machinery inside
+// tryRecordActivity isolates any DB failure from the outer transaction;
+// the helper here merely names the contract for the report caller.
+//
+// Payload deliberately carries only the operational scope of the read
+// (`scope` + `team_id`) — never the resolved team name, never the
+// recent_calls rows, never the customer / agent / call title fields
+// that the report joins onto. The audit row tells the auditor *which
+// view was opened*, not *what was visible*.
+//
+// target_type is `report` (allow-listed by migration 1715000024000).
+// target_id is intentionally null — the team report is a derived view,
+// not a row that has its own id.
+
+export type ReportScope = "org" | "team";
+
+export interface RecordReportTeamViewedInput {
+  orgId:       string;
+  actorUserId: string;
+  scope:       ReportScope;
+  teamId:      string | null;
+}
+
+/** report.team_viewed — admin or manager opened the team summary report.
+ *
+ * Returns the underlying tryRecordActivity boolean so the caller has the
+ * option to log a metric on the false case. The team report response
+ * code does NOT depend on this return value — best-effort means the
+ * audit miss is the auditor's problem, not the user's. */
+export async function recordReportTeamViewed(
+  client: PoolClient,
+  input: RecordReportTeamViewedInput,
+): Promise<boolean> {
+  return tryRecordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "report.team_viewed",
+    targetType:  "report",
+    targetId:    null,
+    payload: {
+      scope:   input.scope,
+      team_id: input.teamId,
+    },
+  });
+}
