@@ -24,11 +24,14 @@ import {
   createEmailDeliveryWorker,
   loadEmailDeliveryConfigFromEnv,
 } from "./emailDelivery.worker.js";
+import { createRetentionSweepWorker } from "./retentionSweep.worker.js";
+import { loadRetentionConfigFromEnv } from "../services/retention.js";
 import {
   closeQueues,
   closeRedis,
   scheduleEmailDelivery,
   scheduleHeartbeatSweep,
+  scheduleRetentionSweep,
 } from "../queue/index.js";
 
 const SWEEP_INTERVAL_MS =
@@ -66,17 +69,31 @@ async function main(): Promise<void> {
   }
   const emailWorker = createEmailDeliveryWorker(app, emailDeliveryConfig);
 
-  // Register the singleton repeatable sweep. Idempotent across boots.
+  // Phase 7 Step 4 — retention sweep. Config loader throws
+  // RetentionConfigError on out-of-range env values; that bubble lets
+  // the worker boot fail fast rather than silently dropping retention.
+  // The Worker instance is created even when disabled so shutdown can
+  // close it cleanly and manual job triggers in dev have a target.
+  const retentionConfig = loadRetentionConfigFromEnv();
+  const retentionWorker = createRetentionSweepWorker(app, retentionConfig);
+
+  // Register the singleton repeatable sweeps. Idempotent across boots.
   await scheduleHeartbeatSweep(SWEEP_INTERVAL_MS);
   if (emailDeliveryConfig) {
     await scheduleEmailDelivery(EMAIL_DELIVERY_INTERVAL_MS);
+  }
+  if (retentionConfig.enabled) {
+    await scheduleRetentionSweep(retentionConfig.intervalSec * 1000);
   }
 
   const emailMode = emailDeliveryConfig
     ? `resend (interval=${EMAIL_DELIVERY_INTERVAL_MS}ms, max=${emailDeliveryConfig.maxAttempts})`
     : "no-op (EMAIL_PROVIDER=dev_outbox)";
+  const retentionMode = retentionConfig.enabled
+    ? `enabled (interval=${retentionConfig.intervalSec}s, transcriptDays=${retentionConfig.transcriptRetentionDays})`
+    : "disabled";
   console.log(
-    `[workers] up — call-summary + heartbeat-sweep (interval=${SWEEP_INTERVAL_MS}ms, cutoff=${process.env.KLOSER_HEARTBEAT_CUTOFF_SEC ?? "60"}s) + email-delivery ${emailMode}`,
+    `[workers] up — call-summary + heartbeat-sweep (interval=${SWEEP_INTERVAL_MS}ms, cutoff=${process.env.KLOSER_HEARTBEAT_CUTOFF_SEC ?? "60"}s) + email-delivery ${emailMode} + retention-sweep ${retentionMode}`,
   );
 
   let shuttingDown = false;
@@ -88,6 +105,7 @@ async function main(): Promise<void> {
       await summaryWorker.close();
       await sweepWorker.close();
       await emailWorker.close();
+      await retentionWorker.close();
       await closeQueues();
       await closeRedis();
       await app.close();

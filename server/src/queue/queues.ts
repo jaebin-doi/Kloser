@@ -23,6 +23,11 @@ export const HEARTBEAT_SWEEP_QUEUE = "heartbeat-sweep";
 // rows from email_outbox. Only scheduled when EMAIL_PROVIDER=resend
 // (see workers/index.ts).
 export const EMAIL_DELIVERY_QUEUE = "email-delivery";
+// Phase 7 Step 4 — retention sweep queue. Singleton repeatable job that
+// ticks once per KLOSER_RETENTION_INTERVAL_SEC. Worker deletes expired
+// transcripts and recovers stuck `sending` email_outbox rows. Only
+// scheduled when KLOSER_RETENTION_ENABLED=true (see workers/index.ts).
+export const RETENTION_SWEEP_QUEUE = "retention-sweep";
 
 export interface CallSummaryJobData {
   orgId: string;
@@ -39,9 +44,17 @@ export interface EmailDeliveryJobData {
   orgId?: string;
 }
 
+export interface RetentionSweepJobData {
+  // Optional deterministic `now` (ISO string) used by tests / manual
+  // runs to drive the cutoff without sleeping the wall clock. Empty
+  // for the singleton repeatable tick (production uses `new Date()`).
+  nowIso?: string;
+}
+
 let callSummaryQueue: BullQueue<CallSummaryJobData> | null = null;
 let heartbeatSweepQueue: BullQueue<HeartbeatSweepJobData> | null = null;
 let emailDeliveryQueue: BullQueue<EmailDeliveryJobData> | null = null;
+let retentionSweepQueue: BullQueue<RetentionSweepJobData> | null = null;
 
 export function getCallSummaryQueue(): BullQueue<CallSummaryJobData> {
   if (callSummaryQueue) return callSummaryQueue;
@@ -91,6 +104,23 @@ export function getEmailDeliveryQueue(): BullQueue<EmailDeliveryJobData> {
   return emailDeliveryQueue;
 }
 
+export function getRetentionSweepQueue(): BullQueue<RetentionSweepJobData> {
+  if (retentionSweepQueue) return retentionSweepQueue;
+  retentionSweepQueue = new Queue<RetentionSweepJobData>(RETENTION_SWEEP_QUEUE, {
+    connection: getRedisConnection(),
+    defaultJobOptions: {
+      // Retention sweep is idempotent: re-running on the next interval
+      // is safe (already-deleted rows are gone, already-recovered
+      // sending rows are now 'failed' and out of the WHERE). Job-level
+      // attempts=1 matches heartbeat-sweep / email-delivery.
+      attempts: 1,
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 200 },
+    },
+  });
+  return retentionSweepQueue;
+}
+
 export async function closeQueues(): Promise<void> {
   const tasks: Array<Promise<void>> = [];
   if (callSummaryQueue) {
@@ -104,6 +134,10 @@ export async function closeQueues(): Promise<void> {
   if (emailDeliveryQueue) {
     tasks.push(emailDeliveryQueue.close());
     emailDeliveryQueue = null;
+  }
+  if (retentionSweepQueue) {
+    tasks.push(retentionSweepQueue.close());
+    retentionSweepQueue = null;
   }
   await Promise.all(tasks);
 }

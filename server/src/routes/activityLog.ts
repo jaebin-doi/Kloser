@@ -113,6 +113,9 @@ const ACTIVITY_ACTIONS = [
   "checklist_template.updated",
   "checklist_template.deleted",
   "report.team_viewed",
+  // Phase 7 Step 4 — retention worker aggregate events
+  "retention.transcripts_deleted",
+  "email_outbox.sending_recovered",
 ] as const satisfies readonly ActivityAction[];
 
 const ACTIVITY_TARGET_TYPES = [

@@ -89,7 +89,10 @@ export type ActivityAction =
   | "checklist_template.updated"
   | "checklist_template.deleted"
   // report
-  | "report.team_viewed";
+  | "report.team_viewed"
+  // Phase 7 Step 4 — retention worker aggregate events
+  | "retention.transcripts_deleted"
+  | "email_outbox.sending_recovered";
 
 export type ActivityTargetType =
   | "organization"

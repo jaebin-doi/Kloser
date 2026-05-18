@@ -143,7 +143,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 7 Step 1~3 완료** — 운영 출시 직전 게이트 3종이 닫혔다. **Step 1 (Resend 실 이메일 + transactional outbox)**: `email_outbox`에 status/provider/sensitive_payload 컬럼 + AES-256-GCM 암호화 + BullMQ `email-delivery` 싱글톤 워커가 lease → decrypt → send → markDelivered+scrub / 지수 백오프 / dead letter. dev 모드(`EMAIL_PROVIDER` unset/empty/`dev_outbox`)는 Phase 3 동작 그대로. **Step 2 (MFA / 세션 강화)**: TOTP 도입 — login challenge gate + refresh 시 MFA required 검사 + 인증된 enroll/disable + 조직 MFA 강제 토글 + `settings.html`·`login.html` frontend wiring. **Step 3 (activity_log / 감사 로그)**: schema hardening (action·target_type CHECK + 3종 partial composite index + payload object CHECK), repository + service helper (payload sanitizer로 forbidden key 차단 + 500자 truncate), 보안/멤버십/초대/고객/통화/지식/보고서 audit hook 묶음, 관리자용 `GET /activity-log` (admin only + cursor pagination + cross-org isolation), `settings.html`에 관리자 전용 audit 패널 추가 (모든 audit 값 `textContent` 렌더). 다음은 **Phase 7 Step 4 (retention enforce cron)** — transcript 3년 / call_recordings 90일.
+> **현재 단계**: **Phase 7 Step 1~4 완료** — 운영 출시 직전 게이트 4종이 모두 닫혔다. **Step 1 (Resend 실 이메일 + transactional outbox)**: `email_outbox`에 status/provider/sensitive_payload 컬럼 + AES-256-GCM 암호화 + BullMQ `email-delivery` 싱글톤 워커가 lease → decrypt → send → markDelivered+scrub / 지수 백오프 / dead letter. dev 모드(`EMAIL_PROVIDER` unset/empty/`dev_outbox`)는 Phase 3 동작 그대로. **Step 2 (MFA / 세션 강화)**: TOTP 도입 — login challenge gate + refresh 시 MFA required 검사 + 인증된 enroll/disable + 조직 MFA 강제 토글 + `settings.html`·`login.html` frontend wiring. **Step 3 (activity_log / 감사 로그)**: schema hardening + repository + service helper (payload sanitizer) + 보안/멤버십/초대/고객/통화/지식/보고서 audit hook 묶음 + 관리자용 `GET /activity-log` (cursor pagination + cross-org isolation) + `settings.html` 관리자 전용 audit 패널 (모든 audit 값 `textContent` 렌더). **Step 4 (retention enforce cron)**: transcript 3년 hard delete (batch + maxBatches cap, org별 `withOrgContext`) + email_outbox stuck-sending recovery (`status='sending' AND locked_at < cutoff` → `failed` + 락 메타데이터 클리어, `attempt_count` 불변) + aggregate audit row (`retention.transcripts_deleted` / `email_outbox.sending_recovered`) + BullMQ `retention-sweep` 싱글톤 워커 (`KLOSER_RETENTION_ENABLED=true`일 때만 schedule). call_recordings는 recording storage 부재로 not applicable (Phase 8). 다음은 **Phase 7 Step 5+ P1 follow-up bundle** — cost map, role-based sidebar, report drilldown, demo-to-real cleanup, billing.
 > 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-3/PHASE_3_MASTER.md`](docs/plan/phase-3/PHASE_3_MASTER.md), [`docs/plan/phase-4/PHASE_4_MASTER.md`](docs/plan/phase-4/PHASE_4_MASTER.md), [`docs/plan/phase-5/PHASE_5_MASTER.md`](docs/plan/phase-5/PHASE_5_MASTER.md), [`docs/plan/phase-6/PHASE_6_MASTER.md`](docs/plan/phase-6/PHASE_6_MASTER.md), [`docs/plan/phase-7/PHASE_7_MASTER.md`](docs/plan/phase-7/PHASE_7_MASTER.md), [`docs/plan/phase-7/PHASE_7_STEP_1_FINDINGS.md`](docs/plan/phase-7/PHASE_7_STEP_1_FINDINGS.md), [`docs/plan/phase-6/PHASE_7_HANDOFF.md`](docs/plan/phase-6/PHASE_7_HANDOFF.md). 사용자 가이드: [`docs/USER_GUIDE_PHASE_6.md`](docs/USER_GUIDE_PHASE_6.md) · 시각 가이드: [`docs/product/PHASE_4_FOUNDATIONS.html`](docs/product/PHASE_4_FOUNDATIONS.html).
 
 ---
@@ -383,7 +383,7 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 7 Step 1~3 완료, Step 4 대기)
+### 백엔드 (`server/` — Phase 7 Step 1~4 완료, Step 5+ P1 bundle 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript, dev 포트 `:32173`
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스, JWT handshake + WS persistence + WS suggestion hook)
 - **REST 표면**: `/auth/*` · `/me` · `/customers` · `/teams` · `/memberships` · `/invitations` · `/calls` (+ `DELETE /call-action-items/:id`) · `/knowledge/*` · `/dashboard/summary` · `/reports/team-summary`
@@ -428,7 +428,8 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **Phase 7 Step 1** ✅: Resend 실 이메일 어댑터 + transactional `email_outbox` (status / sensitive_payload AES-256-GCM 암호화 / partial index) + `QueuedEmailProvider` + `emailDelivery` BullMQ 워커 (lease + decrypt + adapter.send + 지수 백오프 + scrub). 기본 `dev_outbox` 모드는 Phase 3 동작 그대로
 - **Phase 7 Step 2** ✅: TOTP MFA (login challenge / 인증된 enroll·disable / 조직 MFA 강제) + `login.html`·`settings.html` frontend wiring
 - **Phase 7 Step 3** ✅: `activity_log` schema hardening + repository + service helper (payload sanitizer) + 보안/멤버십/초대/고객/통화/지식/보고서 audit hook + 관리자용 `GET /activity-log` + `settings.html` 관리자 감사 로그 패널
-- **Phase 7 Step 4~5** (다음): retention enforce cron → `llm_usage_log` cost model price map → 결제·구독 → role-based 메뉴 가시성 (운영 출시 직전 게이트)
+- **Phase 7 Step 4** ✅: retention enforce cron — transcript 3년 hard delete (batch+cap) + email_outbox stuck-sending recovery (`attempt_count` 불변, sensitive payload 보존) + aggregate audit row + BullMQ `retention-sweep` 싱글톤 워커 (`KLOSER_RETENTION_ENABLED`로 gate). call_recordings는 storage 부재로 not applicable
+- **Phase 7 Step 5+** (다음): `llm_usage_log` cost model price map → role-based 메뉴 가시성 → 보고서 drilldown → demo-to-real cleanup → 결제·구독
 - Windows 데스크톱 앱 (오디오 캡처)
 - Claude RAG 기반 응대 추천 엔진
 - 단일 회사·1~5명 직원 기준 PoC
