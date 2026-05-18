@@ -920,6 +920,44 @@
                   </div>
                   <div class="field-hint mt-2">보관 기간 만료 시 자동 삭제됩니다. 법정 의무 기간(통신비밀보호법 5년) 이내에서 설정해 주세요.</div>
                 </div>
+
+                <!-- Phase 7 Step 3 — admin-only audit log panel.
+                     Wired to GET /activity-log. The whole block is
+                     `hidden` until /me reveals role=admin AND the
+                     first list request returns 200. Every value
+                     rendered here is a server-returned audit field
+                     (user_id, action, target_id, payload), so the
+                     rendering path is textContent only — no
+                     innerHTML interpolation of any audit value. -->
+                <div id="audit-log-block" hidden class="set-card-divider pt-5 mt-2">
+                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-1">
+                    감사 로그
+                    <span class="badge badge-blue ml-1" style="font-size:.62rem;">관리자 · API</span>
+                  </div>
+                  <p class="text-[.72rem] text-slate-500 mb-3">우리 조직에서 일어난 보안·운영 이벤트가 시간순으로 쌓입니다. 다른 조직의 이벤트는 표시되지 않습니다.</p>
+
+                  <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <select id="audit-action-filter" class="field-select" style="width:auto;min-width:14rem;">
+                      <option value="">전체 액션</option>
+                    </select>
+                    <button id="audit-refresh-btn" type="button" class="btn-secondary">새로고침</button>
+                    <span id="audit-status" class="text-[.72rem] text-slate-400 ml-auto"></span>
+                  </div>
+
+                  <div id="audit-list" class="space-y-1.5 text-[.82rem]">
+                    <div id="audit-empty" hidden class="px-3 py-6 rounded-lg border border-slate-200 bg-slate-50 text-center text-[.78rem] text-slate-500">
+                      표시할 감사 로그가 없습니다.
+                    </div>
+                  </div>
+
+                  <div id="audit-error" hidden
+                       class="mt-2 px-2.5 py-1.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[.72rem]"></div>
+
+                  <div id="audit-load-more-row" hidden class="mt-3 text-center">
+                    <button id="audit-load-more-btn" type="button" class="btn-secondary">더 보기</button>
+                  </div>
+                </div>
+
               </div>
             </section>
 
@@ -1269,9 +1307,23 @@
       const orgToggle       = document.getElementById('org-mfa-toggle');
       const orgError        = document.getElementById('org-mfa-error');
 
+      // Phase 7 Step 3 — audit log panel refs.
+      const auditBlock         = document.getElementById('audit-log-block');
+      const auditFilter        = document.getElementById('audit-action-filter');
+      const auditRefreshBtn    = document.getElementById('audit-refresh-btn');
+      const auditStatus        = document.getElementById('audit-status');
+      const auditList          = document.getElementById('audit-list');
+      const auditEmpty         = document.getElementById('audit-empty');
+      const auditError         = document.getElementById('audit-error');
+      const auditLoadMoreRow   = document.getElementById('audit-load-more-row');
+      const auditLoadMoreBtn   = document.getElementById('audit-load-more-btn');
+
       // Held only for the duration of one enroll session.
       let isAdmin = false;
       let mfaEnabledAt = null; // ISO string from /me; null = not enrolled
+      // Phase 7 Step 3 — audit log paging state.
+      let auditCursor = null;        // { beforeCreatedAt, beforeId } | null
+      let auditLoading = false;
 
       // ── helpers ─────────────────────────────────
       function setHidden(el, hidden) { if (el) el.hidden = !!hidden; }
@@ -1321,7 +1373,10 @@
           mfaEnabledAt = body && body.user && body.user.mfa_enabled_at
             ? body.user.mfa_enabled_at : null;
           renderMfaStatus();
-          if (isAdmin) await loadOrgSecurity();
+          if (isAdmin) {
+            await loadOrgSecurity();
+            await loadAuditLog(true);
+          }
         } catch (err) {
           console.warn('[settings] /me load failed', err);
         }
@@ -1569,6 +1624,222 @@
           orgToggle.disabled = false;
         }
       });
+
+      // ── admin audit log panel (Phase 7 Step 3) ──
+      //
+      // Surface (admin-only): GET /activity-log returns
+      //   { items: ActivityLog[], nextCursor: { beforeCreatedAt, beforeId } | null }
+      //
+      // Every audit value (action / target_type / target_id / user_id
+      // / created_at / payload) is a server-returned field and is
+      // rendered via textContent or via a sanitized JSON.stringify
+      // dropped into a <pre>. NO audit value is ever interpolated
+      // into innerHTML — that is the XSS gate for this panel.
+      //
+      // 403 from the server (employee on stale_role race) hides the
+      // whole block silently — same UX as the org-security block.
+      // 401 is the auto-refresh / auto-redirect path inside apiGet,
+      // so we don't need to handle it locally.
+
+      // Same allow-list the server's route uses (routes/activityLog.ts).
+      // Lives here as a hard-coded array so the filter dropdown does not
+      // need a separate /activity-log/actions endpoint just to populate
+      // itself. If the server-side allow-list grows, add the new actions
+      // here and the dropdown picks them up.
+      const ACTIVITY_ACTIONS = [
+        'auth.login', 'auth.logout', 'auth.refresh_mfa_required',
+        'auth.password_reset_requested', 'auth.password_reset_completed',
+        'auth.email_verified', 'auth.email_verification_resent',
+        'mfa.login_challenge_issued', 'mfa.login_verified',
+        'mfa.setup_started', 'mfa.enabled', 'mfa.disabled',
+        'mfa.failed_attempt', 'mfa.locked',
+        'organization.mfa_required_enabled', 'organization.mfa_required_disabled',
+        'membership.role_changed', 'membership.status_changed', 'membership.team_changed',
+        'invitation.created', 'invitation.resent', 'invitation.cancelled', 'invitation.accepted',
+        'customer.created', 'customer.updated', 'customer.deleted',
+        'call.created', 'call.ended', 'call.customer_linked', 'call.customer_unlinked',
+        'call.notes_updated', 'call.manual_summary_updated',
+        'call_action_item.created', 'call_action_item.status_changed',
+        'call_action_item.assignee_changed', 'call_action_item.deleted',
+        'knowledge_base.created', 'knowledge_base.updated', 'knowledge_base.deleted',
+        'knowledge_chunk.replaced',
+        'checklist_template.created', 'checklist_template.updated', 'checklist_template.deleted',
+        'report.team_viewed',
+      ];
+
+      function populateAuditActionFilter() {
+        // Skip if the dropdown was already populated (loadMe can be
+        // called twice in some flows; idempotent guard).
+        if (auditFilter.options.length > 1) return;
+        for (const action of ACTIVITY_ACTIONS) {
+          const opt = document.createElement('option');
+          opt.value = action;
+          opt.textContent = action; // textContent — action is a fixed allow-list value but stay consistent.
+          auditFilter.appendChild(opt);
+        }
+      }
+
+      function formatAuditTimestamp(iso) {
+        // ISO string → local "YYYY-MM-DD HH:MM:SS". If the parse fails
+        // for any reason (malformed server value, unlikely under the
+        // strict zod response schema) fall back to the raw string —
+        // textContent will render whatever lands here safely.
+        try {
+          const d = new Date(iso);
+          if (Number.isNaN(d.getTime())) return String(iso);
+          const pad = (n) => String(n).padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+                 `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        } catch (_) { return String(iso); }
+      }
+
+      function makeAuditRow(item) {
+        // One row is a card with three lines:
+        //   1) [action badge]  user-or-system · target_type:target_id
+        //                                                    timestamp
+        //   2) payload preview as compact JSON in a <pre>
+        //
+        // Every assignment to text below is via textContent or property
+        // values that don't accept HTML. NO innerHTML.
+        const row = document.createElement('div');
+        row.className = 'px-3 py-2.5 rounded-lg border border-slate-200 bg-white';
+
+        const head = document.createElement('div');
+        head.className = 'flex items-center gap-2 flex-wrap';
+
+        const actionBadge = document.createElement('span');
+        actionBadge.className = 'badge badge-blue';
+        actionBadge.style.fontSize = '.66rem';
+        actionBadge.textContent = item.action ?? '(unknown action)';
+        head.appendChild(actionBadge);
+
+        const actor = document.createElement('span');
+        actor.className = 'text-[.78rem] text-slate-700 font-semibold';
+        // user_id is a uuid; we don't have a name lookup at this layer.
+        // Render as "system" when null (background sweep / anonymous
+        // service flow), otherwise show a short uuid tail so admins
+        // can correlate without exposing the full uuid as a clickable
+        // url-looking blob.
+        actor.textContent = item.user_id
+          ? `user · ${String(item.user_id).slice(0, 8)}…`
+          : 'system';
+        head.appendChild(actor);
+
+        if (item.target_type || item.target_id) {
+          const target = document.createElement('span');
+          target.className = 'text-[.72rem] text-slate-500';
+          const tt = item.target_type ?? '?';
+          const tid = item.target_id ? String(item.target_id).slice(0, 8) + '…' : '—';
+          target.textContent = `→ ${tt}:${tid}`;
+          head.appendChild(target);
+        }
+
+        const ts = document.createElement('span');
+        ts.className = 'text-[.7rem] text-slate-400 ml-auto font-mono';
+        ts.textContent = formatAuditTimestamp(item.created_at);
+        head.appendChild(ts);
+
+        row.appendChild(head);
+
+        // Payload preview. JSON.stringify keeps any nested HTML as
+        // literal text; we then drop the resulting string into
+        // <pre>.textContent so even the textContent renders verbatim
+        // (no entity decoding ambiguity).
+        const payload = (item.payload && typeof item.payload === 'object')
+          ? item.payload : {};
+        const keys = Object.keys(payload);
+        if (keys.length > 0) {
+          const pre = document.createElement('pre');
+          pre.className = 'mt-1 px-2 py-1 rounded bg-slate-50 border border-slate-100 ' +
+                          'text-[.7rem] text-slate-600 font-mono whitespace-pre-wrap break-words';
+          let txt;
+          try { txt = JSON.stringify(payload); } catch (_) { txt = '{…}'; }
+          // Truncate stupidly long payloads so one weird row can't
+          // explode the panel.
+          pre.textContent = txt.length > 400 ? txt.slice(0, 400) + '…' : txt;
+          row.appendChild(pre);
+        }
+
+        return row;
+      }
+
+      function clearAuditList() {
+        // Preserve the empty-state placeholder element across refreshes.
+        const placeholder = auditEmpty;
+        auditList.replaceChildren(placeholder);
+        setHidden(placeholder, true);
+      }
+
+      function buildAuditQuery(includeCursor) {
+        const params = new URLSearchParams();
+        params.set('limit', '20');
+        if (auditFilter && auditFilter.value) {
+          params.set('action', auditFilter.value);
+        }
+        if (includeCursor && auditCursor) {
+          params.set('beforeCreatedAt', auditCursor.beforeCreatedAt);
+          params.set('beforeId', auditCursor.beforeId);
+        }
+        return params.toString();
+      }
+
+      async function loadAuditLog(reset) {
+        if (auditLoading) return;
+        if (reset) {
+          auditCursor = null;
+          clearAuditList();
+        }
+        auditLoading = true;
+        setHidden(auditError, true);
+        auditError.textContent = '';
+        showText(auditStatus, '불러오는 중…');
+
+        try {
+          const res = await api.apiGet('/activity-log?' + buildAuditQuery(!reset));
+          if (res.status === 403) {
+            // Role drift since /me — hide the panel and bail.
+            setHidden(auditBlock, true);
+            return;
+          }
+          if (!res.ok) {
+            setHidden(auditBlock, false);
+            auditError.textContent = '감사 로그를 불러오지 못했습니다. (' + res.status + ')';
+            setHidden(auditError, false);
+            return;
+          }
+          const body = await res.json();
+          setHidden(auditBlock, false);
+
+          const items = Array.isArray(body && body.items) ? body.items : [];
+          for (const item of items) {
+            auditList.appendChild(makeAuditRow(item));
+          }
+          auditCursor = (body && body.nextCursor) ? body.nextCursor : null;
+          setHidden(auditLoadMoreRow, !auditCursor);
+
+          // Empty-state shows ONLY on a reset that returned zero items.
+          if (reset && items.length === 0) {
+            setHidden(auditEmpty, false);
+            auditList.appendChild(auditEmpty);
+          }
+          showText(auditStatus, '');
+        } catch (err) {
+          console.error('[settings audit-log] load failed', err);
+          setHidden(auditBlock, false);
+          auditError.textContent = '네트워크 오류가 발생했습니다.';
+          setHidden(auditError, false);
+        } finally {
+          auditLoading = false;
+        }
+      }
+
+      // Bootstrap the filter dropdown once — populated even if the
+      // user is not admin, in which case the panel itself stays hidden.
+      populateAuditActionFilter();
+
+      auditFilter.addEventListener('change', () => { loadAuditLog(true); });
+      auditRefreshBtn.addEventListener('click', () => { loadAuditLog(true); });
+      auditLoadMoreBtn.addEventListener('click', () => { loadAuditLog(false); });
 
       // Boot.
       loadMe();

@@ -203,6 +203,27 @@ const ENTITY_REGISTRY = [
             "MfaTotpConfirmResponse",
         ],
     },
+    {
+        name: "activityLog",
+        server: "server/src/types/activityLog.ts",
+        browser: "platform/types/activityLog.js",
+        // Phase 7 Step 3 admin audit log surface (GET /activity-log).
+        // ActivityLogCursor is the nested shape used by
+        // ActivityLogListResponse.nextCursor — it is declared as a
+        // standalone top-level z.object so the regex parser sees its
+        // field set, and ActivityLogListResponse references it by
+        // identifier (the parser only cares about field NAMES on the
+        // outer object). The query schema uses camelCase for cursor /
+        // filter params (beforeCreatedAt, beforeId, targetType,
+        // targetId, userId, createdFrom, createdTo) — matches the
+        // route's zod query coercion one-for-one.
+        types: [
+            "ActivityLog",
+            "ActivityLogListQuery",
+            "ActivityLogCursor",
+            "ActivityLogListResponse",
+        ],
+    },
 ];
 
 // ---------- parsers ---------- //

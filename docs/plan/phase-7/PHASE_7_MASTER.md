@@ -10,8 +10,8 @@
 ## 0. 진행 상태
 
 - [x] **Step 1 — SMTP / Resend 실 email adapter**: 구현 완료. 정본 결과는 `PHASE_7_STEP_1_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_1_PLAN.md`.
-- [ ] **Step 2 — MFA / 세션 강화**: TOTP 우선, WebAuthn은 후속.
-- [ ] **Step 3 — activity_log + 감사 로그**: schema 자리만 있는 `activity_log`를 실제 mutation/auth/audit 이벤트로 채운다.
+- [x] **Step 2 — MFA / 세션 강화**: TOTP 우선 도입 완료 (login challenge / 인증된 enroll·disable / 조직 MFA 강제). WebAuthn은 후속.
+- [x] **Step 3 — activity_log + 감사 로그**: schema hardening · repository · service helper · 보안/멤버십/초대/고객/통화/지식/보고서 audit hook · 관리자용 `GET /activity-log` route + 공유 타입 + `settings.html` 관리자 패널. 정본 결과는 `PHASE_7_STEP_3_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_3_PLAN.md`.
 - [ ] **Step 4 — retention enforce cron**: transcript 3년, call recording 90일 보존 정책을 워커 cron으로 강제한다.
 - [ ] **Step 5+ — P1 운영 UX / 비용 / 상업화**: cost map, sidebar role visibility, report drilldown, demo-to-real cleanup, billing.
 
@@ -138,8 +138,8 @@ P0가 닫힌 뒤 순서를 다시 확정한다. 기본 순서:
 Phase 7을 닫으려면 최소 다음이 필요하다.
 
 - [x] verify/reset/invite email이 dev outbox와 실 provider mode 양쪽에서 검증됨. Dev path는 Phase 3 e2e로 확인했고, real-provider path는 fake adapter worker tests로 검증됨. Real Resend credentials/domain smoke test는 staging 운영 검증으로 남김.
-- [ ] MFA required org에서 password-only access issuance가 차단됨.
-- [ ] audit target events가 org-scoped row로 기록됨.
+- [x] MFA required org에서 password-only access issuance가 차단됨 (Step 2 — login challenge gate + refresh MFA required + 인증된 TOTP enroll/disable).
+- [x] audit target events가 org-scoped row로 기록됨 (Step 3 — 보안/멤버십/초대/고객/통화/지식/보고서 audit hook + 관리자용 `GET /activity-log`).
 - [ ] retention worker가 deterministic test cutoff로 검증됨.
 - [ ] `npm --prefix server run typecheck` PASS.
 - [ ] `npm --prefix server test` PASS.
@@ -151,5 +151,7 @@ Phase 7을 닫으려면 최소 다음이 필요하다.
 
 ## 7. 바로 다음 작업
 
-다음 작업은 Step 2 MFA / session hardening이다. Step 1 구현 결과는 `PHASE_7_STEP_1_FINDINGS.md`를 기준으로 본다.
+다음 작업은 **Step 4 — retention enforce cron**이다. Step 3 audit 흐름이 닫혔으므로 retention 워커가 삭제 이벤트를 `activity_log`에 함께 남길 수 있다.
+
+선행 단계 구현 결과는 각 step의 findings 문서를 기준으로 본다 — `PHASE_7_STEP_1_FINDINGS.md`, Step 2 결과는 `PHASE_7_UI_BACKEND_STATUS.md` (closeout findings 별도 작성 예정), Step 3는 `PHASE_7_STEP_3_FINDINGS.md`.
 

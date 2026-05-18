@@ -12,6 +12,7 @@ import { Server as IOServer } from "socket.io";
 import { registerCallsNamespace } from "./ws/calls.js";
 import authPlugin from "./plugins/auth.js";
 import dbPlugin from "./plugins/db.js";
+import activityLogRoutes from "./routes/activityLog.js";
 import authRoutes from "./routes/auth.js";
 import callsRoutes from "./routes/calls.js";
 import callsPhase5Routes from "./routes/callsPhase5.js";
@@ -69,6 +70,7 @@ await app.register(knowledgeBasesRoutes);
 await app.register(dashboardRoutes);
 await app.register(reportsRoutes);
 await app.register(organizationSecurityRoutes);
+await app.register(activityLogRoutes);
 
 app.get("/health", async () => ({
   ok: true,

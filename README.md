@@ -143,7 +143,7 @@ Kloser는 영업 조직이 더 많은 거래를 "Close" 할 수 있도록 돕는
               └─────────────────┘
 ```
 
-> **현재 단계**: **Phase 7 Step 1 완료** — Phase 6 운영 루프 위에 실 이메일 발송 경로(Resend)를 transactional outbox 패턴으로 닫았다. (1) **스키마**: `email_outbox`에 status/provider/attempt_count/next_attempt_at/locked_at/lock_token + sensitive_payload_{ciphertext,iv,tag,key_version} 13개 컬럼 + due/provider_message/dead_letter partial index 추가. 기존 dev row는 `(delivered, dev_outbox)`로 backfill. (2) **Repository + AES-256-GCM helper**: `insertDeliveredDevEmail`/`insertPendingEmail`/`leaseDueEmail`(FOR UPDATE SKIP LOCKED)/`markDelivered`/`markRetryableFailure`/`markDeadLetter`/`scrubSensitivePayload` + `encryptEmailSensitivePayload`/`decryptEmailSensitivePayload` (base64 32-byte 키, plaintext 미노출 에러). (3) **Provider 리팩터**: 공유 body builder + `DevOutboxEmailProvider`(Phase 3 dev archive 그대로) / `QueuedEmailProvider`(`?token=[redacted]` 보관 + sensitive_payload 암호화) + `resolveEmailProvider(env?)` (resend 모드 env 누락 시 fail-fast). (4) **Resend HTTP adapter + 워커**: native fetch + 4xx → `PermanentEmailDeliveryError` / 5xx·네트워크 → `RetryableEmailDeliveryError` / 에러 메시지에 api key·raw token·raw URL 미노출. BullMQ 싱글톤 repeatable tick (기본 10s) 워커가 org별 `withOrgContext`로 lease → decrypt → adapter.send → `markDelivered`+scrub / `markRetryableFailure`(지수 백오프, cap 1h) / `markDeadLetter`+scrub. dev provider 모드(`EMAIL_PROVIDER` unset/empty/`dev_outbox`)에서는 워커 no-op이라 Phase 3 verify/reset/invite 흐름 무변이고, resend misconfig나 unknown provider는 fail-fast다. `npm test` **443 total / 440 pass / 3 skipped / 0 fail** + `sync_shared_types` 15 entity + Phase 0.5/2/3/4/5/6 e2e 회귀 모두 PASS. 다음은 **Phase 7 Step 2 (MFA / 세션 강화)** — TOTP 1차, WebAuthn 후속.
+> **현재 단계**: **Phase 7 Step 1~3 완료** — 운영 출시 직전 게이트 3종이 닫혔다. **Step 1 (Resend 실 이메일 + transactional outbox)**: `email_outbox`에 status/provider/sensitive_payload 컬럼 + AES-256-GCM 암호화 + BullMQ `email-delivery` 싱글톤 워커가 lease → decrypt → send → markDelivered+scrub / 지수 백오프 / dead letter. dev 모드(`EMAIL_PROVIDER` unset/empty/`dev_outbox`)는 Phase 3 동작 그대로. **Step 2 (MFA / 세션 강화)**: TOTP 도입 — login challenge gate + refresh 시 MFA required 검사 + 인증된 enroll/disable + 조직 MFA 강제 토글 + `settings.html`·`login.html` frontend wiring. **Step 3 (activity_log / 감사 로그)**: schema hardening (action·target_type CHECK + 3종 partial composite index + payload object CHECK), repository + service helper (payload sanitizer로 forbidden key 차단 + 500자 truncate), 보안/멤버십/초대/고객/통화/지식/보고서 audit hook 묶음, 관리자용 `GET /activity-log` (admin only + cursor pagination + cross-org isolation), `settings.html`에 관리자 전용 audit 패널 추가 (모든 audit 값 `textContent` 렌더). 다음은 **Phase 7 Step 4 (retention enforce cron)** — transcript 3년 / call_recordings 90일.
 > 자세한 계획·결과: [`docs/plan/roadmap/BACKEND_PLAN.md`](docs/plan/roadmap/BACKEND_PLAN.md), [`docs/plan/phase-1/PHASE_1_MASTER.md`](docs/plan/phase-1/PHASE_1_MASTER.md), [`docs/plan/phase-2/PHASE_2_MASTER.md`](docs/plan/phase-2/PHASE_2_MASTER.md), [`docs/plan/phase-3/PHASE_3_MASTER.md`](docs/plan/phase-3/PHASE_3_MASTER.md), [`docs/plan/phase-4/PHASE_4_MASTER.md`](docs/plan/phase-4/PHASE_4_MASTER.md), [`docs/plan/phase-5/PHASE_5_MASTER.md`](docs/plan/phase-5/PHASE_5_MASTER.md), [`docs/plan/phase-6/PHASE_6_MASTER.md`](docs/plan/phase-6/PHASE_6_MASTER.md), [`docs/plan/phase-7/PHASE_7_MASTER.md`](docs/plan/phase-7/PHASE_7_MASTER.md), [`docs/plan/phase-7/PHASE_7_STEP_1_FINDINGS.md`](docs/plan/phase-7/PHASE_7_STEP_1_FINDINGS.md), [`docs/plan/phase-6/PHASE_7_HANDOFF.md`](docs/plan/phase-6/PHASE_7_HANDOFF.md). 사용자 가이드: [`docs/USER_GUIDE_PHASE_6.md`](docs/USER_GUIDE_PHASE_6.md) · 시각 가이드: [`docs/product/PHASE_4_FOUNDATIONS.html`](docs/product/PHASE_4_FOUNDATIONS.html).
 
 ---
@@ -383,7 +383,7 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **PptxGenJS** — PowerPoint(.pptx) 다운로드
 - **Simple Icons CDN** — Powered by · Integrates with 로고
 
-### 백엔드 (`server/` — Phase 7 Step 1 완료, Step 2 대기)
+### 백엔드 (`server/` — Phase 7 Step 1~3 완료, Step 4 대기)
 - **런타임/언어**: Node.js 20+ / TypeScript, dev 포트 `:32173`
 - **프레임워크**: Fastify 5 + Socket.io 4 (`/calls` 네임스페이스, JWT handshake + WS persistence + WS suggestion hook)
 - **REST 표면**: `/auth/*` · `/me` · `/customers` · `/teams` · `/memberships` · `/invitations` · `/calls` (+ `DELETE /call-action-items/:id`) · `/knowledge/*` · `/dashboard/summary` · `/reports/team-summary`
@@ -426,7 +426,9 @@ Remove-Item Env:KLOSER_E2E_BASE_URL
 - **Phase 5** ✅: knowledge base + 체크리스트 + suggestion 영속화 + 통화 detail + manager team-scope mutation + customer selection + `phase_5_e2e`
 - **Phase 6** ✅: BullMQ + Redis 워커 (AI 자동 요약 + heartbeat sweep + WS suggestion persistence) + 실 provider 어댑터(Anthropic/OpenAI/Clova) + `llm_usage_log` + action item DELETE + 매니저 보고서(`/reports/team-summary` + `platform/reports.html`) + `phase_6_e2e` 7 시나리오
 - **Phase 7 Step 1** ✅: Resend 실 이메일 어댑터 + transactional `email_outbox` (status / sensitive_payload AES-256-GCM 암호화 / partial index) + `QueuedEmailProvider` + `emailDelivery` BullMQ 워커 (lease + decrypt + adapter.send + 지수 백오프 + scrub). 기본 `dev_outbox` 모드는 Phase 3 동작 그대로
-- **Phase 7 Step 2~5** (다음): MFA / 세션 강화 → activity_log → retention enforce cron → `llm_usage_log` cost model price map → 결제·구독 → role-based 메뉴 가시성 (운영 출시 직전 게이트)
+- **Phase 7 Step 2** ✅: TOTP MFA (login challenge / 인증된 enroll·disable / 조직 MFA 강제) + `login.html`·`settings.html` frontend wiring
+- **Phase 7 Step 3** ✅: `activity_log` schema hardening + repository + service helper (payload sanitizer) + 보안/멤버십/초대/고객/통화/지식/보고서 audit hook + 관리자용 `GET /activity-log` + `settings.html` 관리자 감사 로그 패널
+- **Phase 7 Step 4~5** (다음): retention enforce cron → `llm_usage_log` cost model price map → 결제·구독 → role-based 메뉴 가시성 (운영 출시 직전 게이트)
 - Windows 데스크톱 앱 (오디오 캡처)
 - Claude RAG 기반 응대 추천 엔진
 - 단일 회사·1~5명 직원 기준 PoC
