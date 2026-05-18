@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser Phase 6 — AI 자동 요약·끊긴 통화 정리·매니저 보고서</title>
+  <meta name="description" content="Phase 6에 새로 들어온 5가지 — AI 자동 요약 / 끊긴 통화 자동 정리 / AI 실시간 응대 추천 / 다음 액션 삭제 / 매니저 팀 보고서 — 을 실제 화면 캡처로 보여드립니다." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(16, 185, 129, 0.07), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(37, 99, 235, 0.07), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #059669 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+    .card-tight {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .03);
+    }
+
+    .pillar-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    }
+    .pillar-card:hover {
+      transform: translateY(-2px);
+      border-color: rgb(167 243 208);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(16, 185, 129, .15);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(16 185 129); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(16 185 129);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    .icon-bubble {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Screenshot frame */
+    .shot {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 14px;
+      box-shadow: 0 24px 48px -20px rgba(15, 23, 42, .18);
+      background: white;
+      overflow: hidden;
+      width: 100%;
+      display: block;
+    }
+    .shot-cap {
+      font-size: .78rem;
+      color: rgb(100 116 139);
+      margin-top: 10px;
+      line-height: 1.55;
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 9999px;
+      background: rgb(16 185 129);
+      color: white;
+      font-weight: 800;
+      font-size: .82rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Sweep timeline */
+    .sweep-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .88rem;
+      color: rgb(51 65 85);
+      padding: 8px 0;
+    }
+    .sweep-tick {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: rgb(16 185 129);
+      flex-shrink: 0;
+    }
+    .sweep-tick.muted { background: rgb(203 213 225); }
+    .sweep-tick.warn  { background: rgb(245 158 11); }
+    .sweep-tick.dead  { background: rgb(244 63 94); }
+    .sweep-tick.cleared { background: rgb(124 58 237); }
+
+    /* Permission matrix */
+    .perm-row {
+      display: grid;
+      grid-template-columns: 1.6fr repeat(2, 1fr);
+      gap: 8px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      font-size: .88rem;
+    }
+    @media (max-width: 640px) {
+      .perm-row { grid-template-columns: 1.2fr repeat(2, 1fr); font-size: .74rem; gap: 4px; padding: 8px 10px; }
+    }
+    .perm-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 0;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .perm-allow { background: rgb(209 250 229); color: rgb(6 95 70); }
+    .perm-deny  { background: rgb(254 226 226); color: rgb(153 27 27); }
+    .perm-team  { background: rgb(219 234 254); color: rgb(30 64 175); }
+    .role-pill {
+      display: inline-flex;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: .74rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .role-pill-admin    { background: rgb(124 58 237); color: white; }
+    .role-pill-manager  { background: rgb(37 99 235); color: white; }
+    .role-pill-employee { background: rgb(8 145 178); color: white; }
+    .role-pill-viewer   { background: rgb(100 116 139); color: white; }
+
+    /* Tables for boundary */
+    .boundary-row {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr 1fr;
+      gap: 8px;
+      align-items: start;
+      padding: 14px 16px;
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      background: white;
+      font-size: .88rem;
+    }
+    @media (max-width: 640px) {
+      .boundary-row { grid-template-columns: 1fr; }
+    }
+    .badge-api  { background: rgb(209 250 229); color: rgb(6 95 70); display: inline-flex; padding: 3px 9px; border-radius: 9999px; font-size: .7rem; font-weight: 700; }
+    .badge-demo { background: rgb(254 243 199); color: rgb(146 64 14); display: inline-flex; padding: 3px 9px; border-radius: 9999px; font-size: .7rem; font-weight: 700; }
+    .badge-next { background: rgb(237 233 254); color: rgb(91 33 182); display: inline-flex; padding: 3px 9px; border-radius: 9999px; font-size: .7rem; font-weight: 700; }
+
+    /* Provider tag */
+    .prov-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: .76rem;
+      font-weight: 700;
+      border: 1px solid rgb(226 232 240);
+      background: white;
+    }
+    .prov-tag .dot {
+      width: 7px; height: 7px;
+      border-radius: 9999px;
+    }
+
+    section[id] { scroll-margin-top: 24px; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 6 · 자동화 · 매니저 보고서
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        통화가 끝나면 AI가 알아서 정리합니다 — <br>
+        <span class="g-text">자동 요약·끊긴 통화 정리·팀 보고서</span>가 한 화면에 모입니다
+      </h1>
+      <p class="mt-6 text-[1.05rem] text-slate-600 leading-relaxed">
+        Phase 6은 Phase 5까지 사람이 직접 해야 했던 일을 자동화하는 단계입니다.
+        통화가 끝나면 요약·고객 니즈·미해결 이슈가 알아서 채워지고,
+        브라우저가 갑자기 꺼져서 "진행 중"으로 남은 통화는 1분 뒤 자동으로 끊김 처리되며,
+        매니저는 자기 팀 통화만 따로 모은 보고서 화면에서 KPI를 한눈에 봅니다.
+      </p>
+      <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
+        <p class="text-[.9rem] text-slate-700 leading-relaxed">
+          <span class="text-emerald-600 font-black mr-1">⌜</span>
+          Phase 5가 "사용자가 직접 정리하는 흐름"을 갖춰 두었다면, Phase 6은 그 위에 자동화 4가지(자동 요약·끊긴 통화 정리·실시간 AI 추천·실제 외부 서비스 연결)와 매니저 보고서 1개를 올린 단계입니다.
+          사람이 직접 적어 둔 요약은 자동화가 절대 덮어쓰지 않습니다.
+          <span class="text-emerald-600 font-black ml-1">⌟</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Pillars overview -->
+  <section class="max-w-6xl mx-auto px-6 pb-16">
+    <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">Phase 6에서 새로 가능해진 것</p>
+    <h2 class="text-[1.6rem] font-black tracking-tight mb-6">5가지 — 클릭하면 화면 캡처와 함께 설명</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="#auto-summary" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-emerald-50 text-emerald-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">1 · 통화 후 AI 자동 요약</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">통화가 끝나면 요약·고객 니즈·미해결 이슈가 자동으로 채워집니다. 사람이 직접 적은 메모는 그대로 보호.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#sweep" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-amber-50 text-amber-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">2 · 끊긴 통화 자동 정리</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">브라우저가 꺼지거나 인터넷이 끊긴 통화를 1분 뒤 자동으로 "끊김" 상태로 마감합니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#suggestions" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-violet-50 text-violet-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">3 · 실시간 AI 응대 추천</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">통화 중 AI가 응대 방향·추천 멘트·주의 사항을 카드로 띄워 주고, 통화 후에도 이력을 다시 볼 수 있습니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#action-delete" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-rose-50 text-rose-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">4 · 다음 액션 삭제</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">통화 기록 상세에서 잘못 만든 다음 액션을 ✕ 한 번으로 깔끔히 삭제합니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#reports" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-blue-50 text-blue-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 4 5-5"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">5 · 매니저 팀 보고서</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">사이드바 "보고서" 메뉴에서 우리 팀 통화 KPI 6장 + 최근 통화 10건을 한 화면에 모아 봅니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#providers" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-cyan-50 text-cyan-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">+ 보너스 · 실제 AI 서비스 연결</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">시뮬레이션 자리에 실제 음성 인식(Clova)·LLM(Claude)·임베딩(OpenAI)이 끼워졌고 사용량이 자동 집계됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Detail sections ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24 space-y-20">
+
+    <!-- ─────────── 1. Auto summary ─────────── -->
+    <section id="auto-summary">
+      <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기능 01 · 통화 기록 화면</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">통화 후 AI 자동 요약 — 종료 버튼 한 번이면 끝</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 5까지는 통화가 끝나면 사람이 직접 요약 칸을 채워야 했습니다.
+        Phase 6부터는 통화 종료 버튼을 누르는 순간 백그라운드에서 AI가 대화 내용을 읽고 <strong class="text-slate-900">요약·고객 니즈·미해결 이슈</strong>를 자동으로 채워 둡니다.
+        잠시 뒤 통화 기록을 열면 빈자리가 알아서 메워져 있습니다.
+      </p>
+
+      <figure class="mb-5">
+        <img src="../../assets/screenshots/phase_6/05_calls_auto_summary.png" alt="통화 기록 상세 패널에서 방금 끝낸 통화의 요약 자리가 '아직 분석되지 않았습니다'로 비어 있는 모습 — AI가 채워 줄 자리" class="shot" />
+        <figcaption class="shot-cap">
+          ▲ 통화가 막 끝난 순간의 상세 패널 — "고객 니즈 / 미해결 이슈 / 다음 액션" 자리는 비어 있고, 백그라운드 AI 작업이 이 빈 자리를 잠시 뒤 자동으로 채워 줍니다. 사람이 직접 요약을 적어 둔 통화는 자동화가 손대지 않습니다.
+        </figcaption>
+      </figure>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-4">자동 요약이 만들어지는 흐름</p>
+        <div class="space-y-4">
+          <div class="flex items-start gap-3">
+            <span class="step-num">1</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>상담원이 통화 종료 버튼을 누릅니다.</strong>
+              통화 자체는 그 즉시 마감되어 통화 기록에 "완료"로 보입니다 (Phase 4 흐름 그대로).
+            </p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="step-num">2</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>백그라운드 AI 작업이 한 건 등록됩니다.</strong>
+              사용자는 이걸 기다릴 필요 없이 다음 통화로 넘어가도 됩니다.
+            </p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="step-num">3</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>AI가 대화 내용을 읽고 요약·니즈·이슈·감정을 채워 둡니다.</strong>
+              잠시 뒤 통화 기록 상세를 열면 빈자리가 메워져 있습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">사람이 적은 메모는 보호됩니다</p>
+          <p class="text-slate-600 leading-relaxed">
+            상담원이 통화 중 또는 통화 후에 직접 적어 둔 요약은 AI가 절대 덮어쓰지 않습니다. 비어 있던 통화에만 자동으로 채워집니다 — "내가 쓴 정리"가 사라질 걱정이 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">자동화가 잠시 멈춰도 통화는 끝납니다</p>
+          <p class="text-slate-600 leading-relaxed">
+            백그라운드 자동화가 잠시 멈춰 있어도 통화 자체는 정상 종료됩니다. 자동화가 다시 살아나면 그 시점부터 밀린 통화도 차례대로 채워 줍니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. Sweep ─────────── -->
+    <section id="sweep">
+      <p class="text-[.78rem] font-bold tracking-wider text-amber-600 mb-2">기능 02 · 배경에서 동작</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">끊긴 통화 자동 정리 — "진행 중"으로 영원히 남지 않습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 5에서 통화는 살아 있음 신호를 주기적으로 보냈습니다. 하지만 브라우저가 꺼졌을 때 그 통화를 자동으로 끊김 처리해 주는 장치는 없었습니다.
+        Phase 6부터는 백그라운드가 주기적으로 신호가 끊긴 통화를 모아서, <strong class="text-slate-900">1분 이상 무응답인 진행 중 통화를 자동으로 "끊김" 상태로 마감</strong>합니다.
+      </p>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">예시 — 14:23에 시작된 통화가 도중에 끊긴 경우</p>
+        <div>
+          <div class="sweep-line"><span class="sweep-tick"></span><span>14:23:00 — 살아 있음 신호 정상 도착</span></div>
+          <div class="sweep-line"><span class="sweep-tick"></span><span>14:23:30 — 살아 있음 신호 정상 도착</span></div>
+          <div class="sweep-line"><span class="sweep-tick muted"></span><span class="text-slate-400">14:24:00 — (브라우저 꺼짐, 신호 끊김)</span></div>
+          <div class="sweep-line"><span class="sweep-tick warn"></span><span class="text-amber-700">14:24:30 — 30초 무응답</span></div>
+          <div class="sweep-line"><span class="sweep-tick dead"></span><span class="text-rose-700">14:25:00 — 60초 무응답 임계 도달</span></div>
+          <div class="sweep-line"><span class="sweep-tick cleared"></span><span class="text-violet-700"><strong>자동 정리</strong> — 상태가 "끊김"으로 마감, 종료 시각·통화 시간이 채워짐</span></div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">정상 종료가 우선</p>
+          <p class="text-slate-600 leading-relaxed">
+            사용자가 종료 버튼으로 정상 마감한 통화는 그대로 "완료"로 남습니다. 자동 정리가 정상 종료를 "끊김"으로 덮어쓸 가능성은 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">중간까지의 데이터는 보존</p>
+          <p class="text-slate-600 leading-relaxed">
+            끊긴 통화도 끊기기 전까지 들어간 대화·메모·체크리스트 결과는 그대로 보존됩니다. 상태만 "끊김"으로 바뀝니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">진행 중 KPI가 자연스럽게 정리</p>
+          <p class="text-slate-600 leading-relaxed">
+            대시보드·보고서의 "진행 중" 통화 수가 더 이상 부풀려지지 않습니다. 실제로 진행 중인 통화만 그 숫자에 잡힙니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. Live AI suggestions ─────────── -->
+    <section id="suggestions">
+      <p class="text-[.78rem] font-bold tracking-wider text-violet-600 mb-2">기능 03 · 실시간 통화 화면</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">실시간 AI 응대 추천 — 통화 중 카드, 통화 후 이력</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        통화 중에 고객의 말이 흘러가는 동안, 화면 우측의 <strong class="text-slate-900">AI 어시스턴트 제안</strong> 패널이 응대 방향·추천 멘트·주의 사항을 카드 형태로 띄워 줍니다.
+        Phase 6부터는 이 추천 카드가 화면에만 잠깐 떴다가 사라지지 않고, <strong class="text-slate-900">그 통화의 추천 이력으로 같이 저장</strong>됩니다 — 통화가 끝난 뒤 통화 기록 상세 패널에서 같은 추천을 다시 볼 수 있습니다.
+      </p>
+
+      <figure class="mb-5">
+        <img src="../../assets/screenshots/phase_6/04_live_suggestions.png" alt="실시간 통화 화면 우측의 AI 어시스턴트 제안 패널에 응대 방향·추천 멘트·주의 사항 3장의 카드가 떠 있는 모습" class="shot" />
+        <figcaption class="shot-cap">
+          ▲ 통화 중 우측 패널 — 가격 질문이 나오자 AI가 "응대 방향 / 추천 멘트 / 주의 사항" 3가지 카드를 띄워 줍니다. 상단의 "갱신 중" 표시가 켜져 있으면 다음 추천이 곧 갱신된다는 뜻입니다. 동시에 좌측은 회사 표준 체크리스트, 가운데는 대화 내용이 흐르고 있습니다.
+        </figcaption>
+      </figure>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">3종 카드가 한 세트로 뜸</p>
+          <p class="text-slate-600 leading-relaxed">
+            응대 방향(어떤 방향으로 응대할지) · 추천 멘트(그대로 말할 수 있는 문장) · 주의 사항(놓치면 안 되는 정보) — 이 3가지가 같은 시점에 한 세트로 갱신됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">통화가 끝나도 이력으로 남음</p>
+          <p class="text-slate-600 leading-relaxed">
+            추천이 떴다가 다음 추천으로 갱신되어도, 이전 추천은 그 통화의 추천 이력에 저장됩니다. 통화 기록 상세에서 "통화 중 어떤 추천이 떴고 무엇을 썼는지" 그대로 다시 확인할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 4. Action item delete ─────────── -->
+    <section id="action-delete">
+      <p class="text-[.78rem] font-bold tracking-wider text-rose-600 mb-2">기능 04 · 통화 기록 화면</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">다음 액션 삭제 — ✕ 한 번이면 깔끔</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 5에서는 다음 액션을 만들고 완료 표시까지만 가능했고, 잘못 만든 항목을 지울 수 없었습니다.
+        Phase 6부터는 통화 기록 상세 패널의 다음 액션 영역에 <strong class="text-slate-900">각 행 오른쪽 끝의 ✕ 버튼</strong>이 추가되어, 누르는 즉시 그 항목이 사라집니다.
+      </p>
+
+      <figure class="mb-5">
+        <img src="../../assets/screenshots/phase_6/02_calls_actions_delete.png" alt="통화 기록 상세 패널의 다음 액션 영역에 3개 항목과 각 항목 오른쪽의 ✕ 삭제 버튼이 함께 보이는 모습" class="shot" />
+        <figcaption class="shot-cap">
+          ▲ 통화 상세 → 다음 액션 영역 — 각 행 오른쪽 끝의 ✕가 새로 들어온 삭제 버튼입니다. 누르면 그 행만 즉시 사라지고, 다른 항목과 통화 본문은 그대로 유지됩니다.
+        </figcaption>
+      </figure>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">즉시 삭제 · 전체 새로고침 없음</p>
+          <p class="text-slate-600 leading-relaxed">
+            ✕를 누르면 그 행만 화면에서 사라집니다. 다른 항목·메모·요약은 그대로 유지되고, 통화 본문 전체가 다시 로딩되지 않습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">삭제 권한은 통화 변경 권한과 동일</p>
+          <p class="text-slate-600 leading-relaxed">
+            관리자 / 매니저(같은 팀) / 상담원(본인 통화)는 삭제할 수 있고, 조회 권한은 ✕가 동작하지 않습니다 — 통화 변경 권한과 같은 규칙을 따릅니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">완전 삭제 — 복구 불가</p>
+          <p class="text-slate-600 leading-relaxed">
+            현재는 삭제하면 완전히 사라집니다. "잘못 삭제 시 복구"는 다음 단계(Phase 7+) 감사 로그가 들어올 때 함께 다뤄집니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. Manager team report ─────────── -->
+    <section id="reports">
+      <p class="text-[.78rem] font-bold tracking-wider text-blue-600 mb-2">기능 05 · 보고서 화면 (신규)</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">매니저 팀 보고서 — 우리 팀만 따로 모아 보기</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        사이드바 "조직" 영역에 <strong class="text-slate-900">"팀 보고서"</strong> 메뉴가 새로 들어왔습니다.
+        매니저로 로그인하면 우리 팀 통화만 모은 KPI 6장과 최근 통화 10건이 한 화면에 보이고, 관리자는 같은 페이지에서 조직 전체 또는 다른 팀을 선택해 볼 수 있습니다.
+      </p>
+
+      <figure class="mb-5">
+        <img src="../../assets/screenshots/phase_6/01_reports_team.png" alt="팀 보고서 화면 — 상단에 조직 전체 보고서 헤더, 그 아래 전체 통화·완료·응답률·평균 통화·진행 중·완료·미수신·끊김 KPI 카드들, 그리고 최근 통화 4건 표" class="shot" />
+        <figcaption class="shot-cap">
+          ▲ 관리자가 본 조직 전체 보고서 — 위쪽 큰 KPI 4장(전체 통화·완료·응답률·평균 통화·진행 중) + 아래 보조 KPI 4장(완료·미수신·끊김·진행 중) + 최근 통화 표 10건이 한 화면에 모입니다. 매니저로 로그인하면 같은 화면이 "우리 팀 보고서"로 좁혀집니다.
+        </figcaption>
+      </figure>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">누가, 어디까지 볼 수 있나</p>
+
+        <div class="perm-row mb-2 bg-slate-50 border-slate-100" style="font-weight:700; font-size:.78rem; color:rgb(71,85,105);">
+          <span>역할</span>
+          <span class="text-center">우리 팀 보고서</span>
+          <span class="text-center">다른 팀 / 조직 전체</span>
+        </div>
+
+        <div class="perm-row mb-2">
+          <span class="role-pill role-pill-admin">관리자</span>
+          <span class="perm-cell perm-allow">가능</span>
+          <span class="perm-cell perm-allow">가능 — 팀 선택 또는 전체</span>
+        </div>
+        <div class="perm-row mb-2">
+          <span class="role-pill role-pill-manager">매니저</span>
+          <span class="perm-cell perm-allow">가능</span>
+          <span class="perm-cell perm-deny">불가</span>
+        </div>
+        <div class="perm-row mb-2">
+          <span class="role-pill role-pill-employee">상담원</span>
+          <span class="perm-cell perm-deny">불가</span>
+          <span class="perm-cell perm-deny">불가</span>
+        </div>
+        <div class="perm-row">
+          <span class="role-pill role-pill-viewer">조회</span>
+          <span class="perm-cell perm-deny">불가</span>
+          <span class="perm-cell perm-deny">불가</span>
+        </div>
+
+        <p class="text-[.84rem] text-slate-500 leading-relaxed mt-4">
+          현재 단계에서는 사이드바 "팀 보고서" 메뉴가 모든 역할에게 보입니다. 상담원·조회 권한이 눌러도 페이지가 안 열리지만, 메뉴 자체를 숨기는 정리는 다음 단계(Phase 7+)에서 닫힙니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">KPI 6장</p>
+          <p class="text-slate-600 leading-relaxed">
+            전체 통화 / 완료 / 미수신 / 끊김 / 진행 중 / 응답률(완료 ÷ (완료 + 미수신)) — 통화 운영을 한 화면에서 진단할 수 있는 6가지 숫자.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">평균 통화 시간</p>
+          <p class="text-slate-600 leading-relaxed">
+            완료된 통화의 평균 통화 시간이 별도 카드로 보입니다. 통화가 한 건도 완료된 게 없으면 "—"로 표시됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">최근 통화 10건 표</p>
+          <p class="text-slate-600 leading-relaxed">
+            고객 / 상담원 / 팀 / 상태 / 통화 시간 / 시작 시각이 표로 정리되어 보이고, 우측의 "통화 기록" 링크로 전체 기록 페이지로 바로 이동할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 6. Real providers (bonus) ─────────── -->
+    <section id="providers">
+      <p class="text-[.78rem] font-bold tracking-wider text-cyan-600 mb-2">보너스 · 배경에서 동작</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">실제 AI 서비스 연결 — 시뮬레이션이 끝납니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 5까지의 음성 인식·AI 요약·문서 검색은 모두 결과가 미리 정해진 시뮬레이션이었습니다.
+        Phase 6부터는 운영 환경에서 <strong class="text-slate-900">실제 외부 AI 서비스</strong>를 끼워 쓸 수 있습니다 — 한국어 통화 인식, Anthropic Claude 기반 응대 추천·요약, OpenAI 임베딩 기반 가이드 검색까지 모두 진짜 서비스로 동작합니다.
+      </p>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">자리에 끼워지는 외부 서비스</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="prov-tag"><span class="dot" style="background:#10a37f"></span>OpenAI · 문서 임베딩</span>
+          <span class="prov-tag"><span class="dot" style="background:#c87b3a"></span>Anthropic Claude · 통화 요약 · 응대 추천</span>
+          <span class="prov-tag"><span class="dot" style="background:#03c75a"></span>Naver Clova · 한국어 음성 인식</span>
+        </div>
+        <p class="text-[.84rem] text-slate-500 leading-relaxed mt-4">
+          설정이 없거나 시뮬레이션 모드로 두면 기존처럼 미리 정해진 응답이 그대로 동작합니다. 운영 모드로 키를 등록해야 실제 서비스가 호출됩니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">키가 없으면 즉시 실패 — 조용한 시뮬레이션 대체 없음</p>
+          <p class="text-slate-600 leading-relaxed">
+            "실제 서비스 쓰겠다"고 설정해 두고 키가 빠져 있으면 서버가 시작 시점에 즉시 멈춥니다. 운영자가 모르는 사이에 시뮬레이션으로 슬쩍 바뀌는 일은 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">호출 한 건마다 사용량이 자동 집계</p>
+          <p class="text-slate-600 leading-relaxed">
+            요약·추천·검색·음성 인식 한 번당 어느 서비스를 얼마나 썼는지(토큰·소요 시간)가 자동으로 기록됩니다. 운영자가 사용량을 한눈에 확인할 수 있습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">우리 회사 호출만 보임</p>
+          <p class="text-slate-600 leading-relaxed">
+            사용량 기록은 회사 단위로 분리되어 있습니다. 같은 시스템을 쓰는 다른 회사의 사용량은 절대 섞이지 않습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">비용 자동 한도는 다음 단계</p>
+          <p class="text-slate-600 leading-relaxed">
+            현재 단계에서는 사용량만 기록합니다. "일일 비용 한도 / 폭주 자동 차단" 같은 안전 장치는 다음 단계(Phase 7+)에서 들어옵니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── (API) vs (demo) boundary table ─────────── -->
+    <section id="boundary">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">화면 단위 정리</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">화면별 — 어디까지 진짜로 동작하나</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 6 시점에서 각 화면이 어디까지 실제 데이터로 움직이는지 정리했습니다.
+        "다음" 표시는 이 단계에서는 아직 비어 있고 다음 Phase 7부터 닫힐 영역입니다.
+      </p>
+
+      <div class="space-y-3 mb-4">
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">팀 보고서 (reports) <span class="badge-next">신규</span></span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">진짜</span> 6장 KPI · 평균 통화 시간 · 최근 통화 10건 · 매니저 = 우리 팀, 관리자 = 팀 선택/전체
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-next">다음</span> 일/주/월 기간 필터 · 상담원 단위 드릴다운 · 사이드바 메뉴 역할별 숨김
+          </span>
+        </div>
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">실시간 통화 (live)</span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">진짜</span> 통화 시작·종료 · 고객 연결 · 체크리스트 · 살아 있음 신호 · AI 추천 카드(실시간 저장)
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-demo">데모</span> 통화 메타·품질·음소거·대기 버튼<br>
+            <span class="badge-next">다음</span> 실제 마이크 입력 인식 (현재는 가짜 발화 흐름)
+          </span>
+        </div>
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">통화 기록 (calls)</span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">진짜</span> 목록·검색·필터 · 통화 상세 · <strong>AI 자동 요약</strong> · 수동 요약 보호 · 다음 액션 작성·완료·<strong>삭제</strong> · AI 추천 이력
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-demo">데모</span> 일부 푸터 버튼<br>
+            <span class="badge-next">다음</span> 잘못 삭제한 다음 액션 복구 (감사 로그 도입 후)
+          </span>
+        </div>
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">설정 (settings)</span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">진짜</span> 회사 가이드 / FAQ · 상담 체크리스트 템플릿 (Phase 5 유지)
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-demo">데모</span> 프로필 · 회사 정보 · 통화 환경 · AI · 통합 · 알림 · 보안 · 결제 등 기존 카테고리
+          </span>
+        </div>
+        <div class="boundary-row">
+          <span class="font-bold text-slate-900">대시보드 (dashboard)</span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-api">진짜</span> KPI 4장 · 최근 통화 5건 (Phase 4 유지)
+          </span>
+          <span class="text-slate-600 leading-relaxed">
+            <span class="badge-demo">데모</span> 시장 트렌드 · 추천 To-Do · 팀 활동
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── Next phase handoff ─────────── -->
+    <section id="next">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">다음 단계</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">Phase 7 — 운영 출시 직전의 보안·운영 장치</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 6은 운영 자동화 4가지를 닫은 단계입니다. Phase 7은 그 위에 실제 외부 사용자에게 출시하기 전 꼭 필요한 보안·운영 장치를 채웁니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">실제 이메일 발송</p>
+          <p class="text-slate-600 leading-relaxed">
+            회원가입 인증·비밀번호 재설정·동료 초대 이메일이 실제 메일 서비스로 발송됩니다. 현재 단계에서는 개발용 임시 저장소에 보관됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">2단계 인증 (MFA)</p>
+          <p class="text-slate-600 leading-relaxed">
+            관리자 계정은 비밀번호 외에 1회용 코드를 한 번 더 입력해야 로그인됩니다. 관리자 계정 탈취가 곧 조직 데이터 노출이기 때문에 운영 출시 전에 닫혀야 합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">감사 로그</p>
+          <p class="text-slate-600 leading-relaxed">
+            누가 언제 어떤 권한 변경·삭제·보고서 조회를 했는지 기록되어, 운영자가 사후 추적할 수 있게 됩니다. Phase 6에서 비워 둔 "잘못 삭제한 다음 액션 복구" 자리도 이 로그 위에서 닫힙니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">개인정보 보존 정책 자동 실행</p>
+          <p class="text-slate-600 leading-relaxed">
+            "통화 내용 3년 보관 후 삭제" 같은 정책을 백그라운드가 자동으로 실행합니다. 문서상 약속만 있던 정책이 코드로 강제됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">AI 비용 자동 추적</p>
+          <p class="text-slate-600 leading-relaxed">
+            Phase 6에서 사용량만 쌓아 두던 자리에 "실제 비용 환산 + 일일 한도 + 폭주 차단"이 들어옵니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">역할별 메뉴 가시성 정리</p>
+          <p class="text-slate-600 leading-relaxed">
+            상담원·조회 권한 사용자에게 "팀 보고서" 같은 관리자 메뉴가 사이드바에서 깔끔히 숨겨집니다.
+          </p>
+        </div>
+      </div>
+
+      <p class="text-[.86rem] text-slate-500 mt-6 leading-relaxed">
+        이전 단계가 궁금하면
+        <a href="PHASE_1_FOUNDATIONS.html" class="text-emerald-600 hover:underline font-semibold">Phase 1</a> /
+        <a href="PHASE_2_FOUNDATIONS.html" class="text-emerald-600 hover:underline font-semibold">Phase 2</a> /
+        <a href="PHASE_3_FOUNDATIONS.html" class="text-emerald-600 hover:underline font-semibold">Phase 3</a> /
+        <a href="PHASE_4_FOUNDATIONS.html" class="text-emerald-600 hover:underline font-semibold">Phase 4</a> /
+        <a href="PHASE_5_FOUNDATIONS.html" class="text-emerald-600 hover:underline font-semibold">Phase 5</a>
+        가이드를 참고하세요.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">Phase 6 · 자동화 · 매니저 보고서</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>
