@@ -13,7 +13,7 @@
 - [x] **Step 2 — MFA / 세션 강화**: TOTP 우선 도입 완료 (login challenge / 인증된 enroll·disable / 조직 MFA 강제). WebAuthn은 후속.
 - [x] **Step 3 — activity_log + 감사 로그**: schema hardening · repository · service helper · 보안/멤버십/초대/고객/통화/지식/보고서 audit hook · 관리자용 `GET /activity-log` route + 공유 타입 + `settings.html` 관리자 패널. 정본 결과는 `PHASE_7_STEP_3_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_3_PLAN.md`.
 - [x] **Step 4 — retention enforce cron**: transcript 3년 hard delete + email_outbox stuck-sending recovery + aggregate audit + BullMQ singleton repeatable worker (`KLOSER_RETENTION_ENABLED` gate). call_recordings은 schema 부재로 not applicable (Phase 8 recording surface 도입 시 같은 worker에 추가). 정본 결과는 `PHASE_7_STEP_4_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_4_PLAN.md`.
-- [ ] **Step 5+ — P1 운영 UX / 비용 / 상업화**: cost map (✅ Step 5 완료 — `PHASE_7_STEP_5_FINDINGS.md`), sidebar role visibility (✅ Step 6 완료 — `PHASE_7_STEP_6_FINDINGS.md`), report date window + agent drilldown (✅ Step 7 완료 — `PHASE_7_STEP_7_FINDINGS.md`), demo-to-real cleanup (✅ Step 8 완료 — `PHASE_7_STEP_8_FINDINGS.md`), billing. Step 5 상세 계획은 `PHASE_7_STEP_5_PLAN.md`, Step 6 상세 계획은 `PHASE_7_STEP_6_PLAN.md`, Step 7 상세 계획은 `PHASE_7_STEP_7_PLAN.md`, Step 8 상세 계획은 `PHASE_7_STEP_8_PLAN.md`.
+- [ ] **Step 5+ — P1 운영 UX / 비용 / 상업화**: cost map (✅ Step 5 완료 — `PHASE_7_STEP_5_FINDINGS.md`), sidebar role visibility (✅ Step 6 완료 — `PHASE_7_STEP_6_FINDINGS.md`), report date window + agent drilldown (✅ Step 7 완료 — `PHASE_7_STEP_7_FINDINGS.md`), demo-to-real cleanup (✅ Step 8 완료 — `PHASE_7_STEP_8_FINDINGS.md`), billing. Step 5 상세 계획은 `PHASE_7_STEP_5_PLAN.md`, Step 6 상세 계획은 `PHASE_7_STEP_6_PLAN.md`, Step 7 상세 계획은 `PHASE_7_STEP_7_PLAN.md`, Step 8 상세 계획은 `PHASE_7_STEP_8_PLAN.md`, Step 9 상세 계획은 `PHASE_7_STEP_9_PLAN.md`.
 
 ---
 
@@ -107,7 +107,7 @@ P0가 닫힌 뒤 순서를 다시 확정한다. 기본 순서:
 2. ~~role-based sidebar nav visibility.~~ ✅ Step 6 — `PHASE_7_STEP_6_FINDINGS.md`.
 3. ~~reports date window + agent drilldown.~~ ✅ Step 7 — `PHASE_7_STEP_7_FINDINGS.md`.
 4. ~~demo-to-real frontend cleanup.~~ ✅ Step 8 — `PHASE_7_STEP_8_FINDINGS.md`.
-5. billing / subscription caps.
+5. billing / subscription caps. 상세 계획: `PHASE_7_STEP_9_PLAN.md`.
 
 ---
 
