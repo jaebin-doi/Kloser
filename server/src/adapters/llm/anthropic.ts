@@ -16,12 +16,15 @@
  *   - Malformed JSON / invalid enum / wrong shape → throw before any
  *     DB write so a corrupted response never overwrites a real summary.
  *
- * Cost (plan §2):
- *   We deliberately leave `cost_usd_micros = null` in Step 2. Pricing
- *   constants need an explicit verification-date comment per the plan,
- *   and rather than ship potentially stale numbers we record tokens
- *   only. A follow-up commit will add a model→price map with the
- *   "verified on YYYY-MM-DD" comment the plan requires.
+ * Cost (Phase 7 Step 5):
+ *   Pricing is delegated to `adapters/pricing.ts`. Both `call_summary`
+ *   and `call_suggestion` operations call
+ *   `calculateUsageCostUsdMicros({ provider:'anthropic', operation, model,
+ *   tokensIn, tokensOut })` and let `applyUsageCost(usage, result)` fold
+ *   the cost + cost_status / pricing_verified_on metadata back into the
+ *   `ProviderUsage` envelope. Unknown models keep `costUsdMicros = null`
+ *   with `metadata.cost_status = 'unknown_model'` — the price map only
+ *   covers aliases we verified against the official pricing page.
  *
  * Mock parity: the returned domain shape matches `mock.ts` exactly so
  * `services/callSummary.applyAiSummary` / `services/callSuggestions
@@ -30,6 +33,10 @@
 import Anthropic, {
   APIError as AnthropicAPIError,
 } from "@anthropic-ai/sdk";
+import {
+  applyUsageCost,
+  calculateUsageCostUsdMicros,
+} from "../pricing.js";
 import {
   type LLMAdapter,
   type LlmGeneratedSummary,
@@ -227,19 +234,35 @@ function makeUsage(
   providerRequestId: string | null,
   errorCode: string | null = null,
 ): ProviderUsage {
-  return {
+  const usage: ProviderUsage = {
     provider: "anthropic",
     operation,
     model,
     status,
     tokensIn,
     tokensOut,
-    // cost_usd_micros: see file header — left null in Step 2.
+    // Cost is populated by calculateUsageCostUsdMicros below — Phase 7
+    // Step 5. `applyUsageCost` writes back into the same envelope.
     costUsdMicros: null,
     latencyMs,
     providerRequestId,
     errorCode,
   };
+  // Skip pricing on outright failures: the row's purpose is to record
+  // the failure mode (errorCode), not to estimate a cost we never
+  // incurred. 'succeeded' and 'skipped' both go through the calculator
+  // (skipped → 0 with verifiedOn, succeeded → calculated / unknown).
+  if (status !== "failed") {
+    const result = calculateUsageCostUsdMicros({
+      provider: "anthropic",
+      operation,
+      model,
+      tokensIn,
+      tokensOut,
+    });
+    applyUsageCost(usage, result);
+  }
+  return usage;
 }
 
 const SUMMARY_SYSTEM_PROMPT = [

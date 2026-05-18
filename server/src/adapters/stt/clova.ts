@@ -29,10 +29,17 @@
  *   - Empty / unrecognised text returns `value: null` to match the
  *     existing adapter contract; the usage row still records latency.
  *
- * Cost:
- *   - Tokens are not the unit for STT (per-15s audio billing). Step 2
- *     leaves both tokens and cost null; latency is the only signal we
- *     can populate reliably without a real audio-duration mapper.
+ * Cost (Phase 7 Step 5 policy lock):
+ *   - Clova bills per 15 seconds of audio, not per token. The current
+ *     `ProviderUsage` envelope has no `audio_duration_ms` field, so
+ *     reliable per-call cost calculation is impossible.
+ *   - `tokensIn` / `tokensOut` stay null and `costUsdMicros` stays null
+ *     with `metadata.cost_status = 'unsupported_unit'` (set by the
+ *     pricing helper through `applyUsageCost`).
+ *   - Adding cost requires both: a duration field in `ProviderUsage`
+ *     (populated from the Clova REST response or a server-side timer)
+ *     AND a per-second/per-15s price entry in `adapters/pricing.ts`.
+ *     Both belong with the audio ingest surface (Phase 8/P2), not here.
  *
  * Failure:
  *   - 401/403 throw fail-fast (bad creds).
@@ -47,6 +54,10 @@ import {
   type SttUtterance,
 } from "./index.js";
 import type { ProviderResult, ProviderUsage } from "../usage.js";
+import {
+  applyUsageCost,
+  calculateUsageCostUsdMicros,
+} from "../pricing.js";
 
 export const CLOVA_DEFAULT_MODEL = "clova-speech-recog-rest";
 const DEFAULT_TIMEOUT_MS = 10000;
@@ -96,14 +107,14 @@ function makeUsage(
   providerRequestId: string | null = null,
   errorCode: string | null = null,
 ): ProviderUsage {
-  return {
+  const usage: ProviderUsage = {
     provider: "clova",
     operation: "stt_transcribe",
     model: CLOVA_DEFAULT_MODEL,
     status,
-    // Tokens are not the unit for STT (per-15s billing). Step 2 leaves
-    // them null; latency is the only signal we can populate without an
-    // audio-duration mapper.
+    // Tokens are not the unit for STT (per-15-second audio billing).
+    // Cost stays null until the usage envelope grows an audio-duration
+    // field (Phase 8/P2 audio ingest). See file header for the policy.
     tokensIn: null,
     tokensOut: null,
     latencyMs,
@@ -111,6 +122,20 @@ function makeUsage(
     providerRequestId,
     errorCode,
   };
+  // Phase 7 Step 5 — route the call through the pricing helper so the
+  // 'unsupported_unit' marker lands on `usage.metadata.cost_status`.
+  // Failed rows skip the calculator (no incurred cost to report).
+  if (status !== "failed") {
+    const result = calculateUsageCostUsdMicros({
+      provider: "clova",
+      operation: "stt_transcribe",
+      model: CLOVA_DEFAULT_MODEL,
+      tokensIn: null,
+      tokensOut: null,
+    });
+    applyUsageCost(usage, result);
+  }
+  return usage;
 }
 
 // Map the Kloser language enum into Clova's query param value. The

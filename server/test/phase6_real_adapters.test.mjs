@@ -136,6 +136,12 @@ test("Clova adapter returns null value for empty text result but still records u
     });
     assert.equal(result.value, null);
     assert.equal(result.usage.status, "succeeded");
+    // Phase 7 Step 5 — Clova has no audio-duration field in the usage
+    // envelope, so the pricing helper deliberately returns null with an
+    // 'unsupported_unit' marker. This contract belongs to the Clova
+    // adapter and stays locked until an audio ingest surface lands.
+    assert.equal(result.usage.costUsdMicros, null);
+    assert.equal(result.usage.metadata?.cost_status, "unsupported_unit");
 });
 
 test("Clova adapter throws ClovaAuthError on 401 (bad credentials)", async () => {
@@ -230,6 +236,68 @@ test("Anthropic adapter constructs and reports provider='anthropic'", () => {
 });
 
 // ============================================================
+//   Phase 7 Step 5 — cost helper wiring (no network)
+// ============================================================
+//
+// The adapter's empty-transcript / empty-batch branches return a
+// 'skipped' ProviderUsage without ever calling the SDK. That is the
+// only no-network path through `makeUsage`, so it gives us a free
+// integration check that the Phase 7 Step 5 cost helper is wired to
+// the adapter envelope.
+//
+// Network-driven paths (real Messages / Embedding API responses) are
+// exercised by the opt-in E2E_ALLOW_REAL_PROVIDERS tests further below
+// and by `phase7_step5_llm_pricing.test.mjs` for the calculator itself.
+
+test("Anthropic adapter skip path → cost=0 + pricing_verified_on metadata (Step 5 wiring)", async () => {
+    const llm = createAnthropicLlmAdapter({
+        apiKey: "sk-ant-test-not-used",
+        model: "claude-sonnet-4-5",
+    });
+    const result = await llm.summarizeCall({ transcript: "" });
+    assert.equal(result.usage.provider, "anthropic");
+    assert.equal(result.usage.status, "skipped");
+    assert.equal(result.usage.costUsdMicros, 0);
+    assert.equal(result.usage.metadata?.pricing_verified_on, "2026-05-18");
+});
+
+test("Anthropic adapter unknown-model skip path → cost null + cost_status='unknown_model'", async () => {
+    const llm = createAnthropicLlmAdapter({
+        apiKey: "sk-ant-test-not-used",
+        // A model not in the price map — adapter must still record the
+        // usage row, just with cost=null and an `unknown_model` marker.
+        model: "claude-future-model-9000",
+    });
+    const result = await llm.summarizeCall({ transcript: "" });
+    assert.equal(result.usage.status, "skipped");
+    assert.equal(result.usage.costUsdMicros, null);
+    assert.equal(result.usage.metadata?.cost_status, "unknown_model");
+});
+
+test("OpenAI embedding skip path → cost=0 + pricing_verified_on metadata (Step 5 wiring)", async () => {
+    const emb = createOpenAIEmbeddingAdapter({
+        apiKey: "sk-test-not-used",
+        model: "text-embedding-3-small",
+    });
+    const result = await emb.embedBatch([]);
+    assert.equal(result.usage.provider, "openai");
+    assert.equal(result.usage.status, "skipped");
+    assert.equal(result.usage.costUsdMicros, 0);
+    assert.equal(result.usage.metadata?.pricing_verified_on, "2026-05-18");
+});
+
+test("OpenAI embedding unknown-model skip path → cost null + cost_status='unknown_model'", async () => {
+    const emb = createOpenAIEmbeddingAdapter({
+        apiKey: "sk-test-not-used",
+        model: "text-embedding-9-future",
+    });
+    const result = await emb.embedBatch([]);
+    assert.equal(result.usage.status, "skipped");
+    assert.equal(result.usage.costUsdMicros, null);
+    assert.equal(result.usage.metadata?.cost_status, "unknown_model");
+});
+
+// ============================================================
 //             Opt-in real-network contract tests
 // ============================================================
 // These run only when both:
@@ -258,6 +326,27 @@ test(
         assert.equal(result.usage.status, "succeeded");
         assert.ok((result.usage.tokensIn ?? 0) > 0);
         assert.ok((result.usage.tokensOut ?? 0) > 0);
+        // Phase 7 Step 5 — real Anthropic response with a known-default
+        // model name must surface a non-null cost. If a future SDK
+        // response returns a different alias / dated snapshot, the
+        // calculator drops to `unknown_model`, in which case the cost
+        // is null and the metadata marker explains why.
+        if (result.usage.costUsdMicros === null) {
+            assert.equal(
+                result.usage.metadata?.cost_status,
+                "unknown_model",
+                "real Anthropic call returned a model id the price map doesn't recognise",
+            );
+        } else {
+            assert.ok(
+                result.usage.costUsdMicros > 0,
+                "real Anthropic call should compute a positive cost",
+            );
+            assert.equal(
+                result.usage.metadata?.pricing_verified_on,
+                "2026-05-18",
+            );
+        }
     },
 );
 
@@ -273,6 +362,23 @@ test(
         assert.equal(result.usage.provider, "openai");
         assert.equal(result.usage.status, "succeeded");
         assert.ok((result.usage.tokensIn ?? 0) > 0);
+        // Same Step 5 cost assertion as the Anthropic e2e test above.
+        if (result.usage.costUsdMicros === null) {
+            assert.equal(
+                result.usage.metadata?.cost_status,
+                "unknown_model",
+                "real OpenAI embedding returned a model id the price map doesn't recognise",
+            );
+        } else {
+            assert.ok(
+                result.usage.costUsdMicros > 0,
+                "real OpenAI embedding should compute a positive cost",
+            );
+            assert.equal(
+                result.usage.metadata?.pricing_verified_on,
+                "2026-05-18",
+            );
+        }
     },
 );
 

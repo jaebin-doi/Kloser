@@ -17,10 +17,12 @@
  *     error type the repository throws on a malformed VALUES literal —
  *     so the route's error handler maps either path to 400.
  *
- * Cost: same Step 2 decision as the Anthropic adapter — tokens are
- * recorded, `cost_usd_micros` stays null until a price-verification
- * commit adds a model→price map. Embedding pricing is small but rules
- * differ per model so we don't want to ship stale constants.
+ * Cost (Phase 7 Step 5):
+ *   Pricing is delegated to `adapters/pricing.ts`. Embedding requests
+ *   have no output tokens; the calculator multiplies `tokensIn` against
+ *   the input-only rate ($0.02/MTok for text-embedding-3-small as of
+ *   the price map's verified date). Unknown models keep
+ *   `costUsdMicros = null` with `metadata.cost_status = 'unknown_model'`.
  *
  * Failure: 401/403 throw fail-fast (bad config); 429/5xx throw so the
  * caller's retry policy (BullMQ for KB ingest, immediate for search)
@@ -33,6 +35,10 @@ import {
   EmbeddingDimensionError,
 } from "./index.js";
 import type { ProviderResult, ProviderUsage } from "../usage.js";
+import {
+  applyUsageCost,
+  calculateUsageCostUsdMicros,
+} from "../pricing.js";
 
 export const OPENAI_DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 const DIM = 1536 as const;
@@ -58,17 +64,28 @@ function makeUsage(
   tokensIn: number | null,
   latencyMs: number,
 ): ProviderUsage {
-  return {
+  const usage: ProviderUsage = {
     provider: "openai",
     operation: "knowledge_embedding",
     model,
     status,
     tokensIn,
     tokensOut: 0,
-    // See file header: cost left null in Step 2.
+    // Populated by calculateUsageCostUsdMicros below — Phase 7 Step 5.
     costUsdMicros: null,
     latencyMs,
   };
+  if (status !== "failed") {
+    const result = calculateUsageCostUsdMicros({
+      provider: "openai",
+      operation: "knowledge_embedding",
+      model,
+      tokensIn,
+      tokensOut: 0,
+    });
+    applyUsageCost(usage, result);
+  }
+  return usage;
 }
 
 function isAuthError(err: unknown): boolean {
