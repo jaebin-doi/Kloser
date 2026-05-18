@@ -140,29 +140,32 @@
         <!-- Left: Campaigns + Stats -->
         <section class="flex flex-col lg:overflow-hidden lg:border-r border-b lg:border-b-0 border-slate-200">
 
-          <!-- Stats -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 bg-white border-b border-slate-200 flex-shrink-0">
+          <!-- Stats (demo) — Phase 7 Step 8.
+               실 캠페인 발송 / 전달률 backend가 없으므로 숫자는 예시 데이터.
+               transactional email_outbox(Step 1)와는 별개 도메인이며 그 endpoint를
+               여기에 연결하지 않는다. -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 bg-white border-b border-slate-200 flex-shrink-0" data-source="demo">
             <div class="p-4 lg:p-5 border-r border-slate-200">
-              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">발송 완료</div>
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">발송 완료 <span class="text-amber-600 font-bold">(예시)</span></div>
               <div class="text-[1.4rem] font-black tnum tracking-tight text-slate-800">2,486</div>
             </div>
             <div class="p-4 lg:p-5 border-r border-slate-200">
-              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">전달률</div>
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">전달률 <span class="text-amber-600 font-bold">(예시)</span></div>
               <div class="text-[1.4rem] font-black tnum tracking-tight text-emerald-600">97.4%</div>
             </div>
             <div class="p-4 lg:p-5 sm:border-r border-slate-200">
-              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">오픈율</div>
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">오픈율 <span class="text-amber-600 font-bold">(예시)</span></div>
               <div class="text-[1.4rem] font-black tnum tracking-tight text-blue-600">50.0%</div>
             </div>
             <div class="p-4 lg:p-5">
-              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">클릭률</div>
+              <div class="text-[.62rem] font-bold tracking-wider uppercase text-slate-500 mb-1.5">클릭률 <span class="text-amber-600 font-bold">(예시)</span></div>
               <div class="text-[1.4rem] font-black tnum tracking-tight text-violet-600">12.4%</div>
             </div>
           </div>
 
-          <!-- Campaign list -->
+          <!-- Campaign list (demo) — 로컬 상수 배열, backend 미연결. -->
           <div class="px-5 py-4 border-b border-slate-200 bg-white flex items-center justify-between flex-shrink-0">
-            <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">캠페인 목록</h3>
+            <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">캠페인 목록 <span class="text-amber-600 font-bold text-[.6rem]">(demo)</span></h3>
             <span class="text-[.7rem] text-slate-400 tnum"><span id="campTotalLabel">0</span>개</span>
           </div>
 
@@ -183,8 +186,9 @@
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[.65rem] font-black text-white shadow-md">AI</div>
               <div>
-                <h2 class="text-[.92rem] font-black tracking-tight text-slate-800">AI 이메일 작성</h2>
-                <p class="text-[.65rem] text-slate-500">대화로 메일을 즉시 생성합니다</p>
+                <h2 class="text-[.92rem] font-black tracking-tight text-slate-800">AI 이메일 작성 <span class="text-amber-600 font-bold text-[.55rem]">(demo)</span></h2>
+                <!-- Phase 7 Step 8 — 실 AI provider 호출이 아니라 키워드 기반 로컬 템플릿 매칭. -->
+                <p class="text-[.65rem] text-slate-500">키워드 기반 로컬 데모 초안 생성</p>
               </div>
             </div>
             <button class="text-[.7rem] font-bold text-slate-500 hover:text-slate-800 transition-colors">새 대화</button>
@@ -254,8 +258,10 @@
               <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
             </div>
             <div>
-              <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">이메일 발송</h2>
-              <p class="text-[.7rem] text-slate-500">발송 전 수신자와 일정을 확인해 주세요</p>
+              <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">이메일 발송 <span class="text-amber-600 font-bold text-[.6rem]">(시뮬레이션)</span></h2>
+              <!-- Phase 7 Step 8 — 실 provider 발송 backend 없음. transactional outbox와
+                   분리된 별개 도메인이며 progress bar는 시각 효과만. -->
+              <p class="text-[.7rem] text-slate-500">실제 발송은 이뤄지지 않습니다 (캠페인 backend 미연결)</p>
             </div>
           </div>
           <button onclick="closeSendModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
@@ -320,21 +326,22 @@
 
           <!-- schedule -->
           <div>
-            <label class="text-[.72rem] font-bold text-slate-700 mb-2 block">발송 시점</label>
+            <label class="text-[.72rem] font-bold text-slate-700 mb-2 block">시뮬레이션 시점</label>
             <div class="space-y-2">
               <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-slate-300 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50">
                 <input type="radio" name="when" value="now" checked class="accent-blue-600" onchange="onWhenChange()" />
                 <div class="flex-1">
-                  <div class="text-[.82rem] font-bold text-slate-800">지금 발송</div>
-                  <div class="text-[.68rem] text-slate-500">버튼을 누르면 즉시 발송돼요</div>
+                  <div class="text-[.82rem] font-bold text-slate-800">지금 시뮬레이션</div>
+                  <!-- Phase 7 Step 8 — 시뮬레이션 progress bar만 동작. 실제 전송 없음. -->
+                  <div class="text-[.68rem] text-slate-500">시뮬레이션 진행률 표시 (실제 발송 없음)</div>
                 </div>
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-emerald-500"><path d="M5 13l4 4L19 7"/></svg>
               </label>
               <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-slate-300 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50">
                 <input type="radio" name="when" value="scheduled" class="accent-blue-600" onchange="onWhenChange()" />
                 <div class="flex-1">
-                  <div class="text-[.82rem] font-bold text-slate-800">예약 발송</div>
-                  <div class="text-[.68rem] text-slate-500">원하는 시간에 자동 발송</div>
+                  <div class="text-[.82rem] font-bold text-slate-800">예약 시뮬레이션</div>
+                  <div class="text-[.68rem] text-slate-500">예약 시각을 toast로만 안내 (실제 발송 없음)</div>
                 </div>
                 <input type="datetime-local" id="scheduleAt" disabled class="text-[.72rem] px-2 py-1 rounded border border-slate-200 outline-none focus:border-blue-400 disabled:bg-slate-50 disabled:text-slate-400" />
               </label>
@@ -345,25 +352,26 @@
         <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
           <div class="text-[.7rem] text-slate-500 flex items-center gap-1.5 min-w-0">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="shrink-0"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
-            <span class="truncate">From: noreply@kloser.com</span>
+            <!-- 시뮬레이션이라 실제 발신 주소는 없음. 운영 도입 시 SES/Resend 등 실 provider 도메인 표시. -->
+            <span class="truncate">예시 발신: noreply@kloser.com (시뮬레이션)</span>
           </div>
           <div class="flex gap-2 flex-shrink-0">
             <button onclick="closeSendModal()" class="btn-secondary">취소</button>
             <button onclick="confirmSend()" class="btn-primary">
               <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-              <span id="sendBtnLabel">2,486명에게 발송</span>
+              <span id="sendBtnLabel">2,486명에게 시뮬레이션 실행</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Step 2: sending -->
+      <!-- Step 2: sending (simulation only) -->
       <div id="sendStep2" style="display:none">
         <div class="px-6 py-12 text-center">
           <div class="mx-auto w-16 h-16 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center mb-5">
             <svg class="spin" width="28" height="28" fill="none" stroke="rgb(37 99 235)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56" stroke-linecap="round"/></svg>
           </div>
-          <h3 class="text-[1.05rem] font-black tracking-tight text-slate-800 mb-1.5">발송 중입니다</h3>
+          <h3 class="text-[1.05rem] font-black tracking-tight text-slate-800 mb-1.5">시뮬레이션 실행 중</h3>
           <p class="text-[.78rem] text-slate-500 mb-5">
             <span id="sendProgress" class="tnum font-bold text-slate-700">0</span>
             <span class="text-slate-400 mx-1">/</span>
@@ -377,15 +385,15 @@
         </div>
       </div>
 
-      <!-- Step 3: complete -->
+      <!-- Step 3: complete (simulation only) -->
       <div id="sendStep3" style="display:none">
         <div class="px-6 py-10 text-center">
           <div class="mx-auto w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-5 pop">
             <svg width="28" height="28" fill="none" stroke="rgb(16 185 129)" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
           </div>
-          <h3 class="text-[1.1rem] font-black tracking-tight text-slate-800 mb-1.5">발송 완료</h3>
+          <h3 class="text-[1.1rem] font-black tracking-tight text-slate-800 mb-1.5">시뮬레이션 완료</h3>
           <p class="text-[.82rem] text-slate-500 mb-6">
-            <span id="sentTotal" class="tnum font-bold text-slate-800">2,486</span>명에게 정상 발송되었습니다
+            <span id="sentTotal" class="tnum font-bold text-slate-800">2,486</span>명 발송 시뮬레이션이 끝났습니다 (실제 발송은 없었습니다)
           </p>
           <div class="grid grid-cols-3 gap-2 max-w-[340px] mx-auto">
             <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-3">
@@ -530,7 +538,7 @@
           <div class="rounded-lg bg-blue-50/60 border border-blue-100 px-3 py-2 flex items-start gap-2">
             <svg width="13" height="13" fill="none" stroke="rgb(37 99 235)" stroke-width="2" viewBox="0 0 24 24" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
             <p class="text-[.7rem] text-blue-800 leading-relaxed">
-              <span class="font-bold">[고객명]</span>, <span class="font-bold">[회사명]</span> 같은 변수는 발송 시 수신자별로 자동 치환됩니다.
+              <span class="font-bold">[고객명]</span>, <span class="font-bold">[회사명]</span> 같은 변수는 실제 campaign backend 도입 시 수신자별로 치환됩니다.
             </p>
           </div>
         </div>
@@ -640,7 +648,7 @@
           </div>
           <div>
             <h2 class="text-[1.02rem] font-black tracking-tight text-slate-800">초안 수정</h2>
-            <p class="text-[.7rem] text-slate-500">제목과 본문을 다듬고 바로 발송하세요</p>
+            <p class="text-[.7rem] text-slate-500">제목과 본문을 다듬고 발송 시뮬레이션을 확인하세요</p>
           </div>
         </div>
         <button onclick="closeEditModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
@@ -668,7 +676,7 @@
         <div class="rounded-lg bg-blue-50/60 border border-blue-100 px-3 py-2 flex items-start gap-2">
           <svg width="13" height="13" fill="none" stroke="rgb(37 99 235)" stroke-width="2" viewBox="0 0 24 24" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
           <p class="text-[.7rem] text-blue-800 leading-relaxed">
-            <span class="font-bold">[고객명]</span> 같은 변수는 발송 시 수신자별로 자동 치환됩니다.
+            <span class="font-bold">[고객명]</span> 같은 변수는 실제 campaign backend 도입 시 수신자별로 치환됩니다.
           </p>
         </div>
       </div>
@@ -678,7 +686,7 @@
         <button onclick="applyEditOnly()" class="btn-secondary">저장만</button>
         <button onclick="applyEditAndSend()" class="btn-primary">
           <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          저장하고 발송
+          저장하고 시뮬레이션
         </button>
       </div>
     </div>
@@ -687,29 +695,61 @@
   <!-- Toast -->
   <div id="toast">
     <svg width="14" height="14" fill="none" stroke="rgb(74 222 128)" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-    <span id="toastMsg">발송 완료</span>
+    <span id="toastMsg">시뮬레이션 완료</span>
   </div>
 
   <script src="api.js"></script>
   <script src="_shared.js"></script>
   <script>
+    /* Phase 7 Step 8 — `newsletter.html`은 backend 미연결 demo surface.
+     *
+     * 데이터 출처:
+     *   - 사이드바 / 프로필 : 공통 `_shared.js`의 `/me` 경로
+     *   - 캠페인 목록 / 통계 : 로컬 상수 (`campaigns`, `styles`, `templates`)
+     *   - AI compose / 발송  : 키워드 기반 로컬 템플릿 + 시뮬레이션 progress bar
+     *
+     * 안 한 것 (Step 8 범위 밖):
+     *   - 캠페인 schema / route
+     *   - 실 provider 발송 (Step 1 email_outbox는 transactional용이며 여기 연결하지 않음)
+     *   - AI provider 호출
+     *
+     * XSS gate:
+     *   - 사용자 입력은 chat textarea (`appendUser`), draft edit modal, template
+     *     create form. textContent 경로를 유지하고 innerHTML 보간은 escapeHtml 통과.
+     *   - 캠페인/스타일/템플릿 배열은 로컬 상수라 escape 생략. server-supplied로
+     *     교체할 때 모든 텍스트 필드 escapeHtml 필수.
+     */
     renderSidebar('newsletter');
+
+    /* Page-local XSS escape — daily / dashboard와 같은 패턴. */
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
     const chatEl = document.getElementById('chat');
     const inputEl = document.getElementById('userInput');
 
     function appendUser(text) {
+      // Phase 7 Step 8 — chrome HTML은 정적 template literal로 두고,
+      // user-typed 메시지는 textContent로 채워서 XSS 위험을 닫는다.
+      // 이전 구현은 `${text}`를 innerHTML로 직접 보간해 사용자가 textarea에
+      // <script>를 입력하면 실행됐다.
       const wrapper = document.createElement('div');
       wrapper.className = 'flex gap-2.5 flex-row-reverse msg-enter';
       wrapper.innerHTML = `
         <div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-[.65rem] font-black text-white shrink-0">김</div>
         <div class="flex-1 min-w-0 flex flex-col items-end">
           <div class="text-[.72rem] font-bold text-slate-700 mb-1">김민수</div>
-          <div class="rounded-2xl rounded-tr-sm bg-slate-100 border border-slate-200 px-3.5 py-2.5 text-[.85rem] text-slate-800 leading-relaxed max-w-[85%]">
-            ${text}
-          </div>
+          <div class="rounded-2xl rounded-tr-sm bg-slate-100 border border-slate-200 px-3.5 py-2.5 text-[.85rem] text-slate-800 leading-relaxed max-w-[85%] user-msg-body"></div>
         </div>
       `;
+      wrapper.querySelector('.user-msg-body').textContent = text;
       chatEl.appendChild(wrapper);
       chatEl.scrollTo({ top: chatEl.scrollHeight, behavior: 'smooth' });
     }
@@ -788,7 +828,7 @@
             <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
               <button class="send-btn text-[.7rem] px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1 transition-colors">
                 <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                발송
+                시뮬레이션
               </button>
               <button class="save-btn text-[.7rem] px-2.5 py-1 rounded border border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-colors">템플릿 저장</button>
               <button class="edit-btn text-[.7rem] px-2.5 py-1 rounded border border-slate-200 hover:border-slate-300 text-slate-600 font-bold transition-colors flex items-center gap-1">
@@ -819,7 +859,7 @@
       appendTyping();
       setTimeout(() => {
         removeTyping();
-        appendAi(`<div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-[.85rem] text-slate-700 leading-relaxed max-w-[95%]">요청하신 내용으로 초안을 작성했어요. 수신자 그룹과 발송 일정을 함께 알려주시면 더 정교하게 다듬어 드릴게요.</div>`);
+        appendAi(`<div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-[.85rem] text-slate-700 leading-relaxed max-w-[95%]">요청하신 내용으로 초안을 작성했어요. 수신자 그룹과 시뮬레이션 일정을 함께 알려주시면 더 정교하게 다듬어 드릴게요.</div>`);
         setTimeout(() => appendDraft(text), 600);
       }, 1000);
     }
@@ -841,7 +881,9 @@
       if (!sel) return;
       const count = Number(sel.value).toLocaleString();
       const when = document.querySelector('input[name="when"]:checked')?.value;
-      sendBtnLabel.textContent = when === 'scheduled' ? `${count}명에게 예약` : `${count}명에게 발송`;
+      sendBtnLabel.textContent = when === 'scheduled'
+        ? `${count}명에게 시뮬레이션 예약`
+        : `${count}명에게 시뮬레이션 실행`;
     }
 
     recipientRadios().forEach(r => r.addEventListener('change', updateSendBtnLabel));
@@ -885,11 +927,11 @@
 
       if (when === 'scheduled') {
         const at = document.getElementById('scheduleAt').value;
-        if (!at) { showToast('예약 시간을 선택해 주세요'); return; }
+        if (!at) { showToast('시뮬레이션 예약 시간을 선택해 주세요'); return; }
         closeSendModal();
         const d = new Date(at);
         const fmt = `${d.getMonth()+1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        showToast(`${fmt}에 ${total.toLocaleString()}명 예약됨`);
+        showToast(`${fmt}에 ${total.toLocaleString()}명 시뮬레이션 예약됨`);
         return;
       }
 
@@ -919,7 +961,7 @@
             document.getElementById('sendStep3').style.display = '';
             document.getElementById('sentTotal').textContent = total.toLocaleString();
             document.getElementById('statSent').textContent = total.toLocaleString();
-            showToast(`${label} ${total.toLocaleString()}명에게 발송됨`);
+            showToast(`${label} ${total.toLocaleString()}명 시뮬레이션 완료`);
           }, 380);
         }
       }
@@ -928,6 +970,12 @@
     window.confirmSend = confirmSend;
 
     // ----- Campaigns + pagination -----
+    // Phase 7 Step 8 — `campaigns` is a constant demo array. There is no
+    // create/edit/delete path, so c.title / c.preview / c.group etc.
+    // never receive user input today and the renderCampaigns / renderCampaignDetail
+    // template literals can interpolate them without escapeHtml. If a real
+    // campaign backend ships, every interpolated field must go through
+    // escapeHtml() OR DOM textContent — see appendUser for the pattern.
     const campaigns = [
       { id: 1, status: 'sent', date: '5월 1일', schedule: null, title: 'Kloser 5월 업데이트 — 새로운 통합 기능 안내', preview: 'HubSpot · Salesforce 양방향 동기화 정식 출시 안내드립니다.', recipients: 1245, group: '전체 고객', delivery: 98.2, open: 52.1, click: 14.3, bounced: 22, unsub: 4, subject: '📬 Kloser 5월 업데이트 — 새로운 통합 기능', body: '안녕하세요, [고객명]님.\n\n이번 달 Kloser가 더 강력해졌습니다.\n\n• HubSpot · Salesforce 양방향 동기화 정식 출시\n• 통화 후 자동 메모 정확도 12% 향상\n• Slack 알림 통합\n\n자세한 내용은 [업데이트 노트]에서 확인하실 수 있어요.\n\n— Kloser 팀 드림' },
       { id: 2, status: 'scheduled', date: '5월 8일 09:00', schedule: '5월 8일 09:00', title: 'Kloser 분기 인사이트 리포트 — VIP 한정', preview: '분기별 영업 데이터 분석 리포트', recipients: 487, group: 'VIP 고객', subject: '[VIP] 분기 인사이트 리포트 — 5월호', body: '안녕하세요, [고객명]님.\n\nVIP 고객님께만 분기별로 보내드리는 영업 인사이트 리포트입니다.\n\n— Kloser 팀 드림' },
@@ -973,7 +1021,7 @@
 
     function statusBadge(status) {
       if (status === 'sent') return '<span class="badge badge-emerald">전송 완료</span>';
-      if (status === 'scheduled') return '<span class="badge badge-blue">발송 예약</span>';
+      if (status === 'scheduled') return '<span class="badge badge-blue">시뮬레이션 예약</span>';
       return '<span class="badge badge-amber">대기</span>';
     }
 
@@ -994,7 +1042,7 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 mb-1">
               ${statusBadge(c.status)}
-              <span class="text-[.65rem] text-slate-400">${c.status === 'scheduled' ? c.schedule + ' 예정' : c.date + ' 발송'}</span>
+              <span class="text-[.65rem] text-slate-400">${c.status === 'scheduled' ? c.schedule + ' 예정' : c.date + ' 예시 발송'}</span>
             </div>
             <div class="font-bold text-slate-800 text-[.88rem] truncate">${c.title}</div>
           </div>
@@ -1070,7 +1118,7 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 mb-2 flex-wrap">
               ${statusBadge(c.status)}
-              <span class="text-[.7rem] text-slate-500 tnum">${c.status === 'scheduled' ? c.schedule + ' 예정' : c.date + ' 발송'}</span>
+              <span class="text-[.7rem] text-slate-500 tnum">${c.status === 'scheduled' ? c.schedule + ' 예정' : c.date + ' 예시 발송'}</span>
               <span class="text-slate-300">·</span>
               <span class="text-[.7rem] text-slate-500">${c.group}</span>
             </div>
@@ -1085,7 +1133,7 @@
         <div class="max-h-[65vh] overflow-y-auto scroll-area">
           ${isSent ? `
           <div class="px-6 py-5 border-b border-slate-100">
-            <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-500 mb-3">발송 결과</div>
+            <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-500 mb-3">예시 발송 결과</div>
             <div class="grid grid-cols-4 gap-2">
               <div class="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5">
                 <div class="text-[.62rem] font-bold text-slate-500 mb-1">수신자</div>
@@ -1141,9 +1189,9 @@
                 <svg width="14" height="14" fill="none" stroke="rgb(37 99 235)" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
               </div>
               <div class="flex-1">
-                <div class="text-[.62rem] font-black uppercase tracking-wider text-blue-700 mb-1">예약된 발송</div>
+                <div class="text-[.62rem] font-black uppercase tracking-wider text-blue-700 mb-1">예약된 시뮬레이션</div>
                 <div class="text-[.92rem] font-black text-slate-800 mb-0.5 tnum">${c.schedule}</div>
-                <div class="text-[.72rem] text-slate-600">${c.recipients.toLocaleString()}명에게 자동으로 발송됩니다 · 그룹: ${c.group}</div>
+                <div class="text-[.72rem] text-slate-600">${c.recipients.toLocaleString()}명에게 자동 발송되는 상황을 보여주는 데모입니다 · 그룹: ${c.group}</div>
               </div>
             </div>
           </div>
@@ -1180,9 +1228,9 @@
           ${isSent
             ? `<button onclick="closeCampaignModal()" class="btn-primary">닫기</button>`
             : `<button onclick="closeCampaignModal()" class="btn-secondary">닫기</button>
-               <button onclick="showToast('지금 발송을 시작했습니다')" class="btn-primary">
+               <button onclick="showToast('발송 시뮬레이션을 시작했습니다')" class="btn-primary">
                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                 지금 즉시 발송
+                 지금 시뮬레이션
                </button>`}
         </div>
       `;
@@ -1661,18 +1709,21 @@
 
     function renderTemplates() {
       const list = activeCat === 'all' ? templates : templates.filter(t => t.cat === activeCat);
+      // Phase 7 Step 8 — t.title / t.desc / t.icon / t.badgeLabel은 custom 템플릿의 경우
+      // 사용자가 직접 입력한 값이므로 escapeHtml 통과시켜야 한다. iconBg/iconBorder/badge
+      // 는 CAT_THEME 상수에서 골라 오므로 안전.
       tplGrid.innerHTML = list.map((t) => `
         <button class="tpl-card" data-idx="${templates.indexOf(t)}">
           <div class="flex items-start justify-between">
-            <div class="tpl-icon bg-gradient-to-br ${t.iconBg} border ${t.iconBorder}">${t.icon}</div>
+            <div class="tpl-icon bg-gradient-to-br ${t.iconBg} border ${t.iconBorder}">${escapeHtml(t.icon)}</div>
             <div class="flex flex-col items-end gap-1">
-              <span class="badge ${t.badge}">${t.badgeLabel}</span>
+              <span class="badge ${t.badge}">${escapeHtml(t.badgeLabel)}</span>
               ${t.custom ? '<span class="text-[.6rem] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">내 템플릿</span>' : ''}
             </div>
           </div>
           <div>
-            <div class="font-bold text-slate-800 text-[.88rem] mb-1">${t.title}</div>
-            <div class="text-[.72rem] text-slate-500 leading-relaxed">${t.desc}</div>
+            <div class="font-bold text-slate-800 text-[.88rem] mb-1">${escapeHtml(t.title)}</div>
+            <div class="text-[.72rem] text-slate-500 leading-relaxed">${escapeHtml(t.desc)}</div>
           </div>
           <div class="flex items-center gap-1 text-[.68rem] font-bold text-blue-600 mt-1">
             <span>이 템플릿으로 작성</span>
@@ -1690,7 +1741,8 @@
             appendTyping();
             setTimeout(() => {
               removeTyping();
-              appendAi(`<div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-[.85rem] text-slate-700 leading-relaxed max-w-[95%]">'${t.title}' 템플릿으로 초안을 준비했어요. 수정이 필요하면 말씀해 주세요.</div>`);
+              // user-typed t.title이 AI 응답 텍스트에 들어가므로 escape.
+              appendAi(`<div class="rounded-2xl rounded-tl-sm bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-[.85rem] text-slate-700 leading-relaxed max-w-[95%]">'${escapeHtml(t.title)}' 템플릿으로 초안을 준비했어요. 수정이 필요하면 말씀해 주세요.</div>`);
               setTimeout(() => appendDraft(t.title, { subject: t.subject, body: t.body }), 500);
             }, 700);
           } else {

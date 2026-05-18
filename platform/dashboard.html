@@ -90,7 +90,14 @@
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-600" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
               </div>
             </div>
-            <div id="kpiAvgDuration" class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">—</div>
+            <!-- Phase 7 Step 8 — value is two textContent spans (min + sec).
+                 The earlier `innerHTML = formatAvgDurationLabel(...)` path put
+                 server-derived numeric output through innerHTML which is fine
+                 today but rots once anyone widens the formatter. textContent
+                 is the cheaper invariant. -->
+            <div class="text-[1.5rem] lg:text-[1.7rem] font-black tnum tracking-tight text-slate-800">
+              <span id="kpiAvgDurationValue">—</span><span id="kpiAvgDurationUnit" class="hidden"></span>
+            </div>
             <div class="text-[.7rem] text-slate-400 font-bold mt-1">오늘 완료된 통화 평균</div>
           </div>
 
@@ -106,11 +113,15 @@
           </div>
         </section>
 
-        <!-- 2-col area: trends + To-Do -->
-        <section class="grid lg:grid-cols-3 gap-4 lg:gap-6">
+        <!-- 2-col area: trends + To-Do — both demo until the Naver/daily
+             backends ship. The `(demo)` text labels inside are deliberately
+             visible to the user so they don't mistake static rows for live
+             market data. data-source="demo" pins the classification at the
+             DOM level for grep + automated audits. -->
+        <section class="grid lg:grid-cols-3 gap-4 lg:gap-6" data-source="demo">
 
           <!-- Trends (col-span-1) — Phase 6+ daily.html과 통합 예정. 현재는 demo. -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-1">
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-1" data-source="demo">
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">시장 트렌드 알림</h3>
@@ -159,7 +170,7 @@
           </div>
 
           <!-- To-Do (col-span-2) — Phase 5+ AI 추천 To-Do. 현재는 demo. -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-2">
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-2" data-source="demo">
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">오늘의 추천 To-Do</h3>
@@ -207,8 +218,11 @@
             </div>
           </div>
 
-          <!-- Team activity (col-span-1) — Phase 5+ activity_log 도입 예정. 현재는 demo. -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-1">
+          <!-- Team activity (col-span-1) — Phase 7 Step 3 activity_log은 관리자
+               전용 audit 패널(settings.html)에서만 노출한다. 이 영역은 일반 팀
+               feed UX의 demo placeholder로 유지하고 audit endpoint와 연결하지
+               않는다. -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-1" data-source="demo">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">팀 활동</h3>
               <span class="text-amber-600 font-bold text-[.6rem]">(demo)</span>
@@ -299,14 +313,17 @@
       return String(d.getHours()).padStart(2, '0') + ':' +
              String(d.getMinutes()).padStart(2, '0');
     }
+    // Phase 7 Step 8 — return a {value, unit} pair so the caller can
+    // assign each via textContent (the old version baked the m/s span
+    // chrome into innerHTML, which routed a number-only label through
+    // an innerHTML write for no reason). The two-span layout still
+    // renders: `<span id=Value>3m 04</span><span id=Unit>s</span>`.
     function formatAvgDurationLabel(avg) {
-      if (avg === null || avg === undefined) return '—';
+      if (avg === null || avg === undefined) return { value: '—', unit: '' };
       const n = Math.max(0, Math.floor(avg));
       const m = Math.floor(n / 60);
       const s = n % 60;
-      // dashboard 카드 톤에 맞춰 m+s split.
-      return m + '<span class="text-[.95rem] text-slate-500 font-bold">m</span> ' +
-             String(s).padStart(2, '0') + '<span class="text-[.95rem] text-slate-500 font-bold">s</span>';
+      return { value: m + 'm ' + String(s).padStart(2, '0'), unit: 's' };
     }
     function formatResponseRateLabel(rate) {
       if (rate === null || rate === undefined) return '—';
@@ -319,8 +336,12 @@
     document.getElementById('todayDate').textContent =
       `${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일 (${days[today.getDay()]}요일)`;
 
-    /* To-Do data — demo (Phase 5+ AI todo generation). 라벨은 위 헤더에 표시. */
-    const todos = [
+    /* Phase 7 Step 8 — DEMO_TODOS is a local constant. No backend, no
+     * user input. Renamed from `todos` to make grep + code review obvious.
+     * If a future AI-todo backend ships, replace this constant with the
+     * fetch result AND swap the raw ${...} template interpolations below
+     * for escapeHtml() — see XSS gate notes in PHASE_7_STEP_8_FINDINGS. */
+    const DEMO_TODOS = [
       { done: true, priority: 'high', text: 'A사 김대표님 후속 미팅 (10:00)', tags: ['미팅', '높음'] },
       { done: true, priority: 'med', text: '이전 통화 #1238 요약 검토', tags: ['검토'] },
       { done: true, priority: 'med', text: 'HubSpot 연동 가이드 PDF 발송 — 박서준 고객', tags: ['발송'] },
@@ -332,13 +353,14 @@
     const todoListEl = document.getElementById('todoList');
     function renderTodos() {
       todoListEl.innerHTML = '';
-      todos.forEach((t, i) => {
+      DEMO_TODOS.forEach((t, i) => {
         const li = document.createElement('li');
         li.className = `flex items-center gap-3 p-3 rounded-lg border ${t.done ? 'bg-slate-50/50 border-slate-100' : 'bg-white border-slate-200 card-hover'} cursor-pointer`;
-        li.onclick = () => { todos[i].done = !todos[i].done; renderTodos(); };
+        li.onclick = () => { DEMO_TODOS[i].done = !DEMO_TODOS[i].done; renderTodos(); };
         const priColor = t.priority === 'high' ? 'rose' : t.priority === 'med' ? 'amber' : 'slate';
-        // demo 데이터 전용 — escape는 안 함 (constant). 만약 server-supplied로 바뀌면
-        // escapeHtml로 감싸야 함.
+        // Phase 7 Step 8 — DEMO_TODOS is a local constant; the ${...}
+        // interpolations are safe today. Server-supplied todos would
+        // need escapeHtml() on t.text and each tag.
         li.innerHTML = `
           <span class="w-5 h-5 rounded-md border-2 ${t.done ? 'border-blue-500 bg-blue-500' : 'border-slate-300'} flex items-center justify-center shrink-0 transition-colors">
             ${t.done ? '<svg width="11" height="11" fill="none" stroke="white" stroke-width="3.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>' : ''}
@@ -353,9 +375,9 @@
         `;
         todoListEl.appendChild(li);
       });
-      const done = todos.filter(t => t.done).length;
+      const done = DEMO_TODOS.filter(t => t.done).length;
       document.getElementById('todoDone').textContent = done;
-      document.getElementById('todoTotal').textContent = todos.length;
+      document.getElementById('todoTotal').textContent = DEMO_TODOS.length;
     }
     renderTodos();
 
@@ -399,11 +421,59 @@
       });
     }
 
+    /* Reset all KPI cards + recent table to the safe placeholder state.
+     * Used both before /dashboard/summary fires and on any failure path,
+     * so a stale demo value never sits on screen pretending to be live. */
+    function resetDashboardUi() {
+      document.getElementById('kpiTodayCalls').textContent = '—';
+      document.getElementById('kpiResponseRate').textContent = '—';
+      document.getElementById('kpiAvgDurationValue').textContent = '—';
+      const unitEl = document.getElementById('kpiAvgDurationUnit');
+      unitEl.textContent = '';
+      unitEl.classList.add('hidden');
+      document.getElementById('kpiActiveCalls').textContent = '—';
+      const el = document.getElementById('recentCalls');
+      el.innerHTML = '';
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 5;
+      td.className = 'text-center text-slate-400 py-8 text-[.8rem]';
+      td.textContent = '아직 통화 기록이 없습니다.';
+      tr.appendChild(td);
+      el.appendChild(tr);
+    }
+
+    /* Render a one-row error banner inside the recent-calls table so the
+     * user knows the API failed instead of seeing a stale "0" everywhere.
+     * `colspan` chrome stays constant; the message is textContent only. */
+    function showDashboardError(status) {
+      const el = document.getElementById('recentCalls');
+      el.innerHTML = '';
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 5;
+      td.className = 'text-center text-rose-600 py-8 text-[.8rem] font-bold';
+      td.textContent = status === 0
+        ? '대시보드를 불러오지 못했습니다. 네트워크를 확인해 주세요.'
+        : '대시보드를 불러오지 못했습니다 (' + status + ').';
+      tr.appendChild(td);
+      el.appendChild(tr);
+    }
+
     async function loadDashboard() {
-      const res = await window.kloserApi.getDashboardSummary();
+      resetDashboardUi();
+      let res;
+      try {
+        res = await window.kloserApi.getDashboardSummary();
+      } catch (err) {
+        console.error('[dashboard] summary network failed', err);
+        showDashboardError(0);
+        return;
+      }
       if (res.status === 401) return; // authFetch redirected.
       if (!res.ok) {
         console.error('[dashboard] summary failed', res.status);
+        showDashboardError(res.status);
         return;
       }
       const body = await res.json();
@@ -411,8 +481,18 @@
         (typeof body.today_calls === 'number' ? body.today_calls : 0).toLocaleString();
       document.getElementById('kpiResponseRate').textContent =
         formatResponseRateLabel(body.response_rate);
-      document.getElementById('kpiAvgDuration').innerHTML =
-        formatAvgDurationLabel(body.avg_duration_seconds);
+      const avg = formatAvgDurationLabel(body.avg_duration_seconds);
+      document.getElementById('kpiAvgDurationValue').textContent = avg.value;
+      const unitEl = document.getElementById('kpiAvgDurationUnit');
+      if (avg.unit) {
+        unitEl.textContent = avg.unit;
+        unitEl.classList.remove('hidden');
+        // Match the original m/s label tone: smaller, slate-500.
+        unitEl.className = 'text-[.95rem] text-slate-500 font-bold ml-0.5';
+      } else {
+        unitEl.textContent = '';
+        unitEl.classList.add('hidden');
+      }
       document.getElementById('kpiActiveCalls').textContent =
         (typeof body.active_calls === 'number' ? body.active_calls : 0).toLocaleString();
       renderRecentCalls(body.recent_calls || []);
