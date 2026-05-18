@@ -308,6 +308,38 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
         }
         if (typeof ack === "function") ack({ callId: call.id });
       } catch (err) {
+        // Phase 7 Step 9 — monthly_calls cap rejection. createCall throws
+        // PlanLimitExceededError; surface a structured ack so the frontend
+        // can show a banner instead of treating the failure as a generic
+        // persistence error.
+        if (
+          err && typeof err === "object" &&
+          (err as { code?: string }).code === "plan_limit_exceeded"
+        ) {
+          const limitErr = err as {
+            limitKey?: string;
+            plan?: string;
+            current?: number;
+            limit?: number;
+            attempted?: number;
+          };
+          socket.data.log("start_call plan_limit_exceeded", {
+            limitKey: limitErr.limitKey,
+            plan: limitErr.plan,
+          });
+          if (typeof ack === "function") {
+            ack({
+              error: "plan_limit_exceeded",
+              code: "plan_limit_exceeded",
+              limit_key: limitErr.limitKey,
+              plan: limitErr.plan,
+              current: limitErr.current,
+              limit: limitErr.limit,
+              attempted: limitErr.attempted,
+            });
+          }
+          return;
+        }
         socket.data.log("start_call persistence_failed", {
           err: (err as Error)?.message,
         });

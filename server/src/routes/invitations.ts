@@ -29,6 +29,7 @@ import { orgContext } from "../middleware/orgContext.js";
 import { requireRole } from "../middleware/role.js";
 import { requireFreshRole } from "../middleware/requireFreshRole.js";
 import { AuthError, type AuthResult } from "../services/auth.js";
+import { PlanLimitExceededError } from "../services/billing.js";
 import {
   acceptInvitation,
   cancelInvitation,
@@ -106,6 +107,20 @@ async function invitationsRoutes(app: FastifyInstance) {
       return reply.code(400).send({
         error: "invalid_input",
         issues: err.flatten(),
+      });
+    }
+    if (err instanceof PlanLimitExceededError) {
+      // Phase 7 Step 9 — seats cap rejection from invitation create.
+      // accept's PlanLimitExceededError is caught in its own handler so
+      // the existing sendTokenError path stays intact.
+      return reply.code(403).send({
+        error: "plan_limit_exceeded",
+        code: "plan_limit_exceeded",
+        limit_key: err.limitKey,
+        plan: err.plan,
+        current: err.current,
+        limit: err.limit,
+        attempted: err.attempted,
       });
     }
     if (err instanceof AuthError) {
@@ -255,6 +270,20 @@ async function invitationsRoutes(app: FastifyInstance) {
           outcome.result,
         );
       } catch (err) {
+        // Phase 7 Step 9 — seats cap rejection from accept. Same
+        // structured 403 shape as create so the frontend can render a
+        // single banner regardless of which path tripped.
+        if (err instanceof PlanLimitExceededError) {
+          return reply.code(403).send({
+            error: "plan_limit_exceeded",
+            code: "plan_limit_exceeded",
+            limit_key: err.limitKey,
+            plan: err.plan,
+            current: err.current,
+            limit: err.limit,
+            attempted: err.attempted,
+          });
+        }
         // Token-failure codes → 410 generic. Everything else (409
         // already_member / account_disabled, 500 etc.) → standard
         // AuthError mapping.

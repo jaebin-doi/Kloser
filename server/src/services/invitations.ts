@@ -82,6 +82,11 @@ import {
   recordInvitationCreated,
   recordInvitationResent,
 } from "./activityLog.js";
+import {
+  assertPlanAllows,
+  BILLING_PLAN_LIMITS,
+  PlanLimitExceededError,
+} from "./billing.js";
 const PARTIAL_UNIQUE_INVITATION_IDX = "invitations_active_org_email_idx";
 
 function is23505(err: unknown, constraint?: string): boolean {
@@ -163,6 +168,22 @@ export async function createInvitation(
     // After this point the partial unique index no longer matches the old
     // row (canceled_at IS NOT NULL), so the INSERT below is safe.
   }
+
+  // Phase 7 Step 9 — seats cap. Locks the org row + counts
+  // active_members + pending_invitations; throws PlanLimitExceededError
+  // if this invitation would push us past the plan's seat cap. This must
+  // run AFTER the same-email pending check above:
+  //
+  //   - live pending duplicate should return invitation_already_pending,
+  //     not plan_limit_exceeded just because that pending row already
+  //     consumes the last starter seat.
+  //   - expired pending replacement first cancels the old row, then adds
+  //     the new one, so the net seat count is unchanged and should be
+  //     allowed at cap.
+  //
+  // The order is still "cap check → new row write → audit" for the
+  // actual INSERT below.
+  await assertPlanAllows(client, { limitKey: "seats", increment: 1 });
 
   // 4) INSERT new invitation. 23505 on partial unique is the race fallback
   //    (two concurrent admins both passed step 3 simultaneously).
@@ -465,6 +486,59 @@ export async function acceptInvitation(
     // here, a concurrent cancel/resend could have flipped invalidated_at;
     // this catches it.
     await lockAndValidateTokenById(client, tok.tokenId, "invitation");
+
+    // Phase 7 Step 9 — seats cap re-check at accept time. Accept doesn't
+    // increase total seats (one pending → one active is net zero), so
+    // this guard only trips when:
+    //   (a) the plan was downgraded between invite create and accept, or
+    //   (b) the seat count already exceeds the cap for some other reason
+    //       (admin direct DB edit, etc.).
+    // We run on servicePool which BYPASSRLS — direct id-scoped counts
+    // are correct here; the GUC-based `assertPlanAllows` would not work
+    // because servicePool transactions don't set `app.org_id`.
+    // Plain SELECT (no FOR UPDATE) — servicePool role lacks UPDATE on
+    // organizations, and accept is net-zero seat impact anyway (one
+    // pending → one active = same total). A concurrent accept that
+    // overshoots would still resolve to the same total, so the locked
+    // count is unnecessary here.
+    const planLockRes = await client.query<{ plan: keyof typeof BILLING_PLAN_LIMITS }>(
+      `SELECT plan FROM organizations WHERE id = $1`,
+      [inv.org_id],
+    );
+    const orgPlan = planLockRes.rows[0]?.plan;
+    if (!orgPlan) {
+      throw new AuthError(500, "accept_internal_inconsistency",
+        "organization row missing after token lock");
+    }
+    const seatLimit = BILLING_PLAN_LIMITS[orgPlan].seats;
+    if (seatLimit !== null) {
+      const seatCountRes = await client.query<{
+        active: number;
+        pending: number;
+      }>(
+        `SELECT
+           (SELECT count(*)::int FROM memberships
+             WHERE org_id = $1 AND status = 'active') AS active,
+           (SELECT count(*)::int FROM invitations
+             WHERE org_id = $1
+               AND accepted_at IS NULL
+               AND canceled_at IS NULL) AS pending`,
+        [inv.org_id],
+      );
+      const seats =
+        seatCountRes.rows[0]!.active + seatCountRes.rows[0]!.pending;
+      // After accept: pending -1, active +1 → seat count unchanged.
+      // So we reject when the existing seat count is already over cap.
+      if (seats > seatLimit) {
+        throw new PlanLimitExceededError({
+          limitKey: "seats",
+          plan: orgPlan,
+          current: seats,
+          limit: seatLimit,
+          attempted: seats,
+        });
+      }
+    }
 
     // (4) Existing user lookup. users is NOT RLS-scoped — direct SELECT.
     // Include disabled_at to gate global-disabled accept attempts.

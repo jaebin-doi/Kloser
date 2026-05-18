@@ -14,6 +14,7 @@ import authPlugin from "./plugins/auth.js";
 import dbPlugin from "./plugins/db.js";
 import activityLogRoutes from "./routes/activityLog.js";
 import authRoutes from "./routes/auth.js";
+import billingRoutes from "./routes/billing.js";
 import callsRoutes from "./routes/calls.js";
 import callsPhase5Routes from "./routes/callsPhase5.js";
 import checklistTemplatesRoutes from "./routes/checklistTemplates.js";
@@ -71,6 +72,7 @@ await app.register(dashboardRoutes);
 await app.register(reportsRoutes);
 await app.register(organizationSecurityRoutes);
 await app.register(activityLogRoutes);
+await app.register(billingRoutes);
 
 app.get("/health", async () => ({
   ok: true,

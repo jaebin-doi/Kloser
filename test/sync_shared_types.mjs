@@ -215,6 +215,25 @@ const ENTITY_REGISTRY = [
         ],
     },
     {
+        name: "billing",
+        server: "server/src/types/billing.ts",
+        browser: "platform/types/billing.js",
+        // Phase 7 Step 9 billing overview surface. Plan is on
+        // organizations.plan; this is the response shape only.
+        // BillingPlan / BillingStatus / BillingLimitEnforcement are
+        // z.enum literals — they don't have field names so they don't
+        // belong in the registry.
+        types: [
+            "BillingOrganization",
+            "BillingProfile",
+            "BillingEntitlements",
+            "BillingUsage",
+            "BillingLimitState",
+            "BillingOverviewResponse",
+            "BillingProfilePatchInput",
+        ],
+    },
+    {
         name: "activityLog",
         server: "server/src/types/activityLog.ts",
         browser: "platform/types/activityLog.js",

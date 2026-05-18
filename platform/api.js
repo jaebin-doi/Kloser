@@ -691,6 +691,18 @@
     );
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 7 Step 9 — billing overview / profile (admin-only).
+  // ─────────────────────────────────────────────
+
+  function getBillingOverview() {
+    return apiGet('/billing/overview');
+  }
+
+  function patchBillingProfile(input) {
+    return apiPatch('/billing/profile', input || {});
+  }
+
   window.kloserApi = {
     // Token store (memory-only).
     setAccessToken: setAccessToken,
@@ -771,6 +783,10 @@
     unlinkCallCustomer: unlinkCallCustomer,
     patchCallManualSummary: patchCallManualSummary,
     postCallHeartbeat: postCallHeartbeat,
+
+    // Phase 7 Step 9 — billing overview / profile (admin-only).
+    getBillingOverview: getBillingOverview,
+    patchBillingProfile: patchBillingProfile,
 
     // Read-only config — ws.js consumes this so the WS URL stays in
     // sync with the API base.

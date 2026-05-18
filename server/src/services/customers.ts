@@ -34,6 +34,7 @@ import {
   recordCustomerDeleted,
   recordCustomerUpdated,
 } from "./activityLog.js";
+import { assertPlanAllows } from "./billing.js";
 
 export class InvalidListOptionError extends Error {
   constructor(
@@ -126,6 +127,10 @@ export async function createCustomer(
   input: CustomerCreateInput,
 ): Promise<Customer> {
   return app.withOrgContext(actorOrgId, async (client) => {
+    // Phase 7 Step 9 — customers cap. Locks org row + reads usage; throws
+    // PlanLimitExceededError before the INSERT so the row/audit pair
+    // never gets written when the org has no headroom.
+    await assertPlanAllows(client, { limitKey: "customers", increment: 1 });
     const created = await repo.insertInCurrentOrg(client, actorOrgId, input);
     // Phase 7 Step 3 — audit. Same transaction as the INSERT so an
     // audit-row failure rolls the customer write back as one unit.

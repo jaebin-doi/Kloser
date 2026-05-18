@@ -77,9 +77,26 @@ before(async () => {
     await app.register(meRoutes);
     await app.register(teamRoutes);
     await app.register(invitationsRoutes);
+
+    // Phase 7 Step 9 — these tests exercise invitation flows, not plan caps.
+    // Beta seed = starter (seat cap 2) and already has 2 active memberships,
+    // so any test that creates a 3rd Beta invitation would trip the cap.
+    // Upgrade both seeded orgs to enterprise (null caps) for the suite and
+    // restore the seed plans in after().
+    await app.pg.query(
+        `UPDATE organizations SET plan='enterprise' WHERE id IN ($1, $2)`,
+        [ACME_ID, BETA_ID],
+    );
 });
 
 after(async () => {
+    await app.pg.query(
+        `UPDATE organizations SET plan = CASE id
+            WHEN $1 THEN 'pro'
+            WHEN $2 THEN 'starter' END
+          WHERE id IN ($1, $2)`,
+        [ACME_ID, BETA_ID],
+    );
     await closeServicePool();
     await app.close();
 });

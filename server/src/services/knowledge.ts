@@ -31,6 +31,11 @@ import {
   recordKnowledgeBaseDeleted,
   recordKnowledgeBaseUpdated,
 } from "./activityLog.js";
+import {
+  assertPlanAllows,
+  assertPlanAllowsAbsolute,
+  lockCurrentOrgForPlanLimit,
+} from "./billing.js";
 
 export async function listKnowledgeBases(
   app: FastifyInstance,
@@ -59,6 +64,13 @@ export async function createKnowledgeBase(
   input: KnowledgeBaseCreateInput,
 ): Promise<KnowledgeBase> {
   return app.withOrgContext(actorOrgId, async (client) => {
+    // Phase 7 Step 9 — knowledge_bases cap. Same locking + count pattern
+    // as customers/calls. assertPlanAllows runs inside this transaction
+    // so a 403 rolls the KB INSERT + audit row back together.
+    await assertPlanAllows(client, {
+      limitKey: "knowledge_bases",
+      increment: 1,
+    });
     const created = await kbRepo.insertInCurrentOrg(client, actorOrgId, input);
     // Phase 7 Step 3 — audit. Same transaction as the INSERT so an
     // audit-row failure rolls the create back together.
@@ -129,14 +141,49 @@ export async function replaceKnowledgeChunks(
   knowledgeBaseId: string,
   chunks: KnowledgeChunkInput[],
 ): Promise<KnowledgeChunk[] | null> {
-  return app.withOrgContext(actorOrgId, (client) =>
-    chunkRepo.replaceForKnowledgeBaseInCurrentOrg(
+  return app.withOrgContext(actorOrgId, async (client) => {
+    // Phase 7 Step 9 — knowledge_chunks cap. Replace is an absolute set
+    // operation (delete-then-insert) so the post-write total is just
+    // the count of incoming chunks across *all* the org's KBs minus the
+    // existing chunks in this KB plus the new ones. The simpler invariant
+    // is "post-replace total chunks for org ≤ cap". We compute that
+    // ahead of the replace via assertPlanAllowsAbsolute so a rejection
+    // happens before the destructive DELETE.
+    //
+    // post-replace total = current_total_chunks_in_org
+    //                    - current_chunks_in_this_kb
+    //                    + chunks.length
+    //
+    // Lock before computing totals. If two admins replace chunks in two
+    // different KBs concurrently, counting before the org-level lock
+    // would let both transactions base their target on the same stale
+    // total and overshoot the cap after both commits.
+    await lockCurrentOrgForPlanLimit(client);
+    const totals = await client.query<{ org_total: number; kb_total: number }>(
+      `SELECT
+         (SELECT count(*)::int
+            FROM knowledge_chunks c
+            JOIN knowledge_bases kb ON kb.id = c.knowledge_base_id
+                                   AND kb.deleted_at IS NULL) AS org_total,
+         (SELECT count(*)::int
+            FROM knowledge_chunks c
+           WHERE c.knowledge_base_id = $1) AS kb_total`,
+      [knowledgeBaseId],
+    );
+    const orgTotal = totals.rows[0]?.org_total ?? 0;
+    const kbTotal = totals.rows[0]?.kb_total ?? 0;
+    const postReplaceTotal = orgTotal - kbTotal + chunks.length;
+    await assertPlanAllowsAbsolute(client, {
+      limitKey: "knowledge_chunks",
+      targetTotal: postReplaceTotal,
+    });
+    return chunkRepo.replaceForKnowledgeBaseInCurrentOrg(
       client,
       actorOrgId,
       knowledgeBaseId,
       chunks,
-    ),
-  );
+    );
+  });
 }
 
 export async function listKnowledgeChunks(

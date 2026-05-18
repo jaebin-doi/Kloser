@@ -42,6 +42,7 @@ import { requireRole } from "../middleware/role.js";
 import { requireFreshRole } from "../middleware/requireFreshRole.js";
 import { requireVerified } from "../middleware/requireVerified.js";
 import { AuthError } from "../services/auth.js";
+import { PlanLimitExceededError } from "../services/billing.js";
 import {
   CallCreateInput,
   CallEndInput,
@@ -103,6 +104,20 @@ async function callsRoutes(app: FastifyInstance) {
       return reply
         .code(400)
         .send({ error: "invalid_input", issues: err.flatten() });
+    }
+    if (err instanceof PlanLimitExceededError) {
+      // Phase 7 Step 9 — monthly_calls cap rejection from POST /calls.
+      // WebSocket start-call hits the same service and surfaces a 403
+      // via the WS namespace's own error handler (see ws/calls.ts).
+      return reply.code(403).send({
+        error: "plan_limit_exceeded",
+        code: "plan_limit_exceeded",
+        limit_key: err.limitKey,
+        plan: err.plan,
+        current: err.current,
+        limit: err.limit,
+        attempted: err.attempted,
+      });
     }
     // Phase 6 Step 3 — DELETE /call-action-items/:id introduces the
     // first assertCanMutateCall caller in this route file. The

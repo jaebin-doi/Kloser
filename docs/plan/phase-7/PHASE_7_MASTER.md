@@ -13,7 +13,7 @@
 - [x] **Step 2 — MFA / 세션 강화**: TOTP 우선 도입 완료 (login challenge / 인증된 enroll·disable / 조직 MFA 강제). WebAuthn은 후속.
 - [x] **Step 3 — activity_log + 감사 로그**: schema hardening · repository · service helper · 보안/멤버십/초대/고객/통화/지식/보고서 audit hook · 관리자용 `GET /activity-log` route + 공유 타입 + `settings.html` 관리자 패널. 정본 결과는 `PHASE_7_STEP_3_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_3_PLAN.md`.
 - [x] **Step 4 — retention enforce cron**: transcript 3년 hard delete + email_outbox stuck-sending recovery + aggregate audit + BullMQ singleton repeatable worker (`KLOSER_RETENTION_ENABLED` gate). call_recordings은 schema 부재로 not applicable (Phase 8 recording surface 도입 시 같은 worker에 추가). 정본 결과는 `PHASE_7_STEP_4_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_4_PLAN.md`.
-- [ ] **Step 5+ — P1 운영 UX / 비용 / 상업화**: cost map (✅ Step 5 완료 — `PHASE_7_STEP_5_FINDINGS.md`), sidebar role visibility (✅ Step 6 완료 — `PHASE_7_STEP_6_FINDINGS.md`), report date window + agent drilldown (✅ Step 7 완료 — `PHASE_7_STEP_7_FINDINGS.md`), demo-to-real cleanup (✅ Step 8 완료 — `PHASE_7_STEP_8_FINDINGS.md`), billing. Step 5 상세 계획은 `PHASE_7_STEP_5_PLAN.md`, Step 6 상세 계획은 `PHASE_7_STEP_6_PLAN.md`, Step 7 상세 계획은 `PHASE_7_STEP_7_PLAN.md`, Step 8 상세 계획은 `PHASE_7_STEP_8_PLAN.md`, Step 9 상세 계획은 `PHASE_7_STEP_9_PLAN.md`.
+- [x] **Step 5+ — P1 운영 UX / 비용 / 상업화**: cost map (✅ Step 5 완료 — `PHASE_7_STEP_5_FINDINGS.md`), sidebar role visibility (✅ Step 6 완료 — `PHASE_7_STEP_6_FINDINGS.md`), report date window + agent drilldown (✅ Step 7 완료 — `PHASE_7_STEP_7_FINDINGS.md`), demo-to-real cleanup (✅ Step 8 완료 — `PHASE_7_STEP_8_FINDINGS.md`), billing / subscription caps (✅ Step 9 완료 — `PHASE_7_STEP_9_FINDINGS.md`). Step 5 상세 계획은 `PHASE_7_STEP_5_PLAN.md`, Step 6 상세 계획은 `PHASE_7_STEP_6_PLAN.md`, Step 7 상세 계획은 `PHASE_7_STEP_7_PLAN.md`, Step 8 상세 계획은 `PHASE_7_STEP_8_PLAN.md`, Step 9 상세 계획은 `PHASE_7_STEP_9_PLAN.md`.
 
 ---
 
@@ -151,7 +151,7 @@ Phase 7을 닫으려면 최소 다음이 필요하다.
 
 ## 7. 바로 다음 작업
 
-P0 4개(Step 1~4)가 모두 닫혔다. 다음 작업은 **Step 5+ P1 follow-up bundle** — 운영 출시 직전 게이트는 통과한 상태에서 비용 추적, 메뉴 가시성, 보고서 정밀화, demo-to-real 정리, billing을 순차적으로 처리한다.
+P0 4개(Step 1~4) + P1 bundle 5개(Step 5~9)가 모두 닫혔다. 운영 출시 직전 게이트는 통과한 상태이며, billing/subscription caps도 강제된다. Phase 7은 closeout 단계로 진입하며, 다음 작업은 실 결제 provider 연동(Stripe/Toss) — 외부 돈 이동/회계 계약을 수반하므로 별도 Phase로 분리한다.
 
 추천 순서:
 
@@ -159,7 +159,7 @@ P0 4개(Step 1~4)가 모두 닫혔다. 다음 작업은 **Step 5+ P1 follow-up b
 2. ~~role-based sidebar nav visibility (employee/viewer에게 admin 전용 메뉴 숨김). 상세 계획: `PHASE_7_STEP_6_PLAN.md`.~~ **완료** — `PHASE_7_STEP_6_FINDINGS.md`. `SIDEBAR_NAV_VISIBILITY` + `canShowSidebarPage` + `applySidebarNavVisibility`로 employee는 `팀 보고서` 숨김, viewer는 `팀 보고서/실시간 통화/뉴스레터` 숨김. pre-/me 상태에서는 공통 nav만 표시해 민감 nav flicker 차단. backend role policy 무변경.
 3. ~~reports date window + agent drilldown. 상세 계획: `PHASE_7_STEP_7_PLAN.md`.~~ **완료** — `PHASE_7_STEP_7_FINDINGS.md`. `/reports/team-summary`에 `from/to` query 추가 (omit 시 최근 30일 default), 응답에 `window` / `agent_summaries` 추가. frontend는 7/30/90/직접 preset + agent row-click drilldown (client-side recent_calls 필터). audit payload에 `from`, `to`, `window_days` 추가. backward incompat: omit 시 전체 기간 → 최근 30일로 좁혀짐 (의도).
 4. ~~demo-to-real frontend cleanup (dashboard / daily / newsletter). 상세 계획: `PHASE_7_STEP_8_PLAN.md`.~~ **완료** — `PHASE_7_STEP_8_FINDINGS.md`. dashboard `kpiAvgDuration`을 textContent 경로로 전환, API 실패 시 demo fallback 대신 banner 표시. daily `매일 06:00 자동 갱신` / `네이버 검색 API` 문구를 demo로 정직하게 정리하고 user-typed 키워드/경쟁사에 `escapeHtml`. newsletter 발송 UI를 "시뮬레이션"으로 일관 표기, `appendUser` chat 메시지 XSS hole + 사용자 생성 템플릿 카드 XSS hole 닫음. transactional `email_outbox`를 newsletter campaign에 연결하지 않음.
-5. billing / subscription caps.
+5. ~~billing / subscription caps. 상세 계획: `PHASE_7_STEP_9_PLAN.md`.~~ **완료** — `PHASE_7_STEP_9_FINDINGS.md`. `organizations.plan` CHECK (starter/pro/enterprise) + `organization_billing_profiles` 신규 + `BILLING_PLAN_LIMITS` (seats/customers/KB/chunk/monthly_calls hard, monthly_llm_cost soft) + `assertPlanAllows`/`assertPlanAllowsAbsolute`로 createInvitation/customer/createCall(REST+WS)/createKB/replaceChunks 경로 강제. `GET /billing/overview` + `PATCH /billing/profile` admin 전용, audit payload는 field name only(value 미포함). settings.html#billing 정적 카드를 API-backed dynamic으로 교체 + 가짜 결제 수단/내역 제거 + 외부 provider id는 `external_provider_configured` boolean만 노출.
 
-선행 단계 구현 결과는 각 step의 findings 문서를 기준으로 본다 — `PHASE_7_STEP_1_FINDINGS.md`, Step 2 결과는 `PHASE_7_UI_BACKEND_STATUS.md` (closeout findings 별도 작성 예정), `PHASE_7_STEP_3_FINDINGS.md`, `PHASE_7_STEP_4_FINDINGS.md`, `PHASE_7_STEP_5_FINDINGS.md`, `PHASE_7_STEP_6_FINDINGS.md`, `PHASE_7_STEP_7_FINDINGS.md`, `PHASE_7_STEP_8_FINDINGS.md`.
+선행 단계 구현 결과는 각 step의 findings 문서를 기준으로 본다 — `PHASE_7_STEP_1_FINDINGS.md`, Step 2 결과는 `PHASE_7_UI_BACKEND_STATUS.md` (closeout findings 별도 작성 예정), `PHASE_7_STEP_3_FINDINGS.md`, `PHASE_7_STEP_4_FINDINGS.md`, `PHASE_7_STEP_5_FINDINGS.md`, `PHASE_7_STEP_6_FINDINGS.md`, `PHASE_7_STEP_7_FINDINGS.md`, `PHASE_7_STEP_8_FINDINGS.md`, `PHASE_7_STEP_9_FINDINGS.md`.
 

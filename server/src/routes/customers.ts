@@ -44,6 +44,7 @@ import {
   listCustomers,
   updateCustomer,
 } from "../services/customers.js";
+import { PlanLimitExceededError } from "../services/billing.js";
 
 // Permissive UUID regex matching Phase 1 (services/auth.ts) and the
 // shared types module. zod 4.x .uuid() enforces RFC 4122 version/variant
@@ -69,6 +70,20 @@ async function customersRoutes(app: FastifyInstance) {
       return reply.code(400).send({
         error: `invalid_${err.field}`,
         value: err.value,
+      });
+    }
+    if (err instanceof PlanLimitExceededError) {
+      // Phase 7 Step 9 — customers cap rejection. Structured 403 so the
+      // frontend can render a single banner regardless of which mutation
+      // tripped the cap.
+      return reply.code(403).send({
+        error: "plan_limit_exceeded",
+        code: "plan_limit_exceeded",
+        limit_key: err.limitKey,
+        plan: err.plan,
+        current: err.current,
+        limit: err.limit,
+        attempted: err.attempted,
       });
     }
     // Anything else: let fastify's default handler log + 500.

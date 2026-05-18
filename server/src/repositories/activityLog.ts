@@ -92,7 +92,9 @@ export type ActivityAction =
   | "report.team_viewed"
   // Phase 7 Step 4 — retention worker aggregate events
   | "retention.transcripts_deleted"
-  | "email_outbox.sending_recovered";
+  | "email_outbox.sending_recovered"
+  // Phase 7 Step 9 — admin billing profile mutation
+  | "billing.profile_updated";
 
 export type ActivityTargetType =
   | "organization"

@@ -1006,72 +1006,76 @@
               </div>
             </section>
 
-            <!-- ─── 플랜 & 결제 ─── -->
+            <!-- ─── 플랜 & 사용량 ─── -->
+            <!-- Phase 7 Step 9: API-backed. GET /billing/overview +
+                 PATCH /billing/profile. Admin-only at the server side
+                 (requireRole admin); non-admins see a neutral "권한 없음"
+                 state below. Sensitive fields (billing_email, tax_id)
+                 render with textContent + input.value, never innerHTML,
+                 so a tax_id like `<script>...` is shown as text. -->
             <section id="billing" class="set-card">
               <div class="set-card-header">
-                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">플랜 & 결제</h2>
-                <p class="text-[.78rem] text-slate-500 mt-0.5">현재 플랜 정보와 결제 내역을 확인합니다.</p>
+                <h2 class="text-[1rem] font-black tracking-tight text-slate-800">플랜 & 사용량</h2>
+                <p class="text-[.78rem] text-slate-500 mt-0.5">현재 플랜의 한도와 사용량을 확인합니다.</p>
               </div>
               <div class="set-card-body">
 
-                <div class="rounded-xl border-2 border-blue-500 bg-gradient-to-br from-blue-50/40 to-cyan-50/30 p-5 mb-5 flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-[.62rem] font-black tracking-[.18em] uppercase text-blue-600">현재 플랜</span>
-                      <span class="badge badge-blue">PRO</span>
-                    </div>
-                    <div class="text-[1.4rem] font-black text-slate-800 tnum">49,000원<span class="text-[.85rem] text-slate-500 font-medium ml-1">/ 회사 / 월</span></div>
-                    <div class="text-[.75rem] text-slate-500 mt-1">다음 결제일: 2026-06-03 · 자동 결제</div>
-                  </div>
-                  <div class="flex gap-2 flex-wrap">
-                    <button class="btn-secondary">플랜 변경</button>
-                    <button class="btn-primary">연간 결제 (-20%)</button>
-                  </div>
+                <!-- Loading / error / forbidden states. Mutually exclusive
+                     with the main billing-content block below. -->
+                <div id="billing-loading" class="text-[.78rem] text-slate-500">불러오는 중…</div>
+                <div id="billing-forbidden" hidden
+                     class="px-3 py-3 rounded-lg border border-slate-200 bg-slate-50 text-[.78rem] text-slate-600">
+                  플랜 정보는 관리자만 확인할 수 있습니다.
                 </div>
+                <div id="billing-error" hidden
+                     class="px-3 py-3 rounded-lg border border-rose-200 bg-rose-50 text-[.78rem] text-rose-700"></div>
 
-                <div class="set-card-divider pt-5 mb-5">
-                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">결제 수단</div>
-                  <div class="space-y-2">
-                    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white">
-                      <div class="flex items-center gap-3">
-                        <div class="w-10 h-7 rounded bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-[.6rem] font-black">VISA</div>
-                        <div>
-                          <div class="text-[.82rem] font-bold text-slate-800 tnum">**** **** **** 4242</div>
-                          <div class="text-[.7rem] text-slate-500">만료 12/27 · 기본 결제수단</div>
-                        </div>
+                <!-- Admin content. Hidden until overview loads. -->
+                <div id="billing-content" hidden>
+
+                  <div class="rounded-xl border-2 border-blue-500 bg-gradient-to-br from-blue-50/40 to-cyan-50/30 p-5 mb-5 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="text-[.62rem] font-black tracking-[.18em] uppercase text-blue-600">현재 플랜</span>
+                        <span id="billing-plan-badge" class="badge badge-blue">—</span>
+                        <span id="billing-status-badge" class="badge" style="background:#f1f5f9;color:#475569;">—</span>
                       </div>
-                      <button class="text-[.72rem] font-bold text-slate-500 hover:text-slate-800">변경</button>
+                      <div id="billing-org-name" class="text-[1.1rem] font-black text-slate-800"></div>
+                      <div class="text-[.72rem] text-slate-500 mt-1">
+                        이번 달 사용 기간: <span id="billing-usage-month" class="tnum font-bold">—</span>
+                        · 결제 연동: <span id="billing-provider-state">미연동</span>
+                      </div>
                     </div>
                   </div>
-                  <button class="btn-secondary mt-3">+ 결제 수단 추가</button>
-                </div>
 
-                <div class="set-card-divider pt-5 mb-5">
-                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">청구 정보</div>
-                  <div class="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label class="field-label">사업자등록번호</label>
-                      <input class="field-input" value="123-45-67890" />
-                    </div>
-                    <div>
-                      <label class="field-label">세금계산서 이메일</label>
-                      <input class="field-input" value="billing@kloser.com" />
+                  <div class="set-card-divider pt-5 mb-5">
+                    <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">사용량</div>
+                    <div id="billing-limits" class="grid sm:grid-cols-2 gap-3"></div>
+                  </div>
+
+                  <div class="set-card-divider pt-5 mb-5">
+                    <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">청구 정보</div>
+                    <form id="billing-profile-form" class="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label class="field-label" for="billing-tax-id">사업자등록번호</label>
+                        <input id="billing-tax-id" class="field-input" maxlength="64" autocomplete="off" />
+                      </div>
+                      <div>
+                        <label class="field-label" for="billing-email">세금계산서 이메일</label>
+                        <input id="billing-email" class="field-input" type="email" autocomplete="off" />
+                      </div>
+                      <div class="sm:col-span-2 flex items-center gap-3">
+                        <button type="submit" class="btn-primary">저장</button>
+                        <span id="billing-profile-msg" class="text-[.72rem] text-slate-500" aria-live="polite"></span>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div class="set-card-divider pt-5">
+                    <div class="text-[.78rem] text-slate-500">
+                      결제 연동은 아직 준비 중입니다. 플랜 변경이나 결제 처리는 운영팀(<a class="text-blue-600 hover:underline" href="mailto:support@kloser.com">support@kloser.com</a>)으로 문의해 주세요.
                     </div>
                   </div>
-                </div>
-
-                <div class="set-card-divider pt-5">
-                  <div class="text-[.78rem] font-black uppercase tracking-wider text-slate-500 mb-3">최근 결제 내역</div>
-                  <table class="tbl">
-                    <thead>
-                      <tr><th>일자</th><th>플랜</th><th>금액</th><th>상태</th><th class="text-right">영수증</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr><td>2026-05-03</td><td>Pro (월간)</td><td class="tnum">49,000원</td><td><span class="badge badge-emerald">결제 완료</span></td><td class="text-right"><button class="text-blue-600 hover:underline text-[.78rem] font-bold">PDF</button></td></tr>
-                      <tr><td>2026-04-03</td><td>Pro (월간)</td><td class="tnum">49,000원</td><td><span class="badge badge-emerald">결제 완료</span></td><td class="text-right"><button class="text-blue-600 hover:underline text-[.78rem] font-bold">PDF</button></td></tr>
-                      <tr><td>2026-03-15</td><td>Pro (월간)</td><td class="tnum">49,000원</td><td><span class="badge badge-emerald">결제 완료</span></td><td class="text-right"><button class="text-blue-600 hover:underline text-[.78rem] font-bold">PDF</button></td></tr>
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </section>
@@ -2404,6 +2408,232 @@
         await resolveRole();
         await Promise.all([loadKbs(), loadTemplates()]);
       })();
+    })();
+  </script>
+
+  <!-- ────────────────────────────────────────────────────────
+       Phase 7 Step 9 — settings.html#billing wiring.
+       GET /billing/overview + PATCH /billing/profile.
+       Admin-only at the server; non-admins see "권한 없음".
+       textContent for all server-supplied fields so a tax_id of
+       `<script>...` is rendered as plain text, never HTML. The
+       Playwright smoke confirms this.
+       ──────────────────────────────────────────────────────── -->
+  <script>
+    (function () {
+      const api = window.kloserApi;
+      if (!api || typeof api.getBillingOverview !== 'function') return;
+
+      const $loading = document.getElementById('billing-loading');
+      const $forbidden = document.getElementById('billing-forbidden');
+      const $error = document.getElementById('billing-error');
+      const $content = document.getElementById('billing-content');
+      const $planBadge = document.getElementById('billing-plan-badge');
+      const $statusBadge = document.getElementById('billing-status-badge');
+      const $orgName = document.getElementById('billing-org-name');
+      const $usageMonth = document.getElementById('billing-usage-month');
+      const $providerState = document.getElementById('billing-provider-state');
+      const $limits = document.getElementById('billing-limits');
+      const $form = document.getElementById('billing-profile-form');
+      const $taxId = document.getElementById('billing-tax-id');
+      const $email = document.getElementById('billing-email');
+      const $msg = document.getElementById('billing-profile-msg');
+
+      if (!$loading) return;
+
+      function setHidden(el, hidden) {
+        if (!el) return;
+        if (hidden) el.setAttribute('hidden', '');
+        else el.removeAttribute('hidden');
+      }
+
+      function showState(state, errText) {
+        setHidden($loading, state !== 'loading');
+        setHidden($forbidden, state !== 'forbidden');
+        setHidden($error, state !== 'error');
+        setHidden($content, state !== 'content');
+        if (state === 'error' && $error) {
+          $error.textContent = errText || '플랜 정보를 불러오지 못했습니다.';
+        }
+      }
+
+      const LIMIT_LABELS = {
+        seats: '구성원 좌석',
+        customers: '고객사',
+        knowledge_bases: '지식베이스',
+        knowledge_chunks: '지식 청크',
+        monthly_calls: '이번 달 통화',
+        monthly_llm_cost_usd_micros: '이번 달 AI 비용',
+      };
+
+      const PLAN_LABELS = { starter: 'STARTER', pro: 'PRO', enterprise: 'ENTERPRISE' };
+      const STATUS_LABELS = {
+        trialing: '체험',
+        active: '활성',
+        past_due: '미결제',
+        canceled: '해지됨',
+      };
+
+      function fmtNumber(n) {
+        if (n === null || n === undefined) return '—';
+        try { return Number(n).toLocaleString('ko-KR'); } catch (_) { return String(n); }
+      }
+
+      function fmtLimitValue(key, v) {
+        if (v === null || v === undefined) return '제한 없음';
+        if (key === 'monthly_llm_cost_usd_micros') {
+          // micros → USD with 2-decimal precision.
+          const usd = Number(v) / 1_000_000;
+          return '$' + usd.toFixed(2);
+        }
+        return fmtNumber(v);
+      }
+
+      function renderLimitCard(state) {
+        const card = document.createElement('div');
+        card.className = 'rounded-lg border border-slate-200 bg-white p-3';
+        const label = document.createElement('div');
+        label.className = 'text-[.72rem] font-bold text-slate-600 mb-1';
+        label.textContent = LIMIT_LABELS[state.key] || state.key;
+        if (state.enforcement === 'soft') {
+          const softTag = document.createElement('span');
+          softTag.className = 'ml-1 text-[.6rem] font-normal text-slate-400';
+          softTag.textContent = '(참고용)';
+          label.appendChild(softTag);
+        }
+        const row = document.createElement('div');
+        row.className = 'flex items-baseline justify-between gap-2';
+        const currentEl = document.createElement('div');
+        currentEl.className = 'tnum text-[1rem] font-black text-slate-800';
+        currentEl.textContent = fmtLimitValue(state.key, state.current);
+        const limitEl = document.createElement('div');
+        limitEl.className = 'tnum text-[.72rem] text-slate-500';
+        limitEl.textContent = '/ ' + fmtLimitValue(state.key, state.limit);
+        row.appendChild(currentEl);
+        row.appendChild(limitEl);
+
+        const bar = document.createElement('div');
+        bar.className = 'mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden';
+        const fill = document.createElement('div');
+        const pct = (state.percent === null || state.percent === undefined) ? 0 : state.percent;
+        fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+        fill.style.height = '100%';
+        if (state.exceeded) {
+          fill.style.background = '#e11d48'; // rose-600
+        } else if (pct >= 80) {
+          fill.style.background = '#f59e0b'; // amber-500
+        } else {
+          fill.style.background = '#2563eb'; // blue-600
+        }
+        bar.appendChild(fill);
+
+        const pctText = document.createElement('div');
+        pctText.className = 'mt-1 text-[.66rem] text-slate-400 tnum';
+        if (state.percent === null || state.percent === undefined) {
+          pctText.textContent = '한도 없음';
+        } else {
+          pctText.textContent = state.percent + '%' + (state.exceeded ? ' · 초과' : '');
+        }
+
+        card.appendChild(label);
+        card.appendChild(row);
+        card.appendChild(bar);
+        card.appendChild(pctText);
+        return card;
+      }
+
+      function render(body) {
+        // Plan / status
+        const plan = body.organization && body.organization.plan;
+        $planBadge.textContent = PLAN_LABELS[plan] || (plan ? String(plan).toUpperCase() : '—');
+        const status = body.profile && body.profile.billing_status;
+        $statusBadge.textContent = STATUS_LABELS[status] || '—';
+        $orgName.textContent = (body.organization && body.organization.name) || '';
+        $usageMonth.textContent = (body.usage && body.usage.usage_month) || '—';
+        $providerState.textContent = (body.profile && body.profile.external_provider_configured)
+          ? '연동됨'
+          : '미연동';
+
+        // Limits grid
+        $limits.replaceChildren();
+        const limits = Array.isArray(body.limits) ? body.limits : [];
+        limits.forEach(function (state) {
+          $limits.appendChild(renderLimitCard(state));
+        });
+
+        // Profile form. textContent for value via input.value is safe —
+        // value setter never parses HTML.
+        $taxId.value = (body.profile && body.profile.tax_id) || '';
+        $email.value = (body.profile && body.profile.billing_email) || '';
+      }
+
+      async function load() {
+        showState('loading');
+        try {
+          const res = await api.getBillingOverview();
+          if (res.status === 401) {
+            // Not authenticated. _shared.js handles a global redirect; we
+            // stay quiet here so the user doesn't see a flashed error.
+            showState('loading');
+            return;
+          }
+          if (res.status === 403) {
+            // Non-admin (or stale_role). Clean panel, no console noise.
+            showState('forbidden');
+            return;
+          }
+          if (!res.ok) {
+            let detail = '';
+            try { detail = (await res.json()).error || ''; } catch (_) { /* ignore */ }
+            showState('error', '플랜 정보를 불러오지 못했습니다. (' + (detail || res.status) + ')');
+            return;
+          }
+          const body = await res.json();
+          render(body);
+          showState('content');
+        } catch (err) {
+          // Network failure path — keep the message generic; do NOT
+          // console.error so a routine offline state stays clean.
+          showState('error', '네트워크 오류로 플랜 정보를 불러오지 못했습니다.');
+        }
+      }
+
+      $form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        $msg.textContent = '';
+        const taxRaw = ($taxId.value || '').trim();
+        const emailRaw = ($email.value || '').trim();
+        if (taxRaw.length > 64) {
+          $msg.textContent = '사업자등록번호는 64자를 초과할 수 없습니다.';
+          return;
+        }
+        const payload = {};
+        payload.tax_id = taxRaw === '' ? null : taxRaw;
+        payload.billing_email = emailRaw === '' ? null : emailRaw;
+        try {
+          const res = await api.patchBillingProfile(payload);
+          if (res.status === 403) {
+            $msg.textContent = '관리자 권한이 필요합니다.';
+            return;
+          }
+          if (!res.ok) {
+            let detail = '';
+            try { detail = (await res.json()).error || ''; } catch (_) { /* ignore */ }
+            $msg.textContent = '저장에 실패했습니다. (' + (detail || res.status) + ')';
+            return;
+          }
+          const body = await res.json();
+          if (body && body.profile) {
+            $taxId.value = body.profile.tax_id || '';
+            $email.value = body.profile.billing_email || '';
+          }
+          $msg.textContent = '저장되었습니다.';
+        } catch (_) {
+          $msg.textContent = '네트워크 오류가 발생했습니다.';
+        }
+      });
+
+      load();
     })();
   </script>
 </body>

@@ -35,6 +35,7 @@ import {
   recordCallCreated,
   recordCallEnded,
 } from "./activityLog.js";
+import { assertPlanAllows } from "./billing.js";
 
 export interface CallListResult {
   items: Call[];
@@ -70,6 +71,13 @@ export async function createCall(
   input: CallCreateInput,
 ): Promise<Call> {
   return app.withOrgContext(actorOrgId, async (client) => {
+    // Phase 7 Step 9 — monthly_calls cap. Both REST POST /calls and the
+    // WebSocket start-call path route through this service, so the
+    // guard fires on every legitimate call-creation surface in one
+    // place. assertPlanAllows reads the same UTC-month window the
+    // overview shows so admin-visible usage and the enforced count
+    // agree.
+    await assertPlanAllows(client, { limitKey: "monthly_calls", increment: 1 });
     const created = await callsRepo.insertInCurrentOrg(
       client,
       actorOrgId,

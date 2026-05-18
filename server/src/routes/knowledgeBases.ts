@@ -29,6 +29,7 @@ import { requireRole } from "../middleware/role.js";
 import { requireFreshRole } from "../middleware/requireFreshRole.js";
 import { requireVerified } from "../middleware/requireVerified.js";
 import { AuthError } from "../services/auth.js";
+import { PlanLimitExceededError } from "../services/billing.js";
 import * as knowledgeService from "../services/knowledge.js";
 import {
   KnowledgeBaseCreateInput,
@@ -84,6 +85,18 @@ async function knowledgeBaseRoutes(
     }
     if (err instanceof InvalidEmbeddingError) {
       return reply.code(400).send({ error: "invalid_embedding" });
+    }
+    if (err instanceof PlanLimitExceededError) {
+      // Phase 7 Step 9 — knowledge_bases / knowledge_chunks caps.
+      return reply.code(403).send({
+        error: "plan_limit_exceeded",
+        code: "plan_limit_exceeded",
+        limit_key: err.limitKey,
+        plan: err.plan,
+        current: err.current,
+        limit: err.limit,
+        attempted: err.attempted,
+      });
     }
     if (err instanceof AuthError) {
       const body: Record<string, unknown> = {
