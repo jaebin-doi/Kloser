@@ -9,6 +9,8 @@
 
 ## 0. 진행 상태
 
+> **Phase 7 closeout 완료 (2026-05-18).** Step 1~9 모두 닫혔고 Go/No-Go 체크리스트 9/9 PASS. 종합 결과·검증 명령·남은 리스크·다음 Phase 인계는 `PHASE_7_CLOSEOUT_FINDINGS.md`에 정본으로 정리.
+
 - [x] **Step 1 — SMTP / Resend 실 email adapter**: 구현 완료. 정본 결과는 `PHASE_7_STEP_1_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_1_PLAN.md`.
 - [x] **Step 2 — MFA / 세션 강화**: TOTP 우선 도입 완료 (login challenge / 인증된 enroll·disable / 조직 MFA 강제). WebAuthn은 후속.
 - [x] **Step 3 — activity_log + 감사 로그**: schema hardening · repository · service helper · 보안/멤버십/초대/고객/통화/지식/보고서 audit hook · 관리자용 `GET /activity-log` route + 공유 타입 + `settings.html` 관리자 패널. 정본 결과는 `PHASE_7_STEP_3_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_3_PLAN.md`.
@@ -137,21 +139,21 @@ P0가 닫힌 뒤 순서를 다시 확정한다. 기본 순서:
 
 Phase 7을 닫으려면 최소 다음이 필요하다.
 
-- [x] verify/reset/invite email이 dev outbox와 실 provider mode 양쪽에서 검증됨. Dev path는 Phase 3 e2e로 확인했고, real-provider path는 fake adapter worker tests로 검증됨. Real Resend credentials/domain smoke test는 staging 운영 검증으로 남김.
+- [x] verify/reset/invite email이 dev outbox와 실 provider mode 양쪽에서 검증됨. Dev path는 Phase 3 e2e로 확인했고, real-provider path는 fake adapter worker tests로 검증됨. Real Resend credentials/domain smoke test는 staging 운영 검증으로 남김 — `PHASE_7_CLOSEOUT_FINDINGS.md §5.2`.
 - [x] MFA required org에서 password-only access issuance가 차단됨 (Step 2 — login challenge gate + refresh MFA required + 인증된 TOTP enroll/disable).
 - [x] audit target events가 org-scoped row로 기록됨 (Step 3 — 보안/멤버십/초대/고객/통화/지식/보고서 audit hook + 관리자용 `GET /activity-log`).
 - [x] retention worker가 deterministic test cutoff로 검증됨 (Step 4 — `phase7_step4_retention_worker.test.mjs` boundary 테스트가 `now`를 +2일 이동시켜 cutoff 통과/미통과 양쪽을 직접 검증).
-- [ ] `npm --prefix server run typecheck` PASS.
-- [ ] `npm --prefix server test` PASS.
-- [ ] `node test/sync_shared_types.mjs` PASS.
-- [ ] 관련 phase e2e PASS.
-- [ ] Phase 7 findings와 다음 phase handoff 작성.
+- [x] `npm --prefix server run typecheck` PASS (closeout: 2026-05-18).
+- [x] `npm --prefix server test` PASS — 769 / 772 (3 skipped, 0 fail).
+- [x] `node test/sync_shared_types.mjs` PASS (billing 7 types 포함).
+- [x] 관련 phase e2e PASS — Phase 3 anonymous flow / Phase 5·6 reports / Phase 7 단위 회귀 모두 그대로 통과. Step 9 Playwright manual smoke (admin desktop/mobile, employee 403, tax_id XSS)도 PASS.
+- [x] Phase 7 findings와 다음 phase handoff 작성 — `PHASE_7_CLOSEOUT_FINDINGS.md` + `§7`의 결제 provider Phase / Phase 8 handoff 노트.
 
 ---
 
 ## 7. 바로 다음 작업
 
-P0 4개(Step 1~4) + P1 bundle 5개(Step 5~9)가 모두 닫혔다. 운영 출시 직전 게이트는 통과한 상태이며, billing/subscription caps도 강제된다. Phase 7은 closeout 단계로 진입하며, 다음 작업은 실 결제 provider 연동(Stripe/Toss) — 외부 돈 이동/회계 계약을 수반하므로 별도 Phase로 분리한다.
+**Phase 7 closeout 완료.** P0 4개(Step 1~4) + P1 bundle 5개(Step 5~9)가 모두 닫혔고 Go/No-Go 9/9 PASS. 운영 출시 직전 게이트(이메일·MFA·감사·보존·plan caps)가 봉합됐고, 종합 결과·검증 명령·남은 리스크·인계 노트는 `PHASE_7_CLOSEOUT_FINDINGS.md`에 있다. 다음 작업 선택지는 (a) 실 결제 provider 연동(Stripe/Toss — 외부 돈 이동/회계 계약을 동반하므로 별도 Phase로 분리), 또는 (b) Phase 8 call recording (제품 영역 확장). 우선순위는 운영팀 합의 후 결정.
 
 추천 순서:
 
