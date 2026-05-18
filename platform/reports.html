@@ -17,6 +17,17 @@
   <style>
     body { overflow: hidden; }
     main.scroll-area { overflow-y: auto; }
+    .preset-btn.active {
+      background: rgb(37 99 235);
+      color: white;
+      border-color: rgb(37 99 235);
+    }
+    .agent-row.active td {
+      background: rgb(239 246 255);
+    }
+    .agent-row.active td:first-child {
+      box-shadow: inset 3px 0 0 rgb(37 99 235);
+    }
   </style>
 </head>
 
@@ -46,6 +57,26 @@
 
         <!-- Status banner (loading / forbidden / not-found / error) -->
         <section id="statusBanner" class="hidden rounded-xl border bg-white p-4 text-[.85rem] text-slate-700"></section>
+
+        <!-- Phase 7 Step 7 — date window controls -->
+        <section id="filterBar" class="rounded-xl border border-slate-200 bg-white p-3 lg:p-4 hidden">
+          <div class="flex flex-wrap items-center gap-2 lg:gap-3">
+            <div class="text-[.7rem] font-bold tracking-wider uppercase text-slate-500 mr-1">기간</div>
+            <div class="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+              <button type="button" data-preset="7"  class="preset-btn px-3 h-8 text-[.78rem] font-bold text-slate-700 border-r border-slate-200">7일</button>
+              <button type="button" data-preset="30" class="preset-btn px-3 h-8 text-[.78rem] font-bold text-slate-700 border-r border-slate-200 active">30일</button>
+              <button type="button" data-preset="90" class="preset-btn px-3 h-8 text-[.78rem] font-bold text-slate-700 border-r border-slate-200">90일</button>
+              <button type="button" data-preset="custom" class="preset-btn px-3 h-8 text-[.78rem] font-bold text-slate-700">직접</button>
+            </div>
+            <div id="customRange" class="hidden flex items-center gap-2">
+              <input id="customFrom" type="date" class="h-8 px-2 rounded-md border border-slate-200 text-[.78rem] text-slate-700" />
+              <span class="text-[.78rem] text-slate-400">→</span>
+              <input id="customTo"   type="date" class="h-8 px-2 rounded-md border border-slate-200 text-[.78rem] text-slate-700" />
+              <button id="applyCustomBtn" type="button" class="btn-primary h-8 px-3 text-[.78rem]">적용</button>
+            </div>
+            <div id="windowLabel" class="ml-auto text-[.72rem] text-slate-500"></div>
+          </div>
+        </section>
 
         <!-- Header card -->
         <section id="headerCard" class="rounded-2xl border border-slate-200 bg-white p-5 lg:p-7 shadow-sm hidden">
@@ -101,11 +132,41 @@
           </div>
         </section>
 
+        <!-- Phase 7 Step 7 — agent breakdown -->
+        <section id="agentSection" class="rounded-2xl border border-slate-200 bg-white overflow-hidden hidden">
+          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-2">
+            <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">상담원별 성과</h3>
+            <button id="clearAgentBtn" type="button"
+                    class="hidden text-[.72rem] font-bold text-blue-600 hover:underline">
+              전체 보기
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>상담원</th>
+                  <th class="hidden sm:table-cell">팀</th>
+                  <th class="text-right">전체</th>
+                  <th class="text-right hidden sm:table-cell">완료</th>
+                  <th class="text-right">응답률</th>
+                  <th class="text-right hidden md:table-cell">평균 통화</th>
+                  <th class="hidden md:table-cell">최근 통화</th>
+                </tr>
+              </thead>
+              <tbody id="agentBody"></tbody>
+            </table>
+          </div>
+        </section>
+
         <!-- Recent calls -->
         <section id="recentSection" class="rounded-2xl border border-slate-200 bg-white overflow-hidden hidden">
-          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-2">
             <h3 class="text-[.95rem] font-black tracking-tight text-slate-800">최근 통화</h3>
-            <a href="calls.html" class="text-[.78rem] font-bold text-blue-600 hover:underline">통화 기록 →</a>
+            <div class="flex items-center gap-3">
+              <div id="recentFilterLabel" class="hidden text-[.72rem] text-slate-500"></div>
+              <a href="calls.html" class="text-[.78rem] font-bold text-blue-600 hover:underline">통화 기록 →</a>
+            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="tbl">
@@ -179,7 +240,36 @@
       return Y + '-' + M + '-' + D + ' ' + h + ':' + m;
     }
 
+    // Phase 7 Step 7 — UTC date helpers. Backend interprets `from`/`to`
+    // as UTC calendar days so the preset arithmetic must also work in
+    // UTC to avoid off-by-one errors near midnight in non-UTC zones.
+    function todayUtc() {
+      const n = new Date();
+      return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+    }
+    function fmtUtcDateOnly(d) {
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      return y + '-' + m + '-' + dd;
+    }
+    function utcDaysAgo(n) {
+      const t = todayUtc();
+      return new Date(t.getTime() - n * 24 * 60 * 60 * 1000);
+    }
+
     renderSidebar('reports');
+
+    // Filter / drilldown state — kept in one object so the URL-less
+    // drilldown plays nicely with the next reload.
+    const state = {
+      preset: '30',
+      from: null,                // YYYY-MM-DD or null
+      to: null,                  // YYYY-MM-DD or null
+      selectedAgentId: undefined, // undefined = no filter, string|null = picked
+      selectedAgentLabel: null,
+      lastSummary: null,
+    };
 
     function showStatusBanner(kind, message) {
       const el = document.getElementById('statusBanner');
@@ -187,6 +277,7 @@
         loading: 'border-slate-200 bg-slate-50 text-slate-600',
         forbidden: 'border-rose-200 bg-rose-50 text-rose-700',
         notfound: 'border-amber-200 bg-amber-50 text-amber-700',
+        invalid: 'border-amber-200 bg-amber-50 text-amber-700',
         error: 'border-rose-200 bg-rose-50 text-rose-700',
       };
       el.className = 'rounded-xl border p-4 text-[.85rem] ' + (palette[kind] || palette.error);
@@ -197,6 +288,7 @@
       document.getElementById('headerCard').classList.add('hidden');
       document.getElementById('kpiSection').classList.add('hidden');
       document.getElementById('statusBreakdown').classList.add('hidden');
+      document.getElementById('agentSection').classList.add('hidden');
       document.getElementById('recentSection').classList.add('hidden');
     }
 
@@ -204,59 +296,158 @@
       document.getElementById('statusBanner').classList.add('hidden');
     }
 
-    function renderSummary(summary) {
-      hideStatusBanner();
-      document.getElementById('headerCard').classList.remove('hidden');
-      document.getElementById('kpiSection').classList.remove('hidden');
-      document.getElementById('statusBreakdown').classList.remove('hidden');
-      document.getElementById('recentSection').classList.remove('hidden');
-
-      // Scope label + title.
-      const scopeLabel = SCOPE_BADGE_LABEL[summary.scope] || summary.scope || '—';
-      const scopeBadge = document.getElementById('scopeBadge');
-      // textContent for the badge — escapeHtml not needed for textContent.
-      scopeBadge.textContent = scopeLabel;
-      scopeBadge.classList.remove('hidden');
-
-      const titleEl = document.getElementById('scopeTitle');
-      const descEl = document.getElementById('scopeDesc');
-      if (summary.scope === 'team') {
-        // team_name is API-provided — textContent is XSS-safe.
-        titleEl.textContent = (summary.team_name || '팀') + ' 팀 보고서';
-        descEl.textContent =
-          '해당 팀에 소속된 상담원의 통화만 집계됩니다.';
+    function setActivePreset(preset) {
+      state.preset = preset;
+      const buttons = document.querySelectorAll('.preset-btn');
+      buttons.forEach((b) => {
+        if (b.getAttribute('data-preset') === preset) {
+          b.classList.add('active');
+        } else {
+          b.classList.remove('active');
+        }
+      });
+      const customWrap = document.getElementById('customRange');
+      if (preset === 'custom') {
+        customWrap.classList.remove('hidden');
+        customWrap.classList.add('flex');
       } else {
-        titleEl.textContent = '조직 전체 보고서';
-        descEl.textContent =
-          '조직 전체 통화를 집계합니다. 팀 미배정 통화도 포함됩니다.';
+        customWrap.classList.add('hidden');
+        customWrap.classList.remove('flex');
+      }
+    }
+
+    function applyPresetWindow(preset) {
+      // Preset N → [today-N+1, today] inclusive (UTC). N=30 maps onto
+      // the server default, so submitting no from/to also works — but
+      // we ship the explicit dates anyway so the audit row records the
+      // user-visible window exactly.
+      const n = parseInt(preset, 10);
+      const to = todayUtc();
+      const from = new Date(to.getTime() - (n - 1) * 24 * 60 * 60 * 1000);
+      state.from = fmtUtcDateOnly(from);
+      state.to = fmtUtcDateOnly(to);
+    }
+
+    function renderAgentTable(summary) {
+      const section = document.getElementById('agentSection');
+      const body = document.getElementById('agentBody');
+      const items = summary.agent_summaries || [];
+      if (items.length === 0) {
+        section.classList.remove('hidden');
+        body.innerHTML =
+          '<tr><td colspan="7" class="text-center text-slate-400 py-8 text-[.8rem]">' +
+          '기간 내 상담원 통화가 없습니다.</td></tr>';
+        return;
+      }
+      // Every server-returned string flows through escapeHtml. The
+      // agent_user_id attribute is a uuid that the regex on the server
+      // already validates, but we still escape it as a defensive habit.
+      body.innerHTML = items.map(function (a, idx) {
+        const idAttr = a.agent_user_id === null ? '__unassigned__' : a.agent_user_id;
+        const isActive = state.selectedAgentId === undefined
+          ? false
+          : (state.selectedAgentId === null
+              ? a.agent_user_id === null
+              : a.agent_user_id === state.selectedAgentId);
+        const rowCls = 'agent-row' + (isActive ? ' active' : '');
+        const nameRaw = a.agent_user_id === null
+          ? '미배정'
+          : (a.agent_name || ('담당 ' + String(a.agent_user_id).slice(0, 8)));
+        const teamRaw = a.team_name || (a.agent_user_id === null ? '—' : '팀 없음');
+        return '<tr class="' + rowCls + '" data-idx="' + idx + '" data-agent-id="' + escapeHtml(idAttr) + '">' +
+                 '<td>' +
+                   '<div class="text-[.85rem] font-bold text-slate-800">' + escapeHtml(nameRaw) + '</div>' +
+                 '</td>' +
+                 '<td class="hidden sm:table-cell"><span class="text-[.78rem] text-slate-600">' + escapeHtml(teamRaw) + '</span></td>' +
+                 '<td class="text-right"><span class="text-[.85rem] font-bold tnum text-slate-800">' + String(a.total_calls || 0) + '</span></td>' +
+                 '<td class="text-right hidden sm:table-cell"><span class="text-[.78rem] tnum text-slate-700">' + String(a.ended_calls || 0) + '</span></td>' +
+                 '<td class="text-right"><span class="text-[.78rem] tnum text-slate-700">' + escapeHtml(formatResponseRate(a.response_rate)) + '</span></td>' +
+                 '<td class="text-right hidden md:table-cell"><span class="text-[.78rem] tnum text-slate-700">' + escapeHtml(formatDuration(a.avg_duration_seconds)) + '</span></td>' +
+                 '<td class="hidden md:table-cell"><span class="text-[.72rem] tnum text-slate-500">' + escapeHtml(formatHHMM(a.latest_call_at)) + '</span></td>' +
+               '</tr>';
+      }).join('');
+      section.classList.remove('hidden');
+
+      // Wire row click for drilldown. Plain dataset attribute lookup —
+      // no event delegation gymnastics needed for a 10-row table.
+      const rows = body.querySelectorAll('tr.agent-row');
+      rows.forEach(function (row) {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', function () {
+          const idx = parseInt(row.getAttribute('data-idx'), 10);
+          const picked = items[idx];
+          if (!picked) return;
+          if (state.selectedAgentId === undefined ||
+              (state.selectedAgentId === null && picked.agent_user_id !== null) ||
+              (state.selectedAgentId !== null && state.selectedAgentId !== picked.agent_user_id)) {
+            state.selectedAgentId = picked.agent_user_id;
+            state.selectedAgentLabel = picked.agent_user_id === null
+              ? '미배정'
+              : (picked.agent_name || ('담당 ' + String(picked.agent_user_id).slice(0, 8)));
+          } else {
+            // Clicking the active row toggles back to "전체 보기".
+            state.selectedAgentId = undefined;
+            state.selectedAgentLabel = null;
+          }
+          renderSelectedAgentUI();
+        });
+      });
+    }
+
+    function renderSelectedAgentUI() {
+      // Re-style agent rows (no fetch — drilldown is client-side only).
+      const rows = document.querySelectorAll('#agentBody tr.agent-row');
+      rows.forEach(function (row) {
+        const agentId = row.getAttribute('data-agent-id');
+        const matches = state.selectedAgentId === undefined
+          ? false
+          : (state.selectedAgentId === null
+              ? agentId === '__unassigned__'
+              : agentId === state.selectedAgentId);
+        if (matches) row.classList.add('active');
+        else row.classList.remove('active');
+      });
+      const clearBtn = document.getElementById('clearAgentBtn');
+      if (state.selectedAgentId === undefined) {
+        clearBtn.classList.add('hidden');
+      } else {
+        clearBtn.classList.remove('hidden');
+      }
+      renderRecentTable(state.lastSummary);
+    }
+
+    function renderRecentTable(summary) {
+      if (!summary) return;
+      const body = document.getElementById('recentBody');
+      const section = document.getElementById('recentSection');
+      const filterLabel = document.getElementById('recentFilterLabel');
+
+      let items = summary.recent_calls || [];
+      if (state.selectedAgentId !== undefined) {
+        items = items.filter(function (c) {
+          if (state.selectedAgentId === null) return c.agent_user_id === null;
+          return c.agent_user_id === state.selectedAgentId;
+        });
+        // textContent — no innerHTML for selected agent label.
+        filterLabel.textContent =
+          '선택 상담원: ' + (state.selectedAgentLabel || '—');
+        filterLabel.classList.remove('hidden');
+      } else {
+        filterLabel.classList.add('hidden');
+        filterLabel.textContent = '';
       }
 
-      document.getElementById('generatedAtLabel').textContent =
-        '생성: ' + formatHHMM(summary.generated_at);
-
-      // KPI cards.
-      document.getElementById('kpiTotal').textContent = String(summary.total_calls ?? 0);
-      document.getElementById('kpiEnded').textContent = String(summary.ended_calls ?? 0);
-      document.getElementById('kpiResponseRate').textContent = formatResponseRate(summary.response_rate);
-      document.getElementById('kpiAvgDuration').textContent = formatDuration(summary.avg_duration_seconds);
-      document.getElementById('kpiActive').textContent = String(summary.active_calls ?? 0);
-
-      // Status breakdown.
-      document.getElementById('breakEnded').textContent = String(summary.ended_calls ?? 0);
-      document.getElementById('breakMissed').textContent = String(summary.missed_calls ?? 0);
-      document.getElementById('breakDropped').textContent = String(summary.dropped_calls ?? 0);
-      document.getElementById('breakActive').textContent = String(summary.active_calls ?? 0);
-
-      // Recent calls.
-      const body = document.getElementById('recentBody');
-      const items = summary.recent_calls || [];
+      section.classList.remove('hidden');
       if (items.length === 0) {
         body.innerHTML =
           '<tr><td colspan="6" class="text-center text-slate-400 py-8 text-[.8rem]">' +
-          '최근 통화가 없습니다.</td></tr>';
+          (state.selectedAgentId !== undefined
+            ? '최근 통화 10건 중 선택 상담원의 통화가 없습니다.'
+            : '최근 통화가 없습니다.') +
+          '</td></tr>';
         return;
       }
-      body.innerHTML = items.map((c) => {
+      body.innerHTML = items.map(function (c) {
         const meta = STATUS_BADGE[c.status] || { c: 'badge-slate', l: c.status || '?' };
         const customerName = c.customer_name
           || (c.customer_id ? '고객 ' + c.customer_id.slice(0, 8) : '미등록 발신자');
@@ -277,15 +468,86 @@
       }).join('');
     }
 
+    function renderSummary(summary) {
+      hideStatusBanner();
+      state.lastSummary = summary;
+      // Reset selection on a fresh server response — the new agent_summaries
+      // may not include the previously selected agent at all.
+      state.selectedAgentId = undefined;
+      state.selectedAgentLabel = null;
+
+      document.getElementById('filterBar').classList.remove('hidden');
+      document.getElementById('headerCard').classList.remove('hidden');
+      document.getElementById('kpiSection').classList.remove('hidden');
+      document.getElementById('statusBreakdown').classList.remove('hidden');
+
+      // Scope label + title.
+      const scopeLabel = SCOPE_BADGE_LABEL[summary.scope] || summary.scope || '—';
+      const scopeBadge = document.getElementById('scopeBadge');
+      scopeBadge.textContent = scopeLabel;
+      scopeBadge.classList.remove('hidden');
+
+      const titleEl = document.getElementById('scopeTitle');
+      const descEl = document.getElementById('scopeDesc');
+      if (summary.scope === 'team') {
+        // team_name is API-provided — textContent is XSS-safe.
+        titleEl.textContent = (summary.team_name || '팀') + ' 팀 보고서';
+        descEl.textContent =
+          '해당 팀에 소속된 상담원의 통화만 집계됩니다.';
+      } else {
+        titleEl.textContent = '조직 전체 보고서';
+        descEl.textContent =
+          '조직 전체 통화를 집계합니다. 팀 미배정 통화도 포함됩니다.';
+      }
+
+      // Window label — server-resolved dates win over the client-side
+      // preset arithmetic (covers default 30-day server window when no
+      // dates were submitted, plus any future drift).
+      const w = summary.window || {};
+      const windowLabel = document.getElementById('windowLabel');
+      if (w.from && w.to) {
+        windowLabel.textContent = w.from + ' ~ ' + w.to + ' (' + (w.days || '') + '일)';
+      } else {
+        windowLabel.textContent = '';
+      }
+      // Sync custom date inputs in case the server normalised them.
+      if (state.preset === 'custom') {
+        document.getElementById('customFrom').value = w.from || '';
+        document.getElementById('customTo').value = w.to || '';
+      }
+
+      document.getElementById('generatedAtLabel').textContent =
+        '생성: ' + formatHHMM(summary.generated_at);
+
+      // KPI cards.
+      document.getElementById('kpiTotal').textContent = String(summary.total_calls ?? 0);
+      document.getElementById('kpiEnded').textContent = String(summary.ended_calls ?? 0);
+      document.getElementById('kpiResponseRate').textContent = formatResponseRate(summary.response_rate);
+      document.getElementById('kpiAvgDuration').textContent = formatDuration(summary.avg_duration_seconds);
+      document.getElementById('kpiActive').textContent = String(summary.active_calls ?? 0);
+
+      // Status breakdown.
+      document.getElementById('breakEnded').textContent = String(summary.ended_calls ?? 0);
+      document.getElementById('breakMissed').textContent = String(summary.missed_calls ?? 0);
+      document.getElementById('breakDropped').textContent = String(summary.dropped_calls ?? 0);
+      document.getElementById('breakActive').textContent = String(summary.active_calls ?? 0);
+
+      renderAgentTable(summary);
+      renderRecentTable(summary);
+    }
+
     async function loadReport() {
       showStatusBanner('loading', '보고서를 불러오는 중…');
       try {
-        // Cold load: refresh access token first like the other authenticated
-        // pages so the first call doesn't get a 401.
         if (window.kloserApi && typeof window.kloserApi.refreshAccessToken === 'function') {
           try { await window.kloserApi.refreshAccessToken(); } catch (_err) { /* api.js handles redirect */ }
         }
-        const res = await window.kloserApi.getTeamReportSummary({});
+        const params = {};
+        if (state.from && state.to) {
+          params.from = state.from;
+          params.to = state.to;
+        }
+        const res = await window.kloserApi.getTeamReportSummary(params);
         if (res.status === 403) {
           showStatusBanner('forbidden',
             '이 페이지는 관리자와 매니저만 볼 수 있습니다. 매니저의 경우 팀에 배정되어 있어야 합니다.');
@@ -294,6 +556,24 @@
         if (res.status === 404) {
           showStatusBanner('notfound',
             '요청한 팀을 찾을 수 없습니다.');
+          return;
+        }
+        if (res.status === 400) {
+          let msg = '입력한 기간이 올바르지 않습니다.';
+          try {
+            const body = await res.json();
+            if (body && typeof body.code === 'string') {
+              const codeMap = {
+                invalid_date_format:   '날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).',
+                invalid_calendar_date: '실제로 존재하지 않는 날짜입니다.',
+                from_after_to:         '시작일이 종료일보다 늦을 수 없습니다.',
+                window_too_large:      '한 번에 조회할 수 있는 기간은 366일까지입니다.',
+                one_sided_window:      '시작일과 종료일을 모두 입력해주세요.',
+              };
+              msg = codeMap[body.code] || msg;
+            }
+          } catch (_err) { /* swallow — keep generic message */ }
+          showStatusBanner('invalid', msg);
           return;
         }
         if (!res.ok) {
@@ -308,8 +588,46 @@
       }
     }
 
+    // Wire preset buttons.
+    document.querySelectorAll('.preset-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const preset = btn.getAttribute('data-preset');
+        if (preset === 'custom') {
+          setActivePreset('custom');
+          // Pre-populate custom inputs from current state so the user has
+          // a starting point instead of an empty form.
+          const fromInput = document.getElementById('customFrom');
+          const toInput = document.getElementById('customTo');
+          if (!fromInput.value) fromInput.value = state.from || fmtUtcDateOnly(utcDaysAgo(29));
+          if (!toInput.value)   toInput.value   = state.to   || fmtUtcDateOnly(todayUtc());
+          return;
+        }
+        setActivePreset(preset);
+        applyPresetWindow(preset);
+        loadReport();
+      });
+    });
+    document.getElementById('applyCustomBtn').addEventListener('click', function () {
+      const fromInput = document.getElementById('customFrom').value;
+      const toInput   = document.getElementById('customTo').value;
+      if (!fromInput || !toInput) {
+        showStatusBanner('invalid', '시작일과 종료일을 모두 입력해주세요.');
+        return;
+      }
+      state.from = fromInput;
+      state.to = toInput;
+      loadReport();
+    });
+    document.getElementById('clearAgentBtn').addEventListener('click', function () {
+      state.selectedAgentId = undefined;
+      state.selectedAgentLabel = null;
+      renderSelectedAgentUI();
+    });
     document.getElementById('reloadBtn').addEventListener('click', loadReport);
 
+    // Initial state: default to the 30-day preset, then fetch.
+    setActivePreset('30');
+    applyPresetWindow('30');
     loadReport();
   </script>
 </body>

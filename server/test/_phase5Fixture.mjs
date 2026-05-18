@@ -240,14 +240,18 @@ export function authedInject(app, token, opts) {
 }
 
 // Insert a call directly into the DB without going through routes. Useful
-// when a test needs to set agent_user_id or last_seen_at precisely.
+// when a test needs to set agent_user_id, last_seen_at, started_at, or
+// duration_seconds precisely. Phase 7 Step 7 wires duration_seconds /
+// ended_at through so aggregate-metric tests (avg_duration_seconds)
+// can verify the SQL math instead of silently AVG'ing over nulls.
 export async function insertCallRaw(app, orgId, fields = {}) {
     return app.withOrgContext(orgId, async (client) => {
         const r = await client.query(
             `INSERT INTO calls (
                 org_id, customer_id, agent_user_id, direction, status, title,
-                started_at, last_seen_at, summary, summary_source
-             ) VALUES ($1, $2, $3, $4, COALESCE($5,'in_progress'), $6, $7, $8, $9, $10)
+                started_at, last_seen_at, ended_at, duration_seconds,
+                summary, summary_source
+             ) VALUES ($1, $2, $3, $4, COALESCE($5,'in_progress'), $6, $7, $8, $9, $10, $11, $12)
              RETURNING *`,
             [
                 orgId,
@@ -258,6 +262,8 @@ export async function insertCallRaw(app, orgId, fields = {}) {
                 fields.title ?? `${PREFIX}default`,
                 fields.started_at ?? new Date(),
                 fields.last_seen_at ?? null,
+                fields.ended_at ?? null,
+                fields.duration_seconds ?? null,
                 fields.summary ?? null,
                 fields.summary_source ?? null,
             ],

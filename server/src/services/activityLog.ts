@@ -1229,6 +1229,15 @@ export interface RecordReportTeamViewedInput {
   actorUserId: string;
   scope:       ReportScope;
   teamId:      string | null;
+  /** Phase 7 Step 7 — the resolved window the user actually saw, in
+   *  inclusive YYYY-MM-DD form (UTC). Auditors need to know WHICH
+   *  period was opened, not just that "a report was opened". */
+  from:        string;
+  to:          string;
+  /** Inclusive window size in days. Lets auditors filter for
+   *  unusually-wide pulls (e.g. someone exporting a year-long range)
+   *  without re-parsing the date strings. */
+  windowDays:  number;
 }
 
 /** report.team_viewed — admin or manager opened the team summary report.
@@ -1236,7 +1245,19 @@ export interface RecordReportTeamViewedInput {
  * Returns the underlying tryRecordActivity boolean so the caller has the
  * option to log a metric on the false case. The team report response
  * code does NOT depend on this return value — best-effort means the
- * audit miss is the auditor's problem, not the user's. */
+ * audit miss is the auditor's problem, not the user's.
+ *
+ * Payload is an exact, allow-listed set:
+ *   - `scope`        : "org" | "team"
+ *   - `team_id`      : uuid | null
+ *   - `from` / `to`  : YYYY-MM-DD strings (UTC, inclusive)
+ *   - `window_days`  : int day count
+ *
+ * The result data (team_name, agent_name, customer_name, call title,
+ * recent_calls, agent_summaries rows) is intentionally NOT echoed.
+ * The audit row records WHICH view was opened over WHICH period — not
+ * what was visible inside. Audit consumers can re-derive the result by
+ * re-running the same query, but cannot reconstruct it from this row. */
 export async function recordReportTeamViewed(
   client: PoolClient,
   input: RecordReportTeamViewedInput,
@@ -1248,8 +1269,11 @@ export async function recordReportTeamViewed(
     targetType:  "report",
     targetId:    null,
     payload: {
-      scope:   input.scope,
-      team_id: input.teamId,
+      scope:       input.scope,
+      team_id:     input.teamId,
+      from:        input.from,
+      to:          input.to,
+      window_days: input.windowDays,
     },
   });
 }

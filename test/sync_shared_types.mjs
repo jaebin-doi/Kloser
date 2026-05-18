@@ -166,7 +166,18 @@ const ENTITY_REGISTRY = [
         name: "teamReport",
         server: "server/src/types/teamReport.ts",
         browser: "platform/types/teamReport.js",
-        types: ["TeamReportSummary", "TeamReportRecentCall"],
+        // Phase 7 Step 7 adds date window + agent breakdown to the
+        // team report response, plus the request query envelope. The
+        // parser only cares about top-level field NAMES, so nested
+        // referenced types (TeamReportWindow inside TeamReportSummary)
+        // sync independently as their own entries here.
+        types: [
+            "TeamReportSummary",
+            "TeamReportRecentCall",
+            "TeamReportQuery",
+            "TeamReportWindow",
+            "TeamReportAgentSummary",
+        ],
     },
     {
         name: "organizationSecurity",

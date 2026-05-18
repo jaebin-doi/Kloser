@@ -517,14 +517,23 @@
     return apiGet('/dashboard/summary');
   }
 
-  // Phase 6 Step 4 — manager / admin team-scope report.
-  // params.teamId is optional; admin without teamId returns the org-wide
-  // summary, manager omits it to get their own team. Server: 403 for
-  // employee/viewer or manager other-team, 404 for cross-org team_id.
+  // Phase 6 Step 4 + Phase 7 Step 7 — manager / admin team-scope report.
+  //   params.teamId : optional uuid. Admin without teamId returns the
+  //                   org-wide summary; manager omits to get own team.
+  //                   Server returns 403 for employee/viewer or manager
+  //                   other-team, 404 for cross-org team_id.
+  //   params.from   : optional YYYY-MM-DD (UTC). Must be paired with
+  //                   params.to or the server returns 400.
+  //   params.to     : optional YYYY-MM-DD (UTC), inclusive UI end.
+  // When from/to are both omitted the server resolves a default 30-day
+  // window. URLSearchParams.set() handles all string escaping; never
+  // concatenate raw strings into the URL.
   function getTeamReportSummary(params) {
     const p = params || {};
     const qs = new URLSearchParams();
     if (p.teamId) qs.set('team_id', String(p.teamId));
+    if (p.from) qs.set('from', String(p.from));
+    if (p.to) qs.set('to', String(p.to));
     const query = qs.toString();
     return apiGet('/reports/team-summary' + (query ? '?' + query : ''));
   }

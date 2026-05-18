@@ -1,6 +1,7 @@
-/* Phase 7 Step 3 — report.team_viewed best-effort audit hook tests.
+/* Phase 7 Step 3 + Step 7 — report.team_viewed best-effort audit hook tests.
  *
- * Plan: docs/plan/phase-7/PHASE_7_STEP_3_PLAN.md §7.4.
+ * Plan: docs/plan/phase-7/PHASE_7_STEP_3_PLAN.md §7.4 (initial);
+ *       docs/plan/phase-7/PHASE_7_STEP_7_PLAN.md §4.5 (payload extension).
  *
  * Scope (this commit closes — 1 event):
  *   - report.team_viewed   (GET /reports/team-summary)
@@ -16,8 +17,14 @@
  *
  * Sensitive-value invariants asserted on every recorded row:
  *   - payload never contains customer name / agent name / team name /
- *     call title / sentiment / call ids — only operational scope
- *   - payload only carries `scope` (org | team) and `team_id` (uuid|null)
+ *     call title / sentiment / call ids — only operational scope + the
+ *     resolved date window
+ *   - Step 7 extends the allow-listed payload key set from
+ *       ['scope','team_id']
+ *     to
+ *       ['scope','team_id','from','to','window_days']
+ *     and the assertions below pin the exact set so future fields cannot
+ *     accidentally leak result data into the audit feed.
  */
 import { test, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
@@ -148,6 +155,13 @@ test("GET /reports/team-summary (admin, no team_id) → report.team_viewed scope
         "report target_id must stay null — the view has no row id");
     assert.equal(row.payload.scope, "org");
     assert.equal(row.payload.team_id, null);
+    // Step 7 — default window is the most recent 30 calendar days, so
+    // window_days is 30 and from/to are valid YYYY-MM-DD strings. We
+    // don't pin specific dates because the test runs at variable wall
+    // clock times; the shape and the day count are what matter.
+    assert.equal(row.payload.window_days, 30);
+    assert.match(row.payload.from, /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(row.payload.to, /^\d{4}-\d{2}-\d{2}$/);
 });
 
 // ====================================================================== //
@@ -224,11 +238,44 @@ test("payload omits customer/agent/team names + call title + sentiment + ids", a
         callId,
         USER_EMPLOYEE_TEAM_A, // agent user id must not appear either
     ]);
-    // Positive payload contract: only the two allow-listed keys.
+    // Positive payload contract: only the five allow-listed keys.
+    // The Step 7 expansion adds the resolved-window metadata so an
+    // auditor can see WHICH period was opened, but result data
+    // (team_name / agent_name / customer_name / call title / recent
+    // call rows) must still never reach the payload.
     assert.deepEqual(
         Object.keys(rows[0].payload).sort(),
-        ["scope", "team_id"],
-        "payload must carry only scope + team_id",
+        ["from", "scope", "team_id", "to", "window_days"],
+        "payload must carry only scope + team_id + window metadata",
+    );
+});
+
+// ====================================================================== //
+//          Step 7 — custom date window is echoed into payload
+// ====================================================================== //
+
+test("custom from/to window is echoed into audit payload (window_days = inclusive count)", async () => {
+    // Use a 7-day inclusive window so we can verify the day count
+    // arithmetic instead of just the shape.
+    const from = "2026-05-01";
+    const to = "2026-05-07";
+
+    const token = mintToken(app, "acmeAdmin");
+    const r = await inject(token, `?from=${from}&to=${to}`);
+    assert.equal(r.statusCode, 200, `${r.statusCode}: ${r.body}`);
+
+    const rows = await findAuditRows(ORG_ACME, USER_ACME_ADMIN);
+    assert.equal(rows.length, 1);
+    const row = rows[0];
+    assert.equal(row.payload.scope, "org");
+    assert.equal(row.payload.team_id, null);
+    assert.equal(row.payload.from, from);
+    assert.equal(row.payload.to, to);
+    assert.equal(row.payload.window_days, 7,
+        "window_days must be inclusive (to − from + 1)");
+    assert.deepEqual(
+        Object.keys(row.payload).sort(),
+        ["from", "scope", "team_id", "to", "window_days"],
     );
 });
 
