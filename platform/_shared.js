@@ -108,16 +108,6 @@ const SIDEBAR_HTML = `
 <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 `;
 
-function renderSidebar(activePage) {
-  document.getElementById('sidebarSlot').innerHTML = SIDEBAR_HTML;
-  if (activePage) {
-    const el = document.querySelector(`.nav-item[data-page="${activePage}"]`);
-    if (el) el.classList.add('active');
-  }
-  wireSidebarUserMenu();
-  loadSidebarProfile();
-}
-
 // Role / plan label maps — server stores the lowercased enum, sidebar
 // shows the Korean / title-cased label.
 const SIDEBAR_ROLE_LABELS = {
@@ -131,6 +121,71 @@ const SIDEBAR_PLAN_LABELS = {
   pro:        'Pro',
   enterprise: 'Enterprise',
 };
+
+// Phase 7 Step 6 — role → sidebar nav visibility map. Backend already
+// blocks unauthorized routes (403/404), this strips menu items that the
+// caller can never reach. Source-of-truth for which page each role can
+// reach via the sidebar; direct URL access still hits the same backend
+// guard.
+const SIDEBAR_ALL_ROLES = ['admin', 'manager', 'employee', 'viewer'];
+const SIDEBAR_NAV_VISIBILITY = {
+  dashboard:  SIDEBAR_ALL_ROLES,
+  live:       ['admin', 'manager', 'employee'],
+  calls:      SIDEBAR_ALL_ROLES,
+  daily:      SIDEBAR_ALL_ROLES,
+  customers:  SIDEBAR_ALL_ROLES,
+  newsletter: ['admin', 'manager', 'employee'],
+  team:       SIDEBAR_ALL_ROLES,
+  reports:    ['admin', 'manager'],
+  settings:   SIDEBAR_ALL_ROLES,
+};
+
+// Active page lives at module scope so the visibility pass — which runs
+// twice (unknown role pre-flight + post-/me re-apply) — can restore the
+// `.active` class on items that re-emerge for the resolved role.
+let _sidebarActivePage = null;
+
+function canShowSidebarPage(page, role) {
+  const allowed = SIDEBAR_NAV_VISIBILITY[page];
+  if (!allowed) return true;
+  // Unknown role (pre-/me) shows items that every authenticated role
+  // can reach. Sensitive items (reports / live / newsletter) stay
+  // hidden until /me confirms the role can see them, which prevents the
+  // brief "menu shows then disappears" flicker for unauthorized users.
+  // Garbage role values fall through to the membership check below and
+  // hide everything — same outcome as a server 401.
+  if (!role) return SIDEBAR_ALL_ROLES.every(r => allowed.indexOf(r) !== -1);
+  return allowed.indexOf(role) !== -1;
+}
+
+function applySidebarNavVisibility(role) {
+  const items = document.querySelectorAll('.nav-item[data-page]');
+  for (const el of items) {
+    const page = el.getAttribute('data-page');
+    const show = canShowSidebarPage(page, role);
+    el.hidden = !show;
+    el.setAttribute('aria-hidden', show ? 'false' : 'true');
+    if (show) {
+      if (page === _sidebarActivePage) el.classList.add('active');
+    } else {
+      el.classList.remove('active');
+    }
+  }
+}
+window.applySidebarNavVisibility = applySidebarNavVisibility;
+window.canShowSidebarPage = canShowSidebarPage;
+
+function renderSidebar(activePage) {
+  document.getElementById('sidebarSlot').innerHTML = SIDEBAR_HTML;
+  _sidebarActivePage = activePage || null;
+  // Default to unknown-role visibility before /me lands. Sensitive items
+  // (reports / live / newsletter) stay hidden during the brief auth
+  // window so they don't flash for unauthorized roles. applySidebarProfile
+  // re-runs this with the resolved role.
+  applySidebarNavVisibility(null);
+  wireSidebarUserMenu();
+  loadSidebarProfile();
+}
 
 // In-flight /me dedupe — renderSidebar can be called once per page, but
 // guard against repeated injects (notification panel etc. re-rendering
@@ -216,6 +271,12 @@ function applySidebarProfile(me) {
   set('sidebarOrgPlan',    planLabel);
   set('sidebarUserAvatar', userInitial);
   set('sidebarOrgAvatar',  orgInitial);
+
+  // Phase 7 Step 6 — re-apply nav visibility with the resolved role.
+  // Items the unknown-role pre-flight hid because we couldn't yet
+  // authorize them will re-appear here; items the resolved role still
+  // can't reach stay hidden.
+  applySidebarNavVisibility(me.membership.role);
 }
 
 function wireSidebarUserMenu() {

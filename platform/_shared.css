@@ -39,6 +39,9 @@ body { overflow: hidden; }
 .nav-item.active { background: rgb(37 99 235); color: white; box-shadow: 0 4px 12px -4px rgba(37,99,235,.4); }
 .nav-item.active svg { color: white !important; }
 .nav-item svg { color: rgb(100 116 139); flex-shrink: 0; }
+/* `.nav-item` sets display: flex; this rule (same-class specificity, later
+   author rule) lets the HTML `hidden` attribute win for role-gated items. */
+.nav-item[hidden] { display: none; }
 
 .scroll-area::-webkit-scrollbar { width: 6px; height: 6px; }
 .scroll-area::-webkit-scrollbar-track { background: transparent; }

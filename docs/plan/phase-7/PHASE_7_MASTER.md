@@ -13,7 +13,7 @@
 - [x] **Step 2 — MFA / 세션 강화**: TOTP 우선 도입 완료 (login challenge / 인증된 enroll·disable / 조직 MFA 강제). WebAuthn은 후속.
 - [x] **Step 3 — activity_log + 감사 로그**: schema hardening · repository · service helper · 보안/멤버십/초대/고객/통화/지식/보고서 audit hook · 관리자용 `GET /activity-log` route + 공유 타입 + `settings.html` 관리자 패널. 정본 결과는 `PHASE_7_STEP_3_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_3_PLAN.md`.
 - [x] **Step 4 — retention enforce cron**: transcript 3년 hard delete + email_outbox stuck-sending recovery + aggregate audit + BullMQ singleton repeatable worker (`KLOSER_RETENTION_ENABLED` gate). call_recordings은 schema 부재로 not applicable (Phase 8 recording surface 도입 시 같은 worker에 추가). 정본 결과는 `PHASE_7_STEP_4_FINDINGS.md`, 상세 계획은 `PHASE_7_STEP_4_PLAN.md`.
-- [ ] **Step 5+ — P1 운영 UX / 비용 / 상업화**: cost map (✅ Step 5 완료 — `PHASE_7_STEP_5_FINDINGS.md`), sidebar role visibility, report drilldown, demo-to-real cleanup, billing. Step 5 상세 계획은 `PHASE_7_STEP_5_PLAN.md`.
+- [ ] **Step 5+ — P1 운영 UX / 비용 / 상업화**: cost map (✅ Step 5 완료 — `PHASE_7_STEP_5_FINDINGS.md`), sidebar role visibility (✅ Step 6 완료 — `PHASE_7_STEP_6_FINDINGS.md`), report drilldown, demo-to-real cleanup, billing. Step 5 상세 계획은 `PHASE_7_STEP_5_PLAN.md`, Step 6 상세 계획은 `PHASE_7_STEP_6_PLAN.md`.
 
 ---
 
@@ -103,8 +103,8 @@ Phase 7은 외부 사용자에게 운영 출시하기 전 필요한 게이트를
 
 P0가 닫힌 뒤 순서를 다시 확정한다. 기본 순서:
 
-1. `llm_usage_log.cost_usd_micros` price map.
-2. role-based sidebar nav visibility.
+1. ~~`llm_usage_log.cost_usd_micros` price map.~~ ✅ Step 5 — `PHASE_7_STEP_5_FINDINGS.md`.
+2. ~~role-based sidebar nav visibility.~~ ✅ Step 6 — `PHASE_7_STEP_6_FINDINGS.md`.
 3. reports date window + agent drilldown.
 4. demo-to-real frontend cleanup.
 5. billing / subscription caps.
@@ -156,10 +156,10 @@ P0 4개(Step 1~4)가 모두 닫혔다. 다음 작업은 **Step 5+ P1 follow-up b
 추천 순서:
 
 1. ~~`llm_usage_log.cost_usd_micros` price map (Phase 6 잔재). 상세 계획: `PHASE_7_STEP_5_PLAN.md`.~~ **완료** — `PHASE_7_STEP_5_FINDINGS.md`. Anthropic LLM (Sonnet 4.5/4.6, Opus 4.5/4.6/4.7, Haiku 4.5) + OpenAI text-embedding-3-small/large만 known model로 채웠고, Clova STT는 audio duration 부재로 `unsupported_unit` 유지.
-2. role-based sidebar nav visibility (employee/viewer에게 admin 전용 메뉴 숨김).
+2. ~~role-based sidebar nav visibility (employee/viewer에게 admin 전용 메뉴 숨김). 상세 계획: `PHASE_7_STEP_6_PLAN.md`.~~ **완료** — `PHASE_7_STEP_6_FINDINGS.md`. `SIDEBAR_NAV_VISIBILITY` + `canShowSidebarPage` + `applySidebarNavVisibility`로 employee는 `팀 보고서` 숨김, viewer는 `팀 보고서/실시간 통화/뉴스레터` 숨김. pre-/me 상태에서는 공통 nav만 표시해 민감 nav flicker 차단. backend role policy 무변경.
 3. reports date window + agent drilldown.
 4. demo-to-real frontend cleanup (dashboard / daily / newsletter).
 5. billing / subscription caps.
 
-선행 단계 구현 결과는 각 step의 findings 문서를 기준으로 본다 — `PHASE_7_STEP_1_FINDINGS.md`, Step 2 결과는 `PHASE_7_UI_BACKEND_STATUS.md` (closeout findings 별도 작성 예정), `PHASE_7_STEP_3_FINDINGS.md`, `PHASE_7_STEP_4_FINDINGS.md`, `PHASE_7_STEP_5_FINDINGS.md`.
+선행 단계 구현 결과는 각 step의 findings 문서를 기준으로 본다 — `PHASE_7_STEP_1_FINDINGS.md`, Step 2 결과는 `PHASE_7_UI_BACKEND_STATUS.md` (closeout findings 별도 작성 예정), `PHASE_7_STEP_3_FINDINGS.md`, `PHASE_7_STEP_4_FINDINGS.md`, `PHASE_7_STEP_5_FINDINGS.md`, `PHASE_7_STEP_6_FINDINGS.md`.
 
