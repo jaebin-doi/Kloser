@@ -1,0 +1,31 @@
+# Phase 9 Step 3 — Windows capture PoC.
+#
+# Never commit raw audio, diagnostic captures, or .NET build artifacts.
+# Source files (Program.cs, *.cs under Audio/ Diagnostics/, *.csproj,
+# *.sln, README.md) are intentionally NOT ignored.
+
+# Diagnostic output directory used by --write-diagnostic-wav.
+.diagnostics/
+
+# Raw audio in any location below desktop/.
+*.wav
+*.pcm
+*.raw
+
+# Local diagnostic / runtime logs.
+*.log
+
+# .NET build outputs.
+bin/
+obj/
+
+# IDE caches.
+.vs/
+.idea/
+
+# User-specific solution / project state.
+*.suo
+*.user
+
+# Test results.
+TestResults/

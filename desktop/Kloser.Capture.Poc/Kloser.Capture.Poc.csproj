@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Phase 9 Step 3 — Windows capture engine PoC.
+
+    See docs/plan/phase-9/PHASE_9_STEP_3_PLAN.md.
+
+    Out of scope for this PoC:
+      - Backend Socket.io transport.
+      - Azure Speech SDK or any STT provider.
+      - Flutter / WPF shell.
+      - Login / token storage.
+      - Phase 8 recording upload/finalize.
+
+    The PoC must run on Windows only (WASAPI loopback capture).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kloser.Capture.Poc</RootNamespace>
+    <AssemblyName>Kloser.Capture.Poc</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- WASAPI loopback is Windows-only; suppress the cross-plat hint. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+</Project>
