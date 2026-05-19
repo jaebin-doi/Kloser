@@ -11,6 +11,7 @@
 | **Phase 2가 올린 고객 데이터를 시각적으로 이해하고 싶다** | [`product/PHASE_2_FOUNDATIONS.html`](product/PHASE_2_FOUNDATIONS.html) — 5 기둥 (CRUD/검색·필터/권한/조직 격리/검증) 시각 가이드 |
 | **Phase 3가 연 self-service 흐름을 시각적으로 이해하고 싶다** | [`product/PHASE_3_FOUNDATIONS.html`](product/PHASE_3_FOUNDATIONS.html) — 5 기둥 (회원가입/이메일 인증/비밀번호 분실 복구/동료 초대/팀·멤버 관리) 시각 가이드 |
 | **Phase 4가 만든 통화 영속화·실 API·대시보드를 시각적으로 이해하고 싶다** | [`product/PHASE_4_FOUNDATIONS.html`](product/PHASE_4_FOUNDATIONS.html) — 5 기둥 (통화 영속화 / 통화 기록 실 API / 실 데이터 대시보드 / 권한·인증 게이트 / 자동 회귀) 시각 가이드 |
+| **Phase 8이 닫은 통화 녹취 v1을 시각적으로 이해하고 싶다** | [`product/PHASE_8_FOUNDATIONS.html`](product/PHASE_8_FOUNDATIONS.html) — 5 기둥 (녹취 metadata 분리 / 저장소·1회용 링크 / 5종 REST / 통화 페이지 재생 / 90일 자동 보존) 시각 가이드 |
 | **위 내용을 텍스트로 읽고 싶다** | [`USER_GUIDE_PHASE_1.md`](USER_GUIDE_PHASE_1.md) / [`USER_GUIDE_PHASE_2.md`](USER_GUIDE_PHASE_2.md) / [`USER_GUIDE_PHASE_3.md`](USER_GUIDE_PHASE_3.md) / [`USER_GUIDE_PHASE_4.md`](USER_GUIDE_PHASE_4.md) — 동일 내용의 텍스트 reference |
 | **이 레포를 받아서 로컬에서 띄우고 싶다 (개발자)** | [`server/README.md`](../server/README.md) — 실행·검증·엔드포인트 |
 | **상위 백엔드 로드맵이 궁금하다** | [`plan/roadmap/BACKEND_PLAN.md`](plan/roadmap/BACKEND_PLAN.md) |
@@ -65,6 +66,7 @@
 | [`PHASE_2_FOUNDATIONS.html`](product/PHASE_2_FOUNDATIONS.html) | **Phase 2 고객 관리 시각 가이드** — CRUD/검색·필터·정렬/권한 분기/조직 격리/입력 검증·소프트 삭제 5 기둥 |
 | [`PHASE_3_FOUNDATIONS.html`](product/PHASE_3_FOUNDATIONS.html) | **Phase 3 self-service 시각 가이드** — 회원가입/이메일 인증/비밀번호 분실 복구/동료 초대/팀·멤버 관리 5 기둥 |
 | [`PHASE_4_FOUNDATIONS.html`](product/PHASE_4_FOUNDATIONS.html) | **Phase 4 통화 영속화 시각 가이드** — 통화 영속화/통화 기록 실 API/실 데이터 대시보드/권한·인증 게이트/자동 회귀 종료 게이트 5 기둥 |
+| [`PHASE_8_FOUNDATIONS.html`](product/PHASE_8_FOUNDATIONS.html) | **Phase 8 통화 녹취 시각 가이드** — 녹취 metadata 분리/저장소·1회용 링크/5종 REST/통화 페이지 재생(6 상태)/90일 자동 보존 5 기둥 |
 | [`pricing.md`](product/pricing.md) | 가격 정책 (내부 SSOT) |
 | [`guide.html`](product/guide.html) | 도입 가이드 (고객용 — 정적 HTML) |
 | [`realtime-call-assistant-guide.md`](product/realtime-call-assistant-guide.md) | 제품·아키텍처 정의 (단일 진실원) |

@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser Phase 8 — 통화 녹취 저장·재생·자동 보존</title>
+  <meta name="description" content="Phase 8에 새로 들어온 5가지 — 녹취 metadata · object 저장소 분리 · 5종 REST · 통화 페이지 재생 · 90일 자동 보존 — 을 화면 모형과 함께 설명합니다." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(14, 165, 233, 0.08), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(99, 102, 241, 0.07), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #0ea5e9 0%, #4f46e5 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+    .card-tight {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .03);
+    }
+
+    .pillar-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    }
+    .pillar-card:hover {
+      transform: translateY(-2px);
+      border-color: rgb(125 211 252);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(14, 165, 233, .15);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(14 165 233); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(14 165 233);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    .icon-bubble {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .shot-cap {
+      font-size: .78rem;
+      color: rgb(100 116 139);
+      margin-top: 10px;
+      line-height: 1.55;
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 9999px;
+      background: rgb(14 165 233);
+      color: white;
+      font-weight: 800;
+      font-size: .82rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Recording state cards (6-state) */
+    .state-card {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      padding: 14px;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .state-card.active {
+      border-color: rgb(14 165 233);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, .12);
+    }
+    .state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: .68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      width: fit-content;
+    }
+    .state-badge.loading { background: rgb(241 245 249); color: rgb(71 85 105); }
+    .state-badge.none    { background: rgb(241 245 249); color: rgb(100 116 139); }
+    .state-badge.proc    { background: rgb(254 243 199); color: rgb(146 64 14); }
+    .state-badge.ok      { background: rgb(209 250 229); color: rgb(6 95 70); }
+    .state-badge.fail    { background: rgb(254 226 226); color: rgb(153 27 27); }
+    .state-badge.dele    { background: rgb(243 232 255); color: rgb(107 33 168); }
+    .state-text {
+      font-size: .8rem;
+      color: rgb(71 85 105);
+      line-height: 1.5;
+    }
+    .state-meta {
+      font-size: .68rem;
+      color: rgb(148 163 184);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Faux audio player */
+    .audio-faux {
+      display: grid;
+      grid-template-columns: 28px 1fr 56px;
+      gap: 10px;
+      align-items: center;
+      background: rgb(248 250 252);
+      border: 1px solid rgb(226 232 240);
+      border-radius: 9999px;
+      padding: 6px 12px;
+    }
+    .audio-play {
+      width: 24px; height: 24px;
+      border-radius: 9999px;
+      background: rgb(14 165 233);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .audio-bar {
+      height: 4px;
+      background: rgb(226 232 240);
+      border-radius: 9999px;
+      position: relative;
+      overflow: hidden;
+    }
+    .audio-bar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      width: 28%;
+      background: linear-gradient(90deg, rgb(14 165 233), rgb(79 70 229));
+      border-radius: 9999px;
+    }
+    .audio-time {
+      font-size: .68rem;
+      font-variant-numeric: tabular-nums;
+      color: rgb(71 85 105);
+      text-align: right;
+    }
+
+    /* TTL timeline */
+    .ttl-track {
+      position: relative;
+      height: 16px;
+      background: rgb(241 245 249);
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+    .ttl-fill {
+      position: absolute;
+      inset: 0;
+      width: 90%;
+      background: linear-gradient(90deg, rgb(14 165 233) 0%, rgb(14 165 233) 70%, rgb(245 158 11) 88%, rgb(225 29 72) 100%);
+      border-radius: 9999px;
+    }
+    .ttl-marker {
+      position: absolute;
+      top: -4px; bottom: -4px;
+      width: 2px;
+      background: rgb(15 23 42);
+    }
+    .ttl-label {
+      position: absolute;
+      transform: translateX(-50%);
+      font-size: .66rem;
+      color: rgb(71 85 105);
+      white-space: nowrap;
+    }
+
+    /* Endpoint method tag */
+    .method {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: .66rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      color: white;
+    }
+    .method.post   { background: rgb(5 150 105); }
+    .method.get    { background: rgb(2 132 199); }
+    .method.delete { background: rgb(190 18 60); }
+
+    .ep-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgb(241 245 249);
+      align-items: start;
+      font-size: .82rem;
+    }
+    @media (max-width: 720px) {
+      .ep-row { grid-template-columns: 1fr; gap: 4px; }
+    }
+    .ep-row:last-child { border-bottom: none; }
+    .ep-path {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      color: rgb(15 23 42);
+      font-size: .78rem;
+    }
+    .ep-desc { color: rgb(71 85 105); }
+
+    /* Provider tree */
+    .provider-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgb(241 245 249);
+      align-items: start;
+      font-size: .82rem;
+    }
+    .provider-row:last-child { border-bottom: none; }
+    .provider-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      width: fit-content;
+      text-transform: uppercase;
+    }
+    .provider-tag.local { background: rgb(243 244 246); color: rgb(55 65 81); }
+    .provider-tag.s3    { background: rgb(254 226 226); color: rgb(153 27 27); }
+    .provider-tag.minio { background: rgb(254 243 199); color: rgb(146 64 14); }
+
+    /* RLS lattice diagram */
+    .rls-grid {
+      display: grid;
+      grid-template-columns: 90px repeat(3, 1fr);
+      gap: 6px;
+      align-items: stretch;
+    }
+    .rls-h {
+      font-size: .7rem;
+      font-weight: 800;
+      color: rgb(71 85 105);
+      text-align: center;
+      padding: 6px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .rls-cell {
+      padding: 12px 8px;
+      border-radius: 8px;
+      font-size: .78rem;
+      text-align: center;
+      border: 1px solid rgb(226 232 240);
+      background: white;
+    }
+    .rls-cell.allow { border-color: rgb(167 243 208); background: rgb(236 253 245); color: rgb(6 95 70); font-weight: 700; }
+    .rls-cell.deny  { border-color: rgb(254 202 202); background: rgb(254 242 242); color: rgb(153 27 27); font-weight: 700; }
+    .rls-cell.label { background: rgb(248 250 252); border-color: rgb(226 232 240); font-weight: 800; color: rgb(15 23 42); }
+
+    /* Retention timeline */
+    .retention-bar {
+      position: relative;
+      height: 36px;
+      background: linear-gradient(90deg, rgb(209 250 229) 0%, rgb(254 243 199) 80%, rgb(254 226 226) 95%);
+      border-radius: 8px;
+      border: 1px solid rgb(226 232 240);
+    }
+    .retention-mark {
+      position: absolute;
+      top: -6px; bottom: -6px;
+      width: 2px;
+      background: rgb(15 23 42);
+    }
+    .retention-mark .lbl {
+      position: absolute;
+      top: -22px;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: .68rem;
+      color: rgb(15 23 42);
+      font-weight: 700;
+    }
+
+    /* Aggregate audit row */
+    .aud-row {
+      display: grid;
+      grid-template-columns: 110px 200px 1fr;
+      gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgb(241 245 249);
+      font-size: .82rem;
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .aud-row { grid-template-columns: 1fr; gap: 4px; padding: 12px; }
+    }
+    .aud-row:last-child { border-bottom: none; }
+    .aud-when { color: rgb(100 116 139); font-variant-numeric: tabular-nums; }
+    .aud-action {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 10px; border-radius: 9999px;
+      font-size: .7rem; font-weight: 700;
+      background: rgb(243 232 255); color: rgb(107 33 168);
+      width: fit-content;
+    }
+    .aud-pl {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: .74rem;
+      color: rgb(71 85 105);
+      background: rgb(248 250 252);
+      border: 1px solid rgb(226 232 240);
+      border-radius: 6px;
+      padding: 6px 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Forbidden token chips */
+    .forbidden-chip {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: .68rem;
+      font-weight: 700;
+      background: rgb(254 226 226);
+      color: rgb(153 27 27);
+      margin: 2px 3px;
+      text-decoration: line-through;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+
+    section[id] { scroll-margin-top: 24px; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 hidden md:flex items-center gap-4">
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 6</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 7</a>
+        <a href="PHASE_8_FOUNDATIONS.html" class="text-sky-600 font-bold no-underline">Phase 8</a>
+      </nav>
+      <nav class="text-[.78rem] font-medium text-slate-600 flex md:hidden items-center gap-2">
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">가이드</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">P7</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-100 text-sky-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 8 · 통화 녹취 · 저장 · 재생 · 자동 보존
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        통화 음성을 안전하게 — <br>
+        <span class="g-text">저장하고, 재생하고, 90일 뒤 자동으로 정리</span>까지
+      </h1>
+      <p class="mt-6 text-[1.05rem] text-slate-600 leading-relaxed">
+        Phase 1~7로 통화 메타데이터·전사·요약·액션·보고서·운영 게이트는 모두 닫혔지만, 정작 "통화 음성 그 자체"를 다루는 자리가 비어 있었습니다.
+        Phase 8은 그 자리를 한 묶음으로 채웁니다 — 녹취 metadata를 회사 단위로 분리해 저장하고, 음성 파일은 별도 저장소에만 보관하고, 통화 페이지에서 짧은 1회용 링크로만 재생하고, 90일이 지나면 자동으로 삭제합니다.
+      </p>
+      <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
+        <p class="text-[.9rem] text-slate-700 leading-relaxed">
+          <span class="text-sky-600 font-black mr-1">⌜</span>
+          핵심은 "음성 파일은 데이터베이스에 두지 않는다"입니다. DB는 metadata만, 음성은 외부 저장소만, 사용자는 짧은 만료의 1회용 링크로만 접근합니다. 다른 회사의 녹취는 어떤 경로로도 보거나 만질 수 없고, 운영 기록(감사 로그)에는 "몇 건이 어떻게 처리됐다"는 총계만 남아 누구의 어느 통화인지 추적이 불가능합니다.
+          <span class="text-sky-600 font-black ml-1">⌟</span>
+        </p>
+      </div>
+
+      <!-- 한눈에 보기 — CEO 친화 요약 -->
+      <div class="mt-6 max-w-2xl rounded-xl border border-sky-200 bg-sky-50/30 p-5">
+        <p class="text-[.72rem] font-black uppercase tracking-wider text-sky-700 mb-2">한눈에 보기</p>
+        <ul class="text-[.9rem] text-slate-700 space-y-1.5 list-disc pl-5 leading-relaxed">
+          <li><strong class="text-slate-900">쉽게 말하면</strong> — Phase 7까지가 "운영 출시 게이트"였다면, Phase 8은 "녹음한 통화를 안전하게 다루는 표면". 저장·재생·삭제·자동 보존이 한 묶음.</li>
+          <li><strong class="text-slate-900">왜 중요한가</strong> — 통화 음성은 가장 민감한 자산입니다. 자격증명·평문 링크·파일 위치를 사용자나 로그에 노출시키지 않고, 다른 회사가 절대 접근할 수 없게 격리해야 유료로 팔 수 있습니다.</li>
+          <li><strong class="text-slate-900">사용자가 체감하는 변화</strong> — 통화 상세 패널 안에 "녹음" 카드가 새로 보입니다. 재생 가능 / 처리 중 / 실패 / 없음 등 상태별 안내 + 1회용 재생 컨트롤 + (권한 있는 사용자) 삭제 버튼.</li>
+          <li><strong class="text-slate-900">자동으로 일어나는 일</strong> — 업로드 후 90일이 지나면 음성 파일과 metadata가 자동 정리됩니다. 운영 기록에는 "총 N건 삭제" 같은 총계만 남고, 어느 통화 / 어느 파일인지는 절대 적히지 않습니다.</li>
+          <li><strong class="text-slate-900">아직 안 한 것</strong> — 데스크탑/브라우저에서 직접 녹음 → 업로드 UI는 별도 트랙. 통화 동의(Consent) UX, 실 S3/MinIO 운영 smoke, 파형(waveform)·자막 시점 동기화는 v2 후보.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Pillars overview -->
+  <section class="max-w-6xl mx-auto px-6 pb-16">
+    <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">Phase 8에서 새로 가능해진 것</p>
+    <h2 class="text-[1.6rem] font-black tracking-tight mb-6">5가지 — 클릭하면 화면 모형과 함께 설명</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="#schema" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-sky-50 text-sky-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">1 · 녹취 metadata 분리</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">DB에는 metadata만, 음성 byte와 자격증명은 절대 저장 안 함. 회사 단위로 완전 격리.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#storage" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-blue-50 text-blue-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">2 · 저장소 + 1회용 링크</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">local / S3 / MinIO 3 모드. 사용자는 5~15분짜리 임시 링크로만 접근. 자격증명 화면 노출 0.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#routes" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-indigo-50 text-indigo-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">3 · 5종 REST 표면</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">업로드 · 확정 · 목록 · 재생 링크 · 삭제. 모든 동작이 권한 검사 + 감사 로그를 거침.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#playback" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-violet-50 text-violet-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">4 · 통화 페이지 재생</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">6가지 상태(없음/처리 중/재생 가능/실패/삭제됨/로딩) 카드 + 자동 링크 갱신.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#retention" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-amber-50 text-amber-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">5 · 90일 자동 보존</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">90일 지난 녹취는 음성 + metadata가 자동 정리. 감사 로그에는 총계만, 식별 정보 0.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#hygiene" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-emerald-50 text-emerald-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.73 0 5.18 1.22 6.83 3.15"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">+ 보너스 · 보안 위생 4가지</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">경로 가로채기 2단 방어 · 감사 총계화 · 자격증명 fail-fast · 화면 XSS 차단.</p>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Detail sections ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24 space-y-20">
+
+    <!-- ─────────── 1. Schema ─────────── -->
+    <section id="schema">
+      <p class="text-[.78rem] font-bold tracking-wider text-sky-600 mb-2">기능 01 · 데이터베이스 / RLS</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">녹취 metadata 분리 — 음성 byte는 절대 DB에 두지 않습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 1~7까지의 어떤 테이블에도 통화 음성을 담을 자리가 없었습니다. Phase 8은 <strong class="text-slate-900">통화 녹취 metadata 전용 테이블</strong>을 새로 만듭니다. 이 테이블에는 "어느 회사의 어느 통화에 어떤 형식의 음성 파일이 어디 저장됐는지, 언제 업로드됐고 언제 삭제될 예정인지" 같은 <strong class="text-slate-900">정보만</strong> 들어가고, <strong class="text-slate-900">음성 byte나 1회용 링크나 저장소 자격증명은 절대로 들어가지 않습니다</strong>.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">테이블이 담는 것 / 담지 않는 것</p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="card-tight p-4">
+            <p class="text-[.86rem] font-bold text-emerald-700 mb-2">✓ 담는다</p>
+            <ul class="text-[.84rem] text-slate-700 space-y-1 leading-relaxed">
+              <li>· 회사 id · 통화 id · 녹취 id</li>
+              <li>· 상태 (업로드 대기 / 업로드됨 / 재생 가능 / 실패 / 삭제 대기 / 삭제됨)</li>
+              <li>· 음성 형식 (audio/webm 등 5종) · 길이 · 용량 · 코덱</li>
+              <li>· 업로드 시각 · 녹화 시각 · 보존 만료 시각</li>
+              <li>· 실패 사유(서버가 사전에 정리한 메시지만)</li>
+            </ul>
+          </div>
+          <div class="card-tight p-4">
+            <p class="text-[.86rem] font-bold text-rose-700 mb-2">✗ 절대 담지 않는다</p>
+            <ul class="text-[.84rem] text-slate-700 space-y-1 leading-relaxed">
+              <li>· 음성 byte (1바이트도)</li>
+              <li>· 1회용 재생/업로드 링크</li>
+              <li>· 저장소 자격증명 (access key 등)</li>
+              <li>· 저장소 endpoint / bucket 이름</li>
+              <li>· 다른 회사의 음성 정보 (RLS가 차단)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">회사 격리 — 누가 무엇을 보거나 만질 수 있는가</p>
+        <div class="rls-grid">
+          <div class="rls-h">접근 시도</div>
+          <div class="rls-h">동일 회사</div>
+          <div class="rls-h">다른 회사</div>
+          <div class="rls-h">로그인 안 됨</div>
+
+          <div class="rls-cell label">조회</div>
+          <div class="rls-cell allow">허용</div>
+          <div class="rls-cell deny">0 rows</div>
+          <div class="rls-cell deny">0 rows</div>
+
+          <div class="rls-cell label">새 행 추가</div>
+          <div class="rls-cell allow">허용</div>
+          <div class="rls-cell deny">RLS 거부</div>
+          <div class="rls-cell deny">RLS 거부</div>
+
+          <div class="rls-cell label">수정 / 삭제</div>
+          <div class="rls-cell allow">허용</div>
+          <div class="rls-cell deny">RLS 거부</div>
+          <div class="rls-cell deny">RLS 거부</div>
+
+          <div class="rls-cell label">다른 회사 통화에 연결</div>
+          <div class="rls-cell deny">FK 거부 (23503)</div>
+          <div class="rls-cell deny">FK 거부 (23503)</div>
+          <div class="rls-cell deny">RLS 거부</div>
+        </div>
+        <p class="shot-cap mt-4">
+          ▲ 모든 행이 회사 id로 잠겨 있고(<code class="text-[.74rem]">FORCE ROW LEVEL SECURITY</code>), 통화와의 연결도 회사·통화 id 두 개가 동시에 일치해야만 추가됩니다. 다른 회사 통화 id를 끼워 넣으려는 요청은 데이터베이스 자체가 거부합니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">회사·통화 짝 외래키</p>
+          <p class="text-slate-600 leading-relaxed">
+            녹취가 가리키는 통화는 <strong>같은 회사 안의 통화</strong>여야만 합니다. 다른 회사 통화 id를 끼우려고 하면 DB가 22503으로 거부합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">통화가 지워지면 함께 정리</p>
+          <p class="text-slate-600 leading-relaxed">
+            통화가 사라지면 그 통화의 모든 녹취 metadata도 자동으로 사라집니다(ON DELETE CASCADE). 외부 음성 파일은 보존 정책 워커가 정리합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">조회용 인덱스</p>
+          <p class="text-slate-600 leading-relaxed">
+            "이 통화의 녹취", "이 회사의 상태별 녹취", "보존 만료 시각으로 정렬한 녹취" 3가지 패턴에 맞춰 인덱스가 미리 만들어져 있습니다. 운영 데이터가 쌓여도 빠릅니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. Storage adapter + signed URL ─────────── -->
+    <section id="storage">
+      <p class="text-[.78rem] font-bold tracking-wider text-blue-600 mb-2">기능 02 · 외부 저장소 + 1회용 링크</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">저장소 + 1회용 링크 — 사용자에게 자격증명을 절대 주지 않습니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        통화 음성은 <strong class="text-slate-900">데이터베이스 바깥의 객체 저장소</strong>에 보관합니다. 사용자는 저장소 자격증명을 갖지 않고, 대신 서버가 <strong class="text-slate-900">5~15분짜리 1회용 링크</strong>를 그때그때 발급합니다. 만료 직전이 되면 자동으로 새 링크가 발급되어 재생이 끊기지 않습니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">저장소 모드 3종</p>
+        <div class="card-tight">
+          <div class="provider-row">
+            <span class="provider-tag local">LOCAL</span>
+            <div>
+              <p class="text-[.86rem] text-slate-700 leading-relaxed"><strong class="text-slate-900">로컬 파일시스템</strong> — 개발·테스트 기본값. 네트워크 호출 없음. 경로 가로채기 2단 방어로 시스템 다른 폴더에는 절대 쓰지 못함.</p>
+            </div>
+          </div>
+          <div class="provider-row">
+            <span class="provider-tag s3">S3</span>
+            <div>
+              <p class="text-[.86rem] text-slate-700 leading-relaxed"><strong class="text-slate-900">AWS S3</strong> — 운영 환경. 필요한 환경 변수(bucket·region·access key 등)가 누락되면 서버가 부팅 자체를 거부합니다(silent fallback 금지).</p>
+            </div>
+          </div>
+          <div class="provider-row">
+            <span class="provider-tag minio">MINIO</span>
+            <div>
+              <p class="text-[.86rem] text-slate-700 leading-relaxed"><strong class="text-slate-900">MinIO (S3 호환)</strong> — 자체 운영 옵션. S3와 동일 인터페이스 + endpoint 추가. 자격증명 누락은 동일하게 부팅 거부.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-4">1회용 재생 링크의 수명 — 만료 30초 전 자동 갱신</p>
+
+        <div class="relative px-4 pt-6 pb-8">
+          <div class="ttl-track">
+            <div class="ttl-fill"></div>
+            <div class="ttl-marker" style="left: 0%"><span class="ttl-label" style="top: -22px; left: 0">발급 (0초)</span></div>
+            <div class="ttl-marker" style="left: 90%"><span class="ttl-label" style="top: -22px;">자동 갱신 (270초)</span></div>
+            <div class="ttl-marker" style="left: 100%"><span class="ttl-label" style="top: -22px; right: 0; transform: none;">만료 (300초)</span></div>
+          </div>
+          <p class="shot-cap mt-6">
+            ▲ 재생 링크 기본 수명은 <strong class="text-slate-900">5분(300초)</strong>입니다. 만료 <strong class="text-slate-900">30초 전</strong>에 화면이 자동으로 새 링크를 받아 교체하므로 재생이 끊기지 않습니다. 통화 상세를 닫거나 다른 통화로 넘어가면 그 즉시 갱신 타이머가 취소되고 음성 src가 비워집니다.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">자격증명은 화면·로그·감사 어디에도 노출 0</p>
+          <p class="text-slate-600 leading-relaxed">
+            access key / secret / bucket / endpoint는 서버 env에서만 읽고, 오류 메시지에 값이 그대로 찍히지 않습니다. 누락 시 메시지에는 "어떤 키가 빠졌는지" 이름만 나오고 값은 안 나옵니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">경로 가로채기 2단 방어 (로컬 모드)</p>
+          <p class="text-slate-600 leading-relaxed">
+            <code class="text-[.72rem]">..</code> / encoded traversal / 절대경로 / 백슬래시 / 제어문자 / 1024자 초과를 모두 입력 단계에서 거부 + 실제 파일 시스템 쓰기 직전에 한 번 더 검증. 두 단계가 모두 통과해야만 디스크에 닿습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">업로드 파일 크기 250MB 상한</p>
+          <p class="text-slate-600 leading-relaxed">
+            기본 250MB까지 허용합니다 (env로 조정 가능). 초과 요청은 413으로 사전 거부 — runaway upload가 저장소 비용을 폭주시키는 일이 없습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. REST surface ─────────── -->
+    <section id="routes">
+      <p class="text-[.78rem] font-bold tracking-wider text-indigo-600 mb-2">기능 03 · 백엔드 API</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">5종 REST 표면 — 권한 + 감사 + 상태 검증을 한 번에</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        클라이언트가 저장소에 직접 닿지 않도록 모든 동작은 백엔드를 거칩니다. 5종 endpoint 각각이 <strong class="text-slate-900">인증 → 회사 컨텍스트 → 역할/소유권 확인 → 상태 검증 → 1회용 링크 발급 또는 metadata 변경 → 감사 로그</strong>를 한 묶음으로 처리합니다. 다른 회사의 통화 id를 보내면 단순히 404가 나오고, 어떤 정보도 누설되지 않습니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">endpoint 5종</p>
+        <div class="card-tight">
+          <div class="ep-row">
+            <span class="method post">POST</span>
+            <span>
+              <span class="ep-path">/calls/:id/recordings/upload</span>
+              <p class="ep-desc mt-1">업로드 시작 — metadata 행 생성 + 1회용 PUT 링크 발급</p>
+            </span>
+            <span class="ep-desc">권한: admin / manager / employee</span>
+          </div>
+          <div class="ep-row">
+            <span class="method post">POST</span>
+            <span>
+              <span class="ep-path">/calls/:id/recordings/:rid/finalize</span>
+              <p class="ep-desc mt-1">업로드 확정 — 용량/체크섬 검증 후 "재생 가능"으로 전환</p>
+            </span>
+            <span class="ep-desc">권한: admin / manager / employee</span>
+          </div>
+          <div class="ep-row">
+            <span class="method get">GET</span>
+            <span>
+              <span class="ep-path">/calls/:id/recordings</span>
+              <p class="ep-desc mt-1">목록 — 해당 통화의 활성 녹취 배열</p>
+            </span>
+            <span class="ep-desc">권한: 통화를 볼 수 있는 모든 멤버</span>
+          </div>
+          <div class="ep-row">
+            <span class="method get">GET</span>
+            <span>
+              <span class="ep-path">/calls/:id/recordings/:rid/playback-url</span>
+              <p class="ep-desc mt-1">재생 링크 발급 — 1회용 GET 링크 (기본 5분 만료)</p>
+            </span>
+            <span class="ep-desc">권한: 통화를 볼 수 있는 모든 멤버</span>
+          </div>
+          <div class="ep-row">
+            <span class="method delete">DEL</span>
+            <span>
+              <span class="ep-path">/calls/:id/recordings/:rid</span>
+              <p class="ep-desc mt-1">삭제 — 음성 파일 삭제 후 metadata에 "삭제됨" 표식</p>
+            </span>
+            <span class="ep-desc">권한: admin / manager / employee</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-4">한 번의 업로드 흐름</p>
+        <div class="space-y-4">
+          <div class="flex items-start gap-3">
+            <span class="step-num">1</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>업로드 시작 요청</strong> — 클라이언트가 형식·용량을 알려 주면 서버가 metadata 행을 만들고 5~15분짜리 1회용 PUT 링크를 반환합니다. 이 링크는 그 한 파일에 대해서만 유효합니다.
+            </p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="step-num">2</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>음성을 저장소에 직접 PUT</strong> — 클라이언트가 받은 링크로 음성을 직접 올립니다. 서버를 거치지 않으므로 대용량 파일도 백엔드 메모리를 잡지 않습니다.
+            </p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="step-num">3</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>업로드 확정</strong> — 올라간 byte의 실제 크기·체크섬을 서버에 알리면 검증 후 상태가 "재생 가능"으로 바뀝니다. 통화 페이지에서 즉시 재생 가능해집니다.
+            </p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="step-num">4</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>감사 로그 행 5종이 자동 적재</strong> — 업로드 시작 · 확정 · 재생 링크 발급 · 삭제 요청 · 삭제 완료. 각 행에는 <strong>녹취 id·형식·길이·용량</strong> 정도만 들어가고 1회용 링크·파일 위치·자격증명은 절대 들어가지 않습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">다른 회사는 항상 404</p>
+          <p class="text-slate-600 leading-relaxed">
+            cross-org 시도(다른 회사의 통화 id·녹취 id)는 권한 거부가 아니라 단순 404로 응답합니다. 존재 여부 자체를 노출하지 않습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">잘못된 상태 전이는 409</p>
+          <p class="text-slate-600 leading-relaxed">
+            이미 재생 가능 상태에서 다시 finalize, 이미 삭제된 녹취 재삭제 등은 409로 거부합니다. 현재 상태를 함께 알려 주므로 클라이언트가 화면을 재정렬할 수 있습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">삭제는 2단계</p>
+          <p class="text-slate-600 leading-relaxed">
+            먼저 metadata를 "삭제 대기"로 표시 → 저장소에서 파일 삭제 → metadata "삭제됨"으로 마무리. 중간에 실패해도 보존 정책 워커가 자동 재시도합니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 4. Playback UI ─────────── -->
+    <section id="playback">
+      <p class="text-[.78rem] font-bold tracking-wider text-violet-600 mb-2">기능 04 · 통화 페이지 상세 패널</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">통화 페이지 재생 — 상태별 6가지 화면</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        통화 페이지의 우측 상세 패널 안에 <strong class="text-slate-900">"녹음" 카드</strong>가 새로 생겼습니다. 같은 카드가 녹취 상태에 따라 6가지 모습으로 바뀝니다. 사용자는 어떤 상태든 "지금 무엇이 일어나고 있는지"를 한 줄로 알 수 있습니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-4">6 상태 화면 모형</p>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div class="state-card">
+            <span class="state-badge loading">로딩</span>
+            <p class="state-text">녹음 정보를 불러오는 중…</p>
+          </div>
+
+          <div class="state-card">
+            <span class="state-badge none">녹음 없음</span>
+            <p class="state-text">이 통화에는 녹음 파일이 없습니다.</p>
+          </div>
+
+          <div class="state-card">
+            <span class="state-badge proc">처리 중</span>
+            <p class="state-text">업로드된 음성을 처리하고 있습니다.</p>
+            <button class="self-start text-[.74rem] text-sky-600 font-bold no-underline">새로고침 ↻</button>
+          </div>
+
+          <div class="state-card active">
+            <span class="state-badge ok">재생 가능</span>
+            <div class="audio-faux">
+              <span class="audio-play">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><polygon points="6 4 20 12 6 20"/></svg>
+              </span>
+              <span class="audio-bar"></span>
+              <span class="audio-time">0:42 / 2:35</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button class="text-[.7rem] px-2 py-1 rounded bg-slate-100 text-slate-700 font-bold">URL 새로고침</button>
+              <button class="text-[.7rem] px-2 py-1 rounded bg-rose-50 text-rose-700 font-bold">삭제</button>
+            </div>
+            <p class="state-meta">2분 35초 · 4.2 MB · audio/webm</p>
+          </div>
+
+          <div class="state-card">
+            <span class="state-badge fail">실패</span>
+            <p class="state-text">업로드 검증에 실패했습니다. 다시 녹음해 주세요.</p>
+            <p class="state-meta">사유 메시지는 서버가 사전 정리한 텍스트만 표시</p>
+          </div>
+
+          <div class="state-card">
+            <span class="state-badge dele">삭제됨</span>
+            <p class="state-text">이 녹음은 삭제되었습니다.</p>
+          </div>
+        </div>
+        <p class="shot-cap mt-4">
+          ▲ "재생 가능" 카드만 음성 컨트롤·URL 새로고침·삭제 버튼이 보입니다. 길이·용량·코덱 같은 메타는 서버가 보낸 값을 그대로 문자열로 박지 않고 한 단계 정리해서 표시합니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">1회용 링크는 화면 텍스트로 보이지 않음</p>
+          <p class="text-slate-600 leading-relaxed">
+            재생 가능 카드의 음성 컨트롤은 1회용 링크를 DOM 속성으로만 받습니다. 페이지 화면 텍스트, 콘솔, 페이지가 직접 쓴 HTML 어디에도 링크가 노출되지 않습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">다른 통화로 넘어가면 즉시 정리</p>
+          <p class="text-slate-600 leading-relaxed">
+            상세 패널을 닫거나 다른 통화로 전환하면 음성 src·갱신 타이머·대기 중이던 응답이 즉시 무효화됩니다. 잘못된 통화의 링크가 다음 화면에 적용되는 일이 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">조회 권한은 삭제 버튼 안 보임</p>
+          <p class="text-slate-600 leading-relaxed">
+            조회 전용 권한은 삭제 버튼이 표시되지 않습니다. 화면 가리기는 편의일 뿐이고, 권한 차단은 서버가 직접 합니다 — 직접 호출해도 403입니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. Retention ─────────── -->
+    <section id="retention">
+      <p class="text-[.78rem] font-bold tracking-wider text-amber-600 mb-2">기능 05 · 백그라운드 자동 정리</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">90일 자동 보존 — 약속이 코드로 강제됩니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        "통화 녹음은 90일 후 자동 삭제" 같은 보존 약속이 더 이상 문서뿐이 아니라 백그라운드 워커로 자동 실행됩니다. 운영자가 따로 작업하지 않아도 90일이 지난 녹취는 음성 파일과 metadata가 함께 정리됩니다. 감사 로그에는 <strong class="text-slate-900">"몇 건이 어떻게 처리됐다"는 총계만</strong> 남고, 어느 녹취·어느 통화인지 식별 정보는 절대 적히지 않습니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-6">한 녹취의 일생</p>
+
+        <div class="relative px-6 pt-2 pb-2">
+          <div class="retention-bar">
+            <div class="retention-mark" style="left: 0%"><span class="lbl">업로드</span></div>
+            <div class="retention-mark" style="left: 50%"><span class="lbl">45일 (관찰)</span></div>
+            <div class="retention-mark" style="left: 80%"><span class="lbl">72일 (관찰)</span></div>
+            <div class="retention-mark" style="left: 100%"><span class="lbl">90일 (자동 삭제)</span></div>
+          </div>
+        </div>
+
+        <p class="shot-cap mt-2">
+          ▲ 업로드 시각 + 90일이 기본 만료입니다. 특수한 경우(법적 보존 요구 등)에 한해 행마다 별도 만료 시각을 지정할 수도 있고, 두 조건 중 먼저 도래하는 시각에 자동 정리됩니다.
+        </p>
+      </div>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">감사 로그에 남는 한 줄 — 총계만</p>
+        <div class="card-tight">
+          <div class="aud-row" style="background: rgb(248 250 252); font-weight: 700; color: rgb(71 85 105); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;">
+            <span>시각</span><span>행위</span><span>총계 (식별 정보 0)</span>
+          </div>
+          <div class="aud-row">
+            <span class="aud-when">06:00</span>
+            <span><span class="aud-action">retention.recordings_deleted</span></span>
+            <span class="aud-pl">{ "deleted_count": 3, "object_not_found_count": 1, "failed_count": 0, "retention_days": 90, "batch_size": 100, "batches": 1, "storage_provider_counts": { "local": 0, "s3": 3, "minio": 0 } }</span>
+          </div>
+        </div>
+        <p class="shot-cap mt-3">
+          ▲ 90일이 지난 녹취 3개를 정리했고 그중 1개는 저장소에 이미 파일이 없었다(idempotent 성공), 모두 S3 모드였다 — 정도만 남습니다. 어느 통화·녹취·파일 위치인지는 적히지 않습니다.
+        </p>
+      </div>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-rose-600 mb-3">감사 로그에 절대 들어가지 않는 값</p>
+        <div>
+          <span class="forbidden-chip">recording_id</span>
+          <span class="forbidden-chip">recording_ids</span>
+          <span class="forbidden-chip">call_id</span>
+          <span class="forbidden-chip">call_ids</span>
+          <span class="forbidden-chip">object_key</span>
+          <span class="forbidden-chip">storage_bucket</span>
+          <span class="forbidden-chip">signed_url</span>
+          <span class="forbidden-chip">playback_url</span>
+          <span class="forbidden-chip">upload_url</span>
+          <span class="forbidden-chip">checksum</span>
+          <span class="forbidden-chip">object_version</span>
+          <span class="forbidden-chip">access_key</span>
+          <span class="forbidden-chip">secret_access_key</span>
+          <span class="forbidden-chip">raw audio</span>
+        </div>
+        <p class="shot-cap mt-3">
+          ▲ 자동화 테스트가 매 빌드마다 위 14개 토큰 중 하나라도 감사 로그 payload에 포함되면 빌드가 실패하도록 잠가 두었습니다. 실수로라도 누설될 수 없습니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">저장소 호출은 DB 트랜잭션 밖</p>
+          <p class="text-slate-600 leading-relaxed">
+            외부 저장소 호출은 DB 트랜잭션 안에서 하지 않습니다. 외부 응답이 느려도 DB 연결이 잡혀 있지 않으므로 다른 작업이 막히지 않습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">실패는 다음 사이클로 이월</p>
+          <p class="text-slate-600 leading-relaxed">
+            저장소 응답이 일시적으로 실패한 행은 같은 사이클 안에서 재시도하지 않고 다음 사이클로 넘깁니다. 무한 재시도로 카운터가 부풀거나 호출이 낭비되는 일이 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">사용자 삭제 실패도 자동 재시도</p>
+          <p class="text-slate-600 leading-relaxed">
+            사용자가 누른 삭제 버튼이 저장소 일시 오류로 끝나지 못해도 metadata는 "삭제 대기"로 남고, 다음 보존 사이클이 자동으로 재시도합니다. 사용자가 다시 누를 필요 없음.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── + 운영 위생 4가지 ─────────── -->
+    <section id="hygiene">
+      <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기능 06 · 보안 위생</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">보너스 — 보안 위생 4가지</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        앞의 5가지가 외부 사용자나 운영자가 직접 느끼는 변화라면, 다음 4가지는 보안 사고를 처음부터 닫아 두는 위생 작업입니다.
+      </p>
+
+      <div class="grid lg:grid-cols-2 gap-4">
+
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">경로 가로채기 2단 방어</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            로컬 모드에서 파일 위치 문자열에 <code class="text-[.74rem]">..</code> / 인코딩된 traversal / 절대경로 / 백슬래시 / 제어문자 / 1024자 초과 같은 위험 패턴이 있으면 입력 단계에서 거부됩니다. 그래도 통과한 경우라도 실제 파일 쓰기 직전에 한 번 더 검증해, 두 단계가 모두 통과해야만 디스크에 닿습니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem]">
+            <p class="text-slate-700 leading-relaxed">
+              ✔ 입력 정규식 거부 + 경로 정규화 후 재검증<br>
+              ✔ 다른 폴더 또는 OS 보호 영역에는 절대 쓰지 못함<br>
+              ✔ 에러 메시지에 위험한 입력값을 그대로 echo 안 함
+            </p>
+          </div>
+        </div>
+
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">감사 로그 총계화</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            보존 정책이 처리한 결과는 <strong>회사당 한 줄 총계</strong>만 남습니다. 어느 녹취·어느 통화·어느 파일이 정리됐는지는 적히지 않습니다. 감사 로그가 새는 경로 자체를 닫았습니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem]">
+            <p class="text-slate-700 leading-relaxed">
+              ✔ 식별 가능한 값(녹취 id·통화 id·파일 위치)은 payload 0건<br>
+              ✔ 자동화 테스트가 14개 위험 토큰 substring을 매번 검사<br>
+              ✔ 한 사이클에 0건 처리된 경우 행을 만들지 않아 노이즈 차단
+            </p>
+          </div>
+        </div>
+
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">자격증명 fail-fast</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            운영 환경에서 S3/MinIO 모드를 지정했는데 필수 환경 변수(bucket·region·access key 등)가 누락되면 서버가 부팅 자체를 거부합니다. 누가 어떤 키를 빠뜨렸는지 메시지에 이름만 적고 값은 절대 echo하지 않습니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem]">
+            <p class="text-slate-700 leading-relaxed">
+              ✔ silent fallback 금지 — 부팅이 끝났다 = 모든 자격증명이 OK<br>
+              ✔ 메시지에 키 "이름"만, "값"은 0건<br>
+              ✔ dev 기본은 자동으로 local 모드 (네트워크 호출 0)
+            </p>
+          </div>
+        </div>
+
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">통화 페이지 XSS 차단</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            서버가 보낸 값(실패 사유 메시지, 코덱 이름, 길이·용량)은 모두 화면에서 텍스트로만 렌더되고, 페이지가 직접 쓴 HTML 템플릿에는 끼우지 않습니다. 1회용 재생 링크도 화면 텍스트로는 절대 노출되지 않습니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem]">
+            <p class="text-slate-700 leading-relaxed">
+              ✔ 실패 사유 메시지: 서버가 사전 정리 + 화면에서 escape<br>
+              ✔ 1회용 링크: 음성 컨트롤 DOM 속성으로만 결합<br>
+              ✔ 길이·용량·코덱: 표시 단계에서 정규화 후 escape
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── Validation summary ─────────── -->
+    <section id="validation">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">closeout 검증</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">Phase 8이 닫힌 시점의 검증 게이트 — 10 / 10 통과</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        모든 step이 닫힌 2026-05-19 시점에 다음 검증이 모두 통과한 상태에서 closeout됐습니다. 자세한 결과는 <code class="px-1.5 py-0.5 rounded bg-slate-100 text-[.82rem]">docs/plan/phase-8/PHASE_8_CLOSEOUT_FINDINGS.md</code>를 참고하세요.
+      </p>
+
+      <div class="card p-5 grid sm:grid-cols-2 gap-3">
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 회사 격리 검증</p>
+          <p class="text-slate-600 leading-relaxed">RLS + 회사·통화 짝 FK가 동시에 작동해 cross-org 시도가 0 rows / 23503 / 42501로 모두 거부됨을 라우트·repository 테스트로 검증.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 1회용 링크 만료 검증</p>
+          <p class="text-slate-600 leading-relaxed">읽기 5분 / 업로드 10분 / 최대 15분 한도, 만료 30초 전 자동 갱신, 잘못된 통화 전환 시 즉시 무효화를 Playwright 실 브라우저로 확인.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 자격증명 누설 0건</p>
+          <p class="text-slate-600 leading-relaxed">화면 HTML / 콘솔 / 페이지 인증 텍스트에 1회용 링크·bucket·object key 어느 것도 노출되지 않음을 substring 검사로 확인.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 보존 정책 자동 실행</p>
+          <p class="text-slate-600 leading-relaxed">시각을 인위적으로 이동시켜 90일 임계 통과/미통과 + 명시 만료 시각 + 삭제 대기 재시도 + 저장소 일시 실패 격리까지 모두 의도대로 동작함을 확인.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 감사 로그 총계만 적재</p>
+          <p class="text-slate-600 leading-relaxed">14개 위험 토큰(녹취 id·통화 id·파일 위치·1회용 링크·체크섬·자격증명) 중 하나도 payload에 들어가지 않음을 substring 자동 검사로 강제.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 백엔드 전체 테스트</p>
+          <p class="text-slate-600 leading-relaxed">852건 중 849 PASS · 3 skipped · 0 fail. Phase 7 closeout 시점 772건에서 +80 case 누적.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── Next phase handoff ─────────── -->
+    <section id="next">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">다음 단계</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">결제 별도 Phase · 데스크탑 녹음 트랙</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 8로 통화 녹취 v1 표면(저장·재생·자동 보존)이 모두 닫혔습니다. 사용자가 직접 새 녹음을 만드는 capture UI와 실 결제 연동은 별도 트랙으로 분리해 진행합니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">데스크탑 / 브라우저 녹음 trace</p>
+          <p class="text-slate-600 leading-relaxed">
+            Phase 8 백엔드(업로드 endpoint · 1회용 PUT 링크 · finalize · 재생)는 이미 닫혔습니다. 사용자가 직접 녹음 → 업로드까지 잇는 클라이언트 UI(데스크탑 앱 또는 브라우저 capture)가 별도 트랙(<code class="text-[.74rem]">DESKTOP_APP_PLAN.md</code>)으로 진행됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">결제 provider 연동 (별도 Phase)</p>
+          <p class="text-slate-600 leading-relaxed">
+            Phase 7 Step 9가 마련한 청구 정보 자리에 실 결제(Stripe/Toss) 위젯을 끼웁니다. 외부 돈 이동과 회계 계약을 동반하므로 본 repo와 분리해 진행합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">통화 녹음 동의(Consent) UX</p>
+          <p class="text-slate-600 leading-relaxed">
+            법령·내부 정책에 따라 통화 시작 시점에 안내 / 동의 / 거부 옵션이 필요합니다. 제품 · 법무 트랙에서 별도 결정.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">실 저장소 통합 smoke + 미완 retry 정책</p>
+          <p class="text-slate-600 leading-relaxed">
+            실 S3/MinIO bucket으로 업로드 · 다운로드 · 삭제 4종 1회 수동 smoke. 저장소 영구 실패가 누적되는 행을 별도 dead-letter 상태로 옮기는 정책은 별도 ops step.
+          </p>
+        </div>
+      </div>
+
+      <p class="text-[.86rem] text-slate-500 mt-6 leading-relaxed">
+        이전 단계가 궁금하면
+        <a href="PHASE_1_FOUNDATIONS.html" class="text-sky-600 hover:underline font-semibold">Phase 1</a> /
+        <a href="PHASE_2_FOUNDATIONS.html" class="text-sky-600 hover:underline font-semibold">Phase 2</a> /
+        <a href="PHASE_3_FOUNDATIONS.html" class="text-sky-600 hover:underline font-semibold">Phase 3</a> /
+        <a href="PHASE_4_FOUNDATIONS.html" class="text-sky-600 hover:underline font-semibold">Phase 4</a> /
+        <a href="PHASE_5_FOUNDATIONS.html" class="text-sky-600 hover:underline font-semibold">Phase 5</a> /
+        <a href="PHASE_6_FOUNDATIONS.html" class="text-sky-600 hover:underline font-semibold">Phase 6</a> /
+        <a href="PHASE_7_FOUNDATIONS.html" class="text-sky-600 hover:underline font-semibold">Phase 7</a>
+        가이드를 참고하세요. 텍스트 reference는
+        <a href="../USER_GUIDE_PHASE_8.md" class="text-sky-600 hover:underline font-semibold">docs/USER_GUIDE_PHASE_8.md</a>
+        또는 동일 내용의
+        <a href="../USER_GUIDE_PHASE_8.html" class="text-sky-600 hover:underline font-semibold">USER_GUIDE_PHASE_8.html</a>.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">Phase 8 · 통화 녹취 · v1</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex flex-wrap items-center gap-4">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 6</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 7</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>
