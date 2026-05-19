@@ -566,12 +566,12 @@ Phase 9 closeout requires:
 
 ## 14. Next Work Instruction
 
-Next task should be **Phase 9 Step 2 - Backend Audio Ingest Skeleton**.
+Next task should be **Phase 9 Step 2 - Backend Audio Ingest Skeleton**, but implementation must start from `PHASE_9_STEP_2_PLAN.md`.
 
 Recommended handoff:
 
 ```text
-Phase 9 Step 2 backend audio ingest skeleton을 구현한다.
+Phase 9 Step 2 plan을 기준으로 backend audio ingest skeleton을 구현한다.
 
 정본 방향:
 - Windows 데스크탑 앱이 마이크 + 시스템 오디오를 직접 캡처한다.
@@ -583,13 +583,18 @@ Phase 9 Step 2 backend audio ingest skeleton을 구현한다.
 
 Step 2에서 구현할 것:
 - `/calls` Socket.io namespace에 `audio_start`, binary `audio_chunk`, `audio_end` handler 추가.
+- shared types 3-way 등록: `server/src/types/wsAudio.ts`, `platform/types/wsAudio.js`, `test/sync_shared_types.mjs`.
 - source / seq / codec / sample rate / duration / max bytes validation.
+- single chunk 128 KiB limit + rolling queued bytes 1 MiB limit.
+- session lifecycle: duplicate `audio_start`, chunk-before-start, `end_call` flush, text/audio coexistence.
 - mock streaming STT session 추가.
 - partial은 live emit only, final은 transcript append.
-- raw audio DB/log 저장 금지 테스트.
+- mock STT usage row를 `llm_usage_log`에 실제 INSERT.
+- raw audio magic byte sentinel DB/log/audit 누설 금지 테스트.
 - Azure adapter는 skeleton green 이후 붙인다.
 
 산출물:
+- docs/plan/phase-9/PHASE_9_STEP_2_PLAN.md
 - server/src/ws/calls.ts
 - server/src/adapters/stt/* 또는 신규 streaming STT adapter module
 - server/test/*audio*
