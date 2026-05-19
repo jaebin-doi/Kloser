@@ -185,6 +185,20 @@
                   </div>
                 </section>
 
+                <!-- Recording playback — Phase 8 Step 4.
+                     Renders the call's recording surface in one of six
+                     UI states (loading / none / processing / available
+                     / failed / deleted). The available state requests a
+                     short-lived signed playback URL and wires it onto
+                     an <audio> element via DOM property assignment so
+                     the URL never enters our innerHTML templates or
+                     visible DOM text. Browsers may still reflect media
+                     src as an element attribute. -->
+                <section>
+                  <div class="text-[.62rem] font-black uppercase tracking-wider text-slate-400 mb-2">녹음</div>
+                  <div id="dRecordingSurface" class="rounded-lg border border-slate-200 bg-white p-3 text-[.78rem] text-slate-600"></div>
+                </section>
+
                 <!-- Manual summary writer — Phase 5 Step 4.
                      Server keeps AI vs manual split via summary_source.
                      Saving here marks summary_source='manual' which
@@ -520,23 +534,33 @@
       document.getElementById('dActionStatus').textContent = '';
       document.getElementById('dSuggestions').innerHTML = '';
 
+      // Phase 8 Step 4 — tear down any previously bound audio element +
+      // refresh timer BEFORE the new fetch lands, so switching calls
+      // never plays the previous call's signed URL.
+      clearRecordingPlayback();
+      renderRecordingSurface('loading', {});
+
       currentCallId = callId;
 
       // Parallel fetch — single transaction per request but separate
       // HTTP roundtrips so they overlap. 404 on the call itself short-
       // circuits; transcript/action 404 just means the parent call
       // disappeared between calls (race) and we treat them as empty.
-      let callRes, trRes, aiRes, sgRes;
+      // Phase 8 Step 4 adds `recRes` to the same batch so recording
+      // metadata loads in the same waterfall.
+      let callRes, trRes, aiRes, sgRes, recRes;
       try {
-        [callRes, trRes, aiRes, sgRes] = await Promise.all([
+        [callRes, trRes, aiRes, sgRes, recRes] = await Promise.all([
           window.kloserApi.getCall(callId),
           window.kloserApi.listTranscript(callId),
           window.kloserApi.listActionItems(callId),
           window.kloserApi.listCallSuggestions(callId),
+          window.kloserApi.listCallRecordings(callId),
         ]);
       } catch (err) {
         console.error('[calls] detail fetch failed', err);
         document.getElementById('dCallId').textContent = '로드 실패';
+        renderRecordingSurface('failed', { errorLabel: '네트워크 오류' });
         return;
       }
 
@@ -644,6 +668,14 @@
       }
       dTags.innerHTML = tagsParts.join('') ||
         '<span class="text-slate-400 text-[.72rem]">태그가 없습니다.</span>';
+
+      // Phase 8 Step 4 — recordings surface. We must check
+      // currentCallId === callId because the user may have switched to
+      // another call while the parallel fetch was in flight; rendering
+      // here would otherwise stomp the new call's loading state.
+      if (currentCallId === callId) {
+        applyRecordingsResponse(callId, recRes);
+      }
     }
 
     // ─────────────────────────────────────────────
@@ -652,6 +684,10 @@
     // inside openDetail; closeDetail clears it.
     // ─────────────────────────────────────────────
     let currentCallId = null;
+    // Phase 8 Step 4 — /me snapshot used by the recording surface to
+    // hide the delete button for viewer role. Backend remains the
+    // authority — a 403 still surfaces "권한 없음" if /me is stale.
+    let currentUser = null;
 
     function renderActionItems(items) {
       const ul = document.getElementById('dActions');
@@ -841,9 +877,411 @@
       document.getElementById('detailContent').classList.remove('flex');
       document.getElementById('detailEmpty').classList.remove('hidden');
       document.getElementById('detailPanel').classList.remove('open');
+      // Phase 8 Step 4 — drop any audio src / refresh timer so a stale
+      // signed URL cannot keep streaming after the user closes the panel.
+      clearRecordingPlayback();
+      document.getElementById('dRecordingSurface').innerHTML = '';
       currentCallId = null;
     }
     window.closeDetail = closeDetail;
+
+    // ─────────────────────────────────────────────
+    // Phase 8 Step 4 — call recording playback surface.
+    //
+    // Six UI states are derived from the recording row plus local
+    // events (loading before fetch, deleted after user delete).
+    //
+    // Signed URL hygiene:
+    //   - playback.url is assigned via audio.src DOM property, never
+    //     interpolated into our innerHTML templates. Browsers may
+    //     reflect the media src as an element attribute.
+    //   - The URL is never rendered as visible DOM text.
+    //   - The URL is never console.log'd.
+    //   - Refresh timer recreates the URL ~30 s before expiry; an
+    //     out-of-band call switch / detail close clears it first.
+    //
+    // The recording row's `error_message` is server-supplied and goes
+    // through textContent (not innerHTML), so an injected `<script>`
+    // in a malformed adapter error cannot escape into the page.
+    // ─────────────────────────────────────────────
+
+    let currentRecording = null;
+    let recordingAudioEl = null;
+    let recordingUrlRefreshTimer = null;
+    // Monotonic counter used to discard async playback URL responses
+    // that race a detail switch. We bump on every clear so a stale
+    // promise rejecting can compare its token against the current value.
+    let recordingPlaybackEpoch = 0;
+
+    function clearRecordingPlayback() {
+      recordingPlaybackEpoch += 1;
+      if (recordingUrlRefreshTimer) {
+        clearTimeout(recordingUrlRefreshTimer);
+        recordingUrlRefreshTimer = null;
+      }
+      if (recordingAudioEl) {
+        try {
+          recordingAudioEl.pause();
+          // Clearing the src property releases the underlying media
+          // resource so the browser stops fetching the previous URL.
+          recordingAudioEl.removeAttribute('src');
+          recordingAudioEl.load();
+        } catch (_err) { /* no-op */ }
+        recordingAudioEl = null;
+      }
+      currentRecording = null;
+    }
+
+    function choosePrimaryRecording(items) {
+      if (!Array.isArray(items) || items.length === 0) return null;
+      const available = items.find((r) => r && r.status === 'available');
+      return available || items[0] || null;
+    }
+
+    function applyRecordingsResponse(callId, recRes) {
+      if (!recRes) {
+        renderRecordingSurface('none', {});
+        return;
+      }
+      if (recRes.status === 404) {
+        // The parent call disappeared between the call detail fetch and
+        // the recordings fetch. Treat as "no recording" rather than
+        // surfacing a fresh "찾을 수 없음" — the call detail header
+        // already reflects the call state.
+        renderRecordingSurface('none', {});
+        return;
+      }
+      if (!recRes.ok) {
+        renderRecordingSurface('failed', {
+          errorLabel: '녹음 정보를 불러올 수 없습니다 (' + recRes.status + ')',
+        });
+        return;
+      }
+      recRes.json().then((body) => {
+        if (currentCallId !== callId) return;
+        const items = (body && Array.isArray(body.items)) ? body.items : [];
+        const primary = choosePrimaryRecording(items);
+        if (!primary) {
+          renderRecordingSurface('none', {});
+          return;
+        }
+        currentRecording = primary;
+        const status = primary.status;
+        if (status === 'available') {
+          renderRecordingSurface('available', { recording: primary });
+          requestPlaybackUrl(callId, primary.id);
+        } else if (status === 'failed') {
+          renderRecordingSurface('failed', {
+            recording: primary,
+            errorLabel: primary.error_message || '녹음 처리 실패',
+          });
+        } else if (status === 'delete_pending' || status === 'deleted') {
+          renderRecordingSurface('deleted', { recording: primary });
+        } else {
+          // upload_pending / uploaded / processing — not playable yet.
+          renderRecordingSurface('processing', { recording: primary });
+        }
+      }).catch((err) => {
+        console.warn('[calls] recordings parse failed', err);
+        if (currentCallId === callId) {
+          renderRecordingSurface('failed', { errorLabel: '응답 해석 실패' });
+        }
+      });
+    }
+
+    function statusLabelForProcessing(status) {
+      if (status === 'upload_pending') return '업로드 대기';
+      if (status === 'uploaded') return '처리 대기';
+      if (status === 'processing') return '처리 중';
+      return '진행 중';
+    }
+
+    function formatRecordingSize(bytes) {
+      if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) {
+        return '';
+      }
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // Render the recording section. Every server-supplied string flows
+    // through escapeHtml before innerHTML interpolation. The audio
+    // element is created here without `src`; setting src happens
+    // afterwards in requestPlaybackUrl() via direct property assignment.
+    function renderRecordingSurface(state, data) {
+      const el = document.getElementById('dRecordingSurface');
+      if (!el) return;
+      const recording = (data && data.recording) || null;
+      const errorLabel = (data && data.errorLabel) || '';
+
+      let metaLine = '';
+      if (recording) {
+        const parts = [];
+        if (typeof recording.duration_seconds === 'number') {
+          parts.push(formatDuration(recording.duration_seconds));
+        }
+        const sizeText = formatRecordingSize(recording.size_bytes);
+        if (sizeText) parts.push(sizeText);
+        if (recording.codec) parts.push(escapeHtml(String(recording.codec)));
+        if (parts.length > 0) {
+          metaLine = '<div class="text-[.65rem] text-slate-500 mt-1">' +
+                       parts.join(' · ') +
+                     '</div>';
+        }
+      }
+
+      if (state === 'loading') {
+        el.innerHTML =
+          '<div class="flex items-center gap-2 text-slate-400">' +
+            '<span class="badge badge-slate">로딩</span>' +
+            '<span class="text-[.72rem]">녹음 정보를 불러오는 중…</span>' +
+          '</div>';
+        recordingAudioEl = null;
+        return;
+      }
+      if (state === 'none') {
+        el.innerHTML =
+          '<div class="flex items-center gap-2 text-slate-400">' +
+            '<span class="badge badge-slate">녹음 없음</span>' +
+            '<span class="text-[.72rem]">이 통화에는 녹음 파일이 없습니다.</span>' +
+          '</div>';
+        recordingAudioEl = null;
+        return;
+      }
+      if (state === 'processing') {
+        const label = recording ? statusLabelForProcessing(recording.status) : '처리 중';
+        el.innerHTML =
+          '<div class="flex items-center justify-between gap-2">' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="badge badge-amber">' + escapeHtml(label) + '</span>' +
+              '<span class="text-[.72rem] text-slate-600">곧 재생할 수 있습니다.</span>' +
+            '</div>' +
+            '<button type="button" data-recording-refresh class="text-[.7rem] font-bold text-blue-700 hover:text-blue-800 px-2 py-1 rounded-md hover:bg-blue-50">새로고침</button>' +
+          '</div>' +
+          metaLine;
+        recordingAudioEl = null;
+        wireRecordingRefreshButton(el);
+        return;
+      }
+      if (state === 'failed') {
+        const safeError = escapeHtml(errorLabel || (recording && recording.error_message) || '재생할 수 없습니다');
+        el.innerHTML =
+          '<div class="flex items-start gap-2">' +
+            '<span class="badge badge-rose shrink-0">실패</span>' +
+            '<span class="text-[.72rem] text-rose-700 break-words">' + safeError + '</span>' +
+          '</div>';
+        recordingAudioEl = null;
+        return;
+      }
+      if (state === 'deleted') {
+        el.innerHTML =
+          '<div class="flex items-center gap-2 text-slate-400">' +
+            '<span class="badge badge-slate">삭제됨</span>' +
+            '<span class="text-[.72rem]">녹음 파일이 삭제되었습니다.</span>' +
+          '</div>';
+        recordingAudioEl = null;
+        return;
+      }
+      if (state === 'available') {
+        // No server-supplied field is inserted into the innerHTML
+        // template below (metaLine values are already escaped or
+        // numeric). The audio element is created without src here and
+        // wired in requestPlaybackUrl() via DOM property assignment.
+        el.innerHTML =
+          '<div class="flex items-center justify-between gap-2 mb-2">' +
+            '<span class="badge badge-emerald">재생 가능</span>' +
+            '<div class="flex items-center gap-1">' +
+              '<button type="button" data-recording-refresh class="text-[.7rem] font-bold text-blue-700 hover:text-blue-800 px-2 py-1 rounded-md hover:bg-blue-50">URL 새로고침</button>' +
+              '<button type="button" data-recording-delete class="text-[.7rem] font-bold text-rose-700 hover:text-rose-800 px-2 py-1 rounded-md hover:bg-rose-50 hidden">삭제</button>' +
+            '</div>' +
+          '</div>' +
+          '<audio id="dRecordingAudio" controls preload="none" class="w-full max-w-full"></audio>' +
+          '<div id="dRecordingStatus" class="text-[.65rem] text-slate-500 mt-1"></div>' +
+          metaLine;
+        recordingAudioEl = el.querySelector('#dRecordingAudio');
+        if (recordingAudioEl) {
+          recordingAudioEl.addEventListener('error', handleRecordingAudioError);
+        }
+        wireRecordingRefreshButton(el);
+        wireRecordingDeleteButton(el);
+        return;
+      }
+      // Defensive default — should not be reachable.
+      el.innerHTML = '';
+    }
+
+    function wireRecordingRefreshButton(rootEl) {
+      const btn = rootEl.querySelector('button[data-recording-refresh]');
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        if (!currentCallId) return;
+        // Reload the whole recording surface from the server so any
+        // server-side state change (still-processing → available, or
+        // available → deleted) reconciles in one step.
+        loadRecordingsForCurrentCall();
+      });
+    }
+
+    function wireRecordingDeleteButton(rootEl) {
+      const btn = rootEl.querySelector('button[data-recording-delete]');
+      if (!btn) return;
+      // Step 4 default: hide for viewer, show for writer roles. Backend
+      // remains authority — a 403 still surfaces as "권한 없음" if the
+      // /me cache is stale.
+      const role = currentUser && currentUser.role;
+      if (role !== 'viewer') {
+        btn.classList.remove('hidden');
+      }
+      btn.addEventListener('click', () => {
+        const recordingId = currentRecording && currentRecording.id;
+        const callId = currentCallId;
+        if (!recordingId || !callId) return;
+        deleteCurrentRecording(callId, recordingId, btn);
+      });
+    }
+
+    async function loadRecordingsForCurrentCall() {
+      const callId = currentCallId;
+      if (!callId) return;
+      clearRecordingPlayback();
+      renderRecordingSurface('loading', {});
+      try {
+        const res = await window.kloserApi.listCallRecordings(callId);
+        if (currentCallId !== callId) return;
+        applyRecordingsResponse(callId, res);
+      } catch (err) {
+        console.warn('[calls] recordings refresh failed', err);
+        if (currentCallId === callId) {
+          renderRecordingSurface('failed', { errorLabel: '네트워크 오류' });
+        }
+      }
+    }
+
+    // Request a fresh signed playback URL and bind it to the audio
+    // element. The local epoch token guards against detail switches
+    // mid-flight: an obsolete response is dropped on the floor.
+    async function requestPlaybackUrl(callId, recordingId) {
+      const epoch = recordingPlaybackEpoch;
+      const statusEl = document.getElementById('dRecordingStatus');
+      if (statusEl) statusEl.textContent = '재생 링크 준비 중…';
+      let res;
+      try {
+        res = await window.kloserApi.getCallRecordingPlaybackUrl(callId, recordingId);
+      } catch (err) {
+        console.warn('[calls] playback url fetch failed', err);
+        if (epoch !== recordingPlaybackEpoch) return;
+        if (statusEl) statusEl.textContent = '재생 링크를 받을 수 없습니다';
+        return;
+      }
+      if (epoch !== recordingPlaybackEpoch) return;
+      if (!res.ok) {
+        if (statusEl) statusEl.textContent = '재생 링크 요청 실패 (' + res.status + ')';
+        if (res.status === 409 || res.status === 404) {
+          // Recording changed state under us — reload list once so the
+          // surface reflects the new server truth.
+          loadRecordingsForCurrentCall();
+        }
+        return;
+      }
+      let body = null;
+      try { body = await res.json(); }
+      catch (_err) { body = null; }
+      if (epoch !== recordingPlaybackEpoch) return;
+      const playback = body && body.playback;
+      if (!playback || typeof playback.url !== 'string') {
+        if (statusEl) statusEl.textContent = '응답이 비어 있습니다';
+        return;
+      }
+      if (recordingAudioEl) {
+        // DOM property assignment — the URL never enters our innerHTML
+        // templates and never leaves this closure as visible text.
+        // Browsers may reflect media src as an element attribute.
+        recordingAudioEl.src = playback.url;
+      }
+      if (statusEl) statusEl.textContent = '';
+      scheduleRecordingUrlRefresh(callId, recordingId, playback.expires_at);
+    }
+
+    function scheduleRecordingUrlRefresh(callId, recordingId, expiresAtIso) {
+      if (recordingUrlRefreshTimer) {
+        clearTimeout(recordingUrlRefreshTimer);
+        recordingUrlRefreshTimer = null;
+      }
+      if (!expiresAtIso) return;
+      const expiresMs = Date.parse(expiresAtIso);
+      if (!Number.isFinite(expiresMs)) return;
+      // Refresh 30 s before expiry, never sooner than 15 s from now so
+      // a near-expired URL doesn't loop into an immediate re-fetch.
+      const delay = Math.max(15_000, expiresMs - Date.now() - 30_000);
+      const epoch = recordingPlaybackEpoch;
+      recordingUrlRefreshTimer = setTimeout(() => {
+        recordingUrlRefreshTimer = null;
+        if (epoch !== recordingPlaybackEpoch) return;
+        if (currentCallId !== callId) return;
+        if (!currentRecording || currentRecording.id !== recordingId) return;
+        requestPlaybackUrl(callId, recordingId);
+      }, delay);
+    }
+
+    // Single-shot retry on audio.onerror: clear the bound URL and try
+    // to fetch a fresh one. If that also fails the user sees
+    // "재생 링크를 받을 수 없습니다" via requestPlaybackUrl's failure
+    // path; we deliberately don't loop.
+    let recordingAudioErrorRetried = false;
+    function handleRecordingAudioError(_event) {
+      if (!recordingAudioEl) return;
+      if (recordingAudioErrorRetried) {
+        const statusEl = document.getElementById('dRecordingStatus');
+        if (statusEl) statusEl.textContent = '재생 링크를 새로 받을 수 없습니다';
+        return;
+      }
+      recordingAudioErrorRetried = true;
+      try { recordingAudioEl.removeAttribute('src'); recordingAudioEl.load(); }
+      catch (_err) { /* no-op */ }
+      if (currentCallId && currentRecording) {
+        requestPlaybackUrl(currentCallId, currentRecording.id);
+      }
+      // Reset the one-shot guard after a short cool-down so subsequent
+      // unrelated errors can retry once again.
+      setTimeout(() => { recordingAudioErrorRetried = false; }, 5_000);
+    }
+
+    async function deleteCurrentRecording(callId, recordingId, btn) {
+      btn.disabled = true;
+      const statusEl = document.getElementById('dRecordingStatus');
+      if (statusEl) statusEl.textContent = '삭제 중…';
+      let res;
+      try {
+        res = await window.kloserApi.deleteCallRecording(callId, recordingId);
+      } catch (err) {
+        console.warn('[calls] recording delete failed', err);
+        if (statusEl) statusEl.textContent = '네트워크 오류';
+        btn.disabled = false;
+        return;
+      }
+      if (res.status === 204 || res.status === 404) {
+        // 204: gone. 404: someone else already removed it. Either way
+        // reconcile with server.
+        if (currentCallId === callId) {
+          renderRecordingSurface('deleted', {});
+          loadRecordingsForCurrentCall();
+        }
+        return;
+      }
+      if (res.status === 403) {
+        if (statusEl) statusEl.textContent = '권한 없음';
+        btn.disabled = false;
+        return;
+      }
+      if (res.status === 502) {
+        if (statusEl) statusEl.textContent = '저장소 삭제 실패. 잠시 후 다시 시도해주세요.';
+        btn.disabled = false;
+        return;
+      }
+      if (statusEl) statusEl.textContent = '삭제 실패 (' + res.status + ')';
+      btn.disabled = false;
+    }
 
     // Wire Phase 5 controls once at load time. They read currentCallId
     // when invoked, so they only act after a detail panel is open.
@@ -866,9 +1304,16 @@
 
       try {
         const meRes = await window.kloserApi.apiGet('/me');
-        if (meRes.ok && typeof window.renderUnverifiedBanner === 'function') {
+        if (meRes.ok) {
           const me = await meRes.json();
-          window.renderUnverifiedBanner(me.user);
+          // Cache the membership role for the recording delete button
+          // hide-on-viewer decision. The backend still gates the action.
+          if (me && me.membership && me.membership.role) {
+            currentUser = { role: me.membership.role };
+          }
+          if (typeof window.renderUnverifiedBanner === 'function') {
+            window.renderUnverifiedBanner(me.user);
+          }
         }
       } catch (err) {
         console.warn('[calls] /me failed', err);

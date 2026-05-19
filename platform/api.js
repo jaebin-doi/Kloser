@@ -703,6 +703,43 @@
     return apiPatch('/billing/profile', input || {});
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 8 Step 4 — call recordings.
+  //
+  // Read surface only. listCallRecordings returns 200 with items hiding
+  // tombstoned rows, or 404 if the parent call is cross-org / missing.
+  // getCallRecordingPlaybackUrl returns 200 with a short-lived signed
+  // GET URL (default TTL 300s, max 900s) for an `available` recording,
+  // 409 invalid_recording_state for other lifecycle states, or 404.
+  // deleteCallRecording returns 204 on success, 403 for permission
+  // denials, 404 for cross-org / already-deleted rows, 502 if the
+  // backend storage delete fails (the row stays delete_pending).
+  //
+  // None of these helpers log signed URLs / object keys / storage
+  // internals. Callers should treat the response opaquely and only
+  // extract documented fields (`items`, `playback.url`, `playback.method`,
+  // `playback.headers`, `playback.expires_at`).
+  // ─────────────────────────────────────────────
+
+  function listCallRecordings(callId) {
+    return apiGet('/calls/' + encodeURIComponent(callId) + '/recordings');
+  }
+
+  function getCallRecordingPlaybackUrl(callId, recordingId) {
+    return apiGet(
+      '/calls/' + encodeURIComponent(callId) +
+      '/recordings/' + encodeURIComponent(recordingId) +
+      '/playback-url',
+    );
+  }
+
+  function deleteCallRecording(callId, recordingId) {
+    return apiDelete(
+      '/calls/' + encodeURIComponent(callId) +
+      '/recordings/' + encodeURIComponent(recordingId),
+    );
+  }
+
   window.kloserApi = {
     // Token store (memory-only).
     setAccessToken: setAccessToken,
@@ -787,6 +824,11 @@
     // Phase 7 Step 9 — billing overview / profile (admin-only).
     getBillingOverview: getBillingOverview,
     patchBillingProfile: patchBillingProfile,
+
+    // Phase 8 Step 4 — call recordings (list / playback URL / delete).
+    listCallRecordings: listCallRecordings,
+    getCallRecordingPlaybackUrl: getCallRecordingPlaybackUrl,
+    deleteCallRecording: deleteCallRecording,
 
     // Read-only config — ws.js consumes this so the WS URL stays in
     // sync with the API base.
