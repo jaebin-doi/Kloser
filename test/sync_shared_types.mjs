@@ -234,6 +234,25 @@ const ENTITY_REGISTRY = [
         ],
     },
     {
+        name: "callRecording",
+        server: "server/src/types/callRecording.ts",
+        browser: "platform/types/callRecording.js",
+        // Phase 8 Step 3 — call recording REST surface. SignedRecordingUrl
+        // is a nested object reused by upload / playback responses; it
+        // is registered as its own top-level z.object so the parser sees
+        // its field set, matching the activityLog ActivityLogCursor pattern.
+        types: [
+            "CallRecording",
+            "CallRecordingUploadInput",
+            "CallRecordingFinalizeInput",
+            "SignedRecordingUrl",
+            "CallRecordingUploadResponse",
+            "CallRecordingFinalizeResponse",
+            "CallRecordingListResponse",
+            "CallRecordingPlaybackUrlResponse",
+        ],
+    },
+    {
         name: "activityLog",
         server: "server/src/types/activityLog.ts",
         browser: "platform/types/activityLog.js",

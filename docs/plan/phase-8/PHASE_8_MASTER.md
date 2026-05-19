@@ -14,11 +14,11 @@
 
 ## 0. 진행 상태
 
-> **Phase 8 Step 2 완료.** Step 1은 `call_recordings` metadata schema migration을 닫았다. Step 2는 typed repository + recording storage adapter boundary + targeted RLS/cross-org/FK/CHECK/UNIQUE/lifecycle/retention/state-guard 테스트를 닫았다. S3/MinIO 실 SDK 의존성은 Step 3에서 라우트와 함께 들어간다.
+> **Phase 8 Step 3 완료.** Step 1 metadata schema, Step 2 repository + storage adapter boundary, Step 3 audit migration + shared types + plugin/SDK + service + 5 routes + 26 회귀 case가 모두 닫혔다. S3-compatible 실 SDK adapter가 들어왔고 기본 테스트는 여전히 network call이 없다.
 
 - [x] **Step 1 - `call_recordings` metadata schema**: `call_recordings` table, org-scoped RLS, object metadata columns, retention cutoff metadata, app grants. 상세 계획은 `PHASE_8_STEP_1_PLAN.md`, 결과는 `PHASE_8_STEP_1_FINDINGS.md`.
-- [x] **Step 2 - repository + storage adapter boundary**: typed repository (`server/src/repositories/callRecordings.ts`), recording storage adapter (`server/src/adapters/recordingStorage.ts`) — local filesystem provider (with two-stage path-traversal protection) + s3/minio env validator + sentinel adapter (실 SDK는 Step 3 라우트와 함께). RLS/cross-org/FK/CHECK/UNIQUE/lifecycle/retention 회귀 32 case. 계획 `PHASE_8_STEP_2_PLAN.md`, 결과 `PHASE_8_STEP_2_FINDINGS.md`.
-- [ ] **Step 3 - upload/finalize/playback routes**: authenticated upload initiation/finalize, signed playback URL, shared types, route tests. Direct URL access is not a substitute for backend authorization.
+- [x] **Step 2 - repository + storage adapter boundary**: typed repository (`server/src/repositories/callRecordings.ts`), recording storage adapter (`server/src/adapters/recordingStorage.ts`) — local filesystem provider (with two-stage path-traversal protection) + s3/minio env validator + sentinel adapter. RLS/cross-org/FK/CHECK/UNIQUE/lifecycle/retention 회귀 32 case. 계획 `PHASE_8_STEP_2_PLAN.md`, 결과 `PHASE_8_STEP_2_FINDINGS.md`.
+- [x] **Step 3 - upload/finalize/playback routes**: audit action migration (`1715000029000_phase8_recording_activity_actions.sql`) + `ActivityAction` lockstep + 5 service helper. shared types (`server/src/types/callRecording.ts` + browser mirror + sync registry). `recordingStoragePlugin` Fastify decorator. `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` 실 SDK adapter (sentinel은 opt-in factory로 보존). `services/callRecordings.ts` (initiate/finalize/list/playbackUrl/delete) + `routes/callRecordings.ts` 5 endpoint + plugin-scoped error handler. route tests 21 + audit hooks tests 5. 계획 `PHASE_8_STEP_3_PLAN.md`, 결과 `PHASE_8_STEP_3_FINDINGS.md`.
 - [ ] **Step 4 - frontend playback UI**: `calls.html`/call detail surface에서 recording status, player, download link, error state를 API-backed로 표시.
 - [ ] **Step 5 - retention worker integration**: Phase 7 Step 4 retention worker에 `call_recordings` 90일 metadata + object delete module 추가, aggregate audit 기록.
 - [ ] **Closeout**: findings, user guide, README, full validation.
@@ -183,15 +183,15 @@ Phase 8 closeout 최소 기준:
 
 ## 7. 바로 다음 작업
 
-Step 2 repository + storage adapter boundary는 닫혔다. 다음 작업은 Step 3 upload / finalize / playback routes다.
+Step 3 upload / finalize / playback routes는 닫혔다. 다음 작업은 Step 4 frontend playback UI다.
 
 다음 구현 단위:
 
-1. `PHASE_8_STEP_3_PLAN.md`
-2. `server/src/types/callRecording.ts` (zod) + `platform/types/callRecording.js` (JSDoc) + `test/sync_shared_types.mjs` registry entry
-3. `server/src/services/callRecordings.ts` (또는 동등) — repository + adapter glue
-4. `server/src/routes/callRecordings.ts` — `POST /calls/:id/recordings/upload`, `POST .../finalize`, `GET /calls/:id/recordings`, `GET .../playback-url`, `DELETE .../:recordingId`
-5. `S3CompatibleSentinelAdapter` → 실 `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` 어댑터 교체 (옵션: `LocalRecordingStorageAdapter`만 유지하고 s3는 보류). `server/package.json` 의존성 추가는 이 단계에 처음 발생
-6. route tests + activity_log recording action 확장
+1. `PHASE_8_STEP_4_PLAN.md`
+2. `platform/calls.html`(또는 call detail panel) — recording surface UI: loading / no recording / processing / available / failed / deleted 6-state + 권한별(viewer/employee/manager/admin) 표시
+3. `platform/api.js` (또는 동등) — `/calls/:id/recordings`, `/calls/:id/recordings/:recordingId/playback-url`, upload/finalize/delete 호출 helper. signed URL TTL 만료 시 자동 갱신 흐름
+4. server-returned recording 필드(status, error_message, codec 등)는 `textContent` / `escapeHtml` 경로만 사용 (XSS gate)
+5. desktop/browser audio capture pipeline은 별도. Step 4는 server-driven recording이 이미 존재하는 가정 하에 시각화/재생 UI만 닫는다 (또는 manual upload smoke 흐름까지)
+6. browser-side smoke / 회귀 시나리오. Phase 4 e2e 패턴 참고
 
-Step 3는 라우트와 shared types까지만 닫는다. Frontend playback UI는 Step 4, retention worker integration은 Step 5.
+Step 4는 routes 미수정 (계약 잠금). retention worker integration (Step 5)은 frontend와 독립적으로 진행 가능.

@@ -94,7 +94,15 @@ export type ActivityAction =
   | "retention.transcripts_deleted"
   | "email_outbox.sending_recovered"
   // Phase 7 Step 9 — admin billing profile mutation
-  | "billing.profile_updated";
+  | "billing.profile_updated"
+  // Phase 8 Step 3 — call recording lifecycle events. target_type stays
+  // 'call' (target_id = call.id); the recording id lives in payload.
+  // Allow-list lockstep with migration 1715000029000.
+  | "recording.upload_initiated"
+  | "recording.finalized"
+  | "recording.playback_url_issued"
+  | "recording.delete_requested"
+  | "recording.deleted";
 
 export type ActivityTargetType =
   | "organization"

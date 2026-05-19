@@ -53,6 +53,14 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 import type {
   RecordingContentType,
   RecordingStorageProvider,
@@ -543,16 +551,13 @@ export function readS3CompatibleConfigFromEnv(
   };
 }
 
-// Sentinel adapter. Step 2 closes env validation and the boundary; the
-// actual presigner / SDK landing happens in Step 3 alongside the route
-// that needs it. Method calls throw a stable code that callers can
-// detect and the cap test asserts. Bucket / object key / credential
-// values are never echoed.
+// Sentinel adapter. Retained from Step 2 so callers that want explicit
+// no-network behavior (e.g. a build pipeline that wants to validate
+// config without giving the test process network privileges) can opt
+// in. The runtime resolver no longer returns this — Step 3 wires the
+// real S3 adapter below.
 class S3CompatibleSentinelAdapter implements RecordingStorageAdapter {
   readonly provider: "s3" | "minio";
-  // Held for the Step 3 client landing. Validated already by
-  // readS3CompatibleConfigFromEnv. Marked readonly to keep an audit-only
-  // call from mutating.
   readonly config: S3CompatibleRecordingStorageConfig;
 
   constructor(config: S3CompatibleRecordingStorageConfig) {
@@ -576,9 +581,199 @@ class S3CompatibleSentinelAdapter implements RecordingStorageAdapter {
   private static unimplemented(method: string): RecordingStorageOperationError {
     return new RecordingStorageOperationError(
       "not_implemented_step_2",
-      `S3-compatible adapter '${method}' is not implemented in Phase 8 Step 2; routes/SDK arrive in Step 3.`,
+      `S3-compatible sentinel adapter '${method}' is not implemented; use createS3CompatibleRecordingStorageAdapter for the real SDK.`,
     );
   }
+}
+
+// ============================================================ //
+// S3-compatible real adapter (Phase 8 Step 3)
+// ============================================================ //
+//
+// Backed by @aws-sdk/client-s3 + @aws-sdk/s3-request-presigner. Used
+// by the runtime resolver when RECORDING_STORAGE_PROVIDER is `s3` or
+// `minio`. The S3Client is constructed once per adapter so connection
+// pooling sticks.
+//
+// Network surface:
+//   - createUploadUrl / createReadUrl  → no network. The presigner
+//     computes the URL synchronously from credentials + request.
+//   - putObject / deleteObject         → one HTTP request each.
+//
+// Default Step 3 tests use the LOCAL provider for end-to-end route
+// coverage. Unit tests for this class assert presign happy path
+// (no network) and config rejection. Real S3 / MinIO integration is
+// opt-in (KLOSER_RECORDING_S3_INTEGRATION env gate, deferred).
+//
+// Error scrub policy:
+//   - SDK throws are caught here and re-thrown as RecordingStorage*
+//     Error with stable codes. The original SDK message is NOT echoed
+//     to the caller because it can include bucket/key.
+//   - We map a small set of SDK error names:
+//       NoSuchKey, NotFound        → operation_object_not_found
+//       AccessDenied, Forbidden    → operation_forbidden
+//       NoSuchBucket               → operation_bucket_missing
+//       (anything else)            → operation_upstream
+class S3CompatibleRecordingStorageAdapter implements RecordingStorageAdapter {
+  readonly provider: "s3" | "minio";
+  readonly bucket: string;
+  private readonly client: S3Client;
+
+  constructor(config: S3CompatibleRecordingStorageConfig) {
+    this.provider = config.provider;
+    this.bucket = config.bucket;
+    const clientConfig: ConstructorParameters<typeof S3Client>[0] = {
+      region: config.region,
+      credentials: {
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
+        ...(config.sessionToken ? { sessionToken: config.sessionToken } : {}),
+      },
+      forcePathStyle: config.forcePathStyle,
+    };
+    if (config.endpoint) {
+      clientConfig.endpoint = config.endpoint;
+    }
+    this.client = new S3Client(clientConfig);
+  }
+
+  async createUploadUrl(
+    input: CreateRecordingUploadUrlInput,
+  ): Promise<SignedStorageUrl> {
+    assertTtl(input.expiresInSeconds);
+    assertSafeObjectKey(input.objectKey);
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: input.objectKey,
+      ContentType: input.contentType,
+      ...(input.sizeBytes != null ? { ContentLength: input.sizeBytes } : {}),
+      ...(input.checksumSha256
+        ? { ChecksumSHA256: hexToBase64(input.checksumSha256) }
+        : {}),
+    });
+    const url = await getSignedUrl(this.client, command, {
+      expiresIn: input.expiresInSeconds,
+    });
+    return {
+      url,
+      method: "PUT",
+      headers: { "Content-Type": input.contentType },
+      expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000),
+    };
+  }
+
+  async createReadUrl(
+    input: CreateRecordingReadUrlInput,
+  ): Promise<SignedStorageUrl> {
+    assertTtl(input.expiresInSeconds);
+    assertSafeObjectKey(input.objectKey);
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: input.objectKey,
+      ...(input.responseContentType
+        ? { ResponseContentType: input.responseContentType }
+        : {}),
+    });
+    const url = await getSignedUrl(this.client, command, {
+      expiresIn: input.expiresInSeconds,
+    });
+    return {
+      url,
+      method: "GET",
+      headers: {},
+      expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000),
+    };
+  }
+
+  async putObject(
+    input: PutRecordingObjectInput,
+  ): Promise<PutRecordingObjectResult> {
+    assertSafeObjectKey(input.objectKey);
+    const body = Buffer.isBuffer(input.body)
+      ? input.body
+      : Buffer.from(input.body);
+    if (input.checksumSha256) {
+      const actual = createHash("sha256").update(body).digest("hex");
+      if (actual !== input.checksumSha256.toLowerCase()) {
+        throw new RecordingStorageInputError(
+          "checksum_mismatch",
+          "body checksum did not match the provided checksumSha256",
+        );
+      }
+    }
+    try {
+      const response = await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: input.objectKey,
+          Body: body,
+          ContentType: input.contentType,
+        }),
+      );
+      const checksum = createHash("sha256").update(body).digest("hex");
+      return {
+        objectVersion: response.VersionId ?? null,
+        sizeBytes: body.length,
+        checksumSha256: checksum,
+      };
+    } catch (err) {
+      throw mapS3Error(err, "put");
+    }
+  }
+
+  async deleteObject(input: DeleteRecordingObjectInput): Promise<void> {
+    assertSafeObjectKey(input.objectKey);
+    try {
+      await this.client.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: input.objectKey,
+          ...(input.objectVersion ? { VersionId: input.objectVersion } : {}),
+        }),
+      );
+    } catch (err) {
+      throw mapS3Error(err, "delete");
+    }
+  }
+}
+
+// S3 sometimes returns a sha256 in base64. Our DB / external API uses
+// hex. Convert before passing as a ChecksumSHA256 PUT header so the
+// presigned URL includes the right value.
+function hexToBase64(hex: string): string {
+  return Buffer.from(hex, "hex").toString("base64");
+}
+
+// Map AWS SDK error names → stable adapter error codes. Never echo the
+// underlying message (can leak bucket/key) — only the stable code +
+// short label flows out.
+function mapS3Error(
+  err: unknown,
+  operation: "put" | "delete" | "head",
+): RecordingStorageOperationError {
+  const name = (err as { name?: string } | null)?.name ?? "Unknown";
+  if (name === "NoSuchKey" || name === "NotFound") {
+    return new RecordingStorageOperationError(
+      "storage_object_not_found",
+      "object not found",
+    );
+  }
+  if (name === "AccessDenied" || name === "Forbidden") {
+    return new RecordingStorageOperationError(
+      "storage_forbidden",
+      "storage access denied",
+    );
+  }
+  if (name === "NoSuchBucket") {
+    return new RecordingStorageOperationError(
+      "storage_bucket_missing",
+      "storage bucket missing",
+    );
+  }
+  return new RecordingStorageOperationError(
+    "storage_upstream",
+    `storage upstream failure during ${operation}`,
+  );
 }
 
 // ============================================================ //
@@ -640,7 +835,7 @@ export function resolveRecordingStorageAdapter(
   }
 
   const config = readS3CompatibleConfigFromEnv(provider, env);
-  return new S3CompatibleSentinelAdapter(config);
+  return new S3CompatibleRecordingStorageAdapter(config);
 }
 
 // ============================================================ //
@@ -653,6 +848,15 @@ export function createLocalRecordingStorageAdapter(
   return new LocalRecordingStorageAdapter(config);
 }
 
+export function createS3CompatibleRecordingStorageAdapter(
+  config: S3CompatibleRecordingStorageConfig,
+): RecordingStorageAdapter {
+  return new S3CompatibleRecordingStorageAdapter(config);
+}
+
+/** Step 2 compatibility export. The runtime resolver no longer returns
+ *  this — Step 3 wires the real S3 SDK adapter — but callers that want
+ *  to validate config without granting network access can still opt in. */
 export function createS3CompatibleSentinelAdapter(
   config: S3CompatibleRecordingStorageConfig,
 ): RecordingStorageAdapter {

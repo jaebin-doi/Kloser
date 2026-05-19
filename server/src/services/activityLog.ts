@@ -1277,3 +1277,190 @@ export async function recordReportTeamViewed(
     },
   });
 }
+
+// ---------------------------------------------------------------- //
+// call_recordings (Phase 8 Step 3)
+// ---------------------------------------------------------------- //
+//
+// recording.* events share target_type='call' + target_id=call.id. The
+// recording id lives in payload.recording_id so an auditor can drill
+// into a specific recording without us minting a new target_type
+// (existing target index already covers per-call lookups).
+//
+// Payload allow-list — what may appear:
+//   - recording_id, content_type, size_bytes, duration_seconds,
+//     ttl_seconds, previous_status
+//
+// Payload forbidden — never:
+//   - object_key, storage_bucket, storage_provider, object_version,
+//     checksum_sha256, signed URLs, provider credentials, error bodies,
+//     raw audio bytes.
+//
+// The sanitizer in sanitizeActivityPayload also blocks any key whose
+// word parts touch the {token, secret, password, ciphertext, key, raw}
+// list, so an accidental rename of one of the forbidden fields cannot
+// slip through.
+
+export type RecordingContentType =
+  | "audio/webm"
+  | "audio/ogg"
+  | "audio/mpeg"
+  | "audio/mp4"
+  | "audio/wav";
+
+export type CallRecordingPreviousStatus =
+  | "upload_pending"
+  | "uploaded"
+  | "processing"
+  | "available"
+  | "delete_pending"
+  | "deleted"
+  | "failed";
+
+export interface RecordRecordingUploadInitiatedInput {
+  orgId:           string;
+  actorUserId:     string;
+  callId:          string;
+  recordingId:     string;
+  contentType:     RecordingContentType;
+  sizeBytes:       number | null;
+  durationSeconds: number | null;
+  ttlSeconds:      number;
+}
+
+/** recording.upload_initiated — service generated the metadata row and a
+ *  short-lived signed PUT URL. ttl_seconds captures the URL lifetime so
+ *  auditors can see how long the upload window was held open. */
+export async function recordRecordingUploadInitiated(
+  client: PoolClient,
+  input: RecordRecordingUploadInitiatedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "recording.upload_initiated",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      recording_id:     input.recordingId,
+      content_type:     input.contentType,
+      size_bytes:       input.sizeBytes,
+      duration_seconds: input.durationSeconds,
+      ttl_seconds:      input.ttlSeconds,
+    },
+  });
+}
+
+export interface RecordRecordingFinalizedInput {
+  orgId:           string;
+  actorUserId:     string;
+  callId:          string;
+  recordingId:     string;
+  contentType:     RecordingContentType;
+  sizeBytes:       number | null;
+  durationSeconds: number | null;
+}
+
+/** recording.finalized — service confirmed upload + size/duration and
+ *  moved the row to 'available' for v1 (no transcoding pipeline yet). */
+export async function recordRecordingFinalized(
+  client: PoolClient,
+  input: RecordRecordingFinalizedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "recording.finalized",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      recording_id:     input.recordingId,
+      content_type:     input.contentType,
+      size_bytes:       input.sizeBytes,
+      duration_seconds: input.durationSeconds,
+    },
+  });
+}
+
+export interface RecordRecordingPlaybackUrlIssuedInput {
+  orgId:       string;
+  actorUserId: string;
+  callId:      string;
+  recordingId: string;
+  ttlSeconds:  number;
+}
+
+/** recording.playback_url_issued — service handed the client a fresh
+ *  signed GET URL. Payload carries TTL only; the URL itself is sensitive
+ *  and never recorded. */
+export async function recordRecordingPlaybackUrlIssued(
+  client: PoolClient,
+  input: RecordRecordingPlaybackUrlIssuedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "recording.playback_url_issued",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      recording_id: input.recordingId,
+      ttl_seconds:  input.ttlSeconds,
+    },
+  });
+}
+
+export interface RecordRecordingDeleteRequestedInput {
+  orgId:          string;
+  actorUserId:    string;
+  callId:         string;
+  recordingId:    string;
+  previousStatus: CallRecordingPreviousStatus;
+}
+
+/** recording.delete_requested — service marked the row delete_pending
+ *  before attempting object storage deletion. previous_status lets the
+ *  auditor reason about whether the recording was reachable at delete
+ *  time. */
+export async function recordRecordingDeleteRequested(
+  client: PoolClient,
+  input: RecordRecordingDeleteRequestedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "recording.delete_requested",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      recording_id:    input.recordingId,
+      previous_status: input.previousStatus,
+    },
+  });
+}
+
+export interface RecordRecordingDeletedInput {
+  orgId:       string;
+  actorUserId: string;
+  callId:      string;
+  recordingId: string;
+}
+
+/** recording.deleted — object store removal succeeded (or returned
+ *  not-found, which the service treats as idempotent success) and the
+ *  metadata row was tombstoned. */
+export async function recordRecordingDeleted(
+  client: PoolClient,
+  input: RecordRecordingDeletedInput,
+): Promise<void> {
+  await recordActivity(client, {
+    orgId:       input.orgId,
+    actorUserId: input.actorUserId,
+    action:      "recording.deleted",
+    targetType:  "call",
+    targetId:    input.callId,
+    payload: {
+      recording_id: input.recordingId,
+    },
+  });
+}

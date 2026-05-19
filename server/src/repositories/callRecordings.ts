@@ -74,6 +74,7 @@ export interface CallRecording {
 }
 
 export interface CallRecordingCreateInput {
+  id?: string | null;
   call_id: string;
   storage_provider: RecordingStorageProvider;
   storage_bucket?: string | null;
@@ -145,18 +146,19 @@ export async function insertUploadPendingInCurrentOrg(
 ): Promise<CallRecording> {
   const r = await client.query<RawRow>(
     `INSERT INTO call_recordings (
-        org_id, call_id, status,
+        id, org_id, call_id, status,
         storage_provider, storage_bucket, object_key,
         content_type, codec, recorded_at,
         retention_delete_after, metadata
      ) VALUES (
-        $1, $2, 'upload_pending',
-        $3, $4, $5,
-        $6, $7, $8,
-        $9, COALESCE($10::jsonb, '{}'::jsonb)
+        COALESCE($1::uuid, gen_random_uuid()), $2, $3, 'upload_pending',
+        $4, $5, $6,
+        $7, $8, $9,
+        $10, COALESCE($11::jsonb, '{}'::jsonb)
      )
      RETURNING ${RECORDING_COLUMNS}`,
     [
+      input.id ?? null,
       orgId,
       input.call_id,
       input.storage_provider,

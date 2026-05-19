@@ -12,11 +12,13 @@ import { Server as IOServer } from "socket.io";
 import { registerCallsNamespace } from "./ws/calls.js";
 import authPlugin from "./plugins/auth.js";
 import dbPlugin from "./plugins/db.js";
+import recordingStoragePlugin from "./plugins/recordingStorage.js";
 import activityLogRoutes from "./routes/activityLog.js";
 import authRoutes from "./routes/auth.js";
 import billingRoutes from "./routes/billing.js";
 import callsRoutes from "./routes/calls.js";
 import callsPhase5Routes from "./routes/callsPhase5.js";
+import callRecordingsRoutes from "./routes/callRecordings.js";
 import checklistTemplatesRoutes from "./routes/checklistTemplates.js";
 import customersRoutes from "./routes/customers.js";
 import dashboardRoutes from "./routes/dashboard.js";
@@ -58,6 +60,7 @@ await app.register(cors, {
 
 await app.register(authPlugin);
 await app.register(dbPlugin);
+await app.register(recordingStoragePlugin);
 
 await app.register(authRoutes);
 await app.register(meRoutes);
@@ -66,6 +69,7 @@ await app.register(teamRoutes);
 await app.register(invitationsRoutes);
 await app.register(callsRoutes);
 await app.register(callsPhase5Routes);
+await app.register(callRecordingsRoutes);
 await app.register(checklistTemplatesRoutes);
 await app.register(knowledgeBasesRoutes);
 await app.register(dashboardRoutes);

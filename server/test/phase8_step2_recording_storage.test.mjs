@@ -370,44 +370,59 @@ const FULL_MINIO_ENV = {
     RECORDING_STORAGE_SECRET_ACCESS_KEY: "fake-secret-access-key-shhh",
 };
 
-test("s3 with complete env returns sentinel adapter whose methods throw not_implemented_step_2", async () => {
+test("s3 with complete env returns a real SDK adapter that signs URLs without network", async () => {
+    // Phase 8 Step 3 swapped the Step 2 sentinel for the real SDK adapter.
+    // Presigning is a pure HMAC-SHA256 of the canonical request — it does
+    // not require network to construct or sign URLs.
     const adapter = resolveRecordingStorageAdapter({ env: FULL_S3_ENV });
     assert.equal(adapter.provider, "s3");
 
-    for (const call of [
-        () =>
-            adapter.createReadUrl({
-                bucket: "x",
-                objectKey: "k",
-                expiresInSeconds: 60,
-            }),
-        () =>
-            adapter.createUploadUrl({
-                bucket: "x",
-                objectKey: "k",
-                contentType: "audio/webm",
-                expiresInSeconds: 60,
-            }),
-        () =>
-            adapter.putObject({
-                bucket: "x",
-                objectKey: "k",
-                contentType: "audio/webm",
-                body: Buffer.from("x"),
-            }),
-        () => adapter.deleteObject({ bucket: "x", objectKey: "k" }),
-    ]) {
-        await assert.rejects(call, (err) => {
-            if (
-                !(err instanceof RecordingStorageOperationError) ||
-                err.code !== "not_implemented_step_2"
-            ) {
-                return false;
-            }
-            assertNoLeakage(err.message);
-            return true;
-        });
-    }
+    const upload = await adapter.createUploadUrl({
+        bucket: null,
+        objectKey: "tenant/call/recording.webm",
+        contentType: "audio/webm",
+        expiresInSeconds: 60,
+    });
+    assert.equal(upload.method, "PUT");
+    assert.equal(upload.headers["Content-Type"], "audio/webm");
+    assert.ok(upload.url.startsWith("https://"));
+    assert.ok(upload.url.includes("X-Amz-Signature="));
+    assert.ok(upload.url.includes("X-Amz-Algorithm=AWS4-HMAC-SHA256"));
+
+    const read = await adapter.createReadUrl({
+        bucket: null,
+        objectKey: "tenant/call/recording.webm",
+        expiresInSeconds: 60,
+    });
+    assert.equal(read.method, "GET");
+    assert.ok(read.url.includes("X-Amz-Signature="));
+});
+
+test("sentinel adapter remains available for opt-in no-network paths", async () => {
+    const { createS3CompatibleSentinelAdapter } = await import(
+        "../src/adapters/recordingStorage.ts"
+    );
+    const adapter = createS3CompatibleSentinelAdapter({
+        provider: "s3",
+        bucket: "x",
+        region: "us-east-1",
+        endpoint: null,
+        accessKeyId: "x",
+        secretAccessKey: "x",
+        sessionToken: null,
+        forcePathStyle: false,
+    });
+    await assert.rejects(
+        adapter.createUploadUrl({
+            bucket: null,
+            objectKey: "k",
+            contentType: "audio/webm",
+            expiresInSeconds: 60,
+        }),
+        (err) =>
+            err instanceof RecordingStorageOperationError &&
+            err.code === "not_implemented_step_2",
+    );
 });
 
 test("s3 missing required env enumerates ALL missing keys by NAME only", () => {
