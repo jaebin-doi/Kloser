@@ -587,6 +587,7 @@ Step 2에서 구현할 것:
 - source / seq / codec / sample rate / duration / max bytes validation.
 - single chunk 128 KiB limit + rolling queued bytes 1 MiB limit.
 - session lifecycle: duplicate `audio_start`, chunk-before-start, `end_call` flush, text/audio coexistence.
+- frame/duration loose match, declared source membership, per-source monotonic seq with gaps allowed.
 - mock streaming STT session 추가.
 - partial은 live emit only, final은 transcript append.
 - mock STT usage row를 `llm_usage_log`에 실제 INSERT.

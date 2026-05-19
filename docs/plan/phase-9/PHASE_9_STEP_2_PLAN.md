@@ -112,7 +112,7 @@ PCM16 16 kHz mono is 32,000 bytes/sec. 100 ms is about 3.2 KB. The limits below 
 |---|---:|---|
 | Single `audio_chunk` binary payload | 128 KiB max | reject with `AUDIO_CHUNK_TOO_LARGE` |
 | `duration_ms` per chunk | 1..500 ms | reject with `BAD_PAYLOAD` |
-| Active audio session rolling queued bytes | 1 MiB max | drop oldest unprocessed mock buffers or reject with `AUDIO_BACKPRESSURE` |
+| Active audio session rolling queued bytes | 1 MiB max | reject with `AUDIO_BACKPRESSURE` |
 | Active call duration via audio path | use existing call lifecycle; no new cap in Step 2 | do not duplicate monthly call cap |
 
 Step 2 must not introduce unbounded arrays of raw audio buffers. Mock STT can accumulate counters and deterministic fixture state, but not the full audio stream.
@@ -163,6 +163,39 @@ If flush fails, clear socket-local audio state and return `{ ok: false, error: "
 
 Allowed during Step 2 for backward compatibility and E2E stability. Both append through the same transcript service path. The audio path must not disable or reinterpret existing `text_chunk` demo behavior.
 
+### 5.7 Frame Duration
+
+`audio_start.frame_ms` is the declared nominal frame size. It does not have to exactly equal every `audio_chunk.duration_ms`.
+
+Rules:
+
+- `frame_ms` must be one of `20 | 40 | 60 | 80 | 100`.
+- `duration_ms` must be in the accepted chunk range `1..500`.
+- A chunk with valid `duration_ms` is accepted even when jitter makes it differ from `frame_ms`.
+
+### 5.8 Source Membership
+
+`audio_chunk.source` must be present in the active `audio_start.sources` array. If `audio_start` declared only `["agent_mic"]`, a `system_loopback` chunk is `BAD_PAYLOAD`.
+
+### 5.9 Flush Idempotency
+
+`audio_end` and `end_call` share the same audio flush path. The session must track a `flushed` flag so a later `end_call` does not write duplicate final transcripts or duplicate `llm_usage_log` rows after `audio_end` already flushed.
+
+### 5.10 Backpressure
+
+If the rolling queued-byte limit is exceeded, reject the incoming chunk with `AUDIO_BACKPRESSURE`. Do not drop oldest chunks in Step 2. Reject behavior is deterministic and easier to test.
+
+### 5.11 Chunk Sequence
+
+`audio_chunk.seq` is client framing metadata, not the persisted transcript sequence. The DB still owns persisted transcript ordering.
+
+Rules:
+
+- `seq` must be a positive integer.
+- Track `lastSeq` per source.
+- Reject duplicate or decreasing sequence numbers with `AUDIO_SEQ_OUT_OF_ORDER`.
+- Gaps are allowed; they indicate client-side drops or reconnect recovery and should not block ingest.
+
 ---
 
 ## 6. Persistence Contract
@@ -195,6 +228,21 @@ Minimum behavior:
   - `system_loopback`: `Mock customer audio transcript`
 
 Partial events are socket emits only. Final events are persisted.
+
+Partial event contract:
+
+```ts
+socket.emit("transcript.partial", {
+  callId: string,
+  source: "agent_mic" | "system_loopback",
+  who: "agent" | "customer",
+  text: string,
+  atMs: number,
+  serverSentAt: number
+});
+```
+
+Final audio transcript events use the existing `"transcript"` event, matching the current `text_chunk` surface as closely as possible. Step 2 does not introduce a separate `"transcript.final"` event.
 
 ---
 
@@ -280,8 +328,12 @@ Required targeted tests:
 - duplicate `audio_start` -> `audio_already_started`.
 - invalid source / codec / sample rate / channels / duration / seq -> `BAD_PAYLOAD`.
 - chunk > 128 KiB -> `AUDIO_CHUNK_TOO_LARGE`.
+- source not declared in `audio_start.sources` -> `BAD_PAYLOAD`.
+- duplicate/decreasing per-source `seq` -> `AUDIO_SEQ_OUT_OF_ORDER`.
+- queued-byte overflow -> `AUDIO_BACKPRESSURE`.
 - valid chunks -> mock final transcript append on `audio_end`.
 - `end_call` flushes open audio session.
+- `audio_end` then `end_call` does not duplicate final transcript or usage rows.
 - text and audio paths can coexist without breaking existing `text_chunk`.
 - `llm_usage_log` row is inserted with `audio_duration_ms_sent`.
 - raw audio sentinel does not leak.
