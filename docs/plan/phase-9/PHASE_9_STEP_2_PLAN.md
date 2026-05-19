@@ -2,8 +2,8 @@
 
 작성일: 2026-05-19
 
-상위 문서: `PHASE_9_MASTER.md`  
-선행 결정: `PHASE_9_STEP_1_DESKTOP_CAPTURE_ARCHITECTURE.md`  
+상위 문서: `PHASE_9_MASTER.md`
+선행 결정: `PHASE_9_STEP_1_DESKTOP_CAPTURE_ARCHITECTURE.md`
 참조: `docs/research/실시간-STT-시장분석-2026.md`, `docs/research/AZURE_SPEECH_COST_GUIDE_2026.md`
 
 > 본 Step은 구현자가 바로 코드를 쓰기 전에 합의해야 하는 backend audio ingest 계약이다. Azure 실 provider 호출, Windows desktop app, recording archive bridge는 아직 범위가 아니다. 목표는 `/calls` Socket.io namespace가 source-separated PCM audio chunk를 안전하게 받고, mock streaming STT로 transcript/usage/logging 계약을 검증하는 것이다.
