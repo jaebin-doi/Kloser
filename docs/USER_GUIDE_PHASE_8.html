@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kloser Phase 8 사용자 가이드 — 통화 녹취</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --muted: #475569;
+    --border: #e2e8f0;
+    --border-strong: #cbd5f5;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --code-bg: #0f172a;
+    --code-fg: #e2e8f0;
+    --kbd-bg: #f1f5f9;
+    --warn-bg: #fef3c7;
+    --warn-border: #fbbf24;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  header.hero {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb 55%, #38bdf8);
+    color: #f8fafc;
+    border-radius: 20px;
+    padding: 36px 32px;
+    box-shadow: var(--shadow);
+    margin-bottom: 32px;
+  }
+  header.hero .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.82;
+    margin-bottom: 12px;
+  }
+  header.hero h1 {
+    margin: 0 0 12px 0;
+    font-size: 28px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+  header.hero p {
+    margin: 0;
+    color: rgba(248, 250, 252, 0.92);
+    font-size: 15px;
+  }
+  header.hero .meta {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+  }
+  header.hero .meta span {
+    background: rgba(15, 23, 42, 0.22);
+    border-radius: 999px;
+    padding: 4px 10px;
+  }
+  nav.toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    box-shadow: var(--shadow);
+  }
+  nav.toc h2 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  nav.toc ol {
+    margin: 0;
+    padding-left: 1.4em;
+    columns: 2;
+    column-gap: 32px;
+  }
+  nav.toc ol li {
+    break-inside: avoid;
+    margin-bottom: 4px;
+    color: var(--muted);
+  }
+  nav.toc a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  nav.toc a:hover { text-decoration: underline; }
+  section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+  section h2 {
+    margin: 0 0 16px 0;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  section h3 {
+    margin: 24px 0 10px 0;
+    font-size: 17px;
+    color: var(--text);
+  }
+  section h4 {
+    margin: 18px 0 6px 0;
+    font-size: 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  section p { margin: 10px 0; color: var(--text); }
+  section ul, section ol { padding-left: 1.5em; }
+  section li { margin: 4px 0; }
+  section blockquote {
+    margin: 12px 0;
+    padding: 12px 16px;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 12px 12px 0;
+    color: var(--text);
+  }
+  section blockquote.warn {
+    border-left-color: var(--warn-border);
+    background: var(--warn-bg);
+  }
+  code, pre {
+    font-family: "JetBrains Mono", Consolas, "SF Mono", Menlo, monospace;
+    font-size: 0.9em;
+  }
+  code {
+    background: var(--kbd-bg);
+    border-radius: 6px;
+    padding: 1px 6px;
+    color: #0b5394;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 12px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  thead th {
+    background: #f1f5f9;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+  footer.foot {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 24px 0;
+  }
+  @media (max-width: 720px) {
+    .page { padding: 24px 16px 64px; }
+    header.hero { padding: 24px; }
+    header.hero h1 { font-size: 22px; }
+    section { padding: 20px 18px; }
+    nav.toc ol { columns: 1; }
+    table { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="hero">
+  <div class="eyebrow">Kloser Phase 8 사용자 가이드</div>
+  <h1>통화 녹취 (Call Recording v1)</h1>
+  <p>Phase 1~7이 닫아 둔 통화 라이프사이클 위에 <strong>통화 녹취 표면</strong>을 새로 추가한 단계입니다. 통화 페이지에서 녹취 metadata를 확인하고, 짧은 TTL의 안전한 링크로 audio를 재생하고, 권한에 따라 삭제하고, 90일이 지난 녹취가 자동으로 정리되는 흐름까지 한 묶음으로 닫았습니다.</p>
+  <div class="meta">
+    <span>작성일 2026-05-19</span>
+    <span>정본: docs/plan/phase-8/PHASE_8_CLOSEOUT_FINDINGS.md</span>
+    <span>마크다운: docs/USER_GUIDE_PHASE_8.md</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Phase 8의 목적</a></li>
+    <li><a href="#s2">Phase 8에서 가능해진 것</a></li>
+    <li><a href="#s3">데이터 모델 — call_recordings</a></li>
+    <li><a href="#s4">Recording Lifecycle (7-state)</a></li>
+    <li><a href="#s5">REST 표면</a></li>
+    <li><a href="#s6">프론트엔드 — 통화 페이지</a></li>
+    <li><a href="#s7">보존 정책</a></li>
+    <li><a href="#s8">권한 매트릭스</a></li>
+    <li><a href="#s9">보안 정책 요약</a></li>
+    <li><a href="#s10">의도된 한계</a></li>
+    <li><a href="#s11">운영자 환경 변수</a></li>
+    <li><a href="#s12">에러 응답</a></li>
+    <li><a href="#s13">Phase 8 검증 명령</a></li>
+    <li><a href="#s14">다음 Phase 인계</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <h2>1. Phase 8의 목적</h2>
+  <p>Phase 1~7까지의 시스템은 통화 메타데이터 / transcript / 액션 / 보고서 / 운영 게이트가 모두 닫혔지만, <strong>실 통화 audio 자체를 다루는 표면이 없었습니다</strong>.</p>
+  <p>Phase 8이 채운 5가지 빈자리:</p>
+  <ol>
+    <li><strong>녹취 metadata를 org 안에서 안전하게 저장한다.</strong> <code>call_recordings</code> 테이블은 FORCE RLS + composite FK로 다른 회사의 녹취 row를 절대 볼 수 없습니다. DB에는 audio bytes / signed URL / provider credential을 저장하지 않고 metadata만 둡니다.</li>
+    <li><strong>object storage를 직접 노출하지 않는다.</strong> 사용자는 backend가 발급하는 짧은 TTL signed URL로만 audio에 접근합니다. bucket name / object key / provider 자격 증명은 frontend / audit / API response 어디에도 노출되지 않습니다.</li>
+    <li><strong>REST 표면으로 upload / finalize / list / playback / delete를 닫는다.</strong> 5종 endpoint가 권한 / org context / state guard를 거치고, 모든 mutation이 audit row를 남깁니다.</li>
+    <li><strong>calls 페이지에서 녹취를 직접 본다.</strong> 통화 상세 패널에 6-state recording surface (loading / 없음 / 처리 중 / 재생 가능 / 실패 / 삭제됨)가 붙어 audio 컨트롤이 정상 동작합니다.</li>
+    <li><strong>90일 retention 정책을 자동으로 강제한다.</strong> Phase 7 retention worker에 통합되어, 90일이 지난 녹취는 object storage에서 삭제되고 metadata가 tombstone 처리됩니다.</li>
+  </ol>
+  <p>Phase 8이 끝나면 운영자 / 평가자는 <strong>REST 또는 데스크탑 / 브라우저 capture 도구로 audio 업로드 → finalize → 통화 페이지에서 재생 → 권한별 삭제 → 90일 자동 정리</strong> 흐름을 실제 운영처럼 진행할 수 있습니다 (capture UI는 별도 트랙, §10 참고).</p>
+</section>
+
+<section id="s2">
+  <h2>2. Phase 8에서 가능해진 것</h2>
+  <p>운영 환경 시점 기준 (<code>RECORDING_STORAGE_PROVIDER=s3</code> 또는 <code>minio</code>, <code>KLOSER_RETENTION_ENABLED=true</code>):</p>
+  <ul>
+    <li>통화별로 녹취 metadata가 org 안에 저장되고, 다른 회사 사용자는 read / write / delete 어떤 방법으로도 접근할 수 없습니다.</li>
+    <li>클라이언트가 object storage 자격 증명을 직접 갖지 않습니다. backend가 발급하는 5~15분 TTL signed URL로만 upload / playback이 가능합니다.</li>
+    <li>통화 상세 패널에서 녹취 상태가 처리 단계별로 표시되고, "재생 가능" 상태에서는 audio 컨트롤로 즉시 재생할 수 있습니다.</li>
+    <li>만료 직전(30초 전) signed URL이 자동으로 갱신되어 재생이 끊기지 않습니다. detail을 닫거나 다른 통화로 전환하면 audio src / refresh timer가 즉시 정리됩니다.</li>
+    <li>viewer 역할은 삭제 버튼을 보지 않습니다. employee / manager / admin은 backend 권한 매트릭스에 따라 본인 / 팀 / 조직 범위 안의 녹취만 삭제할 수 있습니다.</li>
+    <li>90일이 지난 녹취는 retention worker가 자동으로 object storage에서 삭제하고 metadata를 tombstone 처리합니다. 운영자 추적용 aggregate audit row 1건만 남고 object key / recording id는 audit에 들어가지 않습니다.</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2>3. 데이터 모델 — call_recordings</h2>
+  <p>녹취 metadata는 <code>call_recordings</code> 테이블에 저장됩니다.</p>
+  <h3>핵심 컬럼 (사용자가 알 필요가 있는 부분만)</h3>
+  <ul>
+    <li><code>id</code> — recording 식별자 (UUID, 같은 org 안에서 unique)</li>
+    <li><code>call_id</code> — 연결된 통화 (composite FK <code>(org_id, call_id) → calls(org_id, id)</code> ON DELETE CASCADE)</li>
+    <li><code>status</code> — 7-state lifecycle (§4 참고)</li>
+    <li><code>content_type</code> — <code>audio/webm</code> / <code>audio/ogg</code> / <code>audio/mpeg</code> / <code>audio/mp4</code> / <code>audio/wav</code> 5종 허용</li>
+    <li><code>duration_seconds</code>, <code>size_bytes</code>, <code>codec</code> — playback / 메타 표시용</li>
+    <li><code>recorded_at</code>, <code>uploaded_at</code> — 시점 정보</li>
+    <li><code>retention_delete_after</code> — per-row 명시 cutoff (NULL이면 <code>uploaded_at + 90일</code> 정책 적용)</li>
+    <li><code>deleted_at</code>, <code>error_message</code> — 삭제 / 실패 표시</li>
+    <li><code>metadata</code> — JSON object (운영용)</li>
+  </ul>
+  <h3>API 응답 / frontend / audit에는 노출되지 않는 필드</h3>
+  <ul>
+    <li><code>org_id</code> (auth가 이미 강제)</li>
+    <li><code>storage_provider</code> / <code>storage_bucket</code> / <code>object_key</code> / <code>object_version</code> — 내부 storage locator</li>
+    <li><code>checksum_sha256</code> — 운영용 무결성 marker</li>
+    <li><code>metadata</code> — 운영용</li>
+  </ul>
+  <h3>RLS</h3>
+  <ul>
+    <li>모든 org가 본인 row만 SELECT / INSERT / UPDATE / DELETE 가능 (<code>org_id = current_app_org_id()</code> + FORCE RLS).</li>
+    <li>bare pool (org context 없음) → 0 rows.</li>
+    <li>다른 org의 <code>call_id</code>를 raw insert해도 composite FK가 거부 (<code>23503</code>).</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2>4. Recording Lifecycle (7-state)</h2>
+<pre><code>upload_pending  →  uploaded  →  processing  →  available
+                                     ↓
+                                  failed
+       ↓
+   delete_pending  →  deleted</code></pre>
+  <table>
+    <thead><tr><th>status</th><th>의미</th></tr></thead>
+    <tbody>
+      <tr><td><code>upload_pending</code></td><td>metadata row 생성됨. signed upload URL 발급됨. 아직 object storage에 byte 없음</td></tr>
+      <tr><td><code>uploaded</code></td><td>finalize 호출됨. size / checksum 검증 완료</td></tr>
+      <tr><td><code>processing</code></td><td>(v1 사용 안 함) future transcoding 단계 자리</td></tr>
+      <tr><td><code>available</code></td><td>재생 가능</td></tr>
+      <tr><td><code>failed</code></td><td>upload 또는 finalize 실패. <code>error_message</code>에 사유 (bucket / key 미포함)</td></tr>
+      <tr><td><code>delete_pending</code></td><td>사용자 또는 retention sweep이 삭제 시작. object 삭제 대기</td></tr>
+      <tr><td><code>deleted</code></td><td>object 삭제 완료. metadata는 audit 보존을 위해 row는 남음 (tombstone)</td></tr>
+    </tbody>
+  </table>
+  <p>v1에서는 finalize가 성공하면 자동으로 <code>uploaded → available</code> 전환됩니다. transcoding pipeline이 추가되면 <code>processing</code> state가 끼게 됩니다.</p>
+</section>
+
+<section id="s5">
+  <h2>5. REST 표면 (Step 3)</h2>
+  <p>모든 endpoint는 <code>requireAuth</code> + <code>orgContext</code> + (mutation의 경우 <code>requireVerified</code> + role 매트릭스 + <code>requireFreshRole</code>) 게이트를 거칩니다. cross-org는 404 / empty로 불투명 처리합니다.</p>
+
+  <h3>5.1 <code>POST /calls/:id/recordings/upload</code></h3>
+  <ul>
+    <li>동작: metadata row 생성 (<code>upload_pending</code>) + signed PUT URL 발급.</li>
+    <li>request body: <code>content_type</code>, <code>size_bytes</code>, optional <code>duration_seconds</code> / <code>codec</code> / <code>recorded_at</code>.</li>
+    <li>response: <code>recording</code>(sanitized) + <code>signed_url</code>(method / url / headers / expires_at).</li>
+    <li>권한: admin / manager / employee. viewer 차단.</li>
+    <li>에러:
+      <ul>
+        <li>400 <code>invalid_input</code> — content_type / checksum / size 형식 오류</li>
+        <li>403 <code>forbidden</code> — role / ownership 거부</li>
+        <li>404 <code>not_found</code> — call이 다른 org이거나 없음</li>
+        <li>413 <code>recording_too_large</code> — size_bytes > 250MB (env <code>RECORDING_UPLOAD_MAX_BYTES</code>로 조정)</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>5.2 <code>POST /calls/:id/recordings/:recordingId/finalize</code></h3>
+  <ul>
+    <li>동작: object를 storage에 올린 뒤 backend에 finalize 요청. size / checksum / metadata 확정.</li>
+    <li>request body: <code>size_bytes</code>, optional <code>checksum_sha256</code>, <code>duration_seconds</code>, <code>codec</code>.</li>
+    <li>response: 200 + sanitized recording (status=<code>available</code>).</li>
+    <li>에러:
+      <ul>
+        <li>404 — recording이 cross-org이거나 path call_id와 일치하지 않음</li>
+        <li>409 <code>invalid_recording_state</code> — 이미 <code>available</code> 등 잘못된 state에서 호출 (<code>current_status</code> echo)</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>5.3 <code>GET /calls/:id/recordings</code></h3>
+  <ul>
+    <li>동작: 해당 call의 active recording 배열. tombstoned row는 제외.</li>
+    <li>response: <code>items: CallRecording[]</code> (sanitized).</li>
+    <li>cross-org call → 404.</li>
+  </ul>
+
+  <h3>5.4 <code>GET /calls/:id/recordings/:recordingId/playback-url</code></h3>
+  <ul>
+    <li>동작: 짧은 TTL의 signed GET URL 발급.</li>
+    <li>권한: 통화 read 권한이 있는 모든 멤버 (admin / manager / employee / viewer).</li>
+    <li>response: <code>url</code>, <code>method='GET'</code>, <code>headers</code>, <code>expires_at</code>. TTL 기본 300초, 최대 900초.</li>
+    <li>에러:
+      <ul>
+        <li>404 — recording이 cross-org / 없음</li>
+        <li>409 <code>invalid_recording_state</code> — <code>available</code>이 아닌 상태</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>5.5 <code>DELETE /calls/:id/recordings/:recordingId</code></h3>
+  <ul>
+    <li>동작: 2-phase delete.
+      <ol>
+        <li><code>markDeletePending</code> (짧은 tx) + audit <code>recording.delete_requested</code></li>
+        <li>adapter.<code>deleteObject</code> (DB tx 밖)</li>
+        <li><code>markDeleted</code> (짧은 tx) + audit <code>recording.deleted</code></li>
+      </ol>
+    </li>
+    <li>response: 204.</li>
+    <li>에러:
+      <ul>
+        <li>403 — viewer 또는 cross-team employee</li>
+        <li>404 — recording이 cross-org / 이미 tombstone됨 (<code>call_action_items</code> DELETE와 동일 contract)</li>
+        <li>502 <code>recording_storage_failed</code> — storage 응답 실패. row는 <code>delete_pending</code>에 남고 retention sweep이 재시도</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>5.6 Audit 이벤트 (5종)</h3>
+  <p>모든 mutation은 audit row를 남깁니다. payload는 <strong>이름 / 수치 / state code만</strong> 포함하고 raw URL / object key / checksum 같은 민감 값은 포함하지 않습니다.</p>
+  <table>
+    <thead><tr><th>Action</th><th>Payload (허용 키 예시)</th></tr></thead>
+    <tbody>
+      <tr><td><code>recording.upload_initiated</code></td><td>recording_id, content_type, size_bytes, duration_seconds, ttl_seconds</td></tr>
+      <tr><td><code>recording.finalized</code></td><td>recording_id, content_type, size_bytes, duration_seconds</td></tr>
+      <tr><td><code>recording.playback_url_issued</code></td><td>recording_id, ttl_seconds</td></tr>
+      <tr><td><code>recording.delete_requested</code></td><td>recording_id, previous_status</td></tr>
+      <tr><td><code>recording.deleted</code></td><td>recording_id</td></tr>
+    </tbody>
+  </table>
+  <blockquote class="warn">
+    Audit에는 절대 들어가지 않는 값: <code>object_key</code>, <code>storage_bucket</code>, <code>bucket</code>, <code>signed_url</code>, <code>playback_url</code>, <code>upload_url</code>, <code>checksum</code>, <code>object_version</code>, <code>provider_secret</code>, <code>access_key</code>, <code>secret_access_key</code>, raw audio.
+  </blockquote>
+</section>
+
+<section id="s6">
+  <h2>6. 프론트엔드 — 통화 페이지 (<code>platform/calls.html</code>)</h2>
+
+  <h3>6.1 위치</h3>
+  <p>통화 페이지 우측 상세 패널 안, 메모 작성 영역 바로 위에 "녹음" 라벨이 붙은 카드가 추가됐습니다. 카드 하나가 6-state renderer로 동작합니다.</p>
+
+  <h3>6.2 6 상태 화면</h3>
+  <table>
+    <thead><tr><th>state</th><th>표시</th></tr></thead>
+    <tbody>
+      <tr><td>로딩</td><td>"녹음 정보를 불러오는 중…" + 로딩 배지</td></tr>
+      <tr><td>녹음 없음</td><td>"이 통화에는 녹음 파일이 없습니다."</td></tr>
+      <tr><td>처리 중</td><td>"업로드 대기 / 처리 대기 / 처리 중" 중 하나 + 새로고침 버튼</td></tr>
+      <tr><td>재생 가능</td><td>"재생 가능" 배지 + <code>&lt;audio controls preload="none"&gt;</code> + URL 새로고침 / 삭제 버튼 + 길이 · 용량 · 코덱 메타</td></tr>
+      <tr><td>실패</td><td>"실패" 배지 + 사유 (escape됨, bucket / key 미포함)</td></tr>
+      <tr><td>삭제됨</td><td>"삭제됨" 배지</td></tr>
+    </tbody>
+  </table>
+  <p>길이 / 용량 / 코덱은 모두 helper로 포맷팅한 뒤 escape됩니다. server-supplied 값은 어디에도 raw로 들어가지 않습니다.</p>
+
+  <h3>6.3 Audio 재생 흐름</h3>
+  <ul>
+    <li>audio element 생성 시점에는 <code>src</code>가 비어 있습니다.</li>
+    <li>재생 가능 상태에서 backend가 발급한 signed URL을 <code>audio.src = playback.url</code> 형태로 DOM property로만 결합합니다. page-authored innerHTML 템플릿 / visible text / console 어디에도 URL이 들어가지 않습니다 (브라우저 native 동작상 DOM inspector / outerHTML에서는 media <code>src</code> attribute가 보일 수 있습니다 — 이는 native audio playback의 브라우저 반영입니다).</li>
+    <li><code>preload="none"</code> 정책으로 사용자가 재생 버튼을 누른 시점에만 byte fetch가 발생합니다.</li>
+  </ul>
+
+  <h3>6.4 자동 URL 새로고침</h3>
+  <ul>
+    <li>만료 30초 전 자동 갱신 (너무 가까우면 15초 floor).</li>
+    <li>새로고침은 monotonic epoch + 현재 통화 / 녹취 id가 모두 일치할 때만 동작 — detail 전환 race condition으로 잘못된 통화의 URL이 적용되지 않습니다.</li>
+    <li>audio 재생 중 에러가 나면 1회 자동 재시도 후 멈춥니다. 무한 재시도 루프 없음.</li>
+  </ul>
+
+  <h3>6.5 Detail close / 통화 전환</h3>
+  <p>다른 통화 detail로 전환하거나 detail을 닫으면 즉시:</p>
+  <ul>
+    <li>audio.src 해제</li>
+    <li>refresh timer 취소</li>
+    <li>epoch +1로 in-flight 요청 무효화</li>
+    <li>surface DOM clear</li>
+  </ul>
+
+  <h3>6.6 삭제 버튼</h3>
+  <ul>
+    <li>viewer 역할에게는 표시되지 않습니다 (<code>/me.membership.role</code> 캐시 기반 hide).</li>
+    <li>표시되더라도 backend가 권한 authority — viewer가 직접 호출하면 403.</li>
+    <li>클릭 시 204면 즉시 "삭제됨"으로 표시 → server truth로 reconcile.</li>
+    <li>502 (storage 실패) → "저장소 삭제 실패. 잠시 후 다시 시도해주세요." (retention sweep이 백그라운드에서 재시도).</li>
+  </ul>
+</section>
+
+<section id="s7">
+  <h2>7. 보존 정책 (Step 5)</h2>
+
+  <h3>7.1 정책 한 줄</h3>
+<pre><code>업로드 후 90일 또는 explicit retention_delete_after 시각 도달
+→ object storage 삭제 + metadata tombstone</code></pre>
+
+  <h3>7.2 활성화</h3>
+  <p>운영 환경에서 <code>KLOSER_RETENTION_ENABLED=true</code>를 설정합니다. dev / test 기본 OFF. Phase 7 transcript / email recovery sweep과 같은 마스터 게이트를 공유합니다.</p>
+
+  <h3>7.3 두 cutoff</h3>
+  <p>retention worker는 row마다 두 가지 cutoff를 동시에 검사합니다.</p>
+  <ul>
+    <li><strong><code>explicitCutoff</code></strong> (보통 <code>now</code>) — <code>retention_delete_after</code>가 명시된 row에만 적용. per-row override.</li>
+    <li><strong><code>uploadedBefore</code></strong> (보통 <code>now - 90일</code>) — <code>retention_delete_after</code>가 없는 row의 default 정책.</li>
+  </ul>
+  <p>단일 cutoff를 쓰면 explicit override가 90일 지연되거나 갓 업로드된 row가 즉시 만료되는 부정합이 있어, 의도적으로 분리했습니다.</p>
+
+  <h3>7.4 처리 흐름</h3>
+  <ol>
+    <li>후보 row 조회 (<code>uploaded</code> / <code>available</code> / <code>failed</code> 중에서, 두 cutoff 조건 OR).</li>
+    <li>각 row에 대해 <code>adapter.deleteObject(bucket, object_key, object_version)</code>.
+      <ul>
+        <li><code>storage_object_not_found</code> → idempotent success.</li>
+        <li>그 외 실패 → 카운터 증가, 다음 tick으로 이월.</li>
+      </ul>
+    </li>
+    <li>성공한 row만 짧은 tx로 <code>markDeleted</code> (status=<code>deleted</code>, <code>deleted_at=now</code>).</li>
+    <li>사용자 DELETE가 storage 실패로 <code>delete_pending</code>에 남은 row도 같은 sweep에서 retry. retry는 <code>updated_at</code>이 <code>now - 15분</code>보다 오래된 row만 (운영자가 만들고 있는 in-flight delete를 race하지 않도록 floor).</li>
+  </ol>
+
+  <h3>7.5 Aggregate audit</h3>
+  <p>한 tick에 1건 이상 처리되면 org당 1개 audit row가 작성됩니다.</p>
+<pre><code>{
+  "actor_type": "system",
+  "cutoff": "...",
+  "uploaded_before": "...",
+  "retention_days": 90,
+  "deleted_count": 3,
+  "object_not_found_count": 1,
+  "failed_count": 0,
+  "delete_pending_retried_count": 0,
+  "batch_size": 100,
+  "batches": 1,
+  "storage_provider_counts": { "local": 3, "s3": 0, "minio": 0 }
+}</code></pre>
+  <blockquote class="warn">
+    강제로 <strong>들어가지 않는</strong> 값: recording_id, recording_ids, call_id, call_ids, object_key, storage_bucket, signed URL, checksum, object_version, provider endpoint, access key, secret, raw audio.
+  </blockquote>
+
+  <h3>7.6 Worker 로그</h3>
+<pre><code>[retention-sweep] orgs=N transcriptsDeleted=N emailRecovered=N recordingsDeleted=N recordingObjectNotFound=N recordingDeleteFailures=N failedOrgs=N</code></pre>
+  <p>aggregate counter만 남고 row 단위 정보는 노출되지 않습니다.</p>
+</section>
+
+<section id="s8">
+  <h2>8. 권한 매트릭스 (요약)</h2>
+  <table>
+    <thead><tr><th>Endpoint</th><th>admin</th><th>manager</th><th>employee</th><th>viewer</th></tr></thead>
+    <tbody>
+      <tr><td>POST upload</td><td>✅</td><td>✅ (본인 팀)</td><td>✅ (본인 통화)</td><td>❌ 403</td></tr>
+      <tr><td>POST finalize</td><td>✅</td><td>✅ (본인 팀)</td><td>✅ (본인 통화)</td><td>❌ 403</td></tr>
+      <tr><td>GET list</td><td>✅</td><td>✅</td><td>✅</td><td>✅ (read-only)</td></tr>
+      <tr><td>GET playback-url</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+      <tr><td>DELETE</td><td>✅</td><td>✅ (본인 팀)</td><td>✅ (본인 통화)</td><td>❌ 403</td></tr>
+    </tbody>
+  </table>
+  <p>manager / employee 분기는 <code>assertCanMutateCall</code> 매트릭스 (Phase 5)에 따릅니다. cross-org 또는 권한 거부는 404 / 403으로 불투명 처리됩니다.</p>
+</section>
+
+<section id="s9">
+  <h2>9. 보안 정책 요약</h2>
+  <table>
+    <thead><tr><th>항목</th><th>보장 방법</th></tr></thead>
+    <tbody>
+      <tr><td>object_key / bucket</td><td>응답 / audit / frontend / 로그 어디에도 노출되지 않음. shared type에서 schema 레벨로 제외</td></tr>
+      <tr><td>signed URL</td><td>짧은 TTL (read 300s, upload 600s, 최대 900s), 만료 30초 전 자동 갱신, visible text / page-authored innerHTML / console 노출 없음</td></tr>
+      <tr><td>audio bytes</td><td>DB에 저장하지 않음. object storage에만 저장</td></tr>
+      <tr><td>provider credential</td><td>env에서만 읽음. error 메시지에 값 echo 없음, key 이름만 enumerate</td></tr>
+      <tr><td>frontend XSS</td><td><code>error_message</code> 같은 server-supplied 값은 escapeHtml 또는 textContent. raw <code>innerHTML</code> 미사용</td></tr>
+      <tr><td>RLS</td><td>FORCE RLS + <code>(org_id, call_id)</code> composite FK. bare pool / cross-org 모두 0 rows / 23503</td></tr>
+      <tr><td>audit</td><td>row 단위 식별자 / locator 미포함. aggregate counter만</td></tr>
+      <tr><td>path traversal (local provider)</td><td>2-stage 차단 — input regex (<code>..</code> / encoded / absolute / backslash / control char / >1024 chars) + <code>path.relative</code> 재검증</td></tr>
+      <tr><td>upload size</td><td>단일 upload 250 MB cap. 초과 시 413</td></tr>
+      <tr><td>provider env 누락</td><td>production boot fail-fast. 메시지에 값 echo 없음</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="s10">
+  <h2>10. 의도된 한계 (Phase 8 v1 미포함)</h2>
+  <ul>
+    <li><strong>데스크탑 / 브라우저 audio capture pipeline.</strong> Phase 8 v1은 backend / API / playback / retention까지만 닫았습니다. 사용자가 직접 새 녹취를 만들 capture UI는 별도 트랙(<code>docs/plan/roadmap/DESKTOP_APP_PLAN.md</code>)에서 진행됩니다.</li>
+    <li><strong>legal consent UX.</strong> 통화 녹음 사전 동의 / 안내 / 거부 옵션은 product + legal 트랙에서 별도 결정합니다.</li>
+    <li><strong>multi-recording picker.</strong> 한 통화의 녹취 row가 여러 개일 때 (failed retry, replacement upload), UI는 primary 한 개만 표시합니다. 사용 사례가 잦아지면 picker 추가.</li>
+    <li><strong>waveform / transcoding / transcript-audio alignment.</strong> 제품 품질 개선 항목. v1 뒤로 미룹니다.</li>
+    <li><strong>MinIO / S3 실 provider integration smoke 자동화.</strong> opt-in 통합 gate 부재. staging 배포 직전에 1회 수동 검증 권장.</li>
+    <li><strong>retention dead-letter mechanism.</strong> storage 영구 실패 row가 <code>delete_pending</code>에 무한 누적되지 않도록 일정 retry 후 dead-letter로 옮기는 정책. 운영 데이터가 쌓인 뒤 별도 step에서 다룹니다.</li>
+  </ul>
+</section>
+
+<section id="s11">
+  <h2>11. 운영자 환경 변수 (Phase 8 신규)</h2>
+  <table>
+    <thead><tr><th>Key</th><th>필수 여부</th><th>Default / 동작</th></tr></thead>
+    <tbody>
+      <tr><td><code>RECORDING_STORAGE_PROVIDER</code></td><td>production 필수</td><td><code>local</code> / <code>s3</code> / <code>minio</code> 중 하나. 미설정 시 production boot fail-fast, dev/test는 <code>local</code></td></tr>
+      <tr><td><code>RECORDING_STORAGE_LOCAL_ROOT</code></td><td>local 선택</td><td>기본 <code>.data/recordings</code></td></tr>
+      <tr><td><code>RECORDING_STORAGE_BUCKET</code></td><td>s3 / minio 필수</td><td>bucket name</td></tr>
+      <tr><td><code>RECORDING_STORAGE_REGION</code></td><td>s3 / minio 필수</td><td>region 문자열</td></tr>
+      <tr><td><code>RECORDING_STORAGE_ENDPOINT</code></td><td>minio 필수 / s3 선택</td><td>endpoint URL</td></tr>
+      <tr><td><code>RECORDING_STORAGE_ACCESS_KEY_ID</code></td><td>s3 / minio 필수</td><td>access key</td></tr>
+      <tr><td><code>RECORDING_STORAGE_SECRET_ACCESS_KEY</code></td><td>s3 / minio 필수</td><td>secret access key</td></tr>
+      <tr><td><code>RECORDING_STORAGE_SESSION_TOKEN</code></td><td>s3 / minio 선택</td><td>임시 자격 증명</td></tr>
+      <tr><td><code>RECORDING_STORAGE_FORCE_PATH_STYLE</code></td><td>s3 / minio 선택</td><td>minio 기본 true / s3 기본 false</td></tr>
+      <tr><td><code>RECORDING_UPLOAD_MAX_BYTES</code></td><td>선택</td><td>단일 upload size cap (기본 250 MB)</td></tr>
+      <tr><td><code>KLOSER_RETENTION_ENABLED</code></td><td>운영 ON</td><td>retention sweep 마스터 게이트 (Phase 7과 공유)</td></tr>
+      <tr><td><code>KLOSER_RETENTION_RECORDING_DAYS</code></td><td>선택</td><td>기본 90 (범위 1..36500)</td></tr>
+      <tr><td><code>KLOSER_RETENTION_RECORDING_BATCH_SIZE</code></td><td>선택</td><td>기본 100 (범위 1..1000)</td></tr>
+      <tr><td><code>KLOSER_RETENTION_RECORDING_DELETE_PENDING_RETRY_AFTER_SEC</code></td><td>선택</td><td>기본 900 (범위 60..86400)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="s12">
+  <h2>12. 에러 응답 한눈에</h2>
+  <table>
+    <thead><tr><th>상황</th><th>status</th><th>code</th></tr></thead>
+    <tbody>
+      <tr><td>인증 토큰 없음 / 만료</td><td>401</td><td>unauthorized</td></tr>
+      <tr><td>권한 부족 (viewer 또는 cross-team employee)</td><td>403</td><td>forbidden</td></tr>
+      <tr><td>다른 org 통화 / 녹취</td><td>404</td><td>not_found</td></tr>
+      <tr><td>통화에 녹취가 없음 / 이미 tombstone됨</td><td>404</td><td>not_found</td></tr>
+      <tr><td>content_type / checksum / size 형식 오류</td><td>400</td><td>invalid_input</td></tr>
+      <tr><td>state 조건 위반 (이미 available, 이미 deleted 등)</td><td>409</td><td>invalid_recording_state</td></tr>
+      <tr><td>size_bytes &gt; 250 MB</td><td>413</td><td>recording_too_large</td></tr>
+      <tr><td>object storage 일시 실패</td><td>502</td><td>recording_storage_failed</td></tr>
+      <tr><td>boot 시 provider 미설정 / env 누락</td><td>(boot fail-fast)</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <p><code>409 invalid_recording_state</code> 응답은 <code>current_status</code> 필드도 함께 echo합니다 (예: <code>{ "error": "invalid_recording_state", "current_status": "uploaded" }</code>).</p>
+</section>
+
+<section id="s13">
+  <h2>13. Phase 8 검증 명령</h2>
+  <p>closeout 시점(2026-05-19)에 다음이 모두 PASS인 상태를 확인했습니다.</p>
+<pre><code>npm --prefix server run typecheck            # PASS
+npm --prefix server run db:migrate:up        # PASS (Phase 8 migrations 적용)
+node test/sync_shared_types.mjs              # PASS (callRecording entity 포함)
+
+npm --prefix server test                      # 852 total / 849 PASS / 3 skipped / 0 fail</code></pre>
+  <p>Browser smoke (Playwright, Step 4 마지막 회):</p>
+  <ul>
+    <li>데스크탑 1440×900 + 모바일 390×844 모두 6-state renderer 정상.</li>
+    <li>audio 재생 / URL 새로고침 / 삭제 reconcile 흐름 정상.</li>
+    <li>console errors 0건. signed URL이 page-authored DOM / visible text에 노출되지 않음.</li>
+  </ul>
+</section>
+
+<section id="s14">
+  <h2>14. 다음 Phase 인계</h2>
+  <p>운영 출시 직전 게이트(Phase 7) + v1 녹취 표면(Phase 8)이 모두 닫혔습니다. 다음 작업 후보:</p>
+  <ul>
+    <li><strong>결제 provider 연동</strong> (별도 Phase) — Phase 7 closeout에서 이월된 항목. Stripe Checkout 또는 Toss 결제 위젯. 외부 돈 이동 / 회계 계약 / webhook / invoice가 동반되어 본 repo의 Phase와 분리.</li>
+    <li><strong>데스크탑 / 브라우저 capture pipeline</strong> — Phase 8 v1 backend가 닫혔으므로 frontend capture UI만 추가하면 사용자가 직접 녹취를 만들 수 있습니다. <code>docs/plan/roadmap/DESKTOP_APP_PLAN.md</code>.</li>
+    <li><strong>legal consent UX</strong> — 별도 product + legal 트랙.</li>
+    <li><strong>MinIO / S3 통합 smoke + opt-in gate</strong> — <code>KLOSER_RECORDING_S3_INTEGRATION=true</code> 같은 명시적 env로 실 provider 4종 메소드 호출 검증 자동화.</li>
+    <li><strong>retention dead-letter mechanism</strong> — <code>delete_pending</code> 무한 누적 방어.</li>
+    <li><strong>multi-recording picker / waveform / transcoding / transcript-audio alignment</strong> — 제품 품질 트랙.</li>
+  </ul>
+  <p>자세한 인계 노트는 <code>docs/plan/phase-8/PHASE_8_CLOSEOUT_FINDINGS.md §5</code>와 <code>§8</code>을 참고하세요.</p>
+</section>
+
+<footer class="foot">
+  Kloser · Phase 8 사용자 가이드 · 작성일 2026-05-19
+</footer>
+
+</div>
+</body>
+</html>

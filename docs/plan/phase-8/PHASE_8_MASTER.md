@@ -14,14 +14,14 @@
 
 ## 0. 진행 상태
 
-> **Phase 8 Step 5 완료.** Step 1~4에 이어 retention worker integration까지 닫혔다. recording 90일 정책 + delete_pending retry + aggregate audit가 Phase 7 retention worker에 통합됐고 기본 테스트는 여전히 network 호출이 없다. 다음은 Phase 8 closeout (findings + user guide + README + full validation).
+> **Phase 8 완료.** Step 1~5 + closeout이 모두 닫혔다. metadata schema → repository + storage adapter → REST 표면 → frontend playback → retention worker integration까지 한 묶음으로 봉합된 상태다. 다음 트랙은 결제 provider 연동 / 데스크탑 audio capture pipeline 등 별도 Phase 후보 (`PHASE_8_CLOSEOUT_FINDINGS.md §8`).
 
 - [x] **Step 1 - `call_recordings` metadata schema**: `call_recordings` table, org-scoped RLS, object metadata columns, retention cutoff metadata, app grants. 상세 계획은 `PHASE_8_STEP_1_PLAN.md`, 결과는 `PHASE_8_STEP_1_FINDINGS.md`.
 - [x] **Step 2 - repository + storage adapter boundary**: typed repository (`server/src/repositories/callRecordings.ts`), recording storage adapter (`server/src/adapters/recordingStorage.ts`) — local filesystem provider (with two-stage path-traversal protection) + s3/minio env validator + sentinel adapter. RLS/cross-org/FK/CHECK/UNIQUE/lifecycle/retention 회귀 32 case. 계획 `PHASE_8_STEP_2_PLAN.md`, 결과 `PHASE_8_STEP_2_FINDINGS.md`.
 - [x] **Step 3 - upload/finalize/playback routes**: audit action migration (`1715000029000_phase8_recording_activity_actions.sql`) + `ActivityAction` lockstep + 5 service helper. shared types (`server/src/types/callRecording.ts` + browser mirror + sync registry). `recordingStoragePlugin` Fastify decorator. `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` 실 SDK adapter (sentinel은 opt-in factory로 보존). `services/callRecordings.ts` (initiate/finalize/list/playbackUrl/delete) + `routes/callRecordings.ts` 5 endpoint + plugin-scoped error handler. route tests 21 + audit hooks tests 5. 계획 `PHASE_8_STEP_3_PLAN.md`, 결과 `PHASE_8_STEP_3_FINDINGS.md`.
 - [x] **Step 4 - frontend playback UI**: `platform/api.js`에 list/playback-url/delete 3 helper. `platform/calls.html` detail panel에 recording surface 추가 — 6-state renderer(loading / none / processing / available / failed / deleted), `<audio controls preload="none">`에 signed URL을 DOM property로만 결합, 만료 30초 전 epoch-guarded auto refresh, detail close / 다른 call open 시 audio src + timer cleanup, viewer hide via `/me` role 캐시(backend는 여전히 authority). browser smoke: 데스크탑 1440×900 + 모바일 390×844 PASS, console errors 0건, object_key / bucket / signature는 visible text나 page-authored innerHTML template에 노출되지 않음. 계획 `PHASE_8_STEP_4_PLAN.md`, 결과 `PHASE_8_STEP_4_FINDINGS.md`.
-- [x] **Step 5 - retention worker integration**: audit action migration (`1715000030000_phase8_recording_retention_audit_action.sql`) + `ActivityAction` lockstep. repository: `listRetentionCandidatesInCurrentOrg` 단일 cutoff → two-cutoff (`explicitCutoff` + `uploadedBefore`); `listDeletePendingRetryCandidatesInCurrentOrg` 신규. config: `recordingRetentionDays`(90) / `recordingBatchSize`(100) / `recordingDeletePendingRetryAfterSec`(900). service: `runRecordingRetentionForOrg` — object storage delete를 long DB tx 밖에서 실행, `storage_object_not_found`는 idempotent success, 실패 row는 다음 tick으로 이월, aggregate audit `retention.recordings_deleted` (recording_id / object_key / signed URL / checksum 모두 비포함). worker bootstrap에 `recordingStoragePlugin` 추가. result/log에 recording aggregate counter 추가. tests: repo 9 + service 11 + Phase 7 retention 회귀 갱신 14. 계획 `PHASE_8_STEP_5_PLAN.md`, 결과 `PHASE_8_STEP_5_FINDINGS.md`.
-- [ ] **Closeout**: findings, user guide, README, full validation.
+- [x] **Step 5 - retention worker integration**: audit action migration (`1715000030000_phase8_recording_retention_audit_action.sql`) + `ActivityAction` lockstep. repository: `listRetentionCandidatesInCurrentOrg` 단일 cutoff → two-cutoff (`explicitCutoff` + `uploadedBefore`); `listDeletePendingRetryCandidatesInCurrentOrg` 신규. config: `recordingRetentionDays`(90) / `recordingBatchSize`(100) / `recordingDeletePendingRetryAfterSec`(900). service: `runRecordingRetentionForOrg` — object storage delete를 long DB tx 밖에서 실행, `storage_object_not_found`는 idempotent success, 실패 row는 다음 tick으로 이월, aggregate audit `retention.recordings_deleted` (recording_id / object_key / signed URL / checksum 모두 비포함). worker bootstrap에 `recordingStoragePlugin` 추가. result/log에 recording aggregate counter 추가. tests: repo 9 + service 12 + Phase 7 retention 회귀 갱신 14. 계획 `PHASE_8_STEP_5_PLAN.md`, 결과 `PHASE_8_STEP_5_FINDINGS.md`.
+- [x] **Closeout**: findings (`PHASE_8_CLOSEOUT_FINDINGS.md`), 사용자 가이드 (`docs/USER_GUIDE_PHASE_8.md` + `docs/USER_GUIDE_PHASE_8.html`), README + `docs/plan/README.md` 갱신, Go/No-Go 10/10 PASS, full server test 852 total / 849 PASS / 3 skipped / 0 fail.
 
 ---
 
@@ -166,33 +166,35 @@ Phase 8의 목표는 통화 원문 오디오를 Kloser의 existing call lifecycl
 
 ## 6. Phase 8 Go / No-Go
 
-Phase 8 closeout 최소 기준:
+Phase 8 closeout 시점에 모두 PASS (10/10):
 
-- [ ] `call_recordings` table has FORCE RLS and composite FK isolation.
-- [ ] repository tests prove bare-pool invisibility and cross-org isolation.
-- [ ] upload/finalize/playback routes require authenticated org context and hide cross-org rows.
-- [ ] signed playback URL never exposes provider credentials and has bounded TTL.
-- [ ] frontend playback UI labels API-backed data correctly and has no unsafe server-value `innerHTML`.
-- [ ] retention worker deletes or tombstones expired recordings and does not leak object keys in audit payload.
-- [ ] `npm --prefix server run typecheck` PASS.
-- [ ] `node test/sync_shared_types.mjs` PASS if shared types are added.
-- [ ] targeted Phase 8 tests PASS.
-- [ ] full `npm --prefix server test` PASS before closeout.
+- [x] `call_recordings` table has FORCE RLS and composite FK isolation.
+- [x] repository tests prove bare-pool invisibility and cross-org isolation.
+- [x] upload/finalize/playback routes require authenticated org context and hide cross-org rows.
+- [x] signed playback URL never exposes provider credentials and has bounded TTL.
+- [x] frontend playback UI labels API-backed data correctly and has no unsafe server-value `innerHTML`.
+- [x] retention worker deletes or tombstones expired recordings and does not leak object keys in audit payload.
+- [x] `npm --prefix server run typecheck` PASS.
+- [x] `node test/sync_shared_types.mjs` PASS (callRecording registry 포함).
+- [x] targeted Phase 8 tests PASS.
+- [x] full `npm --prefix server test` PASS (852 total / 849 PASS / 3 skipped / 0 fail).
 
 ---
 
 ## 7. 바로 다음 작업
 
-Step 5 retention worker integration은 닫혔다. 다음 작업은 Phase 8 closeout이다.
+Phase 8 closeout이 닫혔다. 본 master는 더 이상 implementation backlog를 갖지 않는다. 다음 트랙 후보는 별도 Phase로 분리해 진행한다.
 
-다음 구현 단위:
+후보 (`PHASE_8_CLOSEOUT_FINDINGS.md §8` 참고):
 
-1. `PHASE_8_CLOSEOUT_FINDINGS.md` — 전체 5 step 요약 + Go/No-Go 게이트 + 남은 리스크 + 인계 노트
-2. `docs/USER_GUIDE_PHASE_8.md` — recording surface 사용 흐름 (upload → finalize → playback → delete) + 90일 retention 정책 + 운영자 환경 변수
-3. `README.md` — Phase 8 완료 표기 (현재 "Phase 8 Step 1 완료 / Step 2 대기" → "Phase 8 완료") + recording 관련 추가 env (RECORDING_STORAGE_PROVIDER / KLOSER_RETENTION_RECORDING_*) 노트
-4. `docs/plan/README.md` — Phase 8 entry point을 STEP_1_FINDINGS에서 closeout findings로 교체
-5. Closeout Go/No-Go 게이트 재실행 (typecheck + sync types + full test + git diff --check + db:migrate:up)
-6. 별도 product/legal 결정: legal consent workflow, multi-recording UX, retention dead-letter 정책, MinIO/S3 real provider smoke
-7. 별도 product/UX 결정: upload UI (browser/desktop recorder pipeline). Step 3 backend route는 이미 닫혔으므로 frontend recorder만 추가하면 됨
+1. **결제 provider 연동 Phase** — Stripe / Toss. 외부 돈 이동 / 회계 계약 / webhook / invoice 동반. Phase 7 closeout에서도 이월된 항목.
+2. **데스크탑 / 브라우저 audio capture pipeline** — Phase 8 v1 backend는 닫혔으므로 frontend recorder만 추가하면 사용자가 직접 녹취를 만들 수 있다 (`docs/plan/roadmap/DESKTOP_APP_PLAN.md`).
+3. **legal consent UX** — 통화 녹음 사전 동의 / 안내 / 거부 옵션. product + legal 트랙.
+4. **MinIO / S3 통합 smoke + opt-in gate** — `KLOSER_RECORDING_S3_INTEGRATION=true` 같은 명시적 env로 실 provider 4종 메소드 호출 검증 자동화.
+5. **retention dead-letter mechanism** — `delete_pending` 무한 누적 방어.
+6. **multi-recording picker / waveform / transcoding / transcript-audio alignment** — 제품 품질 트랙.
 
-Closeout 이후 v2 후보: real provider smoke 운영 검증, waveform, transcoding, transcript-audio alignment, dead-letter mechanism.
+운영 검증 잔존:
+
+- `KLOSER_RETENTION_ENABLED=true` 운영 부팅 + recording sweep 1 tick 실행 확인 (staging).
+- 실 S3 / MinIO bucket으로 putObject / deleteObject / createUploadUrl / createReadUrl 4종 1회 수동 smoke.
