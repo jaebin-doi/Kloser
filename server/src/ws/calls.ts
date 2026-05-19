@@ -37,6 +37,15 @@ import * as callHeartbeatService from "../services/callHeartbeat.js";
 import * as callSuggestionsService from "../services/callSuggestions.js";
 import * as llmUsageService from "../services/llmUsage.js";
 import { resolveLlmAdapter } from "../adapters/index.js";
+import {
+  AudioStart as AudioStartSchema,
+  AudioChunkMeta as AudioChunkMetaSchema,
+  AudioEnd as AudioEndSchema,
+  type AudioSource,
+} from "../types/wsAudio.js";
+import { resolveSttStreamingProvider } from "../adapters/stt/mockStreaming.js";
+import type { SttStreamingSession } from "../adapters/stt/streaming.js";
+import type { ProviderUsage } from "../adapters/usage.js";
 
 // Phase 6 Step 1 — env-gated knobs. Imported as constants at module
 // load. Tests that need shorter intervals override the env *before*
@@ -69,6 +78,20 @@ function shouldDemoReplay(): boolean {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Phase 9 Step 2 — audio ingest limits. Plan §4.
+//   AUDIO_CHUNK_MAX_BYTES   : single audio_chunk binary payload cap.
+//   AUDIO_QUEUE_MAX_BYTES   : rolling queued-byte cap per active audio
+//                             session; exceeded -> AUDIO_BACKPRESSURE.
+//   AUDIO_QUEUE_DRAIN_MS    : after this long without a chunk, the queue
+//                             accounting decays back to zero. Mock STT
+//                             does no async processing, so frames are
+//                             effectively drained immediately, but the
+//                             decay keeps the accounting honest if the
+//                             real Azure adapter introduces latency.
+const AUDIO_CHUNK_MAX_BYTES = 128 * 1024;
+const AUDIO_QUEUE_MAX_BYTES = 1024 * 1024;
+const AUDIO_QUEUE_DRAIN_MS = 1000;
+
 interface StartCallPayload {
   customerId?: string;
 }
@@ -76,6 +99,23 @@ interface TextChunkPayload {
   seq: number;
   text: string;
   clientSentAt: number;
+}
+
+// Phase 9 Step 2 — per-source streaming STT session state inside a single
+// audio ingest "session" (one audio_start ... audio_end span). A single
+// audio_start that declares both `agent_mic` and `system_loopback` opens
+// two adapter sessions but counts as one flush event.
+interface AudioSessionState {
+  sources: AudioSource[];
+  sessions: Map<AudioSource, SttStreamingSession>;
+  startedAt: number;
+  // Rolling queue accounting. Adds bytes per accepted chunk, decays back
+  // to zero after AUDIO_QUEUE_DRAIN_MS of inactivity (since mock STT
+  // processes synchronously; the real Azure adapter will replace this).
+  queuedBytes: number;
+  queueLastUpdatedAt: number;
+  lastSeqBySource: Map<AudioSource, number>;
+  flushed: boolean;
 }
 
 interface CallContext {
@@ -89,6 +129,12 @@ interface CallContext {
   suggestionTimer: NodeJS.Timeout | null;
   suggestionGroupSeq: number;
   transcriptWindow: string[];
+  // Phase 9 Step 2 — null until audio_start, reset to null on flush.
+  audio: AudioSessionState | null;
+}
+
+function sourceToSpeaker(source: AudioSource): "agent" | "customer" {
+  return source === "agent_mic" ? "agent" : "customer";
 }
 
 // One in-flight call per socket. Presence in this map IS the
@@ -103,6 +149,15 @@ function clearCall(socket: Socket): void {
   if (ctx.suggestionTimer) {
     clearTimeout(ctx.suggestionTimer);
     ctx.suggestionTimer = null;
+  }
+  // Drop audio session state. Final transcript / usage row must already
+  // have been written by audio_end or end_call before clearCall runs;
+  // this block exists for hard-reset paths (start_call after a stale
+  // session, disconnect mid-stream) where we just want to discard the
+  // in-memory adapter state without further DB writes.
+  if (ctx.audio) {
+    ctx.audio.sessions.clear();
+    ctx.audio = null;
   }
   calls.delete(socket);
 }
@@ -165,6 +220,115 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
   // None of those should kill the live socket. Persistence errors
   // are logged + the timer is rearmed for the next window.
   const llm = resolveLlmAdapter();
+  // Phase 9 Step 2 — mock streaming STT provider. The adapter boundary
+  // is intentionally narrow (Plan §10) so Step 4/5 can swap in Azure
+  // streaming behind the same `createSession` shape without touching
+  // this file.
+  const sttStreaming = resolveSttStreamingProvider();
+
+  // Aggregate flush coordinator. Used by both `audio_end` and `end_call`
+  // (Plan §5.5). Idempotent at the ctx-level via `audio.flushed`.
+  //   1. mark flushed=true (so a follow-up end_call cannot double-write)
+  //   2. flush each per-source mock session, aggregate counters
+  //   3. persist final transcript per source that emitted one
+  //   4. record ONE aggregate llm_usage_log row (Plan §8)
+  //   5. drop ctx.audio
+  //
+  // Returns ok=true on persistence success or "no audio active" no-op.
+  // Returns ok=false + error="persistence_failed" if any transcript
+  // append throws. The usage row is still attempted in the failure path
+  // so the cost-accounting trail does not silently disappear (Plan §8
+  // "do not leave usage metadata as a dead path").
+  async function flushAudioSession(
+    socket: Socket,
+    ctx: CallContext,
+    user: AuthenticatedUser,
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    const audio = ctx.audio;
+    if (!audio || audio.flushed) return { ok: true };
+    audio.flushed = true;
+
+    let totalDurationMs = 0;
+    let totalPartials = 0;
+    let totalFinals = 0;
+    let persistError: Error | null = null;
+    let callNotFound = false;
+
+    for (const [source, session] of audio.sessions) {
+      const { result } = session.flush();
+      totalDurationMs += result.audioDurationMsSent;
+      totalPartials += result.partialCount;
+      totalFinals += result.finalCount;
+      if (!result.final) continue;
+      try {
+        const persisted = await callsService.appendTranscript(
+          app,
+          user.orgId,
+          ctx.callId,
+          {
+            speaker: sourceToSpeaker(source),
+            text: result.final.text,
+          },
+        );
+        if (!persisted) {
+          // Call vanished mid-stream (soft-deleted cross-org). Keep
+          // aggregating so usage is still recorded, but surface the same
+          // runtime error vocabulary as text_chunk after the flush.
+          callNotFound = true;
+          socket.data.log("audio flush call_not_found", {
+            callId: ctx.callId,
+            source,
+          });
+        }
+      } catch (err) {
+        persistError = err as Error;
+        socket.data.log("audio flush persistence_failed", {
+          err: persistError.message,
+          callId: ctx.callId,
+          source,
+        });
+      }
+    }
+
+    // Plan §8 — one aggregate usage row per flush. The mock counters
+    // are summed across per-source sessions. `recordProviderUsage`
+    // swallows its own errors, so a logging failure cannot mask a
+    // transcript failure that we still want to surface to the caller.
+    const usage: ProviderUsage = {
+      provider: "mock",
+      operation: "stt_transcribe",
+      model: "mock-streaming-stt-v1",
+      status: "succeeded",
+      tokensIn: null,
+      tokensOut: null,
+      latencyMs: null,
+      costUsdMicros: null,
+    };
+    await llmUsageService.recordProviderUsage(
+      app,
+      user.orgId,
+      ctx.callId,
+      usage,
+      {
+        metadata: {
+          source: "ws:audio",
+          audio_duration_ms_sent: totalDurationMs,
+          audio_duration_ms_suppressed_by_vad: 0,
+          partial_count: totalPartials,
+          final_count: totalFinals,
+          cost_status: "mock",
+        },
+      },
+    );
+
+    audio.sessions.clear();
+    ctx.audio = null;
+
+    if (callNotFound) return { ok: false, error: "call_not_found" };
+    if (persistError) return { ok: false, error: "persistence_failed" };
+    return { ok: true };
+  }
+
   async function fireSuggestion(socket: Socket): Promise<void> {
     const ctx = calls.get(socket);
     if (!ctx) return;
@@ -296,6 +460,7 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
           suggestionTimer: null,
           suggestionGroupSeq: 0,
           transcriptWindow: [],
+          audio: null,
         };
         calls.set(socket, ctx);
         socket.data.log("start_call", { callId: call.id, customerId });
@@ -440,6 +605,22 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
         return;
       }
       socket.data.log("end_call", { callId: ctx.callId });
+
+      // Phase 9 Step 2 — flush any open audio session before tearing the
+      // call down (Plan §5.5). If the audio flush fails, surface that as
+      // the error and still clear local state so the socket is not
+      // stuck thinking a call is active.
+      if (ctx.audio) {
+        const flush = await flushAudioSession(socket, ctx, user);
+        if (!flush.ok) {
+          clearCall(socket);
+          if (typeof ack === "function") {
+            ack({ ok: false, error: flush.error });
+          }
+          return;
+        }
+      }
+
       try {
         await callsService.endCall(app, user.orgId, user.id, ctx.callId);
       } catch (err) {
@@ -457,6 +638,258 @@ export function registerCallsNamespace(io: Server, app: FastifyInstance): void {
       }
       clearCall(socket);
       if (typeof ack === "function") ack({ ok: true });
+    });
+
+    // -------------------------------------------------------------- //
+    // Phase 9 Step 2 — audio ingest handlers (Plan §3 / §5).
+    //
+    // Wire shape:
+    //   socket.emit("audio_start", { sources, codec, ... })
+    //   socket.emit("audio_chunk", meta, pcmBuffer)
+    //   socket.emit("audio_end",   { reason? })
+    //
+    // Runtime error contract via `socket.emit("error", { code, message })`:
+    //   no_active_call         — audio_* arrived before start_call
+    //   no_active_audio        — audio_chunk arrived before audio_start
+    //   audio_already_started  — duplicate audio_start
+    //   BAD_PAYLOAD            — zod validation / source membership fail
+    //   AUDIO_CHUNK_TOO_LARGE  — single chunk > 128 KiB
+    //   AUDIO_BACKPRESSURE     — rolling queue > 1 MiB
+    //   AUDIO_SEQ_OUT_OF_ORDER — duplicate/decreasing per-source seq
+    //
+    // Raw PCM Buffer is consumed by the streaming adapter in memory and
+    // is never persisted, logged, audited, or stringified. The session
+    // accounting tracks size+duration only.
+    // -------------------------------------------------------------- //
+
+    socket.on("audio_start", (payload: unknown) => {
+      const ctx = calls.get(socket);
+      if (!ctx) {
+        socket.emit("error", {
+          code: "no_active_call",
+          message: "audio_start requires a prior start_call",
+        });
+        return;
+      }
+      if (ctx.audio) {
+        socket.emit("error", {
+          code: "audio_already_started",
+          message: "audio_start already received for this call",
+        });
+        return;
+      }
+      const parsed = AudioStartSchema.safeParse(payload);
+      if (!parsed.success) {
+        socket.emit("error", {
+          code: "BAD_PAYLOAD",
+          message: "audio_start payload failed validation",
+        });
+        return;
+      }
+      const start = parsed.data;
+      // De-duplicate the declared sources just in case the client
+      // double-listed agent_mic. Set-based membership still works.
+      const declared = Array.from(new Set(start.sources)) as AudioSource[];
+      const startedAt = Date.now();
+      const sessions = new Map<AudioSource, SttStreamingSession>();
+      for (const src of declared) {
+        const session = sttStreaming.createSession({
+          orgId: user.orgId,
+          callId: ctx.callId,
+          source: src,
+          who: sourceToSpeaker(src),
+          frameMs: start.frame_ms,
+          sampleRateHz: start.sample_rate_hz,
+          channels: start.channels,
+          startedAtMs: startedAt,
+        });
+        sessions.set(src, session);
+      }
+      ctx.audio = {
+        sources: declared,
+        sessions,
+        startedAt,
+        queuedBytes: 0,
+        queueLastUpdatedAt: startedAt,
+        lastSeqBySource: new Map(),
+        flushed: false,
+      };
+      socket.data.log("audio_start", {
+        callId: ctx.callId,
+        sources: declared,
+        frame_ms: start.frame_ms,
+      });
+    });
+
+    socket.on("audio_chunk", (meta: unknown, buffer: unknown) => {
+      const ctx = calls.get(socket);
+      if (!ctx) {
+        socket.emit("error", {
+          code: "no_active_call",
+          message: "audio_chunk requires a prior start_call",
+        });
+        return;
+      }
+      if (!ctx.audio) {
+        socket.emit("error", {
+          code: "no_active_audio",
+          message: "audio_chunk requires a prior audio_start",
+        });
+        return;
+      }
+      const audio = ctx.audio;
+
+      // Buffer arrives as Node Buffer (socket.io binary attachment).
+      // ArrayBuffer is also accepted by being wrapped. Anything else is
+      // a client framing bug.
+      let pcm: Buffer;
+      if (Buffer.isBuffer(buffer)) {
+        pcm = buffer;
+      } else if (buffer instanceof ArrayBuffer) {
+        pcm = Buffer.from(buffer);
+      } else {
+        socket.emit("error", {
+          code: "BAD_PAYLOAD",
+          message: "audio_chunk requires (meta, Buffer)",
+        });
+        return;
+      }
+
+      if (pcm.length === 0) {
+        socket.emit("error", {
+          code: "BAD_PAYLOAD",
+          message: "audio_chunk buffer is empty",
+        });
+        return;
+      }
+
+      if (pcm.length > AUDIO_CHUNK_MAX_BYTES) {
+        socket.emit("error", {
+          code: "AUDIO_CHUNK_TOO_LARGE",
+          message: `audio_chunk exceeds ${AUDIO_CHUNK_MAX_BYTES} bytes`,
+        });
+        return;
+      }
+
+      const parsed = AudioChunkMetaSchema.safeParse(meta);
+      if (!parsed.success) {
+        socket.emit("error", {
+          code: "BAD_PAYLOAD",
+          message: "audio_chunk meta failed validation",
+        });
+        return;
+      }
+      const m = parsed.data;
+
+      if (!audio.sources.includes(m.source)) {
+        socket.emit("error", {
+          code: "BAD_PAYLOAD",
+          message: "audio_chunk source not declared in audio_start.sources",
+        });
+        return;
+      }
+
+      // Per-source seq monotonicity. Gaps are OK (client drop / reconnect).
+      const last = audio.lastSeqBySource.get(m.source);
+      if (last !== undefined && m.seq <= last) {
+        socket.emit("error", {
+          code: "AUDIO_SEQ_OUT_OF_ORDER",
+          message: `audio_chunk seq ${m.seq} not greater than last ${last} for source ${m.source}`,
+        });
+        return;
+      }
+
+      // Backpressure accounting with linear time-decay so a transient
+      // burst does not poison the session forever. Mock STT processes
+      // synchronously so steady-state queuedBytes hovers near zero.
+      const now = Date.now();
+      const elapsed = Math.max(0, now - audio.queueLastUpdatedAt);
+      if (elapsed >= AUDIO_QUEUE_DRAIN_MS) {
+        audio.queuedBytes = 0;
+      } else if (elapsed > 0) {
+        const decay = Math.floor(
+          (audio.queuedBytes * elapsed) / AUDIO_QUEUE_DRAIN_MS,
+        );
+        audio.queuedBytes = Math.max(0, audio.queuedBytes - decay);
+      }
+      if (audio.queuedBytes + pcm.length > AUDIO_QUEUE_MAX_BYTES) {
+        socket.emit("error", {
+          code: "AUDIO_BACKPRESSURE",
+          message: `audio session queued bytes exceeds ${AUDIO_QUEUE_MAX_BYTES}`,
+        });
+        return;
+      }
+      audio.queuedBytes += pcm.length;
+      audio.queueLastUpdatedAt = now;
+      audio.lastSeqBySource.set(m.source, m.seq);
+
+      const session = audio.sessions.get(m.source);
+      if (!session) {
+        // Defensive: should not happen because we already checked source
+        // membership against the declared set.
+        socket.emit("error", {
+          code: "BAD_PAYLOAD",
+          message: "audio_chunk source has no active session",
+        });
+        return;
+      }
+
+      const partial = session.acceptChunk(pcm, {
+        seq: m.seq,
+        durationMs: m.duration_ms,
+      });
+      // Mock adapter consumed the buffer synchronously. Release our
+      // reference; do not stringify or persist it.
+      pcm = Buffer.alloc(0);
+      if (partial) {
+        socket.emit("transcript.partial", {
+          callId: ctx.callId,
+          source: m.source,
+          who: sourceToSpeaker(m.source),
+          text: partial.text,
+          atMs: partial.atMs,
+          serverSentAt: Date.now(),
+        });
+      }
+    });
+
+    socket.on("audio_end", async (payload: unknown) => {
+      const ctx = calls.get(socket);
+      if (!ctx) {
+        socket.emit("error", {
+          code: "no_active_call",
+          message: "audio_end requires a prior start_call",
+        });
+        return;
+      }
+      // audio_end is OK even before audio_start in the sense that the
+      // client may be sending one for cleanup; we treat it as a no-op
+      // rather than emitting an error to keep client cleanup simple.
+      if (!ctx.audio) {
+        socket.data.log("audio_end no_active_audio (no-op)");
+        return;
+      }
+      // Validate the envelope (optional reason). Reject only if the
+      // payload is malformed structurally; a missing payload is fine.
+      if (payload !== undefined && payload !== null) {
+        const parsed = AudioEndSchema.safeParse(payload);
+        if (!parsed.success) {
+          socket.emit("error", {
+            code: "BAD_PAYLOAD",
+            message: "audio_end payload failed validation",
+          });
+          return;
+        }
+      }
+      const flush = await flushAudioSession(socket, ctx, user);
+      if (!flush.ok) {
+        socket.emit("error", {
+          code: flush.error,
+          message: "audio_end flush failed",
+        });
+        return;
+      }
+      socket.data.log("audio_end ok", { callId: ctx.callId });
     });
 
     // -------------------------------------------------------------- //

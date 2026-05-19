@@ -253,6 +253,25 @@ const ENTITY_REGISTRY = [
         ],
     },
     {
+        name: "wsAudio",
+        server: "server/src/types/wsAudio.ts",
+        browser: "platform/types/wsAudio.js",
+        // Phase 9 Step 2 — backend audio ingest contract.
+        // AudioSource / AudioCodec / AudioSampleRateHz / AudioChannels /
+        // AudioFrameMs / AudioEndReason are z.enum/z.literal helpers
+        // without field sets — registered indirectly via the four object
+        // schemas below (AudioStart / AudioChunkMeta / AudioEnd /
+        // AudioPartialTranscript). AudioRuntimeErrorCode is a TS-only
+        // string union; the JSDoc mirror keeps it as JSDoc-only for
+        // client branching, intentionally out of registry scope.
+        types: [
+            "AudioStart",
+            "AudioChunkMeta",
+            "AudioEnd",
+            "AudioPartialTranscript",
+        ],
+    },
+    {
         name: "activityLog",
         server: "server/src/types/activityLog.ts",
         browser: "platform/types/activityLog.js",
