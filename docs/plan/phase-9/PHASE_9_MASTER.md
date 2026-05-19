@@ -390,6 +390,8 @@ Tests:
 
 ### Step 3 - C# Audio Engine PoC
 
+Plan: see `PHASE_9_STEP_3_PLAN.md`.
+
 Location:
 
 - new top-level `desktop/` directory, exact structure decided in Step 1.
@@ -569,6 +571,8 @@ Phase 9 closeout requires:
 ## 14. Next Work Instruction
 
 Next task should be **Phase 9 Step 3 - Windows Capture Engine PoC**.
+
+Detailed implementation plan: `docs/plan/phase-9/PHASE_9_STEP_3_PLAN.md`.
 
 Recommended handoff:
 
