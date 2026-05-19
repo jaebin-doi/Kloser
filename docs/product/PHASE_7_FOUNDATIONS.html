@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Kloser Phase 7 — 운영 출시 직전의 보안·감사·플랜 게이트</title>
+  <meta name="description" content="Phase 7에 새로 들어온 5가지 — 실 이메일 발송 · 2단계 인증 · 감사 로그 · 보고서 정밀화 · 플랜 사용량 — 을 화면 모형과 함께 설명합니다." />
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard Variable', 'Pretendard', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      font-family: 'Pretendard Variable', 'Pretendard', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      color: rgb(15 23 42);
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(99, 102, 241, 0.08), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(37, 99, 235, 0.07), transparent 60%),
+        #f8fafc;
+    }
+
+    .g-text {
+      background: linear-gradient(120deg, #4f46e5 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 12px 36px -12px rgba(15, 23, 42, .12);
+      border: 1px solid rgb(241 245 249);
+    }
+    .card-tight {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgb(226 232 240);
+      box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .03);
+    }
+
+    .pillar-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    }
+    .pillar-card:hover {
+      transform: translateY(-2px);
+      border-color: rgb(199 210 254);
+      box-shadow:
+        0 1px 2px 0 rgba(15, 23, 42, .04),
+        0 24px 48px -16px rgba(79, 70, 229, .15);
+    }
+
+    .pulse-dot {
+      position: relative;
+      display: inline-flex;
+      width: 8px;
+      height: 8px;
+    }
+    .pulse-dot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(79 70 229); opacity: .55;
+      animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .pulse-dot::after {
+      content: ''; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgb(79 70 229);
+    }
+    @keyframes ping { 75%, 100% { transform: scale(2.5); opacity: 0; } }
+
+    .icon-bubble {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .shot {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 14px;
+      box-shadow: 0 24px 48px -20px rgba(15, 23, 42, .18);
+      background: white;
+      overflow: hidden;
+      width: 100%;
+      display: block;
+    }
+    .shot-cap {
+      font-size: .78rem;
+      color: rgb(100 116 139);
+      margin-top: 10px;
+      line-height: 1.55;
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 9999px;
+      background: rgb(79 70 229);
+      color: white;
+      font-weight: 800;
+      font-size: .82rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Plan limit progress bars */
+    .lim-card {
+      border: 1px solid rgb(226 232 240);
+      border-radius: 10px;
+      padding: 12px;
+      background: white;
+    }
+    .lim-label {
+      font-size: .72rem;
+      font-weight: 700;
+      color: rgb(71 85 105);
+      margin-bottom: 4px;
+    }
+    .lim-row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 6px; font-variant-numeric: tabular-nums;
+    }
+    .lim-current { font-size: 1rem; font-weight: 900; color: rgb(15 23 42); }
+    .lim-of { font-size: .72rem; color: rgb(100 116 139); }
+    .lim-bar {
+      margin-top: 8px;
+      height: 6px; border-radius: 9999px;
+      background: rgb(241 245 249);
+      overflow: hidden;
+    }
+    .lim-fill { height: 100%; }
+    .lim-fill.ok    { background: rgb(37 99 235); }
+    .lim-fill.warn  { background: rgb(245 158 11); }
+    .lim-fill.over  { background: rgb(225 29 72); }
+    .lim-pct {
+      margin-top: 4px;
+      font-size: .66rem;
+      color: rgb(148 163 184);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Audit log row */
+    .audit-row {
+      display: grid;
+      grid-template-columns: 130px 160px 1fr 200px;
+      gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgb(241 245 249);
+      font-size: .82rem;
+      align-items: center;
+    }
+    @media (max-width: 720px) {
+      .audit-row { grid-template-columns: 1fr; gap: 4px; padding: 12px; }
+      .audit-row > span:nth-child(3) { color: rgb(100 116 139); font-size: .76rem; }
+    }
+    .audit-row:last-child { border-bottom: none; }
+    .audit-when { color: rgb(100 116 139); font-variant-numeric: tabular-nums; }
+    .audit-actor { font-weight: 700; color: rgb(15 23 42); }
+    .audit-action {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 10px; border-radius: 9999px;
+      font-size: .7rem; font-weight: 700;
+      background: rgb(238 242 255); color: rgb(67 56 202);
+      width: fit-content;
+    }
+    .audit-action.warn { background: rgb(254 243 199); color: rgb(146 64 14); }
+    .audit-action.danger { background: rgb(254 226 226); color: rgb(153 27 27); }
+    .audit-action.ok { background: rgb(209 250 229); color: rgb(6 95 70); }
+
+    /* TOTP code box */
+    .totp-code {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+    .totp-digit {
+      width: 36px; height: 48px;
+      border: 1px solid rgb(199 210 254);
+      border-radius: 8px;
+      background: white;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 800; color: rgb(67 56 202);
+      font-variant-numeric: tabular-nums;
+    }
+    .totp-digit.active {
+      border-color: rgb(79 70 229);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.18);
+    }
+    .qr-block {
+      width: 140px; height: 140px;
+      border: 8px solid white;
+      box-shadow: 0 0 0 1px rgb(199 210 254);
+      border-radius: 4px;
+      background:
+        linear-gradient(90deg, transparent 20%, #1e293b 20% 30%, transparent 30% 40%, #1e293b 40% 60%, transparent 60% 70%, #1e293b 70% 80%, transparent 80%),
+        linear-gradient(0deg,  transparent 25%, #1e293b 25% 30%, transparent 30% 45%, #1e293b 45% 55%, transparent 55% 70%, #1e293b 70% 75%, transparent 75%),
+        repeating-linear-gradient(90deg, #1e293b 0 4px, transparent 4px 8px),
+        white;
+      background-blend-mode: difference, normal, normal, normal;
+    }
+
+    /* Inbox-style email row */
+    .inbox-row {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      gap: 12px;
+      padding: 12px 14px;
+      align-items: center;
+      border-bottom: 1px solid rgb(241 245 249);
+    }
+    .inbox-row:last-child { border-bottom: none; }
+    .inbox-avatar {
+      width: 36px; height: 36px; border-radius: 9999px;
+      background: linear-gradient(135deg, rgb(99 102 241), rgb(37 99 235));
+      color: white;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .88rem;
+    }
+    .inbox-when { color: rgb(100 116 139); font-size: .72rem; }
+    .inbox-subject { font-weight: 700; color: rgb(15 23 42); font-size: .9rem; }
+    .inbox-snippet { color: rgb(71 85 105); font-size: .78rem; margin-top: 2px; }
+
+    /* Reports preset */
+    .preset-btn {
+      padding: 6px 14px; border-radius: 9999px;
+      font-size: .78rem; font-weight: 700;
+      background: white; color: rgb(71 85 105);
+      border: 1px solid rgb(226 232 240);
+    }
+    .preset-btn.active {
+      background: rgb(67 56 202); color: white; border-color: rgb(67 56 202);
+    }
+
+    /* Agent KPI row */
+    .agent-row {
+      display: grid;
+      grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgb(241 245 249);
+      align-items: center;
+      font-size: .82rem;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .agent-row:hover { background: rgb(238 242 255); }
+    .agent-row.active { background: rgb(224 231 255); }
+    .agent-row:last-child { border-bottom: none; }
+    .agent-name { font-weight: 700; color: rgb(15 23 42); }
+    .agent-num { font-variant-numeric: tabular-nums; color: rgb(71 85 105); text-align: right; }
+
+    .sidebar-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: 6px;
+      font-size: .82rem; font-weight: 600;
+      color: rgb(71 85 105);
+    }
+    .sidebar-link.hidden-by-role {
+      opacity: .25;
+      text-decoration: line-through;
+    }
+
+    section[id] { scroll-margin-top: 24px; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Top bar -->
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+        <span class="pulse-dot"></span>
+        <span class="text-[1.05rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+      </a>
+      <nav class="text-[.82rem] font-medium text-slate-600 hidden md:flex items-center gap-4">
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 6</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="text-indigo-700 font-bold no-underline">Phase 7</a>
+      </nav>
+      <nav class="text-[.78rem] font-medium text-slate-600 flex md:hidden items-center gap-2">
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">가이드</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">P6</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[.72rem] font-bold tracking-wider mb-5">
+        <span class="pulse-dot"></span>
+        PHASE 7 · 운영 게이트 · 보안 · 감사 · 플랜
+      </div>
+      <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
+        외부 사용자에게 유료로 팔기 직전에 필요한 — <br>
+        <span class="g-text">이메일·보안·감사·보존·플랜</span> 5가지를 한 묶음으로
+      </h1>
+      <p class="mt-6 text-[1.05rem] text-slate-600 leading-relaxed">
+        Phase 6까지 통화·고객·보고서 핵심 기능은 닫혔지만, "실제로 메일이 도착하는가", "관리자 계정이 비밀번호 하나로만 보호되는가", "누가 무엇을 언제 했는지 추적할 수 있는가", "보관 정책이 코드로 강제되는가", "유료 플랜의 한도가 화면에 보이는가" 다섯 자리가 비어 있었습니다.
+        Phase 7은 그 다섯 자리에 운영 출시 직전 게이트를 한꺼번에 채웁니다.
+      </p>
+      <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
+        <p class="text-[.9rem] text-slate-700 leading-relaxed">
+          <span class="text-indigo-600 font-black mr-1">⌜</span>
+          Phase 6이 "사용자 자동화"였다면, Phase 7은 "운영 자동화"입니다. 회원가입 메일이 진짜로 도착하고, 관리자 계정에 1회용 코드가 한 단계 더 붙고, 모든 운영 행위가 admin 패널에 기록되고, 3년 된 통화 기록이 자동으로 삭제되고, 플랜 한도를 넘으면 서버가 직접 막아 줍니다.
+          <span class="text-indigo-600 font-black ml-1">⌟</span>
+        </p>
+      </div>
+
+      <!-- 한눈에 보기 — CEO 친화 요약 -->
+      <div class="mt-6 max-w-2xl rounded-xl border border-indigo-200 bg-indigo-50/30 p-5">
+        <p class="text-[.72rem] font-black uppercase tracking-wider text-indigo-700 mb-2">한눈에 보기</p>
+        <ul class="text-[.9rem] text-slate-700 space-y-1.5 list-disc pl-5 leading-relaxed">
+          <li><strong class="text-slate-900">쉽게 말하면</strong> — 외부 사용자에게 유료로 팔기 직전에 필요한 운영 게이트 5종(실 이메일·2단계 인증·감사 로그·보존 정책·플랜 한도)을 한 묶음으로 닫은 단계입니다.</li>
+          <li><strong class="text-slate-900">왜 중요한가</strong> — 운영 출시는 "기능"이 끝났다고 되는 게 아닙니다. 관리자 계정 탈취 차단, 운영 행위 추적, 개인정보 보존 정책 강제, 플랜 한도 강제 — 이게 안 되면 유료 도입이 불가능합니다.</li>
+          <li><strong class="text-slate-900">사용자가 체감하는 변화</strong> — 로그인 시 6자리 코드 / 설정 → 보안에 감사 로그 패널 / 설정 → 플랜 & 사용량에 6 한도 진행률 + 청구 정보 form.</li>
+          <li><strong class="text-slate-900">남은 운영 검증</strong> — 운영 도메인으로 실제 이메일 발송 smoke (Resend), 보존 정책 워커 staging 활성화 확인.</li>
+          <li><strong class="text-slate-900">아직 안 한 것</strong> — 실 결제 provider(Stripe/Toss — 별도 Phase, 외부 돈 이동 동반), 통화 녹음(Phase 8 진행 중).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Pillars overview -->
+  <section class="max-w-6xl mx-auto px-6 pb-16">
+    <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-3">Phase 7에서 새로 가능해진 것</p>
+    <h2 class="text-[1.6rem] font-black tracking-tight mb-6">5가지 — 클릭하면 화면 모형과 함께 설명</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <a href="#email" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-indigo-50 text-indigo-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">1 · 실 이메일 발송</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">회원가입 인증·비밀번호 재설정·동료 초대가 실제 메일 서비스로 발송됩니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#mfa" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-violet-50 text-violet-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">2 · 2단계 인증 (MFA)</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">TOTP 6자리 코드를 한 번 더 입력해야 로그인이 끝납니다. 조직 단위로 강제화 가능.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#audit" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-blue-50 text-blue-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">3 · 감사 로그</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">로그인·권한 변경·고객/통화/지식/청구 정보 변경이 admin 전용 패널에 한 줄씩 남습니다.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#reports" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-cyan-50 text-cyan-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 4 5-5"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">4 · 보고서 기간 + 담당자</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">7/30/90일 또는 직접 기간 선택, 담당자별 KPI + 행 클릭으로 통화 drill-down.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#billing" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-emerald-50 text-emerald-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">5 · 플랜 & 사용량</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">현재 플랜의 6가지 한도 진행률과 청구 정보를 admin 화면에서 직접 확인·수정.</p>
+          </div>
+        </div>
+      </a>
+
+      <a href="#hygiene" class="card pillar-card p-5 no-underline">
+        <div class="flex items-start gap-3">
+          <span class="icon-bubble bg-amber-50 text-amber-600">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          <div>
+            <h3 class="text-[1rem] font-bold text-slate-900">+ 보너스 · 운영 위생 4가지</h3>
+            <p class="text-[.85rem] text-slate-600 mt-1 leading-relaxed">보존 정책 자동 실행 · 역할별 사이드바 정돈 · LLM 비용 환산 · demo 정직성 정리.</p>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Detail sections ═══════════════════════════ -->
+  <main class="max-w-6xl mx-auto px-6 pb-24 space-y-20">
+
+    <!-- ─────────── 1. Email ─────────── -->
+    <section id="email">
+      <p class="text-[.78rem] font-bold tracking-wider text-indigo-600 mb-2">기능 01 · 회원가입 / 초대 / 비밀번호 재설정</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">실 이메일 발송 — 회원가입 메일이 진짜로 도착합니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 3까지 회원가입 인증·비밀번호 재설정·동료 초대 이메일은 개발용 임시 저장소에만 행으로 남았고, 평가용 e2e가 그 행에서 직접 토큰을 꺼냈습니다.
+        Phase 7부터는 운영 환경에서 <strong class="text-slate-900">Resend 메일 서비스</strong>를 통해 실제 메일이 수신자 받은편지함에 도착합니다.
+        로컬 dev와 e2e는 기존 임시 저장소 모드를 그대로 유지하므로 회귀 위험이 없습니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">받은편지함 모형</p>
+        <div class="card-tight">
+          <div class="inbox-row">
+            <div class="inbox-avatar">K</div>
+            <div>
+              <div class="inbox-subject">Kloser 회원가입 인증 메일</div>
+              <div class="inbox-snippet">아래 버튼을 눌러 이메일 주소를 확인해 주세요. 만료 30분.</div>
+            </div>
+            <div class="inbox-when">오전 10:13</div>
+          </div>
+          <div class="inbox-row">
+            <div class="inbox-avatar">K</div>
+            <div>
+              <div class="inbox-subject">Acme Sales Inc.에서 초대장이 도착했어요</div>
+              <div class="inbox-snippet">팀원으로 합류하려면 이 링크를 눌러 비밀번호를 설정해 주세요.</div>
+            </div>
+            <div class="inbox-when">어제</div>
+          </div>
+          <div class="inbox-row">
+            <div class="inbox-avatar">K</div>
+            <div>
+              <div class="inbox-subject">비밀번호 재설정 요청</div>
+              <div class="inbox-snippet">본인이 요청하지 않았다면 이 메일을 무시해 주세요.</div>
+            </div>
+            <div class="inbox-when">2일 전</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-5 mb-5">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-4">메일이 도착하는 흐름</p>
+        <div class="space-y-4">
+          <div class="flex items-start gap-3">
+            <span class="step-num">1</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>회원가입/초대/비밀번호 재설정 요청 시 발송 대기열에 기록</strong>됩니다. 이때 보안 토큰(평문 링크)은 별도 자리에 암호화 보관되고, 로그 archive에는 마스킹된 형태로만 남습니다.
+            </p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="step-num">2</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>발송 워커가 대기열에서 한 건씩 꺼내 Resend에 전달</strong>합니다. 요청 트랜잭션 안에서 외부 HTTP를 직접 호출하지 않기 때문에 응답이 느려지지 않습니다.
+            </p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="step-num">3</span>
+            <p class="text-[.92rem] text-slate-700 leading-relaxed pt-0.5">
+              <strong>성공하면 평문 토큰을 폐기</strong>합니다. 일시 실패는 지수 백오프로 재시도하고, 끝까지 실패한 건은 dead letter 표시 후 평문 토큰을 같이 비웁니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">로컬 dev / e2e 모드는 그대로</p>
+          <p class="text-slate-600 leading-relaxed">
+            기본값은 임시 저장소 모드입니다. 로컬에서는 메일이 실제로 발송되지 않고 dev DB에 행으로 남아서 e2e 스크립트가 토큰을 꺼낼 수 있습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">평문 토큰은 archive에 남지 않음</p>
+          <p class="text-slate-600 leading-relaxed">
+            발송 본문의 평문 링크는 암호화 보관 후 발송 성공/실패와 함께 폐기됩니다. 로그·archive에 평문 토큰이 검색되는 일이 없습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. MFA ─────────── -->
+    <section id="mfa">
+      <p class="text-[.78rem] font-bold tracking-wider text-violet-600 mb-2">기능 02 · 로그인 / 설정 → 보안</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">2단계 인증 — 관리자 계정 탈취 자체를 차단</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        관리자 비밀번호 하나로만 보호되는 조직은 비밀번호 유출 즉시 모든 데이터가 노출됩니다.
+        Phase 7부터는 사용자가 Google Authenticator 같은 인증기 앱과 자기 계정을 묶어 두면, 다음 로그인부터 비밀번호 입력 직후 <strong class="text-slate-900">6자리 1회용 코드</strong>를 한 번 더 입력해야 로그인이 끝납니다.
+        관리자는 조직 단위로 모든 멤버에게 강제화하는 토글도 가집니다.
+      </p>
+
+      <div class="card p-6 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-4">등록 화면 모형 — QR 스캔 후 6자리 코드 확인</p>
+        <div class="grid sm:grid-cols-[180px_1fr] gap-6 items-center">
+          <div class="flex flex-col items-center">
+            <div class="qr-block"></div>
+            <p class="text-[.74rem] text-slate-500 mt-3 leading-snug text-center">인증기 앱으로 QR을 스캔하거나, 아래 보조 키를 수동 입력합니다.</p>
+            <code class="mt-2 text-[.7rem] text-slate-700 tracking-wider bg-slate-50 px-2 py-1 rounded border border-slate-200">JBSWY3DPEHPK3PXP</code>
+          </div>
+          <div>
+            <p class="text-[.78rem] font-bold uppercase tracking-wider text-slate-400 mb-2">인증기가 보여 준 코드</p>
+            <div class="totp-code mb-4">
+              <span class="totp-digit">4</span>
+              <span class="totp-digit">8</span>
+              <span class="totp-digit">1</span>
+              <span class="totp-digit">5</span>
+              <span class="totp-digit active">6</span>
+              <span class="totp-digit active">2</span>
+            </div>
+            <p class="text-[.86rem] text-slate-600 leading-relaxed">
+              화면이 보여 주는 6자리를 그대로 입력하면 등록이 끝납니다. 이후 모든 로그인은 비밀번호 + 이 6자리 코드 두 단계입니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">조직 강제화 토글</p>
+          <p class="text-slate-600 leading-relaxed">
+            관리자는 설정 → 보안에서 "조직 전체 2단계 인증 필수화"를 켤 수 있습니다. 켜진 순간부터 미등록 멤버는 다음 로그인 시 등록이 강제됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">5분짜리 일회용 토큰</p>
+          <p class="text-slate-600 leading-relaxed">
+            등록·해제 직전에 현재 비밀번호를 한 번 더 확인합니다. 그 확인은 5분 안에만 유효한 일회용 토큰으로 묶여 있어, 누가 옆에서 폼만 가로채도 다시 비밀번호를 알아야 합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">실패 누적 시 자동 잠금</p>
+          <p class="text-slate-600 leading-relaxed">
+            6자리 코드를 연속으로 잘못 입력하면 잠시 잠깁니다. 잠금이 풀리는 데 시간이 걸리므로 무차별 대입 시도를 효과적으로 차단합니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. Audit log ─────────── -->
+    <section id="audit">
+      <p class="text-[.78rem] font-bold tracking-wider text-blue-600 mb-2">기능 03 · 설정 → 보안 → 감사 로그</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">감사 로그 — 누가 언제 무엇을 했는지 한 줄씩</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 6까지는 권한 변경·삭제 같은 운영 행위가 일어나도 그 자취를 추적할 수 있는 공식 화면이 없었습니다.
+        Phase 7부터는 관리자가 <strong class="text-slate-900">설정 → 보안 하단의 감사 로그 패널</strong>에서 최근 운영 행위를 시간 역순으로 확인합니다.
+        값(고객 이름, 이메일, 청구 정보 등)은 절대 기록되지 않고 — <strong class="text-slate-900">"무엇이 바뀌었는가"의 필드 이름만</strong> 남습니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <div class="audit-row" style="background: rgb(248 250 252); font-weight: 700; color: rgb(71 85 105); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;">
+          <span>시각</span><span>행위자</span><span>행위</span><span>대상</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-when">10:42</span>
+          <span class="audit-actor">관리자 (admin@acme)</span>
+          <span><span class="audit-action ok">billing.profile_updated</span> <span class="text-slate-500 text-[.74rem]">필드: tax_id, billing_email</span></span>
+          <span class="text-slate-500 text-[.78rem]">조직 — Acme Sales</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-when">10:24</span>
+          <span class="audit-actor">관리자 (admin@acme)</span>
+          <span><span class="audit-action">membership.role_changed</span> <span class="text-slate-500 text-[.74rem]">→ manager</span></span>
+          <span class="text-slate-500 text-[.78rem]">멤버 — 김민수</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-when">09:58</span>
+          <span class="audit-actor">매니저 (mgr-a@acme)</span>
+          <span><span class="audit-action">report.viewed</span> <span class="text-slate-500 text-[.74rem]">from=2026-04-18 to=2026-05-18</span></span>
+          <span class="text-slate-500 text-[.78rem]">팀 — A팀</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-when">09:33</span>
+          <span class="audit-actor">직원 (emp@acme)</span>
+          <span><span class="audit-action warn">call.action_item_deleted</span></span>
+          <span class="text-slate-500 text-[.78rem]">통화 — #a7f3</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-when">09:11</span>
+          <span class="audit-actor">관리자 (admin@acme)</span>
+          <span><span class="audit-action">organization.mfa_required_set</span> <span class="text-slate-500 text-[.74rem]">→ true</span></span>
+          <span class="text-slate-500 text-[.78rem]">조직 — Acme Sales</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-when">08:50</span>
+          <span class="audit-actor">관리자 (admin@acme)</span>
+          <span><span class="audit-action">auth.mfa_setup_started</span></span>
+          <span class="text-slate-500 text-[.78rem]">본인</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-when">08:47</span>
+          <span class="audit-actor">관리자 (admin@acme)</span>
+          <span><span class="audit-action ok">auth.login_succeeded</span></span>
+          <span class="text-slate-500 text-[.78rem]">세션</span>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">값은 기록 안 함, 필드 이름만</p>
+          <p class="text-slate-600 leading-relaxed">
+            고객 이름, 이메일, 사업자등록번호, 비밀번호 — 값은 절대 audit row에 남지 않습니다. "어떤 필드가 바뀌었다"는 사실만 기록합니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">조직 격리 완전 보장</p>
+          <p class="text-slate-600 leading-relaxed">
+            다른 조직의 행위는 여기 절대 보이지 않습니다. 로그 자체가 조직 단위로 분리 저장되고, 화면도 본인 조직 행만 비춥니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">XSS 안전</p>
+          <p class="text-slate-600 leading-relaxed">
+            audit row의 모든 값은 화면에서 텍스트로만 렌더됩니다. 행위자 이름·필드 이름에 특수문자가 있어도 화면이 깨지거나 코드가 실행되는 일이 없습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 4. Reports date + agent ─────────── -->
+    <section id="reports">
+      <p class="text-[.78rem] font-bold tracking-wider text-cyan-600 mb-2">기능 04 · 팀 보고서 화면</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">보고서 정밀화 — 기간 선택 + 담당자별 drill-down</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 6의 팀 보고서는 "전체 기간"의 KPI만 보여 줬습니다. Phase 7부터는 <strong class="text-slate-900">최근 7일/30일/90일/직접 기간</strong> 중 하나를 골라 그 기간의 KPI를 봅니다. 담당자별 KPI가 새로 추가되어, <strong class="text-slate-900">행을 클릭하면 그 담당자의 최근 통화만 골라서</strong> 빠르게 확인할 수 있습니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">기간 preset + 담당자 행 모형</p>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button class="preset-btn">7일</button>
+          <button class="preset-btn active">30일</button>
+          <button class="preset-btn">90일</button>
+          <button class="preset-btn">직접 선택</button>
+        </div>
+
+        <div class="card-tight">
+          <div class="agent-row" style="background: rgb(248 250 252); font-weight: 700; color: rgb(71 85 105); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;">
+            <span>담당자</span>
+            <span class="text-right">통화 수</span>
+            <span class="text-right">응답률</span>
+            <span class="text-right">평균 시간</span>
+          </div>
+          <div class="agent-row active">
+            <span class="agent-name">김민수 <span class="text-[.66rem] text-indigo-600 font-bold ml-1">(클릭됨)</span></span>
+            <span class="agent-num">42</span>
+            <span class="agent-num">86%</span>
+            <span class="agent-num">3m 12s</span>
+          </div>
+          <div class="agent-row">
+            <span class="agent-name">박지영</span>
+            <span class="agent-num">37</span>
+            <span class="agent-num">81%</span>
+            <span class="agent-num">2m 48s</span>
+          </div>
+          <div class="agent-row">
+            <span class="agent-name">이수현</span>
+            <span class="agent-num">29</span>
+            <span class="agent-num">79%</span>
+            <span class="agent-num">3m 04s</span>
+          </div>
+          <div class="agent-row">
+            <span class="agent-name text-slate-500">미배정 (담당자 없음)</span>
+            <span class="agent-num">8</span>
+            <span class="agent-num">62%</span>
+            <span class="agent-num">2m 31s</span>
+          </div>
+        </div>
+        <p class="shot-cap mt-3">
+          ▲ 클릭된 행("김민수")이 강조되면, 아래 최근 통화 10건이 그 담당자의 통화로 필터됩니다. 미배정 버킷은 조직 범위(admin)에서만 보입니다.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">매니저는 본인 팀, admin은 전체 조직</p>
+          <p class="text-slate-600 leading-relaxed">
+            매니저는 본인 팀의 active 멤버만 담당자 목록에 보입니다. admin은 전체 조직 + 미배정 버킷까지 봅니다. 어느 쪽도 다른 팀의 통화를 볼 수 없습니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">기간 default = 최근 30일</p>
+          <p class="text-slate-600 leading-relaxed">
+            아무 preset도 고르지 않으면 자동으로 최근 30일을 봅니다. "전체 기간"이 기본이던 Phase 6과 달라진 점이라 의도된 변경입니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. Billing & usage ─────────── -->
+    <section id="billing">
+      <p class="text-[.78rem] font-bold tracking-wider text-emerald-600 mb-2">기능 05 · 설정 → 플랜 & 사용량</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">플랜 & 사용량 — 한도가 차면 서버가 직접 막아 줍니다</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        그동안 "플랜"은 가입할 때 정해진 라벨뿐, 한도가 코드로 강제되지 않았습니다.
+        Phase 7부터는 admin이 설정 → 플랜 & 사용량에서 6가지 한도(좌석·고객사·지식베이스·지식 청크·이번 달 통화·이번 달 AI 비용)의 진행률을 한 화면으로 봅니다.
+        한도가 차면 다음 mutation 호출이 서버에서 차단됩니다 — 결제 약관과 화면이 일치합니다.
+      </p>
+
+      <div class="card p-5 mb-6">
+        <div class="rounded-xl border-2 border-indigo-500 bg-gradient-to-br from-indigo-50/40 to-blue-50/30 p-4 mb-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[.62rem] font-black tracking-[.18em] uppercase text-indigo-600">현재 플랜</span>
+              <span class="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[.7rem] font-black">PRO</span>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[.7rem] font-black">활성</span>
+            </div>
+            <div class="text-[1.05rem] font-black text-slate-800">Acme Sales Inc.</div>
+            <div class="text-[.72rem] text-slate-500 mt-1">이번 달: 2026-05 · 결제 연동: 미연동</div>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+          <div class="lim-card">
+            <div class="lim-label">구성원 좌석</div>
+            <div class="lim-row"><span class="lim-current">4</span><span class="lim-of">/ 10</span></div>
+            <div class="lim-bar"><div class="lim-fill ok" style="width: 40%"></div></div>
+            <div class="lim-pct">40%</div>
+          </div>
+          <div class="lim-card">
+            <div class="lim-label">고객사</div>
+            <div class="lim-row"><span class="lim-current">218</span><span class="lim-of">/ 1,000</span></div>
+            <div class="lim-bar"><div class="lim-fill ok" style="width: 22%"></div></div>
+            <div class="lim-pct">22%</div>
+          </div>
+          <div class="lim-card">
+            <div class="lim-label">지식베이스</div>
+            <div class="lim-row"><span class="lim-current">12</span><span class="lim-of">/ 50</span></div>
+            <div class="lim-bar"><div class="lim-fill ok" style="width: 24%"></div></div>
+            <div class="lim-pct">24%</div>
+          </div>
+          <div class="lim-card">
+            <div class="lim-label">지식 청크</div>
+            <div class="lim-row"><span class="lim-current">8,127</span><span class="lim-of">/ 10,000</span></div>
+            <div class="lim-bar"><div class="lim-fill warn" style="width: 81%"></div></div>
+            <div class="lim-pct">81%</div>
+          </div>
+          <div class="lim-card">
+            <div class="lim-label">이번 달 통화</div>
+            <div class="lim-row"><span class="lim-current">4,873</span><span class="lim-of">/ 5,000</span></div>
+            <div class="lim-bar"><div class="lim-fill warn" style="width: 97%"></div></div>
+            <div class="lim-pct">97%</div>
+          </div>
+          <div class="lim-card">
+            <div class="lim-label">이번 달 AI 비용 <span class="text-[.6rem] text-slate-400 font-normal">(참고용)</span></div>
+            <div class="lim-row"><span class="lim-current">$42.18</span><span class="lim-of">/ $100.00</span></div>
+            <div class="lim-bar"><div class="lim-fill ok" style="width: 42%"></div></div>
+            <div class="lim-pct">42%</div>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-4">
+          <p class="text-[.72rem] font-bold uppercase tracking-wider text-slate-400 mb-2">청구 정보</p>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[.72rem] font-bold text-slate-600 mb-1">사업자등록번호</label>
+              <input value="123-45-67890" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-[.86rem]" readonly />
+            </div>
+            <div>
+              <label class="block text-[.72rem] font-bold text-slate-600 mb-1">세금계산서 이메일</label>
+              <input value="billing@acme.test" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-[.86rem]" readonly />
+            </div>
+          </div>
+          <p class="text-[.74rem] text-slate-500 mt-3 leading-relaxed">
+            결제 연동은 아직 준비 중입니다. 플랜 변경이나 결제 처리는 운영팀(<a class="text-indigo-600 hover:underline" href="mailto:support@kloser.com">support@kloser.com</a>)으로 문의해 주세요.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">한도 차면 서버가 차단</p>
+          <p class="text-slate-600 leading-relaxed">
+            좌석·고객·지식·통화 5종은 한도를 넘으면 다음 등록·생성 요청이 서버에서 거부됩니다. 화면에는 "플랜 한도 초과" 안내가 나타납니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">AI 비용은 참고용</p>
+          <p class="text-slate-600 leading-relaxed">
+            이번 달 AI 비용은 표시만 합니다. 비용이 한도를 넘어도 호출은 막지 않습니다 — admin이 사용 추세를 보고 플랜을 올릴 시점을 판단하기 위한 신호입니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">청구 정보는 안전하게</p>
+          <p class="text-slate-600 leading-relaxed">
+            사업자등록번호·세금계산서 이메일은 admin만 보고 수정합니다. 외부 결제 시스템 ID는 응답에 노출되지 않고, 감사 로그에는 "어떤 필드가 바뀌었는지"만 남아 값이 새지 않습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── + 운영 위생 4가지 ─────────── -->
+    <section id="hygiene">
+      <p class="text-[.78rem] font-bold tracking-wider text-amber-600 mb-2">기능 06 · 백그라운드 / 사이드바 / 운영자 콘솔</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">보너스 — 운영 위생 4가지</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        앞의 5가지가 외부 사용자에게 직접 보이는 변화라면, 다음 4가지는 운영자만 직접 체감하거나 백그라운드에서 조용히 정리되는 위생 작업입니다.
+      </p>
+
+      <div class="grid lg:grid-cols-2 gap-4">
+
+        <!-- Retention cron -->
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">보존 정책 자동 실행</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            "통화 내용 3년 보관 후 삭제" 같은 보존 약속이 문서뿐만 아니라 백그라운드 작업으로 자동 실행됩니다. 발송 직전에 멈춘 메일도 일정 시간 이상 막혀 있으면 자동으로 재시도 가능 상태로 되돌아갑니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem]">
+            <p class="text-slate-700 leading-relaxed">
+              ✔ 3년 지난 통화 내용: 자동 삭제<br>
+              ✔ 발송 멈춘 메일: 일정 시간 후 자동 회복<br>
+              ✔ 사이클당 1행 요약 기록 (몇 건 처리됐는지)
+            </p>
+          </div>
+        </div>
+
+        <!-- Sidebar role visibility -->
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">역할별 사이드바 정돈</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            상담원·조회 권한 사용자에게 admin 전용 메뉴(팀 보고서 등)가 사이드바에서 깔끔히 숨겨집니다. URL 직접 접근은 backend가 별도로 막습니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem]">
+            <div class="grid grid-cols-2 gap-3 text-[.74rem]">
+              <div>
+                <p class="font-bold text-slate-700 mb-2">관리자</p>
+                <div class="sidebar-link">📊 대시보드</div>
+                <div class="sidebar-link">📞 통화</div>
+                <div class="sidebar-link">📈 팀 보고서</div>
+                <div class="sidebar-link">⚙️ 설정</div>
+              </div>
+              <div>
+                <p class="font-bold text-slate-700 mb-2">조회 권한</p>
+                <div class="sidebar-link">📊 대시보드</div>
+                <div class="sidebar-link">📞 통화</div>
+                <div class="sidebar-link hidden-by-role">📈 팀 보고서</div>
+                <div class="sidebar-link">⚙️ 설정</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LLM cost -->
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">LLM 비용 자동 환산</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            Phase 6에서 사용량(토큰 수)만 쌓아 두던 자리에, 모델별 공식 가격표를 곱해서 호출 단위 비용이 자동으로 계산됩니다. 운영자가 월 비용 추세를 추적할 수 있습니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem]">
+            <table class="w-full text-[.72rem]">
+              <thead>
+                <tr class="text-slate-500"><th class="text-left py-1 font-bold">모델</th><th class="text-right py-1 font-bold">입력 / MTok</th><th class="text-right py-1 font-bold">출력 / MTok</th></tr>
+              </thead>
+              <tbody class="text-slate-700">
+                <tr><td>claude-sonnet-4-6</td><td class="text-right tnum">$3</td><td class="text-right tnum">$15</td></tr>
+                <tr><td>claude-opus-4-7</td><td class="text-right tnum">$5</td><td class="text-right tnum">$25</td></tr>
+                <tr><td>claude-haiku-4-5</td><td class="text-right tnum">$1</td><td class="text-right tnum">$5</td></tr>
+                <tr><td>text-embedding-3-small</td><td class="text-right tnum">$0.02</td><td class="text-right tnum text-slate-400">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Demo honesty -->
+        <div class="card p-5">
+          <h3 class="text-[1.05rem] font-bold text-slate-900 mb-2">demo 정직성 정리</h3>
+          <p class="text-[.86rem] text-slate-600 leading-relaxed mb-3">
+            대시보드 위젯 / 오늘의 일 카드 / 뉴스레터 발송 UI 중 아직 백엔드와 연결되지 않은 부분은 "데모"라고 정직하게 표기합니다. 사용자가 입력한 텍스트로 화면이 깨지는 보안 구멍도 함께 닫혔습니다.
+          </p>
+          <div class="card-tight p-3 text-[.78rem] text-slate-700 leading-relaxed">
+            ✔ "매일 06:00 자동 갱신" → "데모 데이터 (backend 미연결)"<br>
+            ✔ 뉴스레터 "발송" → "시뮬레이션"<br>
+            ✔ 사용자 입력 텍스트가 코드로 실행되는 보안 구멍 모두 닫음
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── Validation summary ─────────── -->
+    <section id="validation">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">closeout 검증</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">Phase 7이 닫힌 시점의 검증 게이트 — 9 / 9 통과</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        모든 step이 닫힌 2026-05-18 시점에 다음 검증이 모두 통과한 상태에서 closeout됐습니다. 자세한 결과는 <code class="px-1.5 py-0.5 rounded bg-slate-100 text-[.82rem]">docs/plan/phase-7/PHASE_7_CLOSEOUT_FINDINGS.md</code>를 참고하세요.
+      </p>
+
+      <div class="card p-5 grid sm:grid-cols-2 gap-3">
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 실 이메일 발송 검증</p>
+          <p class="text-slate-600 leading-relaxed">로컬 dev + 실 발송 모드 양쪽 모두 fake adapter 테스트로 검증. 실 도메인 smoke는 staging 운영 단계.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 2단계 인증 차단 검증</p>
+          <p class="text-slate-600 leading-relaxed">조직 강제화가 켜진 상태에서 비밀번호만으로는 access token이 발급되지 않음을 직접 확인.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 감사 로그 행 기록</p>
+          <p class="text-slate-600 leading-relaxed">8개 영역(보안·멤버십·초대·고객·통화·지식·보고서·청구)에서 조직 단위 행이 남는 것을 라우트 테스트로 검증.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 보존 정책 자동 실행</p>
+          <p class="text-slate-600 leading-relaxed">시각을 인위적으로 +2일 이동시켜 임계 통과/미통과 양쪽이 모두 의도대로 동작함을 확인.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 백엔드 전체 테스트</p>
+          <p class="text-slate-600 leading-relaxed">772건 중 769 PASS · 3 skipped · 0 fail. Phase 7 단위 회귀 모두 통과.</p>
+        </div>
+        <div class="card-tight p-4 text-[.86rem]">
+          <p class="font-bold text-emerald-600 mb-1">✓ 플랜 한도 UI XSS 확인</p>
+          <p class="text-slate-600 leading-relaxed">사업자등록번호에 스크립트 페이로드를 저장해도 화면에 텍스트로만 보이고 코드는 실행되지 않음을 Playwright로 확인.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── Next phase handoff ─────────── -->
+    <section id="next">
+      <p class="text-[.78rem] font-bold tracking-wider text-slate-500 mb-2">다음 단계</p>
+      <h2 class="text-[1.7rem] font-black tracking-tight mb-3">결제 연동 별도 Phase · Phase 8 통화 녹취</h2>
+      <p class="text-slate-600 mb-7 leading-relaxed max-w-3xl">
+        Phase 7로 운영 출시 직전 게이트가 모두 닫혔습니다. 다음 작업 후보는 두 가지로 나뉘어 운영팀 합의 후 진행합니다.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3 text-[.92rem]">
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">결제 provider 연동 (별도 Phase)</p>
+          <p class="text-slate-600 leading-relaxed">
+            Phase 7 Step 9가 마련해 둔 빈 연결 자리에 Stripe Checkout 또는 Toss 결제 위젯을 끼웁니다. 외부 돈 이동과 회계 계약을 동반하므로 본 repo의 Phase 7과 분리해 진행합니다. 청구 패널의 "플랜 변경" 버튼이 결제 페이지로 이동하고, 영수증 PDF가 자동 발급됩니다.
+          </p>
+        </div>
+        <div class="card-tight p-4">
+          <p class="font-bold text-slate-900 mb-1.5">Phase 8 — 통화 녹취 저장 + 재생</p>
+          <p class="text-slate-600 leading-relaxed">
+            통화 음성을 S3/MinIO에 안전하게 저장하고, 통화 페이지에서 재생할 수 있게 만듭니다. Phase 7 Step 4의 보존 정책 워커에 90일 자동 삭제 정책이 같이 추가됩니다.
+          </p>
+        </div>
+      </div>
+
+      <p class="text-[.86rem] text-slate-500 mt-6 leading-relaxed">
+        이전 단계가 궁금하면
+        <a href="PHASE_1_FOUNDATIONS.html" class="text-indigo-600 hover:underline font-semibold">Phase 1</a> /
+        <a href="PHASE_2_FOUNDATIONS.html" class="text-indigo-600 hover:underline font-semibold">Phase 2</a> /
+        <a href="PHASE_3_FOUNDATIONS.html" class="text-indigo-600 hover:underline font-semibold">Phase 3</a> /
+        <a href="PHASE_4_FOUNDATIONS.html" class="text-indigo-600 hover:underline font-semibold">Phase 4</a> /
+        <a href="PHASE_5_FOUNDATIONS.html" class="text-indigo-600 hover:underline font-semibold">Phase 5</a> /
+        <a href="PHASE_6_FOUNDATIONS.html" class="text-indigo-600 hover:underline font-semibold">Phase 6</a>
+        가이드를 참고하세요.
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span class="text-[.95rem] font-black tracking-tight">
+          <span class="g-text">Kloser</span>
+        </span>
+        <span class="text-[.78rem] text-slate-500 ml-2">Phase 7 · 보안 · 감사 · 플랜</span>
+      </div>
+      <nav class="text-[.78rem] text-slate-600 flex flex-wrap items-center gap-4">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 6</a>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>

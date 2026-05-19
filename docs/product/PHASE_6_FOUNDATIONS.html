@@ -241,13 +241,24 @@
           <span class="g-text">Kloser</span>
         </span>
       </a>
-      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
-        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
-        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
-        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+      <nav class="text-[.82rem] font-medium text-slate-600 hidden md:flex items-center gap-4">
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 3</a>
         <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 4</a>
         <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
-        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="text-emerald-700 font-bold no-underline">Phase 6</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 no-underline text-[.74rem] font-bold tracking-wide">
+          <span class="pulse-dot"></span>
+          Phase 7 →
+        </a>
+      </nav>
+      <nav class="text-[.78rem] font-medium text-slate-600 flex md:hidden items-center gap-2">
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">가이드</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 no-underline text-[.7rem] font-bold">
+          <span class="pulse-dot"></span>P7 →
+        </a>
       </nav>
     </div>
   </header>
@@ -272,10 +283,22 @@
       <div class="mt-6 card-tight px-5 py-4 max-w-2xl">
         <p class="text-[.9rem] text-slate-700 leading-relaxed">
           <span class="text-emerald-600 font-black mr-1">⌜</span>
-          Phase 5가 "사용자가 직접 정리하는 흐름"을 갖춰 두었다면, Phase 6은 그 위에 자동화 4가지(자동 요약·끊긴 통화 정리·실시간 AI 추천·실제 외부 서비스 연결)와 매니저 보고서 1개를 올린 단계입니다.
+          Phase 5가 "사용자가 직접 정리하는 흐름"을 갖춰 두었다면, Phase 6은 그 위에 자동화 4가지(자동 요약·끊긴 통화 정리·실시간 AI 추천·외부 AI 어댑터 연결)와 매니저 보고서 1개를 올린 단계입니다.
           사람이 직접 적어 둔 요약은 자동화가 절대 덮어쓰지 않습니다.
           <span class="text-emerald-600 font-black ml-1">⌟</span>
         </p>
+      </div>
+
+      <!-- 한눈에 보기 — CEO 친화 요약 -->
+      <div class="mt-6 max-w-2xl rounded-xl border border-emerald-200 bg-emerald-50/30 p-5">
+        <p class="text-[.72rem] font-black uppercase tracking-wider text-emerald-700 mb-2">한눈에 보기</p>
+        <ul class="text-[.9rem] text-slate-700 space-y-1.5 list-disc pl-5 leading-relaxed">
+          <li><strong class="text-slate-900">쉽게 말하면</strong> — 통화를 끝내면 요약·고객 니즈·다음 액션이 자동으로 채워지고, 끊긴 통화는 알아서 정리되고, 매니저는 자기 팀 KPI를 한 화면에서 보는 단계입니다.</li>
+          <li><strong class="text-slate-900">왜 중요한가</strong> — 영업 사후 정리 시간을 절반 이하로 줄이고, 매니저 코칭/주간 회의가 KPI 기반으로 운영될 수 있습니다. 운영 자동화의 핵심 가치.</li>
+          <li><strong class="text-slate-900">사용자가 체감하는 변화</strong> — 통화 종료 직후 자동 요약 / 잘못 끊긴 통화 자동 정리 / 다음 액션 ✕ 삭제 / 매니저 보고서 메뉴.</li>
+          <li><strong class="text-slate-900">AI 연결 상태 — 정직성</strong> — 외부 STT·LLM·임베딩 어댑터 구조는 완성되어 있고 백그라운드 워커가 호출하도록 연결됐습니다. 다만 실제 운영 환경에서의 품질·비용·실패 처리 정책 검증은 별도 작업이며, STT는 Azure Speech 검토 중(온프레미스 원칙과의 예외 결정 필요)입니다.</li>
+          <li><strong class="text-slate-900">아직 안 한 것</strong> — 실 이메일 발송·MFA·감사 로그(Phase 7), 플랜 한도 강제(Phase 7 Step 9), 통화 녹음(Phase 8).</li>
+        </ul>
       </div>
     </div>
   </section>
@@ -790,14 +813,15 @@
         </span>
         <span class="text-[.78rem] text-slate-500 ml-2">Phase 6 · 자동화 · 매니저 보고서</span>
       </div>
-      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+      <nav class="text-[.78rem] text-slate-600 flex flex-wrap items-center gap-4">
         <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
+        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
         <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
         <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
         <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
         <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 4</a>
         <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
-        <a href="USER_GUIDE.html" class="hover:text-slate-900 no-underline">화면별 가이드</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="text-indigo-700 font-semibold hover:text-indigo-800 no-underline">Phase 7 →</a>
       </nav>
     </div>
   </footer>

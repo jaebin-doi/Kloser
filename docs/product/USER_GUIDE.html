@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Kloser 사용자 가이드 — Phase 4</title>
-  <meta name="description" content="Kloser 플랫폼을 화면별로 둘러보는 시각 가이드. Phase 1·2·3·4 완료 시점 기준." />
+  <title>Kloser 사용자 가이드 — Phase 7</title>
+  <meta name="description" content="Kloser 플랫폼을 화면별로 둘러보는 시각 가이드. Phase 1~7 완료(운영 출시 직전 게이트 종료) 시점 기준." />
   <link rel="icon" type="image/svg+xml" href="../../assets/favicon.png" />
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -119,6 +119,13 @@
 
     /* Anchored heading offset so sticky links land below the page top. */
     section[id] { scroll-margin-top: 24px; }
+
+    /* Mobile overflow guard — grid children default to min-width:auto which
+       can prevent shrinking below intrinsic min-content. Force them to
+       shrink so long Korean text / wide tables stay inside viewport. */
+    main > div.grid > * { min-width: 0; }
+    .shot { max-width: 100%; }
+    .shot img { max-width: 100%; }
   </style>
 </head>
 
@@ -126,22 +133,33 @@
 
   <!-- ═══════════════════════════ Top bar ═══════════════════════════ -->
   <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-      <a href="../../index.html" class="flex items-center gap-2.5 no-underline">
+    <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-3">
+      <a href="../../index.html" class="flex items-center gap-2.5 no-underline shrink-0">
         <span class="pulse-dot"></span>
         <span class="text-[1.05rem] font-black tracking-tight">
           <span class="g-text">Kloser</span>
         </span>
       </a>
-      <nav class="text-[.82rem] font-medium text-slate-600 flex items-center gap-5">
-        <a href="../../index.html" class="hover:text-slate-900 no-underline">마케팅 사이트</a>
-        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
-        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
-        <a href="PHASE_3_FOUNDATIONS.html" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-700 hover:bg-violet-100 hover:text-violet-800 no-underline text-[.74rem] font-bold tracking-wide">
+      <nav class="text-[.82rem] font-medium text-slate-600 hidden md:flex items-center gap-4">
+        <a href="../../index.html" class="hover:text-slate-900 no-underline">마케팅</a>
+        <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 1</a>
+        <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 2</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden xl:inline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline hidden lg:inline">Phase 5</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 6</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 no-underline text-[.74rem] font-bold tracking-wide">
           <span class="pulse-dot"></span>
-          Phase 3 →
+          Phase 7 →
         </a>
         <a href="guide.html" class="hover:text-slate-900 no-underline">도입 가이드</a>
+      </nav>
+      <!-- Compact nav for mobile (md-) — Phase 7 + 도입 가이드만 -->
+      <nav class="text-[.78rem] font-medium text-slate-600 flex md:hidden items-center gap-2">
+        <a href="PHASE_7_FOUNDATIONS.html" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 no-underline text-[.7rem] font-bold">
+          <span class="pulse-dot"></span>P7 →
+        </a>
+        <a href="guide.html" class="hover:text-slate-900 no-underline">도입</a>
       </nav>
     </div>
   </header>
@@ -149,29 +167,29 @@
   <!-- ═══════════════════════════ Hero ═══════════════════════════ -->
   <section class="max-w-6xl mx-auto px-6 pt-12 pb-10">
     <div class="max-w-3xl">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-100 text-cyan-700 text-[.72rem] font-bold tracking-wider mb-5">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[.72rem] font-bold tracking-wider mb-5">
         <span class="pulse-dot"></span>
-        PHASE 1·2·3·4 · USER GUIDE
+        PHASE 1~7 · USER GUIDE
       </div>
       <h1 class="text-[2.4rem] sm:text-[2.8rem] font-black tracking-tight leading-[1.1]">
         화면으로 보는 <span class="g-text">Kloser 사용자 가이드</span>
       </h1>
       <p class="mt-5 text-[1.05rem] text-slate-600 leading-relaxed">
-        영업팀이 매일 마주할 9개 화면을 차례로 둘러봅니다. 각 섹션엔 실제 화면 캡처와
-        주요 인터랙션, 그리고 <strong class="text-slate-900">현재 동작하는 부분(Phase 1·2·3·4 완료)</strong>과
-        <strong class="text-slate-900">아직 mock·미구현인 부분</strong>을 함께 표시했습니다.
-        평가·검토 단계의 분께 권장.
+        영업팀이 매일 마주할 11개 화면을 차례로 둘러봅니다. 각 섹션엔 주요 인터랙션과 함께
+        <strong class="text-slate-900">현재 동작하는 부분(Phase 1~7 완료 · 운영 출시 직전 게이트 종료)</strong>과
+        <strong class="text-slate-900">아직 별도 Phase로 분리된 부분</strong>을 같이 표시했습니다.
+        평가·검토·운영 도입을 검토 중인 분께 권장합니다.
       </p>
       <div class="mt-7 flex flex-wrap gap-3">
         <a href="#login" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[.85rem] font-bold no-underline transition">
           가이드 시작 →
         </a>
-        <a href="PHASE_1_FOUNDATIONS.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-[.85rem] font-medium no-underline transition">
-          Phase 1 기반 기능 설명 →
-        </a>
-        <a href="PHASE_2_FOUNDATIONS.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-50 border border-cyan-200 hover:border-cyan-300 hover:bg-cyan-100 text-cyan-800 text-[.85rem] font-medium no-underline transition">
+        <a href="PHASE_7_FOUNDATIONS.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-50 border border-indigo-200 hover:border-indigo-300 hover:bg-indigo-100 text-indigo-800 text-[.85rem] font-medium no-underline transition">
           <span class="pulse-dot"></span>
-          Phase 2 — 고객 관리 →
+          Phase 7 — 운영 게이트 →
+        </a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 text-emerald-800 text-[.85rem] font-medium no-underline transition">
+          Phase 6 — 자동화 →
         </a>
       </div>
     </div>
@@ -186,7 +204,7 @@
         <nav class="toc-sticky text-[.82rem]">
           <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">목차</p>
           <ul class="space-y-1.5">
-            <li><a href="#login" class="text-slate-600 hover:text-blue-600 no-underline">1 · 로그인</a></li>
+            <li><a href="#login" class="text-slate-600 hover:text-blue-600 no-underline">1 · 로그인 + 2단계 인증</a></li>
             <li><a href="#dashboard" class="text-slate-600 hover:text-blue-600 no-underline">2 · 대시보드</a></li>
             <li><a href="#live" class="text-slate-600 hover:text-blue-600 no-underline">3 · 실시간 통화</a></li>
             <li><a href="#daily" class="text-slate-600 hover:text-blue-600 no-underline">4 · 오늘의 일</a></li>
@@ -194,9 +212,11 @@
             <li><a href="#customers" class="text-slate-600 hover:text-blue-600 no-underline">6 · 고객 관리</a></li>
             <li><a href="#newsletter" class="text-slate-600 hover:text-blue-600 no-underline">7 · 뉴스레터</a></li>
             <li><a href="#team" class="text-slate-600 hover:text-blue-600 no-underline">8 · 팀 & 계정</a></li>
-            <li><a href="#settings" class="text-slate-600 hover:text-blue-600 no-underline">9 · 설정</a></li>
+            <li><a href="#reports" class="text-slate-600 hover:text-blue-600 no-underline">9 · 팀 보고서</a></li>
+            <li><a href="#billing" class="text-slate-600 hover:text-blue-600 no-underline">10 · 플랜 & 사용량</a></li>
+            <li><a href="#settings" class="text-slate-600 hover:text-blue-600 no-underline">11 · 설정 · 감사 로그</a></li>
             <li class="pt-2 border-t border-slate-100 mt-3">
-              <a href="#summary" class="text-slate-600 hover:text-blue-600 no-underline font-semibold">10 · 종합 정리</a>
+              <a href="#summary" class="text-slate-600 hover:text-blue-600 no-underline font-semibold">12 · 종합 정리</a>
             </li>
           </ul>
         </nav>
@@ -204,15 +224,16 @@
 
       <div class="space-y-16">
 
-        <!-- ────────── 1. 로그인 ────────── -->
+        <!-- ────────── 1. 로그인 + 2단계 인증 ────────── -->
         <section id="login">
           <div class="flex items-baseline gap-3 mb-1">
             <span class="text-[.78rem] font-bold tracking-wider text-blue-600">01</span>
-            <h2 class="text-[1.6rem] font-black tracking-tight">로그인</h2>
+            <h2 class="text-[1.6rem] font-black tracking-tight">로그인 + 2단계 인증</h2>
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
             영업팀 계정으로 로그인하면 통화 어시스턴트로 진입합니다. 멀티 조직 사용자는
             로그인 시 조직 선택 안내가 자동으로 노출됩니다.
+            <strong class="text-slate-900">Phase 7부터는</strong> 비밀번호 직후 인증기 앱의 6자리 코드를 한 번 더 입력하는 2단계 인증 단계가 추가됩니다 (사용자 선택, 관리자가 조직 단위로 강제화 가능).
           </p>
 
           <div class="shot mb-5">
@@ -229,18 +250,21 @@
                 <li>HttpOnly refresh cookie 30일 + Bearer access 15분 갱신</li>
                 <li>잘못된 자격증명·다중 조직 시 인라인 안내 메시지</li>
                 <li>localhost 접속 시 dev 시드 4쌍 + 자동 채우기 버튼 노출</li>
-                <li>✓ Phase 3에서 추가: 회원가입 UI + 24시간 이메일 인증 메일</li>
-                <li>✓ Phase 3에서 추가: 비밀번호 분실 → 메일 링크로 재설정 (적용 시 모든 활성 세션 revoke)</li>
-                <li>✓ Phase 3에서 추가: 멀티-조직 계정은 1차 로그인 실패 응답에 organization 리스트가 포함되어 조직 ID 입력 안내 노출</li>
+                <li>회원가입 UI + 30분 이메일 인증 + 메일 링크 비밀번호 재설정 (Phase 3)</li>
+                <li>멀티-조직 계정은 1차 로그인 실패 응답에 organization 리스트가 포함되어 조직 ID 입력 안내 노출</li>
+                <li><strong class="text-slate-900">2단계 인증(TOTP) — Phase 7 Step 2</strong>: 인증기 앱(Google Authenticator 등)으로 QR 스캔 후 6자리 코드 등록. 비밀번호 다음 단계로 자연스럽게 연결</li>
+                <li><strong class="text-slate-900">조직 전체 MFA 강제화 — Phase 7 Step 2</strong>: 관리자가 토글하면 멤버 전원이 다음 로그인부터 MFA 등록 필수</li>
+                <li>회원가입·재설정 이메일은 운영 모드(`EMAIL_PROVIDER=resend`)에서 Resend로 실제 발송 (Phase 7 Step 1). dev/e2e는 outbox 모드 그대로</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>SSO / SAML — Enterprise 단계 (Phase 6+)</li>
-                <li>조직 picker UI 1차 화면화 — 현재는 로그인 1차 시도 후 자동 노출 또는 "조직 ID 직접 입력" 토글 (Phase 4+ UX polish)</li>
+                <li>SSO / SAML — Enterprise 단계 (별도 Phase)</li>
+                <li>WebAuthn 패스키 — Phase 7은 TOTP까지 도입, 패스키는 후속</li>
+                <li>실 Resend 도메인 smoke 검증 — staging 운영 시점에 한 번 직접 수행 (현재 fake adapter 테스트로 검증)</li>
               </ul>
             </div>
           </div>
@@ -267,20 +291,23 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>오늘 통화 / 응답률 / 평균 통화 길이 / 진행 중인 통화 — 4개 카드가 본인 회사 데이터로 채워집니다.</li>
+                <li>오늘 통화 / 응답률 / 평균 통화 길이 / 진행 중인 통화 — 4개 KPI가 본인 회사 데이터로 채워집니다 (Phase 4 `/dashboard/summary` 실 API).</li>
                 <li>최근 통화 5건이 종료된 시각 순으로 같이 보입니다.</li>
                 <li>인사말에 본인 이름이 표시되고, 이메일 인증을 아직 안 했다면 상단에 안내 띠가 뜹니다.</li>
                 <li>알림 패널 · 토스트 · 모달 인터랙션, 사이드바 드로어 전환(좁은 화면)이 정상 동작합니다.</li>
+                <li><strong class="text-slate-900">평균 통화 길이 표시 안전성 — Phase 7 Step 8</strong>: 값을 텍스트로만 렌더해 화면이 깨지거나 코드가 실행되는 일이 없습니다.</li>
+                <li><strong class="text-slate-900">demo 영역에 정직 라벨 — Phase 7 Step 8</strong>: 시장 트렌드 / 추천 To-Do / 팀 활동 피드는 demo 데이터임을 카드 헤더에 명시.</li>
+                <li><strong class="text-slate-900">사이드바 권한 정돈 — Phase 7 Step 6</strong>: 조회 권한 사용자에게는 admin 전용 메뉴(팀 보고서 등)가 사이드바에서 숨겨집니다.</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>시장 트렌드 알림 5건 — 네이버 검색 API 연동 (Phase 5~6, 현재 demo)</li>
-                <li>오늘의 추천 To-Do — AI 추천 엔진 (Phase 5, 현재 demo)</li>
-                <li>팀 활동 피드 — activity_log 도입 (Phase 5+, 현재 demo)</li>
+                <li>시장 트렌드 알림 5건 — 네이버 검색 API 연동 (별도 Phase, 현재 demo + 정직 라벨)</li>
+                <li>오늘의 추천 To-Do 실 엔진 (별도 Phase, 현재 demo)</li>
+                <li>팀 활동 피드 — 운영 admin은 설정 → 감사 로그 패널에서 별도로 조회 (Phase 7 Step 3). dashboard의 팀 활동 위젯에는 직접 노출하지 않음 (보안 정책)</li>
               </ul>
             </div>
           </div>
@@ -293,9 +320,7 @@
             <h2 class="text-[1.6rem] font-black tracking-tight">실시간 통화 — 핵심 기능</h2>
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
-            Kloser의 핵심 통화 화면입니다. 현재는 데모 대화가 실시간처럼 흘러가며
-            전사, 추천 멘트, 감정 변화가 갱신됩니다. Phase 4에서는 여기서 만든 통화와 메모, 종료 상태가
-            <strong class="text-slate-900">통화 기록과 대시보드에 남도록</strong> 연결됐습니다.
+            Kloser의 핵심 통화 화면입니다. <strong class="text-slate-900">Phase 5부터는</strong> 실 STT(네이버 클로바)·LLM(Claude)·벡터 검색(pgvector)이 끼워졌고, <strong class="text-slate-900">Phase 6에서는</strong> 통화 중 실시간 AI 추천 카드가 그 통화의 이력으로도 저장됩니다. 통화 종료 시 자동 요약·고객 니즈·미해결 이슈가 백그라운드에서 자동으로 채워집니다.
           </p>
 
           <div class="shot mb-5">
@@ -308,23 +333,23 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>로그인한 사용자만 통화 화면에 들어갈 수 있습니다.</li>
-                <li>데모 대화가 실시간으로 흘러가며 전사, 추천 멘트, 감정 변화가 화면에 표시됩니다.</li>
-                <li>통화 중 빠른 메모를 저장하면 나중에 통화 기록 상세에서 다시 볼 수 있습니다.</li>
-                <li>종료 버튼을 누르면 통화가 완료 상태로 저장되고 대시보드 최근 통화에도 반영됩니다.</li>
-                <li>상담 체크리스트와 빠른 응대 칩 UI는 아직 데모 보조 영역입니다.</li>
+                <li>로그인한 사용자만 통화 화면에 들어갈 수 있습니다 (WebSocket 인증 핸드셰이크).</li>
+                <li><strong class="text-slate-900">실 STT — Phase 5</strong>: 네이버 클로바가 발화를 받아 적어 transcript 영역에 흘립니다 (provider env 명시 시).</li>
+                <li><strong class="text-slate-900">실 LLM 응대 추천 — Phase 5·6</strong>: Claude가 가격/일정/이슈 흐름을 보고 추천 멘트·주의 사항 카드를 띄웁니다. 카드는 떴다가 다음 추천으로 갱신되어도 그 통화의 추천 이력에 저장됩니다.</li>
+                <li><strong class="text-slate-900">회사 가이드 RAG — Phase 5</strong>: pgvector로 회사 표준 응대 가이드/FAQ를 벡터 검색해 추천에 반영합니다.</li>
+                <li><strong class="text-slate-900">통화 종료 → AI 자동 요약 — Phase 6</strong>: 종료 버튼 직후 백그라운드 워커가 transcript를 읽고 요약·고객 니즈·미해결 이슈·감정을 자동으로 채워 둡니다. 사람이 직접 적은 메모는 자동화가 덮어쓰지 않습니다.</li>
+                <li><strong class="text-slate-900">끊긴 통화 자동 정리 — Phase 6</strong>: 브라우저가 꺼져 살아 있음 신호가 60초 이상 끊기면 자동으로 "끊김(서버 타임아웃)"으로 마감.</li>
+                <li><strong class="text-slate-900">통화 수 한도 — Phase 7 Step 9</strong>: 현재 플랜의 이번 달 통화 한도를 넘으면 시작 시도가 "플랜 한도 초과"로 막힙니다.</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>실제 STT (Naver Clova) 연동 — Phase 5</li>
-                <li>실제 LLM 응대 추천 (Claude / RAG) — Phase 5</li>
-                <li>회사 가이드 / FAQ 벡터 검색 (pgvector) — Phase 5</li>
-                <li>통화 종료 후 자동 메모 + 다음 액션 분류 — Phase 5</li>
-                <li>현재 데모는 setTimeout 기반 fixture로 재생됩니다.</li>
+                <li>실 음성 캡처(Windows 데스크톱 앱) — 별도 트랙</li>
+                <li>녹음 파일 저장 + 재생 — Phase 8 (call recording)</li>
+                <li>다국어 transcript — 별도 Phase</li>
               </ul>
             </div>
           </div>
@@ -338,8 +363,7 @@
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
             오늘 확인할 시장 이슈와 To-Do를 한 화면에서 보는 데모 화면입니다.
-            현재는 예시 데이터로 구성되어 있고, 회의 자료를
-            5포맷(HTML / PDF / Word / Excel / PPT)으로 다운로드하는 흐름을 확인할 수 있습니다.
+            <strong class="text-slate-900">Phase 7 Step 8부터는</strong> 카피가 "매일 06:00 자동 갱신" → "데모 데이터 (자동 갱신 backend 미연결)"로 정직하게 바뀌었고, 사용자가 입력한 키워드/경쟁사 텍스트로 화면이 깨지는 보안 구멍이 닫혔습니다. 회의 자료 5포맷 다운로드는 실작동합니다.
           </p>
 
           <div class="shot mb-5">
@@ -356,16 +380,18 @@
                 <li><strong>5 포맷 다운로드 실작동</strong> — jsPDF / html-docx-js / SheetJS / PptxGenJS</li>
                 <li>Excel은 5개 시트 자동 분리 (요약·트렌드·주간·To-Do·경쟁사)</li>
                 <li>PowerPoint는 6장 자동 구성 (표지·KPI·트렌드·To-Do·경쟁사·마무리)</li>
+                <li><strong class="text-slate-900">demo 정직성 — Phase 7 Step 8</strong>: "데모 새로고침" 버튼 + 카피 정리. backend 자동 갱신이 없다는 사실을 화면에서 숨기지 않습니다.</li>
+                <li><strong class="text-slate-900">사용자 입력 XSS 차단 — Phase 7 Step 8</strong>: 키워드·경쟁사 chip / 다운로드 출력에 사용자 텍스트가 들어가도 화면이 깨지거나 코드가 실행되는 일이 없습니다.</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>실제 네이버 검색 API 호출 — Phase 5~6</li>
-                <li>실제 To-Do 생성 엔진 (시장 + 통화 결합) — Phase 5</li>
-                <li>To-Do 우선순위 자동 정렬 모델 — Phase 5</li>
+                <li>실 네이버 검색 API 호출 — 별도 Phase</li>
+                <li>실 To-Do 생성 엔진 (시장 + 통화 결합) — 별도 Phase</li>
+                <li>To-Do 우선순위 자동 정렬 모델 — 별도 Phase</li>
               </ul>
             </div>
           </div>
@@ -397,19 +423,21 @@
                 <li>목록에서 통화를 클릭하면 오른쪽 상세 패널에서 메모·대화 내용·액션 아이템을 한 번에 볼 수 있습니다.</li>
                 <li>다른 회사의 통화 기록은 보이지 않습니다 (회사 단위 분리).</li>
                 <li>대시보드의 최근 통화에도 종료된 통화가 반영됩니다.</li>
+                <li><strong class="text-slate-900">통화 후 AI 자동 요약 — Phase 6</strong>: 요약·고객 니즈·미해결 이슈·감정이 백그라운드에서 자동으로 채워집니다. 사람이 직접 적은 메모는 보호됩니다.</li>
+                <li><strong class="text-slate-900">실시간 추천 카드 이력 — Phase 5·6</strong>: 통화 중 떴던 추천 카드가 그 통화의 추천 이력으로 같이 저장되어 상세 패널에서 다시 볼 수 있습니다.</li>
+                <li><strong class="text-slate-900">다음 액션 ✕ 삭제 — Phase 6</strong>: 잘못 만든 액션 아이템을 행 끝의 ✕ 버튼으로 즉시 삭제. 권한 매트릭스는 메모/노트와 동일.</li>
+                <li><strong class="text-slate-900">고객 ↔ 통화 연결 — Phase 5</strong>: 통화 상세에서 고객을 선택해 묶으면 그 고객의 마지막 연락 시점이 자동 갱신됩니다.</li>
+                <li><strong class="text-slate-900">감사 추적 — Phase 7 Step 3</strong>: 통화 생성 / 메모 수동 입력 / 액션 아이템 삭제 / 요약 수동 입력이 모두 감사 로그에 행으로 남습니다 (admin 패널에서 조회).</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>녹음 음성을 실제로 받아 적어 주는 기능 (실 STT)은 다음 단계입니다.</li>
-                <li>AI가 자동으로 통화 요약과 추천 답변을 만들어 주는 기능은 다음 단계입니다.</li>
-                <li>액션 아이템을 화면에서 새로 만들거나 완료 처리하는 기능은 아직 없습니다.</li>
-                <li>고객을 선택해서 통화에 연결하는 흐름은 아직 없습니다.</li>
-                <li>CSV 내보내기 버튼은 아직 실제 다운로드 기능이 아닙니다 (자리만 잡혀 있음).</li>
-                <li>대화 내용 전체를 본문 검색하는 기능은 아직 없습니다.</li>
+                <li>녹음 파일 저장 + 재생 — Phase 8 (call recording)</li>
+                <li>CSV 내보내기 — 별도 Phase</li>
+                <li>대화 내용 전체 본문 검색 — 별도 Phase</li>
               </ul>
             </div>
           </div>
@@ -445,19 +473,21 @@
                 <li>조직별 격리 — DB RLS로 다른 회사 고객 비노출, viewer 쓰기 403</li>
                 <li>입력 검증 (zod 서버 + JSDoc 화면) · soft delete (보존)</li>
                 <li>자동 회귀 — `phase_2_customers_e2e` 7 시나리오 + cleanup sweep</li>
+                <li><strong class="text-slate-900">매니저 팀 단위 권한 — Phase 5</strong>: 매니저는 본인 팀 고객만 mutation 가능. employee는 본인 통화에 묶인 고객 위주.</li>
+                <li><strong class="text-slate-900">통화 자동 last_contacted_at — Phase 4·5</strong>: 통화 종료 + 고객 연결 시 그 고객의 마지막 연락 시점이 자동 갱신.</li>
+                <li><strong class="text-slate-900">고객사 한도 — Phase 7 Step 9</strong>: 현재 플랜의 고객사 한도를 넘으면 추가 등록이 "플랜 한도 초과"로 막힙니다.</li>
+                <li><strong class="text-slate-900">감사 추적 — Phase 7 Step 3</strong>: 고객 생성/수정/삭제가 모두 audit row로 남습니다. 값(이름/이메일 등)은 기록 안 함 — 어떤 필드가 바뀌었는지만.</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>행 클릭 상세 패널 (통화 이력 결합 UI) — Phase 5 (통화 영속화는 Phase 4에서 완료, customers ↔ calls 결합 화면은 후속)</li>
-                <li>팀 단위 권한 분기 ("매니저는 자기 팀만") — Phase 5 (현재 admin-only mutation으로 단순화)</li>
-                <li>CSV 일괄 가져오기 — Phase 6+ enterprise</li>
-                <li>HubSpot / Salesforce 양방향 동기화 — Phase 6 (v2 베타)</li>
-                <li>고급 검색 (오타 허용·전문 검색) — Phase 5+</li>
-                <li>삭제 고객 복원 UI — Phase 4+ 관리자 콘솔</li>
+                <li>CSV 일괄 가져오기 — 별도 Phase</li>
+                <li>HubSpot / Salesforce 양방향 동기화 — v2 베타</li>
+                <li>고급 검색 (오타 허용·전문 검색) — 별도 Phase</li>
+                <li>삭제 고객 복원 UI — 운영 admin 콘솔 (별도)</li>
               </ul>
             </div>
           </div>
@@ -470,8 +500,7 @@
             <h2 class="text-[1.6rem] font-black tracking-tight">뉴스레터 — AI 챗 기반 작성</h2>
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
-            "환영 메일 작성해줘" 한 줄로 개인화된 초안 자동 생성. 발송 후엔
-            전달률·오픈율·클릭률을 실시간 추적합니다.
+            "환영 메일 작성해줘" 한 줄로 개인화된 초안 자동 생성. <strong class="text-slate-900">Phase 7 Step 8부터는</strong> 화면 카피가 "발송 → 시뮬레이션"으로 일관 교체되어, 아직 실제 발송 backend가 연결되지 않았음을 화면이 정직하게 표시합니다. 챗 메시지·템플릿 카드의 XSS 보안 구멍도 닫혔습니다.
           </p>
 
           <div class="shot mb-5">
@@ -484,18 +513,21 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>캠페인 5개 + 통계 mock</li>
-                <li>AI 챗봇 UI — 4종 프롬프트 (환영/업데이트/웨비나/갱신)별 다른 초안 자동 생성 + 타이핑 점 애니메이션</li>
+                <li>캠페인 5개 + 통계 (예시 데이터, `(예시)` 라벨)</li>
+                <li>AI 챗봇 UI — 4종 프롬프트(환영/업데이트/웨비나/갱신)별 다른 초안 자동 생성 + 타이핑 점 애니메이션</li>
+                <li><strong class="text-slate-900">"시뮬레이션" 카피 일관 — Phase 7 Step 8</strong>: 발송 모달 / 통계 / 토스트 모두 "발송"을 "시뮬레이션"으로 표기. 실 발송 backend 연결 전임을 화면에서 정직하게 표시.</li>
+                <li><strong class="text-slate-900">사용자 입력 XSS 차단 — Phase 7 Step 8</strong>: 챗 메시지 / 사용자 생성 템플릿 카드의 모든 입력 필드가 텍스트로만 렌더됩니다.</li>
+                <li><strong class="text-slate-900">트랜잭션 메일과 격리</strong>: 회원가입·초대·재설정에 쓰이는 Resend 발송 경로는 뉴스레터 캠페인과 연결되지 않습니다 (운영 정책).</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>실제 LLM 연동 (Claude / GPT) — Phase 5</li>
-                <li>실제 메일 발송 인프라 (SMTP / SES) — Phase 6+ 운영 진입 단계 어댑터. 현재는 dev outbox 테이블에 메일 본문 보존</li>
-                <li>발송 통계 실시간 트래킹 — Phase 6</li>
+                <li>실 LLM 연동 (Claude / GPT) — 별도 Phase. 현재는 더미 초안 생성.</li>
+                <li>대규모 캠페인 전용 발송 인프라 (전달률/오픈율/클릭률) — 별도 Phase</li>
+                <li>구독자 DB / unsubscribe 흐름 — 별도 Phase</li>
               </ul>
             </div>
           </div>
@@ -526,31 +558,142 @@
                 <li>구성원 목록 + 권한 매트릭스 UI (실 /team/members API)</li>
                 <li>직원 초대 모달 — Phase 3에서 실 API로 wiring (보내기·다시 보내기·취소 + 익명 수락 페이지)</li>
                 <li>서버 측 role guard — admin / manager / employee / viewer 4단계 미들웨어 동작 + 마지막 admin 보호 + requireFreshRole로 stale role 차단</li>
-                <li>✓ Phase 3에서 추가: 초대 토큰 발급·소비 (sha256 해시 저장, 7일 TTL)</li>
+                <li>초대 토큰 발급·소비 (sha256 해시 저장, 7일 TTL)</li>
+                <li><strong class="text-slate-900">실 이메일 발송 — Phase 7 Step 1</strong>: 운영 모드(`EMAIL_PROVIDER=resend`)에서는 초대 메일이 받은편지함에 실제로 도착합니다. dev/e2e는 outbox 테이블 모드 그대로.</li>
+                <li><strong class="text-slate-900">좌석 한도 — Phase 7 Step 9</strong>: 현재 플랜의 좌석 한도(starter 2 / pro 10 / enterprise 무제한)를 넘는 초대 발송이 "플랜 한도 초과"로 막힙니다. 좌석 = 활성 멤버 + 대기 중 초대.</li>
+                <li><strong class="text-slate-900">감사 추적 — Phase 7 Step 3</strong>: 초대 생성/재발송/취소/수락, 멤버 역할·상태 변경이 모두 감사 로그에 행으로 남습니다.</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>실제 외부 메일 발송 (SMTP / SES) — Phase 6+ 운영 진입 단계. 현재는 dev outbox 테이블에 메일 본문 보존</li>
-                <li>팀 CRUD UI (팀 생성·수정·삭제) — Phase 4+ (초대 모달의 팀 드롭다운만 현재 GET /teams 사용)</li>
-                <li>우수 사례 자동 추출 엔진 — Phase 5</li>
+                <li>팀 CRUD UI (팀 생성·수정·삭제) — 별도 Phase. 현재는 초대 모달의 팀 드롭다운만 `GET /teams` 사용</li>
+                <li>우수 사례 자동 추출 엔진 — 별도 Phase</li>
+                <li>SSO / SAML 멤버 프로비저닝 — Enterprise 단계 (별도 Phase)</li>
               </ul>
             </div>
           </div>
         </section>
 
-        <!-- ────────── 9. 설정 ────────── -->
-        <section id="settings">
+        <!-- ────────── 9. 팀 보고서 (Phase 6 + 7 Step 7) ────────── -->
+        <section id="reports">
           <div class="flex items-baseline gap-3 mb-1">
             <span class="text-[.78rem] font-bold tracking-wider text-blue-600">09</span>
-            <h2 class="text-[1.6rem] font-black tracking-tight">설정 — 12 카테고리</h2>
+            <h2 class="text-[1.6rem] font-black tracking-tight">팀 보고서 — 기간 + 담당자 drilldown</h2>
           </div>
           <p class="text-slate-600 mb-5 leading-relaxed">
-            프로필부터 위험 영역까지 12개 카테고리. 좌측 스크롤스파이 TOC가 현재
-            보고 있는 섹션을 항상 표시합니다.
+            매니저가 본인 팀 통화의 KPI를 분리해 볼 수 있는 화면입니다 (사이드바 "보고서"). <strong class="text-slate-900">Phase 6에서</strong> 도입됐고, <strong class="text-slate-900">Phase 7 Step 7에서</strong> 기간 preset(7/30/90/직접)과 담당자별 drilldown이 추가됐습니다. admin은 본인 조직 전체 또는 임의 팀을 볼 수 있고, 매니저는 본인 팀만, employee/viewer는 사이드바에서 항목 자체가 숨겨집니다.
+          </p>
+
+          <div class="card-tight p-5 mb-5 text-[.88rem]">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">화면 구성</p>
+            <ul class="text-slate-700 space-y-1.5 list-disc pl-5">
+              <li>상단: 기간 preset 칩 (7일 / 30일 / 90일 / 직접 선택). 직접 선택 시 from/to 날짜 입력.</li>
+              <li>가운데: 6 KPI 카드 — 총 통화 / 완료 / 미수신 / 끊김 / 응답률 / 평균 통화 시간.</li>
+              <li>오른쪽 상단: 담당자 요약 표 — 담당자별 통화 수 / 응답률 / 평균 시간. 행을 클릭하면 아래 최근 통화 10건이 그 담당자의 통화로 필터됩니다.</li>
+              <li>하단: 최근 통화 10건 (필터 적용된 상태).</li>
+              <li>admin이 조직 전체 범위에서 볼 때만 "미배정 (담당자 없음)" 버킷이 표시됩니다.</li>
+            </ul>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li><strong class="text-slate-900">매니저 팀 단위 KPI — Phase 6</strong>: 매니저는 본인 팀의 통화만, admin은 본인 조직 전체 또는 임의 팀.</li>
+                <li><strong class="text-slate-900">기간 preset 7/30/90/직접 — Phase 7 Step 7</strong>: 기본값은 최근 30일. 한 값만 입력하면 400 (one-sided), 366일 초과도 400.</li>
+                <li><strong class="text-slate-900">담당자별 drilldown — Phase 7 Step 7</strong>: 담당자 행 클릭으로 최근 통화 10건 필터링. 미배정 버킷은 admin 조직 범위에서만.</li>
+                <li><strong class="text-slate-900">감사 추적 — Phase 7 Step 3</strong>: 보고서 조회마다 `from`/`to`/`window_days`가 감사 로그에 기록됩니다 (결과 자체는 기록 안 함).</li>
+                <li><strong class="text-slate-900">role-based 사이드바 — Phase 7 Step 6</strong>: employee/viewer에게는 사이드바에서 보고서 항목이 숨겨집니다. URL 직접 접근은 backend가 별도로 403.</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 별도 Phase</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>주간/월간 막대 차트 — 별도 Phase (현재는 숫자 KPI만)</li>
+                <li>CSV / PDF 내보내기 — 별도 Phase</li>
+                <li>담당자별 우수 사례 자동 표시 — 별도 Phase</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 10. 플랜 & 사용량 (Phase 7 Step 9) ────────── -->
+        <section id="billing">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">10</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">플랜 & 사용량 — 한도와 청구 정보</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            관리자가 <strong class="text-slate-900">설정 → 플랜 & 사용량</strong> 카드에서 현재 플랜의 6가지 한도 진행률과 청구 정보를 직접 봅니다 (<strong class="text-slate-900">Phase 7 Step 9</strong>). 한도가 차면 좌석/고객/지식/통화 5종은 서버에서 차단되고, 비관리자는 정적 "권한 없음" 안내만 봅니다.
+          </p>
+
+          <div class="card-tight p-5 mb-5 text-[.88rem]">
+            <p class="text-[.7rem] font-bold uppercase tracking-wider text-slate-400 mb-3">플랜별 한도 (요약)</p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-[.82rem]">
+                <thead>
+                  <tr class="text-slate-500 text-[.72rem] font-bold uppercase tracking-wider">
+                    <th class="text-left py-2 border-b border-slate-200">항목</th>
+                    <th class="text-right py-2 border-b border-slate-200">starter</th>
+                    <th class="text-right py-2 border-b border-slate-200">pro</th>
+                    <th class="text-right py-2 border-b border-slate-200">enterprise</th>
+                    <th class="text-left py-2 border-b border-slate-200 pl-3">강제</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-700">
+                  <tr><td class="py-1.5">구성원 좌석</td><td class="text-right tabular-nums">2</td><td class="text-right tabular-nums">10</td><td class="text-right text-slate-400">무제한</td><td class="pl-3 text-rose-600 font-bold">hard</td></tr>
+                  <tr><td class="py-1.5">고객사</td><td class="text-right tabular-nums">100</td><td class="text-right tabular-nums">1,000</td><td class="text-right text-slate-400">무제한</td><td class="pl-3 text-rose-600 font-bold">hard</td></tr>
+                  <tr><td class="py-1.5">지식베이스</td><td class="text-right tabular-nums">3</td><td class="text-right tabular-nums">50</td><td class="text-right text-slate-400">무제한</td><td class="pl-3 text-rose-600 font-bold">hard</td></tr>
+                  <tr><td class="py-1.5">지식 청크</td><td class="text-right tabular-nums">500</td><td class="text-right tabular-nums">10,000</td><td class="text-right text-slate-400">무제한</td><td class="pl-3 text-rose-600 font-bold">hard</td></tr>
+                  <tr><td class="py-1.5">이번 달 통화</td><td class="text-right tabular-nums">100</td><td class="text-right tabular-nums">5,000</td><td class="text-right text-slate-400">무제한</td><td class="pl-3 text-rose-600 font-bold">hard</td></tr>
+                  <tr><td class="py-1.5">이번 달 AI 비용</td><td class="text-right tabular-nums">$5</td><td class="text-right tabular-nums">$100</td><td class="text-right text-slate-400">무제한</td><td class="pl-3 text-amber-600 font-bold">soft (참고용)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3 text-[.88rem]">
+            <div class="status-box-can">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-can">✓ 현재 가능</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>관리자만 보임 — `requireRole("admin") + requireFreshRole`. 비관리자는 정적 "권한 없음" 안내, JS 예외 없음.</li>
+                <li>6개 한도 progress bar (사용 / 한도 / 진행률). 80% 이상은 amber, 초과는 rose 색상.</li>
+                <li>청구 정보 form — 사업자등록번호(64자 이내) + 세금계산서 이메일. 빈 입력은 null로 정리.</li>
+                <li>한도 초과 시 좌석/고객/지식/통화 5종 mutation이 서버에서 403 `plan_limit_exceeded`로 차단. WebSocket 통화 시작도 같은 구조의 ack로 거부.</li>
+                <li>외부 결제 시스템 ID는 응답에 노출되지 않고, `external_provider_configured` boolean만 표시. 청구 정보 변경 audit row는 "어떤 필드가 바뀌었는지"만 기록(값 미포함).</li>
+                <li>모든 서버 값은 textContent / input.value로만 주입 — 사업자등록번호에 스크립트 페이로드를 저장해도 텍스트로만 보임.</li>
+              </ul>
+            </div>
+            <div class="status-box-soon">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="pill-soon">⌛ 별도 Phase</span>
+              </div>
+              <ul class="text-slate-700 space-y-1 list-disc pl-5">
+                <li>실 결제 provider 연동(Stripe / Toss) — 별도 Phase. 외부 돈 이동/회계 계약 동반</li>
+                <li>플랜 변경 / 결제 수단 / 영수증 PDF — 결제 provider 연동 시점에 같이</li>
+                <li>AI 비용 hard cap 전환 — 후속 step (현재는 표시만, mutation은 막지 않음)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ────────── 11. 설정 + 감사 로그 ────────── -->
+        <section id="settings">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">11</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">설정 · 감사 로그</h2>
+          </div>
+          <p class="text-slate-600 mb-5 leading-relaxed">
+            12개 카테고리 + 좌측 스크롤스파이 TOC. <strong class="text-slate-900">Phase 7부터는</strong> 보안 카드에 2단계 인증 등록/해제·조직 강제화 토글이 들어왔고, 카드 하단에 admin 전용 감사 로그 패널(최근 200건, cursor pagination)이 추가됐습니다. 플랜 카드는 위 §10 화면이 됩니다.
           </p>
 
           <div class="shot mb-5">
@@ -563,113 +706,120 @@
                 <span class="pill-can">✓ 현재 가능</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>12 카테고리 — 프로필·회사·통화환경·AI·통합·알림·보안·데이터·플랜·API·언어·위험영역</li>
-                <li>스크롤스파이 TOC — 보고 있는 섹션 자동 강조</li>
+                <li>12 카테고리 + 좌측 스크롤스파이 TOC — 보고 있는 섹션 자동 강조</li>
+                <li><strong class="text-slate-900">2단계 인증 등록/해제 — Phase 7 Step 2</strong>: 현재 비밀번호 확인 → QR + 6자리 코드 → 등록 완료. 해제도 같은 흐름. 5분짜리 일회용 토큰으로 가로채기 차단.</li>
+                <li><strong class="text-slate-900">조직 전체 MFA 강제화 토글 — Phase 7 Step 2</strong>: admin이 켜면 멤버 전원이 다음 로그인부터 MFA 등록 필수.</li>
+                <li><strong class="text-slate-900">감사 로그 패널 — Phase 7 Step 3</strong>: admin 전용. 보안·멤버십·초대·고객·통화·지식·보고서·청구 8개 영역의 행위를 시간 역순 200건까지 표시 (cursor pagination + cross-org isolation). 모든 값은 textContent로 렌더 — XSS 안전.</li>
+                <li><strong class="text-slate-900">활성 세션 / 디바이스 표시 — Phase 7 Step 2</strong>: 본인 활성 세션을 보고 강제 로그아웃할 수 있습니다.</li>
+                <li><strong class="text-slate-900">플랜 & 사용량 카드 (§10)</strong>: 같은 페이지의 별도 섹션. 6가지 한도 진행률 + 청구 정보.</li>
               </ul>
             </div>
             <div class="status-box-soon">
               <div class="flex items-center gap-2 mb-2">
-                <span class="pill-soon">⌛ 아직 안 됨</span>
+                <span class="pill-soon">⌛ 별도 Phase</span>
               </div>
               <ul class="text-slate-700 space-y-1 list-disc pl-5">
-                <li>각 항목 저장 — Phase 4+ (해당 기능 구현 시점에)</li>
-                <li>API 키 발급 — Phase 6</li>
-                <li>2단계 인증 (TOTP / WebAuthn) — Phase 6+ 운영 진입 단계</li>
+                <li>WebAuthn 패스키 — Phase 7은 TOTP까지</li>
+                <li>API 키 발급 / webhook 콘솔 — 별도 Phase</li>
+                <li>회사 정보 / 통화환경 / 알림 등 일부 카테고리의 항목 저장 — 해당 기능 구현 시점에 같이 (현재 일부는 demo)</li>
+                <li>SSO / SAML — Enterprise 단계 (별도 Phase)</li>
               </ul>
             </div>
           </div>
         </section>
 
-        <!-- ────────── 10. 종합 정리 ────────── -->
+        <!-- ────────── 12. 종합 정리 ────────── -->
         <section id="summary">
           <div class="flex items-baseline gap-3 mb-1">
-            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">10</span>
-            <h2 class="text-[1.6rem] font-black tracking-tight">Phase 1·2·3·4 종합 정리</h2>
+            <span class="text-[.78rem] font-bold tracking-wider text-blue-600">12</span>
+            <h2 class="text-[1.6rem] font-black tracking-tight">Phase 1~7 종합 정리</h2>
           </div>
           <p class="text-slate-600 mb-6 leading-relaxed">
-            지금 시점에서 무엇이 진짜로 동작하고 무엇이 mock인지를 한 표로 정리.
-            Phase 1 기반(인증·격리·권한·세션·실시간) + Phase 2 첫 비즈니스 entity(고객 CRUD) + Phase 3 셀프서비스(가입·인증·복구·초대·팀) + Phase 4 통화 영속화(calls / transcripts / action items + dashboard 실 KPI)까지 완료된 상태.
+            지금 시점에서 무엇이 진짜로 동작하고 무엇이 별도 Phase로 분리됐는지 한 표로 정리.
+            Phase 1 인프라(인증·격리·세션·실시간) + Phase 2 고객 CRUD + Phase 3 셀프서비스(가입·인증·복구·초대) + Phase 4 통화 영속화 + Phase 5 지식베이스·체크리스트·실 STT/LLM + Phase 6 자동 요약·끊긴 통화 정리·매니저 보고서 + Phase 7 운영 게이트(실 이메일·MFA·감사·보존·플랜 caps)까지 완료된 상태.
           </p>
 
-          <div class="card overflow-hidden">
-            <table class="w-full text-[.88rem]">
+          <div class="card overflow-x-auto">
+            <table class="w-full text-[.88rem] min-w-[640px]">
               <thead class="bg-slate-50 text-slate-600 text-[.75rem] font-bold uppercase tracking-wider">
                 <tr>
                   <th class="text-left px-4 py-3 border-b border-slate-200">영역</th>
-                  <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1·2·3·4)</th>
-                  <th class="text-left px-4 py-3 border-b border-slate-200">예정</th>
+                  <th class="text-left px-4 py-3 border-b border-slate-200">현재 (Phase 1~7)</th>
+                  <th class="text-left px-4 py-3 border-b border-slate-200">별도 Phase</th>
                 </tr>
               </thead>
               <tbody class="text-slate-700">
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">데이터 영속</td>
-                  <td class="px-4 py-3">PostgreSQL 16 + RLS FORCE default-deny — customers (Phase 2) + auth_tokens / email_outbox / 초대 (Phase 3) + calls / transcripts / call_action_items (Phase 4)</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 5 — knowledge_bases (pgvector) / 통화 녹음 / activity_log</td>
+                  <td class="px-4 py-3">PostgreSQL 16 + FORCE RLS default-deny — customers / calls / transcripts / action_items / knowledge_bases (pgvector) / call_checklist / suggestions / llm_usage_log / activity_log / email_outbox / organization_billing_profiles 모두 같은 패턴</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 8 — call_recordings + S3/MinIO</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">고객 관리 (CRM)</td>
-                  <td class="px-4 py-3"><strong class="text-slate-900">실 API CRUD 동작</strong> — 6 endpoints + 4 KPI + 검색·필터·정렬 (URL 동기화) + soft delete + 24명 seed. 통화 종료 시 <code class="font-mono text-[.78rem]">customers.last_contacted_at</code> 자동 갱신</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 5 — 행 클릭 상세 패널 (통화 이력 결합 UI)</td>
+                  <td class="px-4 py-3">실 API CRUD + 4 KPI + URL 동기화 + soft delete + <strong class="text-slate-900">Phase 7 Step 9 고객사 한도</strong> + 통화 종료 시 last_contacted_at 자동 갱신 + 매니저 팀 단위 권한 분기</td>
+                  <td class="px-4 py-3 text-slate-500">CSV 가져오기 · HubSpot/Salesforce 양방향 · 본문 검색</td>
                 </tr>
                 <tr class="border-b border-slate-100">
-                  <td class="px-4 py-3 font-semibold">인증 / 셀프서비스</td>
-                  <td class="px-4 py-3">자체 Auth — Argon2id + JWT + refresh rotation + role guard. <strong class="text-slate-900">Phase 3 추가</strong> — 자가 회원가입 / 이메일 인증 / 비밀번호 재설정 / 동료 초대 / 마지막 admin 보호. <strong class="text-slate-900">Phase 4 추가</strong> — 미인증 mutation 차단 (<code class="font-mono text-[.78rem]">requireVerified</code>)</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 6+ — SMTP / 2FA / 운영 도메인</td>
+                  <td class="px-4 py-3 font-semibold">인증 / 셀프서비스 / MFA</td>
+                  <td class="px-4 py-3">Argon2id + JWT + refresh rotation + role guard + 자가 회원가입 / 이메일 인증 / 비밀번호 재설정 / 동료 초대 / 마지막 admin 보호 / requireVerified. <strong class="text-slate-900">Phase 7 Step 2 — TOTP MFA</strong> 등록·해제·조직 강제화. <strong class="text-slate-900">Step 1 — Resend</strong> 실 발송</td>
+                  <td class="px-4 py-3 text-slate-500">WebAuthn 패스키 · SSO/SAML (Enterprise)</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">조직별 격리 (RLS)</td>
-                  <td class="px-4 py-3">DB 차원 강제 — Phase 1 인프라 + Phase 2 customers + Phase 3 invitations/auth_tokens + Phase 4 calls/transcripts/action_items 모두 FORCE RLS + composite FK</td>
+                  <td class="px-4 py-3">DB 차원 강제 — Phase 1~7의 모든 org-scoped 테이블이 FORCE RLS + composite FK + <code class="font-mono text-[.78rem]">withOrgContext</code>로 통일</td>
                   <td class="px-4 py-3 text-slate-500">새 entity 추가 시 같은 패턴</td>
                 </tr>
                 <tr class="border-b border-slate-100">
-                  <td class="px-4 py-3 font-semibold">입력 검증 / 형식 동기화</td>
-                  <td class="px-4 py-3">zod 서버 + JSDoc 화면 + sync 테스트 (9 entity: customers / signup / password-reset / team / invitation / call / transcript / actionItem / dashboard)</td>
-                  <td class="px-4 py-3 text-slate-500">새 entity 추가 시 한 줄 등록</td>
-                </tr>
-                <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">통화 어시스턴트</td>
-                  <td class="px-4 py-3">WebSocket (인증 핸드셰이크) + 데모 시퀀스 fixture. <strong class="text-slate-900">Phase 4 추가</strong> — <code class="font-mono text-[.78rem]">start_call</code> / <code class="font-mono text-[.78rem]">text_chunk</code> / <code class="font-mono text-[.78rem]">end_call</code>이 DB 영속 + <code class="font-mono text-[.78rem]">endCall</code> 트랜잭션이 last_contacted_at 갱신</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 5 — 실제 STT (Clova) + LLM (Claude) + RAG + disconnect heartbeat</td>
+                  <td class="px-4 py-3">WebSocket 인증 핸드셰이크 + <code class="font-mono text-[.78rem]">start/text/end_call</code> 영속화. <strong class="text-slate-900">Phase 5</strong> — 실 STT(Clova) + LLM(Claude) + RAG(pgvector). <strong class="text-slate-900">Phase 6</strong> — 자동 요약·끊긴 통화 sweep·suggestion 이력. <strong class="text-slate-900">Phase 7 Step 9</strong> — 이번 달 통화 한도 강제</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 8 — 녹음 파일 + 재생</td>
                 </tr>
                 <tr class="border-b border-slate-100">
-                  <td class="px-4 py-3 font-semibold">대시보드 / KPI</td>
-                  <td class="px-4 py-3"><strong class="text-slate-900">Phase 4 — `/dashboard/summary` 실 API</strong>: 오늘 통화 / 응답률 / 평균 통화 / 진행 중 + 최근 통화 5건. 시장 트렌드 / 추천 To-Do / 팀 활동은 demo (헤더 라벨)</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 5 — AI 추천 To-Do / 매니저 보고서 / 팀 KPI 차트</td>
+                  <td class="px-4 py-3 font-semibold">대시보드 / 보고서 / KPI</td>
+                  <td class="px-4 py-3">`/dashboard/summary` 실 API + 4 KPI + 최근 통화 5건. <strong class="text-slate-900">Phase 6·7</strong> — 매니저 팀 보고서(`/reports/team-summary`) + 기간 preset(7/30/90/직접) + 담당자별 drilldown + unassigned 버킷</td>
+                  <td class="px-4 py-3 text-slate-500">주간/월간 차트 · CSV/PDF 내보내기</td>
                 </tr>
                 <tr class="border-b border-slate-100">
-                  <td class="px-4 py-3 font-semibold">시장 트렌드</td>
-                  <td class="px-4 py-3">5 포맷 다운로드 (HTML/PDF/Word/Excel/PPT) 실작동, 데이터는 mock</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 5~6 — 네이버 검색 API + To-Do 엔진</td>
+                  <td class="px-4 py-3 font-semibold">감사 / 보존</td>
+                  <td class="px-4 py-3"><strong class="text-slate-900">Phase 7 Step 3</strong> — `activity_log` + admin 전용 `GET /activity-log` + cursor pagination + cross-org 격리 + payload는 필드 이름만(값 미포함). <strong class="text-slate-900">Step 4</strong> — transcripts 3년 hard delete + email_outbox 회복 cron(`KLOSER_RETENTION_ENABLED` gate)</td>
+                  <td class="px-4 py-3 text-slate-500">Phase 8에서 녹음 90일 정책 추가</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">플랜 / 사용량</td>
+                  <td class="px-4 py-3"><strong class="text-slate-900">Phase 7 Step 9</strong> — `organizations.plan` CHECK(starter/pro/enterprise) + `BILLING_PLAN_LIMITS` 6종(좌석·고객·KB·청크·통화 hard, AI 비용 soft) + `assertPlanAllows` race-safe 강제 + `GET /billing/overview` admin 전용 + 청구 정보 PATCH</td>
+                  <td class="px-4 py-3 text-slate-500">결제 provider(Stripe/Toss) — 별도 Phase</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">팀 / 권한</td>
-                  <td class="px-4 py-3">role 미들웨어 4단계 동작 (admin / manager / employee / viewer). <strong class="text-slate-900">Phase 3 추가</strong> — 초대 발송 / 수락 / 멤버 역할·상태 변경 / 마지막 admin 보호. <strong class="text-slate-900">Phase 4 추가</strong> — calls 권한 매트릭스 + employee 본인 통화만 mutation</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 5 — manager team-scope ("자기 팀 통화만")</td>
+                  <td class="px-4 py-3">role 미들웨어 4단계(admin/manager/employee/viewer) + 초대/수락/멤버 변경/마지막 admin 보호 + employee 본인 통화 mutation + manager team-scope (Phase 5). <strong class="text-slate-900">Phase 7 Step 6</strong> — 사이드바 role-based 가시성. <strong class="text-slate-900">Step 9</strong> — 좌석 한도</td>
+                  <td class="px-4 py-3 text-slate-500">팀 CRUD UI · 우수 사례 자동 추출</td>
+                </tr>
+                <tr class="border-b border-slate-100">
+                  <td class="px-4 py-3 font-semibold">AI 비용 추적</td>
+                  <td class="px-4 py-3"><strong class="text-slate-900">Phase 7 Step 5</strong> — `llm_usage_log.cost_usd_micros` 모델별 가격 매핑 (Anthropic Sonnet/Opus/Haiku + OpenAI text-embedding) + adapter boundary 자동 계산 + unknown/missing/Clova STT는 NULL + cost_status 마커</td>
+                  <td class="px-4 py-3 text-slate-500">AI 비용 hard cap 전환</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">자동 회귀</td>
-                  <td class="px-4 py-3">서버 단위 212/212 + sync 9 entity + Phase 0.5 e2e 16/16 + customers e2e 7/7 + Phase 3 e2e 33 assertion + Phase 4 e2e 8 시나리오 + cleanup sweep</td>
+                  <td class="px-4 py-3"><strong class="text-slate-900">서버 769/772 PASS</strong> (3 skipped) + sync 21 entity + Phase 0.5/2/3/4/5/6 e2e + Phase 7 단위 회귀(MFA·activity_log·retention·LLM pricing·billing repo/caps/routes) + Playwright manual smoke</td>
                   <td class="px-4 py-3 text-slate-500">새 entity마다 같은 패턴 추가</td>
                 </tr>
                 <tr class="border-b border-slate-100">
                   <td class="px-4 py-3 font-semibold">데스크톱 앱</td>
                   <td class="px-4 py-3 text-slate-500">웹 콘솔만 동작</td>
-                  <td class="px-4 py-3 text-slate-500">별도 트랙 — Electron/Tauri + WASAPI 오디오 캡처</td>
+                  <td class="px-4 py-3 text-slate-500">별도 트랙 — Electron/Tauri + 오디오 캡처</td>
                 </tr>
                 <tr>
                   <td class="px-4 py-3 font-semibold">운영 / TLS</td>
-                  <td class="px-4 py-3 text-slate-500">localhost plaintext (dev). Caddy single-origin variant 검증 통과</td>
-                  <td class="px-4 py-3 text-slate-500">Phase 6+ — 운영 도메인 / 결제 / 모니터링</td>
+                  <td class="px-4 py-3 text-slate-500">localhost plaintext (dev) + Caddy single-origin 검증. Resend / 결제 운영 검증은 staging 단계에 직접 수행 — `PHASE_7_CLOSEOUT_FINDINGS.md §5.2` 참조</td>
+                  <td class="px-4 py-3 text-slate-500">운영 도메인 + 모니터링 대시보드</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <p class="text-[.82rem] text-slate-500 mt-4 leading-relaxed">
-            Phase 1 기반: <a href="PHASE_1_FOUNDATIONS.html" class="text-blue-600 hover:underline">PHASE_1_FOUNDATIONS.html</a> ·
-            Phase 2 고객 관리: <a href="PHASE_2_FOUNDATIONS.html" class="text-cyan-700 hover:underline">PHASE_2_FOUNDATIONS.html</a> ·
-            Phase 3 셀프서비스: <a href="PHASE_3_FOUNDATIONS.html" class="text-violet-700 hover:underline">PHASE_3_FOUNDATIONS.html</a> ·
-            Phase 4 통화 영속화: <a href="PHASE_4_FOUNDATIONS.html" class="text-cyan-800 hover:underline font-semibold">PHASE_4_FOUNDATIONS.html</a>
+            Phase별 자세한 설명: <a href="PHASE_1_FOUNDATIONS.html" class="text-blue-600 hover:underline">Phase 1</a> · <a href="PHASE_2_FOUNDATIONS.html" class="text-cyan-700 hover:underline">Phase 2</a> · <a href="PHASE_3_FOUNDATIONS.html" class="text-violet-700 hover:underline">Phase 3</a> · <a href="PHASE_4_FOUNDATIONS.html" class="text-cyan-800 hover:underline">Phase 4</a> · <a href="PHASE_5_FOUNDATIONS.html" class="text-blue-700 hover:underline">Phase 5</a> · <a href="PHASE_6_FOUNDATIONS.html" class="text-emerald-700 hover:underline">Phase 6</a> · <a href="PHASE_7_FOUNDATIONS.html" class="text-indigo-700 hover:underline font-semibold">Phase 7</a>. 운영 closeout: <a href="../plan/phase-7/PHASE_7_CLOSEOUT_FINDINGS.md" class="text-slate-700 hover:underline">PHASE_7_CLOSEOUT_FINDINGS.md</a>.
           </p>
 
           <!-- Phase 3 representative captures (full self-service walkthrough lives in PHASE_3_FOUNDATIONS) -->
@@ -709,15 +859,19 @@
         <span class="text-[.95rem] font-black tracking-tight">
           <span class="g-text">Kloser</span>
         </span>
-        <span class="text-[.78rem] text-slate-500 ml-2">사용자 가이드 · Phase 1·2·3·4</span>
+        <span class="text-[.78rem] text-slate-500 ml-2">사용자 가이드 · Phase 1~7</span>
       </div>
-      <nav class="text-[.78rem] text-slate-600 flex items-center gap-5">
+      <nav class="text-[.78rem] text-slate-600 flex flex-wrap items-center gap-4">
         <a href="../../index.html" class="hover:text-slate-900 no-underline">홈</a>
         <a href="../../index.html#features" class="hover:text-slate-900 no-underline">기능</a>
         <a href="../../index.html#pricing" class="hover:text-slate-900 no-underline">가격</a>
         <a href="PHASE_1_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 1</a>
         <a href="PHASE_2_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 2</a>
-        <a href="PHASE_3_FOUNDATIONS.html" class="text-violet-700 font-semibold hover:text-violet-800 no-underline">Phase 3 →</a>
+        <a href="PHASE_3_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 3</a>
+        <a href="PHASE_4_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 4</a>
+        <a href="PHASE_5_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 5</a>
+        <a href="PHASE_6_FOUNDATIONS.html" class="hover:text-slate-900 no-underline">Phase 6</a>
+        <a href="PHASE_7_FOUNDATIONS.html" class="text-indigo-700 font-semibold hover:text-indigo-800 no-underline">Phase 7 →</a>
         <a href="guide.html" class="hover:text-slate-900 no-underline">도입 가이드</a>
       </nav>
     </div>
