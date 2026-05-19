@@ -102,7 +102,12 @@ export type ActivityAction =
   | "recording.finalized"
   | "recording.playback_url_issued"
   | "recording.delete_requested"
-  | "recording.deleted";
+  | "recording.deleted"
+  // Phase 8 Step 5 — recording retention sweep aggregate event. Aggregate
+  // payload only (counts / cutoffs / batch / provider tallies). No
+  // recording id, call id, object key, signed URL, raw error.
+  // Allow-list lockstep with migration 1715000030000.
+  | "retention.recordings_deleted";
 
 export type ActivityTargetType =
   | "organization"

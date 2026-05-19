@@ -18,6 +18,10 @@
 import "dotenv/config";
 import Fastify from "fastify";
 import dbPlugin from "../plugins/db.js";
+// Phase 8 Step 5 — retention worker runs recording object deletes
+// through app.recordingStorage. Register the plugin here so worker
+// boot fails fast if a real provider is misconfigured.
+import recordingStoragePlugin from "../plugins/recordingStorage.js";
 import { createCallSummaryWorker } from "./callSummary.worker.js";
 import { createHeartbeatSweepWorker } from "./heartbeatSweep.worker.js";
 import {
@@ -47,6 +51,10 @@ async function main(): Promise<void> {
   const app = Fastify({ logger: { level: "info" } });
   // db plugin only — workers don't serve HTTP.
   await app.register(dbPlugin);
+  // recordingStorage decorator — retention sweep needs adapter.deleteObject.
+  // Plugin resolves provider from env at boot (RECORDING_STORAGE_PROVIDER,
+  // local default in non-production).
+  await app.register(recordingStoragePlugin);
 
   const summaryWorker = createCallSummaryWorker(app);
   const sweepWorker = createHeartbeatSweepWorker(app);

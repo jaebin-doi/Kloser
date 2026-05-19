@@ -592,9 +592,16 @@ test("listRetentionCandidates includes uploaded/available/failed past cutoff and
             );
         });
 
+        // Phase 8 Step 5 split this helper into explicit + uploadedBefore
+        // cutoffs. For the Step 2 regression case we set both to `now`
+        // since the test rows already pre-stamp uploaded_at to `past`.
         const cutoff = new Date();
         const candidates = await app.withOrgContext(ORG_ACME, (client) =>
-            recordings.listRetentionCandidatesInCurrentOrg(client, cutoff, 50),
+            recordings.listRetentionCandidatesInCurrentOrg(client, {
+                explicitCutoff: cutoff,
+                uploadedBefore: cutoff,
+                limit: 50,
+            }),
         );
         const ids = new Set(candidates.map((row) => row.id));
         assert.ok(ids.has(a.id), "uploaded row past cutoff should be eligible");

@@ -26,9 +26,16 @@ import assert from "node:assert/strict";
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { pool } from "../src/db/pool.js";
 import dbPlugin from "../src/plugins/db.js";
 import { makeRetentionSweepProcessor } from "../src/workers/retentionSweep.worker.js";
+// Phase 8 Step 5 — worker now wires recording sweep through
+// app.recordingStorage. Inject a local temp-dir adapter to keep the
+// Phase 7 regression assertions offline.
+import { createLocalRecordingStorageAdapter } from "../src/adapters/recordingStorage.ts";
 
 const ORG_ACME = "11111111-1111-1111-1111-111111111111";
 const ORG_BETA = "22222222-2222-2222-2222-222222222222";
@@ -41,13 +48,24 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-05-18T12:00:00.000Z");
 
 let app;
+let recordingStorageRoot;
 
 before(async () => {
+  recordingStorageRoot = await mkdtemp(path.join(tmpdir(), "phase7-step4-worker-rec-"));
   app = Fastify({ logger: false });
   await app.register(dbPlugin);
+  app.decorate(
+    "recordingStorage",
+    createLocalRecordingStorageAdapter({
+      rootDir: recordingStorageRoot,
+      publicBaseUrl: null,
+    }),
+  );
 });
 
 after(async () => {
+  try { await rm(recordingStorageRoot, { recursive: true, force: true }); }
+  catch (_err) { /* best effort */ }
   for (const orgId of [ORG_ACME, ORG_BETA]) {
     try {
       await app.withOrgContext(orgId, async (client) => {
@@ -126,6 +144,10 @@ function enabledConfig(overrides = {}) {
     maxBatchesPerOrg: 20,
     emailStuckSendingAfterSec: 900,
     emailRecoveryBatchSize: 200,
+    // Phase 8 Step 5 — recording sweep defaults.
+    recordingRetentionDays: 90,
+    recordingBatchSize: 100,
+    recordingDeletePendingRetryAfterSec: 900,
     ...overrides,
   };
 }

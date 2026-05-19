@@ -72,6 +72,9 @@ export function makeRetentionSweepProcessor(
         orgsScanned: 0,
         transcriptsDeleted: 0,
         emailOutboxRecovered: 0,
+        recordingsDeleted: 0,
+        recordingObjectNotFound: 0,
+        recordingDeleteFailures: 0,
         failedOrgs: [],
       };
     }
@@ -92,10 +95,15 @@ export function makeRetentionSweepProcessor(
     // Single aggregate log line per tick — matches heartbeat-sweep /
     // email-delivery style. No per-org spam; per-org details are in
     // activity_log rows for admin queries.
+    // Aggregate-only log. No object key, recording id, call id, signed
+    // URL, or raw storage error body.
     console.log(
       `[retention-sweep] orgs=${result.orgsScanned}` +
         ` transcriptsDeleted=${result.transcriptsDeleted}` +
         ` emailRecovered=${result.emailOutboxRecovered}` +
+        ` recordingsDeleted=${result.recordingsDeleted}` +
+        ` recordingObjectNotFound=${result.recordingObjectNotFound}` +
+        ` recordingDeleteFailures=${result.recordingDeleteFailures}` +
         ` failedOrgs=${result.failedOrgs.length}`,
     );
 

@@ -410,24 +410,55 @@ export async function listAvailableByCallInCurrentOrg(
 
 // listRetentionCandidatesInCurrentOrg backs the Phase 8 Step 5
 // retention worker. It returns rows that have crossed their retention
-// horizon and are still in a state safe to delete (uploaded / available
-// / failed). upload_pending / delete_pending / deleted rows are
-// intentionally excluded — upload_pending means an upload is still in
-// flight (concurrent finalize would race the sweeper), delete_pending
-// means a deletion is already in flight, and deleted is already
-// tombstoned.
+// horizon and are still in a state safe to delete.
 //
-// Two conditions short-circuit the choice between the two cutoff
-// columns: an explicit `retention_delete_after` (legal-hold / per-org
-// override) and the default `uploaded_at + N days` cutoff. The
-// implementation passes a single resolved `cutoff` because the policy
-// (default 90 days vs custom) is owned by Step 5.
+// States included: uploaded / available / failed.
+// States excluded:
+//   - upload_pending : an upload is still in flight; finalize would race the sweeper.
+//   - processing     : a future transcoder may still be writing derivatives.
+//   - delete_pending : already in user-initiated delete flow; handled by
+//                      listDeletePendingRetryCandidatesInCurrentOrg.
+//   - deleted        : already tombstoned.
+//   - rows with deleted_at IS NOT NULL : tombstoned regardless of status.
+//
+// Two cutoffs (Phase 8 Step 5 plan §1):
+//   - explicitCutoff : applied to rows that have a per-row
+//                      retention_delete_after override (legal-hold,
+//                      per-tenant policy). Usually `now`.
+//   - uploadedBefore : applied to rows that have no per-row override.
+//                      Usually `now - recordingRetentionDays`.
+//
+// Mixing the two into one cutoff value would either delay explicit
+// retention by N days, or expire freshly uploaded rows without an
+// explicit override on day 0. Using two arguments keeps the policies
+// independent.
+export interface CallRecordingRetentionCandidateInput {
+  /** Cutoff applied to rows whose retention_delete_after column is set.
+   *  Usually `now`. */
+  explicitCutoff: Date;
+  /** Cutoff applied to rows whose retention_delete_after column is NULL.
+   *  Usually `now - recordingRetentionDays`. */
+  uploadedBefore: Date;
+  /** Max rows returned per call. Positive integer; caller is responsible
+   *  for the outer batch loop. */
+  limit: number;
+}
+
 export async function listRetentionCandidatesInCurrentOrg(
   client: PoolClient,
-  cutoff: Date,
-  limit: number,
+  input: CallRecordingRetentionCandidateInput,
 ): Promise<CallRecording[]> {
-  if (!Number.isInteger(limit) || limit <= 0) {
+  if (!(input.explicitCutoff instanceof Date) || Number.isNaN(input.explicitCutoff.getTime())) {
+    throw new Error(
+      "listRetentionCandidatesInCurrentOrg: explicitCutoff must be a valid Date",
+    );
+  }
+  if (!(input.uploadedBefore instanceof Date) || Number.isNaN(input.uploadedBefore.getTime())) {
+    throw new Error(
+      "listRetentionCandidatesInCurrentOrg: uploadedBefore must be a valid Date",
+    );
+  }
+  if (!Number.isInteger(input.limit) || input.limit <= 0) {
     throw new Error(
       "listRetentionCandidatesInCurrentOrg: limit must be a positive integer",
     );
@@ -440,11 +471,53 @@ export async function listRetentionCandidatesInCurrentOrg(
           (retention_delete_after IS NOT NULL AND retention_delete_after <= $1)
           OR (retention_delete_after IS NULL
               AND uploaded_at IS NOT NULL
-              AND uploaded_at <= $1)
+              AND uploaded_at <= $2)
         )
       ORDER BY COALESCE(retention_delete_after, uploaded_at) ASC, id ASC
+      LIMIT $3`,
+    [input.explicitCutoff, input.uploadedBefore, input.limit],
+  );
+  return r.rows.map(hydrate);
+}
+
+// listDeletePendingRetryCandidatesInCurrentOrg returns delete_pending
+// rows whose updated_at is older than the supplied cutoff. The
+// user-facing DELETE route marks a row `delete_pending` before the
+// adapter.deleteObject call; if that storage call fails the row stays
+// in this state and the next retention tick retries it.
+//
+// `olderThan` exists so an in-flight user delete (just marked the row
+// pending milliseconds ago) is not double-attempted by the worker.
+export interface CallRecordingDeletePendingRetryInput {
+  /** Only rows whose updated_at is at or before this instant are
+   *  candidates. Usually `now - recordingDeletePendingRetryAfterSec`. */
+  olderThan: Date;
+  /** Max rows returned per call. Positive integer. */
+  limit: number;
+}
+
+export async function listDeletePendingRetryCandidatesInCurrentOrg(
+  client: PoolClient,
+  input: CallRecordingDeletePendingRetryInput,
+): Promise<CallRecording[]> {
+  if (!(input.olderThan instanceof Date) || Number.isNaN(input.olderThan.getTime())) {
+    throw new Error(
+      "listDeletePendingRetryCandidatesInCurrentOrg: olderThan must be a valid Date",
+    );
+  }
+  if (!Number.isInteger(input.limit) || input.limit <= 0) {
+    throw new Error(
+      "listDeletePendingRetryCandidatesInCurrentOrg: limit must be a positive integer",
+    );
+  }
+  const r = await client.query<RawRow>(
+    `SELECT ${RECORDING_COLUMNS} FROM call_recordings
+      WHERE deleted_at IS NULL
+        AND status = 'delete_pending'
+        AND updated_at <= $1
+      ORDER BY updated_at ASC, id ASC
       LIMIT $2`,
-    [cutoff, limit],
+    [input.olderThan, input.limit],
   );
   return r.rows.map(hydrate);
 }

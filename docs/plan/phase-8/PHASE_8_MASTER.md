@@ -14,13 +14,13 @@
 
 ## 0. 진행 상태
 
-> **Phase 8 Step 4 완료.** Step 1~3에 이어 Step 4 frontend playback UI까지 닫혔다. `platform/calls.html` detail panel에 6-state recording surface가 붙었고, signed URL은 DOM property로만 audio element에 결합돼 page-authored innerHTML template / visible text / console에 노출되지 않는다. 다음은 retention worker integration(Step 5).
+> **Phase 8 Step 5 완료.** Step 1~4에 이어 retention worker integration까지 닫혔다. recording 90일 정책 + delete_pending retry + aggregate audit가 Phase 7 retention worker에 통합됐고 기본 테스트는 여전히 network 호출이 없다. 다음은 Phase 8 closeout (findings + user guide + README + full validation).
 
 - [x] **Step 1 - `call_recordings` metadata schema**: `call_recordings` table, org-scoped RLS, object metadata columns, retention cutoff metadata, app grants. 상세 계획은 `PHASE_8_STEP_1_PLAN.md`, 결과는 `PHASE_8_STEP_1_FINDINGS.md`.
 - [x] **Step 2 - repository + storage adapter boundary**: typed repository (`server/src/repositories/callRecordings.ts`), recording storage adapter (`server/src/adapters/recordingStorage.ts`) — local filesystem provider (with two-stage path-traversal protection) + s3/minio env validator + sentinel adapter. RLS/cross-org/FK/CHECK/UNIQUE/lifecycle/retention 회귀 32 case. 계획 `PHASE_8_STEP_2_PLAN.md`, 결과 `PHASE_8_STEP_2_FINDINGS.md`.
 - [x] **Step 3 - upload/finalize/playback routes**: audit action migration (`1715000029000_phase8_recording_activity_actions.sql`) + `ActivityAction` lockstep + 5 service helper. shared types (`server/src/types/callRecording.ts` + browser mirror + sync registry). `recordingStoragePlugin` Fastify decorator. `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` 실 SDK adapter (sentinel은 opt-in factory로 보존). `services/callRecordings.ts` (initiate/finalize/list/playbackUrl/delete) + `routes/callRecordings.ts` 5 endpoint + plugin-scoped error handler. route tests 21 + audit hooks tests 5. 계획 `PHASE_8_STEP_3_PLAN.md`, 결과 `PHASE_8_STEP_3_FINDINGS.md`.
 - [x] **Step 4 - frontend playback UI**: `platform/api.js`에 list/playback-url/delete 3 helper. `platform/calls.html` detail panel에 recording surface 추가 — 6-state renderer(loading / none / processing / available / failed / deleted), `<audio controls preload="none">`에 signed URL을 DOM property로만 결합, 만료 30초 전 epoch-guarded auto refresh, detail close / 다른 call open 시 audio src + timer cleanup, viewer hide via `/me` role 캐시(backend는 여전히 authority). browser smoke: 데스크탑 1440×900 + 모바일 390×844 PASS, console errors 0건, object_key / bucket / signature는 visible text나 page-authored innerHTML template에 노출되지 않음. 계획 `PHASE_8_STEP_4_PLAN.md`, 결과 `PHASE_8_STEP_4_FINDINGS.md`.
-- [ ] **Step 5 - retention worker integration**: Phase 7 Step 4 retention worker에 `call_recordings` 90일 metadata + object delete module 추가, aggregate audit 기록.
+- [x] **Step 5 - retention worker integration**: audit action migration (`1715000030000_phase8_recording_retention_audit_action.sql`) + `ActivityAction` lockstep. repository: `listRetentionCandidatesInCurrentOrg` 단일 cutoff → two-cutoff (`explicitCutoff` + `uploadedBefore`); `listDeletePendingRetryCandidatesInCurrentOrg` 신규. config: `recordingRetentionDays`(90) / `recordingBatchSize`(100) / `recordingDeletePendingRetryAfterSec`(900). service: `runRecordingRetentionForOrg` — object storage delete를 long DB tx 밖에서 실행, `storage_object_not_found`는 idempotent success, 실패 row는 다음 tick으로 이월, aggregate audit `retention.recordings_deleted` (recording_id / object_key / signed URL / checksum 모두 비포함). worker bootstrap에 `recordingStoragePlugin` 추가. result/log에 recording aggregate counter 추가. tests: repo 9 + service 11 + Phase 7 retention 회귀 갱신 14. 계획 `PHASE_8_STEP_5_PLAN.md`, 결과 `PHASE_8_STEP_5_FINDINGS.md`.
 - [ ] **Closeout**: findings, user guide, README, full validation.
 
 ---
@@ -183,16 +183,16 @@ Phase 8 closeout 최소 기준:
 
 ## 7. 바로 다음 작업
 
-Step 4 frontend playback UI는 닫혔다. 다음 작업은 Step 5 retention worker integration이다.
+Step 5 retention worker integration은 닫혔다. 다음 작업은 Phase 8 closeout이다.
 
 다음 구현 단위:
 
-1. `PHASE_8_STEP_5_PLAN.md`
-2. Phase 7 Step 4 retention worker (`server/src/workers/retention*` + service)에 `call_recordings` 모듈 추가
-3. `listRetentionCandidatesInCurrentOrg(cutoff, limit)`로 후보 batch select → adapter `deleteObject` → `markDeleted` 또는 `hardDelete` (Step 5 plan에서 확정)
-4. `delete_pending` 상태로 막힌 row를 같은 worker에서 재시도 (Step 4 frontend의 502 fallback)
-5. aggregate-only audit (`retention.recordings_deleted` 같은 신규 action — DB CHECK 추가 + `ActivityAction` lockstep 또는 기존 `retention.transcripts_deleted` 재사용 결정). object key / recording id list는 payload에 절대 포함 안 함
-6. `KLOSER_RETENTION_ENABLED` gate 재사용
-7. worker 단위 + 통합 테스트, network-free fixture
+1. `PHASE_8_CLOSEOUT_FINDINGS.md` — 전체 5 step 요약 + Go/No-Go 게이트 + 남은 리스크 + 인계 노트
+2. `docs/USER_GUIDE_PHASE_8.md` — recording surface 사용 흐름 (upload → finalize → playback → delete) + 90일 retention 정책 + 운영자 환경 변수
+3. `README.md` — Phase 8 완료 표기 (현재 "Phase 8 Step 1 완료 / Step 2 대기" → "Phase 8 완료") + recording 관련 추가 env (RECORDING_STORAGE_PROVIDER / KLOSER_RETENTION_RECORDING_*) 노트
+4. `docs/plan/README.md` — Phase 8 entry point을 STEP_1_FINDINGS에서 closeout findings로 교체
+5. Closeout Go/No-Go 게이트 재실행 (typecheck + sync types + full test + git diff --check + db:migrate:up)
+6. 별도 product/legal 결정: legal consent workflow, multi-recording UX, retention dead-letter 정책, MinIO/S3 real provider smoke
+7. 별도 product/UX 결정: upload UI (browser/desktop recorder pipeline). Step 3 backend route는 이미 닫혔으므로 frontend recorder만 추가하면 됨
 
-Step 5는 frontend와 backend route 모두 미수정. 작업 후 Phase 8 closeout (findings + USER_GUIDE + README + full validation).
+Closeout 이후 v2 후보: real provider smoke 운영 검증, waveform, transcoding, transcript-audio alignment, dead-letter mechanism.
