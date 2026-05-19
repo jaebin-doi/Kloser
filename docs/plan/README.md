@@ -14,7 +14,8 @@
 | [`phase-4/`](phase-4/) | calls / transcripts 영속화 + dashboard 실 KPI 전환 계획·결과 (Step 1~5 완료, 통합 e2e 8 시나리오 PASS) |
 | [`phase-5/`](phase-5/) | knowledge base · checklist · suggestion persistence · call detail 계획/결과 |
 | [`phase-6/`](phase-6/) | worker runtime · real provider adapters · action item delete · manager reports 계획/결과 |
-| [`phase-7/`](phase-7/) | 운영 출시 게이트: email delivery · MFA · audit · retention 계획 |
+| [`phase-7/`](phase-7/) | 운영 출시 게이트: email delivery · MFA · audit · retention · billing caps 계획/결과 |
+| [`phase-8/`](phase-8/) | call recording audio storage · playback 계획/결과 |
 
 ## Current Entry Points
 
@@ -28,7 +29,8 @@
 | Phase 4 status (complete) | [`phase-4/PHASE_4_MASTER.md`](phase-4/PHASE_4_MASTER.md) + [`phase-4/PHASE_4_STEP_5_FINDINGS.md`](phase-4/PHASE_4_STEP_5_FINDINGS.md) |
 | Phase 5 status (complete) | [`phase-5/PHASE_5_MASTER.md`](phase-5/PHASE_5_MASTER.md) + [`phase-5/PHASE_5_STEP_5_FINDINGS.md`](phase-5/PHASE_5_STEP_5_FINDINGS.md) |
 | Phase 6 status (complete) | [`phase-6/PHASE_6_MASTER.md`](phase-6/PHASE_6_MASTER.md) + [`phase-6/PHASE_6_STEP_5_FINDINGS.md`](phase-6/PHASE_6_STEP_5_FINDINGS.md) |
-| Phase 7 current entry point | [`phase-7/PHASE_7_MASTER.md`](phase-7/PHASE_7_MASTER.md) + [`phase-7/PHASE_7_STEP_1_FINDINGS.md`](phase-7/PHASE_7_STEP_1_FINDINGS.md). Next implementation step: MFA / session hardening. |
+| Phase 7 status (complete) | [`phase-7/PHASE_7_MASTER.md`](phase-7/PHASE_7_MASTER.md) + [`phase-7/PHASE_7_CLOSEOUT_FINDINGS.md`](phase-7/PHASE_7_CLOSEOUT_FINDINGS.md) |
+| Phase 8 current entry point | [`phase-8/PHASE_8_MASTER.md`](phase-8/PHASE_8_MASTER.md) + [`phase-8/PHASE_8_STEP_1_FINDINGS.md`](phase-8/PHASE_8_STEP_1_FINDINGS.md). Next implementation step: Step 2 repository + storage adapter boundary. |
 | Final `customers.plan` decision | [`phase-2/PHASE_2_STEP_5_FINDINGS.md`](phase-2/PHASE_2_STEP_5_FINDINGS.md) |
 | Phase 2 closure findings | [`phase-2/PHASE_2_STEP_6_FINDINGS.md`](phase-2/PHASE_2_STEP_6_FINDINGS.md) |
 
