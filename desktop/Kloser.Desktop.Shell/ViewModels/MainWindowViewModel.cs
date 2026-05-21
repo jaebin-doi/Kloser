@@ -1009,7 +1009,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
                     {
                         ContentType = local.ContentType,
                         Codec = local.Codec,
-                        RecordedAtIso = DateTimeOffset.UtcNow.ToString("o"),
+                        RecordedAtIso = DateTime.UtcNow.ToString("O"),
                         DurationSeconds = local.DurationSeconds,
                         SizeBytes = local.SizeBytes,
                         ChecksumSha256 = local.ChecksumSha256,

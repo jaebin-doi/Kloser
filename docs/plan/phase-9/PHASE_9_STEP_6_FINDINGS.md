@@ -101,6 +101,11 @@ Root causes now covered by the desktop fix:
   clear `ActiveCallId`, leaving the backend call ended but preventing archive
   upload from starting. `EndCallAsync` now snapshots `ActiveCallId ?? _callSession.CallId`
   before awaiting `StopAsync()`.
+- Upload schema rejection: server logs showed
+  `POST /calls/:id/recordings/upload -> 400` for the desktop archive call.
+  The desktop sent `recorded_at` as a `DateTimeOffset` ISO string with
+  `+00:00`; backend `z.string().datetime()` accepts the project contract's
+  UTC `Z` timestamp shape. Desktop now sends `DateTime.UtcNow.ToString("O")`.
 
 ---
 
