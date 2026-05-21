@@ -10,7 +10,7 @@
 
 ## 0. 진행 상태
 
-> **Step 6 완료.** Step 1·2 정본 인계, Step 3·4 desktop capture + WPF shell, Step 5 realtime backend integration, Step 6 recording archive bridge까지 한 줄로 이어진 desktop → `/calls` → mock STT + Phase 8 archive 흐름이 manual E2E로 통과했다 (2026-05-21). Step 3·4 master 체크박스는 manual smoke 매트릭스 정리 완료 후 별도 갱신 예정. 다음 트랙은 Step 7 (pilot hardening — Windows device matrix, 5분 baseline, reconnect 정책, consent placeholder, runbook).
+> **Step 7 in-progress.** Step 1·2 정본 인계, Step 3·4 desktop capture + WPF shell, Step 5 realtime backend integration, Step 6 recording archive bridge까지 한 줄로 이어진 desktop → `/calls` → mock STT + Phase 8 archive 흐름이 manual E2E로 통과했다 (2026-05-21). Step 7 코드 hardening (startup sweep / error casing 정규화 / PasswordBox / consent placeholder) + runbook + Step 3/4/7 findings 작성은 본 라운드에 완료, 자동 게이트 PASS. **manual S1-S6 + 5분 baseline + network·lifecycle edge 매트릭스는 user-run 대기** — 결과가 채워지면 Step 3/4/7 체크박스 동시 갱신 (`PHASE_9_STEP_7_FINDINGS.md` §0.2 참조).
 
 - [x] **Step 1 - desktop capture architecture**: Windows audio engine, UI shell, backend realtime ingest contract, STT provider, call lifecycle, security boundary 확정. 정본 계획은 `PHASE_9_STEP_1_DESKTOP_CAPTURE_ARCHITECTURE.md`.
 - [x] **Step 2 - backend audio ingest contract**: `/calls` Socket.io namespace에 `audio_start` / binary `audio_chunk` / `audio_end` 추가. `wsAudio` shared types 3-way sync, mock streaming STT boundary, partial emit/final persist, aggregate mock `llm_usage_log` row, 128 KiB chunk cap + 1 MiB backpressure, raw audio sentinel 테스트까지 닫았다. 정본 계획은 `PHASE_9_STEP_2_PLAN.md`, 결과는 `PHASE_9_STEP_2_FINDINGS.md`.
@@ -577,46 +577,55 @@ Phase 9 closeout requires:
 
 ## 14. Next Work Instruction
 
-Next task should be **Phase 9 Step 5 - Realtime Backend Integration**.
+Next task should be **Phase 9 Step 7 - Pilot Hardening + Closeout**.
 
-Detailed implementation plan: `docs/plan/phase-9/PHASE_9_STEP_5_PLAN.md`.
+Detailed implementation plan: `docs/plan/phase-9/PHASE_9_STEP_7_PLAN.md`.
 
 Recommended handoff:
 
 ```text
-Phase 9 Step 5 Realtime Backend Integration을 구현한다.
+Phase 9 Step 7 Pilot Hardening + Closeout을 진행한다.
 
 반드시 먼저 아래 문서를 읽고 따른다.
 
 - docs/plan/phase-9/PHASE_9_MASTER.md
-- docs/plan/phase-9/PHASE_9_STEP_5_PLAN.md
+- docs/plan/phase-9/PHASE_9_STEP_3_FINDINGS.md
 - docs/plan/phase-9/PHASE_9_STEP_4_FINDINGS.md
-- docs/plan/phase-9/PHASE_9_STEP_2_FINDINGS.md
+- docs/plan/phase-9/PHASE_9_STEP_5_FINDINGS.md
+- docs/plan/phase-9/PHASE_9_STEP_6_FINDINGS.md
+- docs/plan/phase-9/PHASE_9_STEP_7_PLAN.md
 
 범위:
-- WPF desktop app에서 /calls Socket.io namespace에 인증 연결.
-- start_call -> audio_start -> audio_chunk(meta,binary) -> audio_end -> end_call lifecycle 연결.
-- Step 2 mock streaming STT partial/final transcript를 WPF UI에 표시.
-- raw PCM은 binary payload로만 전송하고 로그/DB/UI 이벤트 텍스트에 노출 금지.
-- 필요한 만큼 CaptureSessionController sink composition 리팩터링.
+- Windows device matrix S1-S6 closeout.
+- 5분 이상 baseline.
+- network disconnect / backend restart / End Call double click / X close / archive upload edge hardening.
+- runbook 작성.
+- consent placeholder와 password/token/raw-audio 노출 점검.
+- Step 3 / Step 4 / Step 7 findings와 master checkbox 갱신.
 
 하지 말 것:
 - Azure Speech 실호출.
-- Phase 8 recording upload/finalize.
 - Flutter 전환.
-- 새 desktop-only auth endpoint.
+- production installer / auto-update.
 - raw audio local retry buffer.
-- Socket.IO binary가 막힌다고 JSON/base64 우회.
+- 자동 hidden reconnect.
+- real S3/MinIO provider smoke.
 
 검증:
-- dotnet build 3개 project.
-- server typecheck.
-- shared type sync.
-- server tests.
-- WPF manual e2e: connect, start call, mic+loopback chunk 전송, partial transcript, final transcript, end_call.
-- raw audio leakage check.
+- dotnet build Core / Poc / Shell.
+- npm --prefix server run typecheck.
+- node test/sync_shared_types.mjs.
+- npm --prefix server test.
+- git diff --check.
+- S1-S6 manual smoke.
+- 5분 baseline.
+- calls.html recording playback.
+- DB transcripts / llm_usage_log / call_recordings 확인.
+- raw audio / token / signed URL / object key / local path leakage 0건 확인.
 
 산출물:
-- desktop realtime client / auth client / SocketIoAudioFrameSink changes.
-- `docs/plan/phase-9/PHASE_9_STEP_5_FINDINGS.md`
+- docs/plan/phase-9/PHASE_9_STEP_7_FINDINGS.md.
+- docs/plan/phase-9/PHASE_9_RUNBOOK.md.
+- 필요한 최소 desktop hardening code.
+- PHASE_9_MASTER.md Step 3 / Step 4 / Step 7 상태 갱신.
 ```

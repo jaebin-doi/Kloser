@@ -2,6 +2,7 @@
 
 작성일: 2026-05-19 (initial)
 갱신: 2026-05-21 (Codex blocker fix 통합 + manual smoke를 Step 4 UI 검증으로 이월하는 정책 반영)
+갱신: 2026-05-21 (Step 7 closeout — Step 5/6 manual E2E가 묵시적으로 통과시킨 항목 반영 / 미수행 항목 분리)
 
 상위 문서: `PHASE_9_MASTER.md`
 계획 문서: `PHASE_9_STEP_3_PLAN.md`
@@ -22,6 +23,26 @@
 - 결과적으로 **`PHASE_9_MASTER.md` Step 3 체크박스는 본 라운드에서 변경하지 않는다.** Step 4 UI smoke가 §1.3 항목들을 모두 통과하면 그때 같이 체크 갱신한다.
 
 본 문서는 closeout 문서가 아니다. "implementation complete, manual validation deferred to Step 4"의 인계 기록으로 사용한다.
+
+### 0.1 Step 7 Closeout Addendum (2026-05-21)
+
+Step 5 (`audio_duration_ms_sent=196360`, partial+final transcript) + Step 6 (archive `available`, calls.html 재생) manual E2E가 capture engine을 실 mic + loopback과 함께 한 세션에서 양수 통과시켰다. 그 결과 §1.3 S1-S6 중 다음 항목은 **묵시적으로 PASS**로 간주한다:
+
+| ID | 상태 | 근거 |
+|---|---|---|
+| S1 mic level 움직임 | **PASS** (Step 5/6 E2E) | partial+final transcript가 사용자 발화에서 생성 → mic frames > 0 + peak > silence floor |
+| S2 loopback level 움직임 | **PASS** (Step 5/6 E2E) | partial+final transcript가 시스템 오디오에서 생성 + Step 6 archive WAV에 right(loopback) 채널 audio 존재 |
+| S3 mic + loopback 동시 캡처 | **PASS** (Step 5/6 E2E) | 두 source 모두에서 transcript + archive WAV stereo (left=mic, right=loopback) 생성 |
+
+다음 항목은 Step 5/6 E2E가 다루지 않아 **user-run 대기**다 (Step 7 plan §3.2 그대로 매트릭스 유지):
+
+| ID | 상태 | 사유 |
+|---|---|---|
+| S4 diagnostic WAV separation | **user-run 대기** | Step 5/6은 archive WAV(stereo)만 사용. diagnostic WAV(per-source 2 파일)는 별도 toggle 경로라 별도 검증 필요 |
+| S5 mute / silence 동작 | **user-run 대기** | Step 5/6은 정상 발화 시나리오만 수행. mute toggle + silence-only는 별도 검증 필요 |
+| S6 5분 baseline | **user-run 대기** | Step 5 E2E 최장 길이 196초(~3:16). 5분(>= 300s) 미달 |
+
+`PHASE_9_MASTER.md` Step 3 체크박스는 **S4/S5/S6이 user-run으로 채워질 때까지 본 라운드에서 변경하지 않는다.** Step 7 findings에 동일 매트릭스가 있고, 사용자가 본 머신에서 결과를 채우는 시점에 본 §0.1을 갱신하고 master 체크박스를 [x]로 갱신한다.
 
 ---
 

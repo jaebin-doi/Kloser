@@ -1,6 +1,7 @@
 # Phase 9 Step 4 Findings — Desktop App Shell (WPF)
 
 작성일: 2026-05-21
+갱신: 2026-05-21 (Step 7 closeout — Step 5/6 E2E가 묵시적으로 통과시킨 S1-S6 항목 반영)
 
 상위 문서: `PHASE_9_MASTER.md`
 계획 문서: `PHASE_9_STEP_4_PLAN.md`
@@ -20,6 +21,21 @@
 - 자동 게이트(`dotnet build` 3 projects / console regression 4 commands / WPF launch 5초 dry-run / `git diff --check`)는 모두 통과.
 - **S1-S6 manual smoke는 본 dev 세션 머신에 active capture device가 0개라 사용자 머신에서 수행해야 한다** — UI는 동작 가능, 마이크 / 시스템 오디오 가용 머신에서 사용자가 S1-S6 체크박스를 채워 주시면 그 결과를 `PHASE_9_STEP_3_FINDINGS.md`에 반영하고 `PHASE_9_MASTER.md` Step 3 / Step 4 체크박스 갱신.
 - `PHASE_9_MASTER.md` Step 4 체크박스는 본 라운드에서 **변경하지 않는다** (Plan §13 exit criteria, Codex 리뷰 + UI smoke 통과 시점에 갱신).
+
+### 0.1 Step 7 Closeout Addendum (2026-05-21)
+
+Step 5/6 manual E2E가 WPF UI 위에서 (login → 통화 시작 → 마이크 발화 → 시스템 오디오 재생 → 통화 종료 → archive available → calls.html 재생) 정상 통과했다. 본 단계가 위임받은 §6.3 S1-S6 deferred 표는 Step 7 closeout 매트릭스에서 다음과 같이 정리한다:
+
+| ID | 상태 | 근거 |
+|---|---|---|
+| S1 mic level | **PASS** (Step 5/6 E2E) | partial+final transcript가 mic 입력에서 생성. WPF agent_mic peak/RMS 게이지가 움직였다는 사용자 관측 (Step 5 findings §9). |
+| S2 loopback level | **PASS** (Step 5/6 E2E) | partial+final transcript가 시스템 오디오에서 생성. WPF system_loopback 게이지 움직임 관측. |
+| S3 mic + loopback 동시 | **PASS** (Step 5/6 E2E) | 두 source counter 동시 증가 + Step 6 archive stereo WAV에 양 채널 audio. |
+| S4 diagnostic WAV separation | **user-run 대기** | Step 5/6은 archive WAV 경로만 행사. diagnostic WAV toggle은 별도 검증 필요. |
+| S5 mute / silence | **user-run 대기** | 정상 발화 시나리오만 수행. mute / silence-only는 별도 검증 필요. |
+| S6 5분 baseline | **user-run 대기** | Step 5 E2E 최장 196초(~3:16) → 5분(300s) 미달. |
+
+`PHASE_9_MASTER.md` Step 4 체크박스는 **S4/S5/S6 user-run으로 채워질 때까지 본 라운드에서 변경하지 않는다.** Step 7 findings에 동일 매트릭스를 둔다.
 
 ---
 

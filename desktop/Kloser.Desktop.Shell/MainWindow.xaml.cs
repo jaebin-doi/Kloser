@@ -12,6 +12,7 @@
 
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using Kloser.Desktop.Shell.Services;
 using Kloser.Desktop.Shell.ViewModels;
 
@@ -27,8 +28,31 @@ public partial class MainWindow : Window
         InitializeComponent();
         _viewModel = new MainWindowViewModel(new UiDispatcher(Dispatcher));
         DataContext = _viewModel;
+        // Phase 9 Step 7 — VM이 LoginPassword를 비울 때 (login 성공 후) PasswordBox
+        // 내부 SecureString도 함께 초기화해 평문 잔존을 막는다.
+        _viewModel.PropertyChanged += (_, ev) =>
+        {
+            if (ev.PropertyName == nameof(MainWindowViewModel.LoginPassword)
+                && string.IsNullOrEmpty(_viewModel.LoginPassword)
+                && LoginPasswordBox.Password.Length > 0)
+            {
+                LoginPasswordBox.Clear();
+            }
+        };
         Closing += OnClosing;
         Closed += OnClosed;
+    }
+
+    // Phase 9 Step 7 — PasswordBox는 SecurityCritical Password property라 직접
+    // databinding을 막아 둔다. 이 핸들러가 사용자 keystroke마다 VM에 평문을 한
+    // 번씩 옮긴다. login 성공 후 VM이 LoginPassword=""로 비우면 PasswordBox는
+    // 그대로 둬도 메모리상 평문이 사라진다 (사용자는 UI에서도 비워주는 게 명확).
+    private void OnLoginPasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox box)
+        {
+            _viewModel.LoginPassword = box.Password;
+        }
     }
 
     private async void OnClosing(object? sender, CancelEventArgs e)

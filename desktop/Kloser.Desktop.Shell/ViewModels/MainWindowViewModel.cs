@@ -420,6 +420,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         set => SetField(ref _archiveScratchBytes, value);
     }
 
+    // Phase 9 Step 7 (Plan §3.5) — consent placeholder.
+    // 실제 동의 워크플로우가 아니다. 운영자가 고객에게 녹취/STT를 안내했음을
+    // UI에 명시적으로 박아두는 용도이고, 통화 시작/종료를 막지 않는다.
+    private bool _consentAcknowledged;
+    public bool ConsentAcknowledged
+    {
+        get => _consentAcknowledged;
+        set => SetField(ref _consentAcknowledged, value);
+    }
+
     public RelayCommand LoginAndConnectCommand { get; }
     public RelayCommand ConnectWithTokenCommand { get; }
     public RelayCommand DisconnectCommand { get; }
@@ -1205,14 +1215,44 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             PushError($"백엔드 런타임 오류: {code} — {msg}");
             // Plan §5.3 fail-closed: BAD_PAYLOAD / AUDIO_BACKPRESSURE 등 audio 관련
             // 오류는 capture 중단 + sink deactivate.
-            if (code is "BAD_PAYLOAD" or "AUDIO_CHUNK_TOO_LARGE"
-                or "AUDIO_BACKPRESSURE" or "AUDIO_SEQ_OUT_OF_ORDER")
+            //
+            // Phase 9 Step 7 (Plan §3.4) — casing drift 방어:
+            // 백엔드 contract는 audio 4종을 대문자, lifecycle 5종을 소문자로
+            // 명시한다 (Step 5 findings §0.1 #4). 그러나 wire 변경 시 desktop이
+            // 한 박자 늦으면 silent inconsistency 위험이 있다. 정규화 헬퍼로
+            // OrdinalIgnoreCase 매칭을 한 번 더 안전망으로 둔다.
+            if (IsAudioFailCloseCode(code))
             {
                 _callSession?.FailClosed();
                 if (IsRunning) StopCapture();
                 CallStateValue = RealtimeCallState.Ended;
             }
         });
+    }
+
+    // Phase 9 Step 7 — audio fail-close code 정규화.
+    // backend `server/src/types/wsAudio.ts` AudioRuntimeErrorCode union의
+    // 대문자 4종에 OrdinalIgnoreCase 매칭. 정상 wire (`BAD_PAYLOAD` 등 대문자)
+    // 그대로 동작하면서 wire가 임시로 소문자/혼합 케이싱으로 바뀌어도
+    // fail-closed가 빠지지 않도록 한다.
+    private static readonly string[] _audioFailCloseCodes = new[]
+    {
+        "BAD_PAYLOAD",
+        "AUDIO_CHUNK_TOO_LARGE",
+        "AUDIO_BACKPRESSURE",
+        "AUDIO_SEQ_OUT_OF_ORDER",
+    };
+    private static bool IsAudioFailCloseCode(string? code)
+    {
+        if (string.IsNullOrEmpty(code)) return false;
+        foreach (var canonical in _audioFailCloseCodes)
+        {
+            if (string.Equals(code, canonical, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void OnTranscriptPartial(object? sender, TranscriptPartialEvent ev)

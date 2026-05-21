@@ -194,13 +194,15 @@
                     <StackPanel Grid.Column="1" Margin="0,0,12,0">
                         <TextBlock Text="비밀번호 (메모리에만 보관)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
                         <!--
-                            WPF PasswordBox는 binding이 안 되므로 dev 편의상
-                            TextBox로 둔다. 입력 후 즉시 메모리로 옮기고
-                            ViewModel이 LoginPassword를 비운다.
+                            Phase 9 Step 7 — PasswordBox로 교체 (Plan §3.5).
+                            PasswordBox는 SecurityCritical Password property를 직접
+                            바인딩하지 않으므로 code-behind PasswordChanged 핸들러가
+                            VM.LoginPassword에 평문을 넘긴다. login 성공 후 VM이
+                            LoginPassword=""로 즉시 비우는 동작은 그대로.
                         -->
-                        <TextBox Text="{Binding LoginPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Background="#F8FAFC" Foreground="#0F172A" Padding="6,4" MinHeight="28"
-                                 BorderBrush="{StaticResource PanelBorderBrush}"/>
+                        <PasswordBox x:Name="LoginPasswordBox" PasswordChanged="OnLoginPasswordChanged"
+                                     Background="#F8FAFC" Foreground="#0F172A" Padding="6,4" MinHeight="28"
+                                     BorderBrush="{StaticResource PanelBorderBrush}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="또는 access token 붙여넣기 (dev fallback / KLOSER_DESKTOP_ACCESS_TOKEN)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
@@ -228,6 +230,17 @@
                     <TextBlock VerticalAlignment="Center" Style="{StaticResource ValueText}">
                         <Run Text="{Binding SystemLoopbackChunksSent}"/><Run Text=" / "/><Run Text="{Binding SystemLoopbackBytesSent}"/>
                     </TextBlock>
+                </StackPanel>
+
+                <!-- Phase 9 Step 7 — consent placeholder (Plan §3.5).
+                     실제 legal workflow가 아니라 운영자에게 "녹취/STT가 진행
+                     중임을 고객에게 안내했는가"를 명시적으로 표시하기 위한
+                     placeholder. 검사가 실패해도 통화는 막지 않는다 (compliance
+                     로직은 Phase 10+ 범위). -->
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <CheckBox Content="고객에게 녹취/STT 안내함 (placeholder — legal workflow 아님)"
+                              IsChecked="{Binding ConsentAcknowledged, Mode=TwoWay}"
+                              VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Row 4 — last realtime error -->
