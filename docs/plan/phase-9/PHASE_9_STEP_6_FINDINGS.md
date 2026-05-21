@@ -95,6 +95,12 @@ Root causes now covered by the desktop fix:
   the background task. Disconnect/shutdown could clear that field before the
   task started. `EndCallAsync` now snapshots `BackendUrl` and token before
   cleanup and passes them into `RunArchiveUploadAsync`.
+- ActiveCallId race: the first fix still captured `ActiveCallId` after
+  awaiting `_callSession.StopAsync()`. If the socket disconnected between the
+  backend `end_call` ack and the UI continuation, `OnSocketDisconnected` could
+  clear `ActiveCallId`, leaving the backend call ended but preventing archive
+  upload from starting. `EndCallAsync` now snapshots `ActiveCallId ?? _callSession.CallId`
+  before awaiting `StopAsync()`.
 
 ---
 

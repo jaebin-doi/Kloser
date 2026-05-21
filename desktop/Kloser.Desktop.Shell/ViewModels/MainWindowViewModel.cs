@@ -875,6 +875,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         // Phase 9 Step 6 — capture archive sink을 먼저 deactivate해서
         // audio_end / end_call 후에 들어올 frame을 archive에 적지 않는다.
         RecordingArchiveSession? archiveSession = _archiveSession;
+        string? callIdForArchive = ActiveCallId ?? _callSession.CallId;
+        string baseUrlForArchive = BackendUrl;
+        string? tokenForArchive = _accessTokenMemoryOnly;
         if (archiveSession is not null)
         {
             _controller.RemoveExternalSink(archiveSession.Sink);
@@ -891,9 +894,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         {
             PushEvent("통화 종료");
         }
-        string? callIdForArchive = ActiveCallId;
-        string baseUrlForArchive = BackendUrl;
-        string? tokenForArchive = _accessTokenMemoryOnly;
         CleanupCallSession();
         if (IsRunning) StopCapture();
 
