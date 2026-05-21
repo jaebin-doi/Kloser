@@ -3,9 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:Kloser.Desktop.Shell.ViewModels"
         Title="Kloser Desktop Capture"
-        Width="1080" Height="780"
+        Width="1600" Height="1080"
+        MinWidth="1280" MinHeight="860"
+        WindowStartupLocation="CenterScreen"
         Background="{StaticResource SurfaceBackgroundBrush}"
         FontFamily="Segoe UI"
+        FontSize="14"
         Foreground="{StaticResource PrimaryTextBrush}">
     <!--
         Phase 9 Step 4 — main window.
@@ -58,7 +61,7 @@
         <Style TargetType="ProgressBar" x:Key="LevelBar">
             <Setter Property="Minimum" Value="0" />
             <Setter Property="Maximum" Value="100" />
-            <Setter Property="Height" Value="8" />
+            <Setter Property="Height" Value="14" />
             <Setter Property="Background" Value="#1E293B" />
             <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
@@ -66,17 +69,24 @@
         </Style>
         <Style TargetType="ProgressBar" x:Key="RmsBar" BasedOn="{StaticResource LevelBar}">
             <Setter Property="Foreground" Value="#22C55E" />
-            <Setter Property="Height" Value="4" />
+            <Setter Property="Height" Value="8" />
         </Style>
     </Window.Resources>
 
+    <!--
+        Window 자체를 ScrollViewer로 감싼다. Step 5에서 backend + call band가
+        추가되고 status panel이 3-col로 커져서 작은 모니터에선 하단(smoke
+        checklist + transcript) 이 잘려 보였다. VerticalScrollBarVisibility=Auto
+        로 두면 모니터 크면 스크롤 안 보이고, 작으면 자동으로 생긴다.
+    -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/> <!-- 0 header -->
             <RowDefinition Height="Auto"/> <!-- 1 device band -->
             <RowDefinition Height="Auto"/> <!-- 2 Phase 9 Step 5 backend + call band -->
             <RowDefinition Height="Auto"/> <!-- 3 capture control band -->
-            <RowDefinition Height="*"/>    <!-- 4 status + events + transcripts -->
+            <RowDefinition Height="Auto"/> <!-- 4 status + events + transcripts (Auto: ScrollViewer 안에선 별로 안 늘어남) -->
             <RowDefinition Height="Auto"/> <!-- 5 smoke checklist -->
         </Grid.RowDefinitions>
 
@@ -88,8 +98,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="{Binding AppVersion}" Style="{StaticResource HeaderText}" FontSize="16"/>
-                    <TextBlock Text="Phase 9 Step 4 — 데스크탑 UI. 백엔드 / STT 연결은 Step 5 이후 범위입니다." Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding AppVersion}" Style="{StaticResource HeaderText}" FontSize="22"/>
+                    <TextBlock Text="Phase 9 Step 5 — 데스크탑 캡처에서 backend mock STT까지 실시간 연결합니다." Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <TextBlock Text="상태:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
@@ -429,4 +439,5 @@
             </StackPanel>
         </Border>
     </Grid>
+    </ScrollViewer>
 </Window>

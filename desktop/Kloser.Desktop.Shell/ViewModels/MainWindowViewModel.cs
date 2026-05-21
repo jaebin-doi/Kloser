@@ -48,7 +48,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public IReadOnlyList<int> AllowedFrameMs { get; } = new[] { 20, 40, 60, 80, 100 };
 
-    public string AppVersion => "클로저 데스크탑 캡처 — Step 4 PoC";
+    public string AppVersion => "클로저 데스크탑 캡처 — Step 5 Realtime PoC";
 
     private DeviceOptionViewModel? _selectedMic;
     public DeviceOptionViewModel? SelectedMic

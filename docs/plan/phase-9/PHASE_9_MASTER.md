@@ -10,13 +10,13 @@
 
 ## 0. 진행 상태
 
-> **계획 수정 완료.** 직전 browser `MediaRecorder` 계획은 제품 방향과 맞지 않아 폐기한다. Phase 9의 정본 방향은 Windows 데스크탑 실시간 오디오 캡처 + backend realtime ingest다.
+> **Step 5 완료.** Step 1·2가 정본 인계됐고, Step 3 Windows 캡처 PoC + Step 4 WPF shell + Step 5 realtime backend integration까지 한 줄로 이어진 desktop → `/calls` → mock STT 흐름이 manual E2E로 통과했다. Step 3·4 master 체크박스는 manual smoke 매트릭스 정리 완료 후 별도 갱신 예정. 다음 트랙은 Step 6 (Phase 8 recording archive bridge) 또는 Step 7 (pilot hardening — 5분 baseline, reconnect 정책, 다중 디바이스 매트릭스).
 
 - [x] **Step 1 - desktop capture architecture**: Windows audio engine, UI shell, backend realtime ingest contract, STT provider, call lifecycle, security boundary 확정. 정본 계획은 `PHASE_9_STEP_1_DESKTOP_CAPTURE_ARCHITECTURE.md`.
 - [x] **Step 2 - backend audio ingest contract**: `/calls` Socket.io namespace에 `audio_start` / binary `audio_chunk` / `audio_end` 추가. `wsAudio` shared types 3-way sync, mock streaming STT boundary, partial emit/final persist, aggregate mock `llm_usage_log` row, 128 KiB chunk cap + 1 MiB backpressure, raw audio sentinel 테스트까지 닫았다. 정본 계획은 `PHASE_9_STEP_2_PLAN.md`, 결과는 `PHASE_9_STEP_2_FINDINGS.md`.
 - [ ] **Step 3 - Windows capture engine PoC**: C#/.NET으로 WASAPI loopback + microphone capture, resampling, channel policy, local VAD/buffering, test harness.
 - [ ] **Step 4 - desktop app shell**: 로그인, org/session 선택, start/end call, device selection, capture status, reconnect/error UI. Flutter Windows 또는 C# UI 결정 후 구현.
-- [ ] **Step 5 - realtime backend integration**: desktop app -> backend audio stream -> mock STT -> transcript/call update 흐름 연결. 계획 문서: `PHASE_9_STEP_5_PLAN.md`.
+- [x] **Step 5 - realtime backend integration**: WPF shell이 `/calls` Socket.IO namespace에 JWT handshake로 연결, `start_call → audio_start → audio_chunk(meta, byte[]) → audio_end → end_call` lifecycle을 닫음. SocketIOClient 3.1.2 핀, `SocketIoAudioFrameSink` 가 `ICapturedFrameSink` 구현, `RealtimeCallSession` 상태 머신, `transcript.partial` / `transcript` UI 표시. backend 계약 무변경. Manual E2E (login/token / start_call / audio_chunk / partial+final transcript / end_call / DB transcripts + mock STT usage row / raw audio leakage 0) PASS. 계획 `PHASE_9_STEP_5_PLAN.md`, 결과 `PHASE_9_STEP_5_FINDINGS.md`.
 - [ ] **Step 6 - recording archive bridge**: 실시간 통화 후 녹취 파일을 Phase 8 call recording upload/finalize 표면으로 보관.
 - [ ] **Step 7 - pilot hardening + closeout**: Windows device matrix, network resilience, logs, consent placeholder, user guide, final validation.
 

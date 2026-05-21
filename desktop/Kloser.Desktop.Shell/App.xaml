@@ -20,18 +20,18 @@
 
         <Style TargetType="TextBlock" x:Key="HeaderText">
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="17" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style TargetType="TextBlock" x:Key="LabelText">
             <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="TextAlignment" Value="Left" />
         </Style>
         <Style TargetType="TextBlock" x:Key="ValueText">
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="14" />
             <Setter Property="FontFamily" Value="Consolas" />
         </Style>
         <Style TargetType="Border" x:Key="PanelBorder">
@@ -39,7 +39,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="Padding" Value="12" />
+            <Setter Property="Padding" Value="14" />
         </Style>
     </Application.Resources>
 </Application>
