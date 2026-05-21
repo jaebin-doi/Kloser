@@ -66,6 +66,23 @@ public sealed class AudioStartPayload
 
     [JsonPropertyName("device_id")]
     public string? DeviceId { get; init; }
+
+    public Dictionary<string, object?> ToWireObject()
+    {
+        var wire = new Dictionary<string, object?>
+        {
+            ["type"] = Type,
+            ["sources"] = Sources,
+            ["codec"] = Codec,
+            ["sample_rate_hz"] = SampleRateHz,
+            ["channels"] = Channels,
+            ["frame_ms"] = FrameMs,
+            ["app_version"] = AppVersion,
+        };
+        if (!string.IsNullOrWhiteSpace(CallId)) wire["call_id"] = CallId;
+        if (!string.IsNullOrWhiteSpace(DeviceId)) wire["device_id"] = DeviceId;
+        return wire;
+    }
 }
 
 public sealed class AudioChunkMetaPayload
@@ -93,6 +110,18 @@ public sealed class AudioChunkMetaPayload
 
     [JsonPropertyName("started_at_ms")]
     public long StartedAtMs { get; init; }
+
+    public Dictionary<string, object?> ToWireObject() => new()
+    {
+        ["type"] = Type,
+        ["seq"] = Seq,
+        ["source"] = Source,
+        ["codec"] = Codec,
+        ["sample_rate_hz"] = SampleRateHz,
+        ["channels"] = Channels,
+        ["duration_ms"] = DurationMs,
+        ["started_at_ms"] = StartedAtMs,
+    };
 }
 
 public sealed class AudioEndPayload
@@ -102,6 +131,13 @@ public sealed class AudioEndPayload
 
     [JsonPropertyName("reason")]
     public string? Reason { get; init; }
+
+    public Dictionary<string, object?> ToWireObject()
+    {
+        var wire = new Dictionary<string, object?> { ["type"] = Type };
+        if (!string.IsNullOrWhiteSpace(Reason)) wire["reason"] = Reason;
+        return wire;
+    }
 }
 
 public sealed class EndCallAck

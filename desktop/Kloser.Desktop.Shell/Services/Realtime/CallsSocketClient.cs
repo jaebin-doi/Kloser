@@ -173,7 +173,7 @@ public sealed class CallsSocketClient : IDisposable
     public Task EmitAudioStartAsync(AudioStartPayload payload, CancellationToken ct = default)
     {
         var socket = RequireSocket();
-        return socket.EmitAsync("audio_start", payload);
+        return socket.EmitAsync("audio_start", payload.ToWireObject());
     }
 
     /// <summary>
@@ -184,13 +184,13 @@ public sealed class CallsSocketClient : IDisposable
     public Task EmitAudioChunkAsync(AudioChunkMetaPayload meta, byte[] pcm, CancellationToken ct = default)
     {
         var socket = RequireSocket();
-        return socket.EmitAsync("audio_chunk", meta, pcm);
+        return socket.EmitAsync("audio_chunk", meta.ToWireObject(), pcm);
     }
 
     public Task EmitAudioEndAsync(AudioEndPayload payload, CancellationToken ct = default)
     {
         var socket = RequireSocket();
-        return socket.EmitAsync("audio_end", payload);
+        return socket.EmitAsync("audio_end", payload.ToWireObject());
     }
 
     public async Task<EndCallAck> EmitEndCallAsync(CancellationToken ct = default)
