@@ -416,6 +416,8 @@ Validation:
 
 ### Step 4 - Desktop App Shell
 
+Plan: see `PHASE_9_STEP_4_PLAN.md`.
+
 Implementation:
 
 - login screen.
@@ -570,46 +572,43 @@ Phase 9 closeout requires:
 
 ## 14. Next Work Instruction
 
-Next task should be **Phase 9 Step 3 - Windows Capture Engine PoC**.
+Next task should be **Phase 9 Step 4 - Desktop App Shell**.
 
-Detailed implementation plan: `docs/plan/phase-9/PHASE_9_STEP_3_PLAN.md`.
+Detailed implementation plan: `docs/plan/phase-9/PHASE_9_STEP_4_PLAN.md`.
 
 Recommended handoff:
 
 ```text
-Phase 9 Step 3 Windows capture engine PoC를 구현한다.
+Phase 9 Step 4 Desktop App Shell을 구현한다.
 
-정본 방향:
-- Windows 데스크탑 앱이 마이크 + 시스템 오디오를 직접 캡처한다.
-- 오디오 엔진은 C#/.NET 8 기반으로 잡는다.
-- STT primary는 Azure Speech다.
-- UI가 필요하면 Flutter Windows를 shell로 쓰되, capture는 C# engine이 담당한다.
-- 통신사/콜센터/소프트폰 provider import는 범위 밖이다.
-- 브라우저 MediaRecorder 녹음 UI도 범위 밖이다.
+반드시 먼저 `docs/plan/phase-9/PHASE_9_STEP_4_PLAN.md`를 읽고 따른다.
 
-Step 3에서 구현할 것:
-- top-level `desktop/` 아래 C#/.NET 8 PoC 구조 추가.
-- NAudio 기반 WASAPI loopback output capture와 microphone capture.
-- output/input device enumeration.
-- PCM16 16 kHz mono resampling path.
-- source labels: `agent_mic`, `system_loopback`.
-- 짧은 dev-only diagnostic WAV write.
-- console 또는 minimal WPF/tray UI로 levels / dropped frames 표시.
-- backend 연결은 필수 아님. Step 2 backend ingest는 이미 mock path로 닫힘.
+결정:
+- Step 4 shell은 C# WPF.
+- Step 3 capture code는 `Kloser.Capture.Core` class library로 분리.
+- 기존 console PoC는 유지하고 core library를 참조.
+- 신규 WPF app은 `Kloser.Desktop.Shell`.
+
+범위:
+- device picker.
+- start/stop capture.
+- mic/system_loopback level meter.
+- frames/dropped/native format/status 표시.
+- diagnostic WAV toggle.
+- friendly error panel.
+- Step 3 manual smoke S1-S6 checklist UI.
+
+하지 말 것:
+- backend Socket.io 전송.
+- Azure Speech 호출.
+- 로그인/token 저장.
+- Phase 8 recording upload/finalize.
+- installer/auto-update.
+- validation 전 `PHASE_9_MASTER.md` checkbox 갱신.
 
 산출물:
-- desktop/...
-- docs/plan/phase-9/PHASE_9_STEP_3_FINDINGS.md
-- docs/plan/phase-9/PHASE_9_MASTER.md Step 3 checkbox update only after validation
-
-검증:
-- dotnet build / test for the PoC project
-- manual Windows smoke: mic + loopback simultaneous capture
-- no generated diagnostic audio committed
-- git diff --check
-
-주의:
-- Flutter shell은 아직 붙이지 않는다. capture quality first.
-- Azure 실 provider 호출은 아직 하지 않는다.
-- provider import / browser capture 방향으로 쓰지 않는다.
+- `desktop/Kloser.Capture.Core/...`
+- `desktop/Kloser.Desktop.Shell/...`
+- updated `desktop/Kloser.Capture.Poc/...`
+- `docs/plan/phase-9/PHASE_9_STEP_4_FINDINGS.md`
 ```
