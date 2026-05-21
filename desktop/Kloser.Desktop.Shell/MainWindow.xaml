@@ -1,0 +1,306 @@
+<Window x:Class="Kloser.Desktop.Shell.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Kloser.Desktop.Shell.ViewModels"
+        Title="Kloser Desktop Capture"
+        Width="1080" Height="780"
+        Background="{StaticResource SurfaceBackgroundBrush}"
+        FontFamily="Segoe UI"
+        Foreground="{StaticResource PrimaryTextBrush}">
+    <!--
+        Phase 9 Step 4 — main window.
+        Plan §4.1 layout: header, device band, control band, status grid,
+        events/errors, smoke checklist.
+
+        IMPORTANT: the data context is constructed in code-behind so the
+        view model can receive a UiDispatcher bound to the live window.
+    -->
+
+    <Window.Resources>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#0B1220" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="MinHeight" Value="28" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#1D4ED8" />
+            <Setter Property="Foreground" Value="#F8FAFC" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#334155" />
+                    <Setter Property="Foreground" Value="#94A3B8" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="6,0,0,0" />
+        </Style>
+        <Style TargetType="ProgressBar" x:Key="LevelBar">
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="Maximum" Value="100" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style TargetType="ProgressBar" x:Key="RmsBar" BasedOn="{StaticResource LevelBar}">
+            <Setter Property="Foreground" Value="#22C55E" />
+            <Setter Property="Height" Value="4" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- header -->
+            <RowDefinition Height="Auto"/> <!-- device band -->
+            <RowDefinition Height="Auto"/> <!-- control band -->
+            <RowDefinition Height="*"/>    <!-- status + events -->
+            <RowDefinition Height="Auto"/> <!-- smoke checklist -->
+        </Grid.RowDefinitions>
+
+        <!-- ================ Header ================ -->
+        <Border Grid.Row="0" Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding AppVersion}" Style="{StaticResource HeaderText}" FontSize="16"/>
+                    <TextBlock Text="Phase 9 Step 4 — desktop UI; backend/STT는 Step 5 이후 범위" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="state:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding UiStateLabel}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBlock Text="elapsed:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding ElapsedDisplay}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBlock Text="mem:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource ValueText}">
+                        <Run Text="{Binding MemoryMb, StringFormat={}{0:F1}}"/><Run Text=" MB"/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ================ Device Band ================ -->
+        <Border Grid.Row="1" Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8">
+                    <TextBlock Text="Microphone" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding CaptureDevices}"
+                              SelectedItem="{Binding SelectedMic, Mode=TwoWay}"
+                              DisplayMemberPath="Display"/>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8">
+                    <TextBlock Text="System audio (render endpoint, loopback)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding RenderDevices}"
+                              SelectedItem="{Binding SelectedLoopback, Mode=TwoWay}"
+                              DisplayMemberPath="Display"/>
+                </StackPanel>
+                <Button Grid.Row="0" Grid.Column="2" Content="Refresh" Command="{Binding RefreshDevicesCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
+
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal">
+                    <TextBlock Text="frame_ms" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox ItemsSource="{Binding AllowedFrameMs}"
+                              SelectedItem="{Binding SelectedFrameMs, Mode=TwoWay}"
+                              Width="80" Margin="0,0,16,0"/>
+                    <CheckBox Content="Write diagnostic WAV (raw audio; off by default)"
+                              IsChecked="{Binding WriteDiagnosticWav, Mode=TwoWay}"/>
+                    <TextBlock Text=" → " Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="8,0"/>
+                    <TextBlock Text="{Binding DiagnosticDir, FallbackValue='(no output dir yet)'}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ================ Control Band ================ -->
+        <Border Grid.Row="2" Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Start capture" Command="{Binding StartCaptureCommand}"/>
+                <Button Content="Stop capture" Command="{Binding StopCaptureCommand}"/>
+                <TextBlock Text="backend:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="20,0,4,0"/>
+                <TextBlock Text="{Binding BackendStatus}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <TextBlock Text="call:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBlock Text="{Binding CallStatus}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <TextBlock Text="user:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBlock Text="{Binding UserStatus}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ================ Status + Events ================ -->
+        <Grid Grid.Row="3" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- per-source status -->
+            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="{Binding AgentMicStatus.DisplayLabel}" Style="{StaticResource HeaderText}"/>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="peak" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <ProgressBar Grid.Column="1" Style="{StaticResource LevelBar}" Value="{Binding AgentMicStatus.PeakPercent, Mode=OneWay}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding AgentMicStatus.Peak, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
+                        </Grid>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="rms" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <ProgressBar Grid.Column="1" Style="{StaticResource RmsBar}" Value="{Binding AgentMicStatus.RmsPercent, Mode=OneWay}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding AgentMicStatus.Rms, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
+                        </Grid>
+                        <UniformGrid Columns="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="enabled" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding AgentMicStatus.IsEnabled}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="healthy" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding AgentMicStatus.IsHealthy}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="frames" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding AgentMicStatus.FramesEmitted}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="dropped" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding AgentMicStatus.FramesDropped}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                        </UniformGrid>
+                        <StackPanel Margin="0,6,0,0">
+                            <TextBlock Text="native format" Style="{StaticResource LabelText}"/>
+                            <TextBlock Text="{Binding AgentMicStatus.NativeFormat}" Style="{StaticResource ValueText}"/>
+                            <TextBlock Text="normalized format" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding AgentMicStatus.NormalizedFormat}" Style="{StaticResource ValueText}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding SystemLoopbackStatus.DisplayLabel}" Style="{StaticResource HeaderText}"/>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="peak" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <ProgressBar Grid.Column="1" Style="{StaticResource LevelBar}" Value="{Binding SystemLoopbackStatus.PeakPercent, Mode=OneWay}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding SystemLoopbackStatus.Peak, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
+                        </Grid>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="rms" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <ProgressBar Grid.Column="1" Style="{StaticResource RmsBar}" Value="{Binding SystemLoopbackStatus.RmsPercent, Mode=OneWay}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding SystemLoopbackStatus.Rms, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
+                        </Grid>
+                        <UniformGrid Columns="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="enabled" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding SystemLoopbackStatus.IsEnabled}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="healthy" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding SystemLoopbackStatus.IsHealthy}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="frames" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding SystemLoopbackStatus.FramesEmitted}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="dropped" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="{Binding SystemLoopbackStatus.FramesDropped}" Style="{StaticResource ValueText}"/>
+                            </StackPanel>
+                        </UniformGrid>
+                        <StackPanel Margin="0,6,0,0">
+                            <TextBlock Text="native format" Style="{StaticResource LabelText}"/>
+                            <TextBlock Text="{Binding SystemLoopbackStatus.NativeFormat}" Style="{StaticResource ValueText}"/>
+                            <TextBlock Text="normalized format" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding SystemLoopbackStatus.NormalizedFormat}" Style="{StaticResource ValueText}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- events + errors -->
+            <StackPanel Grid.Column="1">
+                <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Errors" Style="{StaticResource HeaderText}" Foreground="{StaticResource ErrorBrush}"/>
+                        <TextBlock Text="앱은 raw audio bytes 또는 stack trace를 노출하지 않습니다." Style="{StaticResource LabelText}" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                        <ItemsControl ItemsSource="{Binding LastErrors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Style="{StaticResource ValueText}" Foreground="{StaticResource ErrorBrush}" TextWrapping="Wrap" Margin="0,1"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="Events" Style="{StaticResource HeaderText}"/>
+                        <ItemsControl ItemsSource="{Binding Events}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Style="{StaticResource ValueText}" TextWrapping="Wrap" Margin="0,1"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- ================ Smoke Checklist S1-S6 ================ -->
+        <Border Grid.Row="4" Style="{StaticResource PanelBorder}">
+            <StackPanel>
+                <TextBlock Text="Step 3 manual smoke matrix (Plan §6)" Style="{StaticResource HeaderText}"/>
+                <TextBlock Text="S1-S3은 카운터로 자동 체크; S4-S6은 사용자가 직접 확인 후 체크하세요." Style="{StaticResource LabelText}" Margin="0,2,0,8" TextWrapping="Wrap"/>
+                <UniformGrid Columns="3" Rows="2">
+                    <CheckBox Content="S1 — mic level 움직임" IsChecked="{Binding Smoke.S1MicLevelMoved, Mode=TwoWay}"/>
+                    <CheckBox Content="S2 — loopback level 움직임" IsChecked="{Binding Smoke.S2LoopbackLevelMoved, Mode=TwoWay}"/>
+                    <CheckBox Content="S3 — mic + loopback 동시 캡처" IsChecked="{Binding Smoke.S3SimultaneousFramesObserved, Mode=TwoWay}"/>
+                    <CheckBox Content="S4 — diagnostic WAV source separation" IsChecked="{Binding Smoke.S4DiagnosticWavWritten, Mode=TwoWay}"/>
+                    <CheckBox Content="S5 — mute/silence 동작" IsChecked="{Binding Smoke.S5MuteSilenceObserved, Mode=TwoWay}"/>
+                    <CheckBox Content="S6 — 5분 baseline" IsChecked="{Binding Smoke.S6FiveMinuteBaselineComplete, Mode=TwoWay}"/>
+                </UniformGrid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

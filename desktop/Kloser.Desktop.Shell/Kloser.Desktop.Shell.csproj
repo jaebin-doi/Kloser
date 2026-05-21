@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Phase 9 Step 4 — Desktop App Shell (WPF).
+
+    See:
+      - docs/plan/phase-9/PHASE_9_STEP_4_PLAN.md
+
+    이 shell은 Kloser.Capture.Core를 직접 참조해서 같은 프로세스 안에서
+    capture engine을 구동한다. backend Socket.io 전송, Azure Speech,
+    로그인/token 저장, Phase 8 recording upload/finalize는 Step 4
+    범위가 아니다 (Plan §2 Out Of Scope).
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kloser.Desktop.Shell</RootNamespace>
+    <AssemblyName>Kloser.Desktop.Shell</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <!-- WASAPI는 Windows 전용. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kloser.Capture.Core\Kloser.Capture.Core.csproj" />
+  </ItemGroup>
+
+</Project>

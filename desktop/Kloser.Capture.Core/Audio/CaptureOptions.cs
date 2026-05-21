@@ -2,7 +2,7 @@
 //
 // Plan §6.2 — CLI surface.
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 public sealed class CaptureOptions
 {

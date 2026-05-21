@@ -5,7 +5,7 @@
 
 using NAudio.CoreAudioApi;
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 public sealed record DeviceSnapshot(
     string DeviceId,

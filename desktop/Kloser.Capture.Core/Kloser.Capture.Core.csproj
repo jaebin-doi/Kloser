@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Phase 9 Step 4 — capture engine class library.
+
+    Step 3에서 Kloser.Capture.Poc 안에 있던 audio + diagnostic 코어를 본
+    library로 분리했다. Kloser.Capture.Poc(console)과 Kloser.Desktop.Shell
+    (WPF)가 같은 코어를 참조한다.
+
+    Out of scope for this library:
+      - WPF / WinForms / any UI framework.
+      - Backend Socket.io transport, REST helpers, auth.
+      - Azure Speech / Clova / Deepgram SDK.
+      - Phase 8 recording upload/finalize bridge.
+
+    WASAPI loopback이 Windows 전용이라 target은 net8.0-windows로 둔다.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kloser.Capture.Core</RootNamespace>
+    <AssemblyName>Kloser.Capture.Core</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <!-- WASAPI는 Windows 전용; cross-plat 경고 suppress. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+</Project>

@@ -12,9 +12,9 @@
 // separation; it must remain short and manually deletable.
 
 using NAudio.Wave;
-using Kloser.Capture.Poc.Audio;
+using Kloser.Capture.Core.Audio;
 
-namespace Kloser.Capture.Poc.Diagnostics;
+namespace Kloser.Capture.Core.Diagnostics;
 
 public sealed class DiagnosticWavWriter : IDisposable
 {

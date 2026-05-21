@@ -20,7 +20,8 @@
 //   * Login / token storage.
 //   * Phase 8 recording upload/finalize.
 
-using Kloser.Capture.Poc.Audio;
+using Kloser.Capture.Core.Audio;
+using Kloser.Capture.Core.Diagnostics;
 using Kloser.Capture.Poc.Diagnostics;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;

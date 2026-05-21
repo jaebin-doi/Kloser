@@ -2,7 +2,7 @@
 //
 // Plan §7.6 status sample shape. Refreshes every status-interval-ms.
 
-using Kloser.Capture.Poc.Audio;
+using Kloser.Capture.Core.Audio;
 
 namespace Kloser.Capture.Poc.Diagnostics;
 

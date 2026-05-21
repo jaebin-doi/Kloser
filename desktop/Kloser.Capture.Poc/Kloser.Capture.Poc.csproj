@@ -2,8 +2,12 @@
 
   <!--
     Phase 9 Step 3 — Windows capture engine PoC.
+    Phase 9 Step 4 — audio core가 Kloser.Capture.Core 라이브러리로 분리됨;
+    본 console PoC는 같은 core를 ProjectReference로 사용한다.
 
-    See docs/plan/phase-9/PHASE_9_STEP_3_PLAN.md.
+    See:
+      - docs/plan/phase-9/PHASE_9_STEP_3_PLAN.md
+      - docs/plan/phase-9/PHASE_9_STEP_4_PLAN.md
 
     Out of scope for this PoC:
       - Backend Socket.io transport.
@@ -29,7 +33,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NAudio" Version="2.2.1" />
+    <ProjectReference Include="..\Kloser.Capture.Core\Kloser.Capture.Core.csproj" />
   </ItemGroup>
 
 </Project>

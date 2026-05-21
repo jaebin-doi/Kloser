@@ -14,7 +14,7 @@
 // will. But the field set must match 1:1 today so the wire-up later
 // is mechanical.
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 public sealed record CapturedAudioFrame(
     AudioSourceId Source,

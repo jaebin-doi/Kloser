@@ -5,7 +5,7 @@
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 public sealed class MicCaptureSource : CaptureSourceBase
 {

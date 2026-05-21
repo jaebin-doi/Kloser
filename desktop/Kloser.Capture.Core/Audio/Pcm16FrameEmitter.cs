@@ -16,7 +16,7 @@
 //   * Persist anywhere except in the bounded queue.
 //   * Stringify or log raw PCM bytes.
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 public sealed class Pcm16FrameEmitter
 {

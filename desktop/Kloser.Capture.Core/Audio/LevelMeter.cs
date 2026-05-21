@@ -3,7 +3,7 @@
 // Plan §7.6. Lightweight; runs on the capture thread per data buffer.
 // Never logs raw sample bytes. Outputs three scalars only.
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 public sealed class LevelMeter
 {

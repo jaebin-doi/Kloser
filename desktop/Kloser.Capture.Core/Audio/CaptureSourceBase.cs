@@ -9,7 +9,7 @@
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 public abstract class CaptureSourceBase : IDisposable
 {

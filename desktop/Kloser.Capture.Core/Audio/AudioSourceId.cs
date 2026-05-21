@@ -5,7 +5,7 @@
 // these strings when the Step 5 network adapter lands; the PoC keeps
 // them here so the wire-up stays mechanical.
 
-namespace Kloser.Capture.Poc.Audio;
+namespace Kloser.Capture.Core.Audio;
 
 /// <summary>
 /// Two source channels captured per call. agent_mic is the agent's
