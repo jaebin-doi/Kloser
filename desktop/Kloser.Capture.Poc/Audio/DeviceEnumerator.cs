@@ -44,7 +44,19 @@ public sealed class DeviceEnumerator : IDisposable
     {
         if (string.IsNullOrWhiteSpace(deviceId))
         {
-            return _enumerator.GetDefaultAudioEndpoint(flow, defaultRole);
+            // GetDefaultAudioEndpoint throws COMException (E_NOTFOUND)
+            // when no default exists — e.g., headless / VM / no-mic
+            // configurations. Convert to a typed actionable error so
+            // Program.Main can render a friendly hint without a stack.
+            try
+            {
+                return _enumerator.GetDefaultAudioEndpoint(flow, defaultRole);
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                throw new InvalidOperationException(
+                    NoDefaultEndpointMessage(flow), ex);
+            }
         }
         var collection = _enumerator.EnumerateAudioEndPoints(flow, DeviceState.Active);
         foreach (var dev in collection)
@@ -58,6 +70,16 @@ public sealed class DeviceEnumerator : IDisposable
             $"device id '{deviceId}' not found among active {flow} endpoints; " +
             "rerun with --list-devices to see valid ids");
     }
+
+    private static string NoDefaultEndpointMessage(DataFlow flow) => flow switch
+    {
+        DataFlow.Capture =>
+            "no active capture endpoint found; rerun --list-devices or use --no-mic",
+        DataFlow.Render =>
+            "no active render endpoint found; rerun --list-devices or use --no-loopback",
+        _ =>
+            $"no active {flow} endpoint found; rerun --list-devices",
+    };
 
     private IReadOnlyList<DeviceSnapshot> Snapshot(DataFlow flow)
     {

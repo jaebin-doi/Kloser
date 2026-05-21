@@ -99,7 +99,7 @@ public static class Program
                     loopbackDeviceId = RequireValue(args, ref i, a);
                     break;
                 case "--frame-ms":
-                    frameMs = int.Parse(RequireValue(args, ref i, a));
+                    frameMs = ParseIntOption(RequireValue(args, ref i, a), a);
                     if (Array.IndexOf(CaptureOptions.AllowedFrameMs, frameMs) < 0)
                     {
                         throw new ArgumentException(
@@ -108,7 +108,7 @@ public static class Program
                     }
                     break;
                 case "--duration-sec":
-                    durationSec = int.Parse(RequireValue(args, ref i, a));
+                    durationSec = ParseIntOption(RequireValue(args, ref i, a), a);
                     if (durationSec < 1 || durationSec > 3600)
                     {
                         throw new ArgumentException("--duration-sec must be between 1 and 3600");
@@ -118,7 +118,7 @@ public static class Program
                     diagnosticDir = RequireValue(args, ref i, a);
                     break;
                 case "--status-interval-ms":
-                    statusIntervalMs = int.Parse(RequireValue(args, ref i, a));
+                    statusIntervalMs = ParseIntOption(RequireValue(args, ref i, a), a);
                     if (statusIntervalMs < 100 || statusIntervalMs > 5000)
                     {
                         throw new ArgumentException(
@@ -159,6 +159,20 @@ public static class Program
             throw new ArgumentException($"{opt} requires a value");
         }
         return args[++i];
+    }
+
+    // Wrap int.Parse so a non-numeric or out-of-range CLI value lands
+    // in the ArgumentException catch in Main and renders as a friendly
+    // "argument error: ..." line instead of a FormatException stack.
+    private static int ParseIntOption(string raw, string opt)
+    {
+        if (!int.TryParse(raw, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out int value))
+        {
+            throw new ArgumentException(
+                $"{opt} requires an integer value, got '{raw}'");
+        }
+        return value;
     }
 
     private static int RunHelp()
