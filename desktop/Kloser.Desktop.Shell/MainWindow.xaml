@@ -17,12 +17,23 @@
     -->
 
     <Window.Resources>
+        <!--
+            ComboBox의 collapsed 영역(선택된 항목 표시)과 펼쳐진 popup의
+            ComboBoxItem은 WPF 기본 템플릿에서 둘 다 흰 배경 위에 그려진다.
+            여기서 Foreground를 흰색으로 두면 글자가 묻혀 안 보이므로
+            전체 ComboBox 계열은 밝은 surface + 검정 글자로 통일한다.
+            (다른 영역의 dark UI 색은 그대로 유지.)
+        -->
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#0B1220" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="Foreground" Value="#0F172A" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
             <Setter Property="Padding" Value="8,4" />
             <Setter Property="MinHeight" Value="28" />
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="Padding" Value="8,4" />
         </Style>
         <Style TargetType="Button">
             <Setter Property="Background" Value="#1D4ED8" />
@@ -61,11 +72,12 @@
 
     <Grid Margin="14">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- header -->
-            <RowDefinition Height="Auto"/> <!-- device band -->
-            <RowDefinition Height="Auto"/> <!-- control band -->
-            <RowDefinition Height="*"/>    <!-- status + events -->
-            <RowDefinition Height="Auto"/> <!-- smoke checklist -->
+            <RowDefinition Height="Auto"/> <!-- 0 header -->
+            <RowDefinition Height="Auto"/> <!-- 1 device band -->
+            <RowDefinition Height="Auto"/> <!-- 2 Phase 9 Step 5 backend + call band -->
+            <RowDefinition Height="Auto"/> <!-- 3 capture control band -->
+            <RowDefinition Height="*"/>    <!-- 4 status + events + transcripts -->
+            <RowDefinition Height="Auto"/> <!-- 5 smoke checklist -->
         </Grid.RowDefinitions>
 
         <!-- ================ Header ================ -->
@@ -77,14 +89,14 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="{Binding AppVersion}" Style="{StaticResource HeaderText}" FontSize="16"/>
-                    <TextBlock Text="Phase 9 Step 4 — desktop UI; backend/STT는 Step 5 이후 범위" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                    <TextBlock Text="Phase 9 Step 4 — 데스크탑 UI. 백엔드 / STT 연결은 Step 5 이후 범위입니다." Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock Text="state:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="상태:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <TextBlock Text="{Binding UiStateLabel}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
-                    <TextBlock Text="elapsed:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="경과:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <TextBlock Text="{Binding ElapsedDisplay}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
-                    <TextBlock Text="mem:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="메모리:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                     <TextBlock VerticalAlignment="Center" Style="{StaticResource ValueText}">
                         <Run Text="{Binding MemoryMb, StringFormat={}{0:F1}}"/><Run Text=" MB"/>
                     </TextBlock>
@@ -106,50 +118,136 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8">
-                    <TextBlock Text="Microphone" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                    <TextBlock Text="마이크 (캡처 장치)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
                     <ComboBox ItemsSource="{Binding CaptureDevices}"
                               SelectedItem="{Binding SelectedMic, Mode=TwoWay}"
                               DisplayMemberPath="Display"/>
                 </StackPanel>
                 <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8">
-                    <TextBlock Text="System audio (render endpoint, loopback)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                    <TextBlock Text="시스템 오디오 (출력 장치 · 루프백)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
                     <ComboBox ItemsSource="{Binding RenderDevices}"
                               SelectedItem="{Binding SelectedLoopback, Mode=TwoWay}"
                               DisplayMemberPath="Display"/>
                 </StackPanel>
-                <Button Grid.Row="0" Grid.Column="2" Content="Refresh" Command="{Binding RefreshDevicesCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
+                <Button Grid.Row="0" Grid.Column="2" Content="장치 새로고침" Command="{Binding RefreshDevicesCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
 
                 <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal">
-                    <TextBlock Text="frame_ms" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="프레임 길이 (ms)" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <ComboBox ItemsSource="{Binding AllowedFrameMs}"
                               SelectedItem="{Binding SelectedFrameMs, Mode=TwoWay}"
                               Width="80" Margin="0,0,16,0"/>
-                    <CheckBox Content="Write diagnostic WAV (raw audio; off by default)"
+                    <CheckBox Content="진단 WAV 저장 (원음 파일 · 기본 꺼짐)"
                               IsChecked="{Binding WriteDiagnosticWav, Mode=TwoWay}"/>
                     <TextBlock Text=" → " Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="8,0"/>
-                    <TextBlock Text="{Binding DiagnosticDir, FallbackValue='(no output dir yet)'}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding DiagnosticDir, FallbackValue='(저장 폴더 없음)'}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ================ Control Band ================ -->
+        <!-- ================ Phase 9 Step 5 — Backend / Call Band ================ -->
         <Border Grid.Row="2" Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="백엔드 연결 + 통화 (Phase 9 Step 5)" Style="{StaticResource HeaderText}" Margin="0,0,0,8"/>
+
+                <!-- Row 1 — backend URL + Connect/Disconnect -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock Text="백엔드 URL" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding BackendUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#F8FAFC" Foreground="#0F172A" Padding="6,4" MinHeight="28"
+                                 BorderBrush="{StaticResource PanelBorderBrush}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="로그인 + 연결" Command="{Binding LoginAndConnectCommand}" VerticalAlignment="Bottom" Margin="0,0,8,0"/>
+                    <Button Grid.Column="2" Content="토큰으로 연결" Command="{Binding ConnectWithTokenCommand}" VerticalAlignment="Bottom" Margin="0,0,8,0"/>
+                    <Button Grid.Column="3" Content="연결 끊기" Command="{Binding DisconnectCommand}" VerticalAlignment="Bottom"/>
+                </Grid>
+
+                <!-- Row 2 — login email + password + paste token -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="2*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock Text="이메일 (선택: 로그인 방식)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding LoginEmail, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#F8FAFC" Foreground="#0F172A" Padding="6,4" MinHeight="28"
+                                 BorderBrush="{StaticResource PanelBorderBrush}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                        <TextBlock Text="비밀번호 (메모리에만 보관)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                        <!--
+                            WPF PasswordBox는 binding이 안 되므로 dev 편의상
+                            TextBox로 둔다. 입력 후 즉시 메모리로 옮기고
+                            ViewModel이 LoginPassword를 비운다.
+                        -->
+                        <TextBox Text="{Binding LoginPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#F8FAFC" Foreground="#0F172A" Padding="6,4" MinHeight="28"
+                                 BorderBrush="{StaticResource PanelBorderBrush}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="또는 access token 붙여넣기 (dev fallback / KLOSER_DESKTOP_ACCESS_TOKEN)" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding PastedToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#F8FAFC" Foreground="#0F172A" Padding="6,4" MinHeight="28"
+                                 BorderBrush="{StaticResource PanelBorderBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Row 3 — connection / call status + Start/End call + counters -->
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="소켓:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding ConnectionStateLabel}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBlock Text="통화:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding CallStateLabel}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBlock Text="callId:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{Binding ActiveCallId, FallbackValue='(없음)'}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <Button Content="통화 시작" Command="{Binding StartCallCommand}"/>
+                    <Button Content="통화 종료" Command="{Binding EndCallCommand}"/>
+                    <TextBlock Text="agent_mic chunks/bytes:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="16,0,4,0"/>
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource ValueText}">
+                        <Run Text="{Binding AgentMicChunksSent}"/><Run Text=" / "/><Run Text="{Binding AgentMicBytesSent}"/>
+                    </TextBlock>
+                    <TextBlock Text="system_loopback chunks/bytes:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="16,0,4,0"/>
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource ValueText}">
+                        <Run Text="{Binding SystemLoopbackChunksSent}"/><Run Text=" / "/><Run Text="{Binding SystemLoopbackBytesSent}"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Row 4 — last realtime error -->
+                <TextBlock Text="{Binding LastRealtimeError, FallbackValue=''}"
+                           Style="{StaticResource ValueText}"
+                           Foreground="{StaticResource ErrorBrush}"
+                           TextWrapping="Wrap"
+                           Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ================ Capture Control Band ================ -->
+        <Border Grid.Row="3" Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
             <StackPanel Orientation="Horizontal">
-                <Button Content="Start capture" Command="{Binding StartCaptureCommand}"/>
-                <Button Content="Stop capture" Command="{Binding StopCaptureCommand}"/>
-                <TextBlock Text="backend:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="20,0,4,0"/>
+                <Button Content="캡처 시작" Command="{Binding StartCaptureCommand}"/>
+                <Button Content="캡처 정지" Command="{Binding StopCaptureCommand}"/>
+                <TextBlock Text="백엔드:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="20,0,4,0"/>
                 <TextBlock Text="{Binding BackendStatus}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
-                <TextBlock Text="call:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBlock Text="통화:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                 <TextBlock Text="{Binding CallStatus}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
-                <TextBlock Text="user:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBlock Text="사용자:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                 <TextBlock Text="{Binding UserStatus}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
 
-        <!-- ================ Status + Events ================ -->
-        <Grid Grid.Row="3" Margin="0,0,0,10">
+        <!-- ================ Status + Events + Transcripts ================ -->
+        <Grid Grid.Row="4" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -164,7 +262,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="peak" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <TextBlock Text="피크" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
                             <ProgressBar Grid.Column="1" Style="{StaticResource LevelBar}" Value="{Binding AgentMicStatus.PeakPercent, Mode=OneWay}"/>
                             <TextBlock Grid.Column="2" Text="{Binding AgentMicStatus.Peak, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
                         </Grid>
@@ -174,32 +272,32 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="rms" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <TextBlock Text="평균" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
                             <ProgressBar Grid.Column="1" Style="{StaticResource RmsBar}" Value="{Binding AgentMicStatus.RmsPercent, Mode=OneWay}"/>
                             <TextBlock Grid.Column="2" Text="{Binding AgentMicStatus.Rms, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
                         </Grid>
                         <UniformGrid Columns="4" Margin="0,8,0,0">
                             <StackPanel>
-                                <TextBlock Text="enabled" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="사용 여부" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding AgentMicStatus.IsEnabled}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Text="healthy" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="정상 동작" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding AgentMicStatus.IsHealthy}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Text="frames" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="프레임 수" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding AgentMicStatus.FramesEmitted}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Text="dropped" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="버린 프레임" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding AgentMicStatus.FramesDropped}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                         </UniformGrid>
                         <StackPanel Margin="0,6,0,0">
-                            <TextBlock Text="native format" Style="{StaticResource LabelText}"/>
+                            <TextBlock Text="장치 원본 형식" Style="{StaticResource LabelText}"/>
                             <TextBlock Text="{Binding AgentMicStatus.NativeFormat}" Style="{StaticResource ValueText}"/>
-                            <TextBlock Text="normalized format" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                            <TextBlock Text="정규화 형식" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
                             <TextBlock Text="{Binding AgentMicStatus.NormalizedFormat}" Style="{StaticResource ValueText}"/>
                         </StackPanel>
                     </StackPanel>
@@ -214,7 +312,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="peak" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <TextBlock Text="피크" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
                             <ProgressBar Grid.Column="1" Style="{StaticResource LevelBar}" Value="{Binding SystemLoopbackStatus.PeakPercent, Mode=OneWay}"/>
                             <TextBlock Grid.Column="2" Text="{Binding SystemLoopbackStatus.Peak, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
                         </Grid>
@@ -224,32 +322,32 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="rms" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
+                            <TextBlock Text="평균" Style="{StaticResource LabelText}" VerticalAlignment="Center" Width="40"/>
                             <ProgressBar Grid.Column="1" Style="{StaticResource RmsBar}" Value="{Binding SystemLoopbackStatus.RmsPercent, Mode=OneWay}"/>
                             <TextBlock Grid.Column="2" Text="{Binding SystemLoopbackStatus.Rms, StringFormat='F3'}" Style="{StaticResource ValueText}" Width="60" TextAlignment="Right" Margin="6,0,0,0"/>
                         </Grid>
                         <UniformGrid Columns="4" Margin="0,8,0,0">
                             <StackPanel>
-                                <TextBlock Text="enabled" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="사용 여부" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding SystemLoopbackStatus.IsEnabled}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Text="healthy" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="정상 동작" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding SystemLoopbackStatus.IsHealthy}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Text="frames" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="프레임 수" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding SystemLoopbackStatus.FramesEmitted}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Text="dropped" Style="{StaticResource LabelText}"/>
+                                <TextBlock Text="버린 프레임" Style="{StaticResource LabelText}"/>
                                 <TextBlock Text="{Binding SystemLoopbackStatus.FramesDropped}" Style="{StaticResource ValueText}"/>
                             </StackPanel>
                         </UniformGrid>
                         <StackPanel Margin="0,6,0,0">
-                            <TextBlock Text="native format" Style="{StaticResource LabelText}"/>
+                            <TextBlock Text="장치 원본 형식" Style="{StaticResource LabelText}"/>
                             <TextBlock Text="{Binding SystemLoopbackStatus.NativeFormat}" Style="{StaticResource ValueText}"/>
-                            <TextBlock Text="normalized format" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                            <TextBlock Text="정규화 형식" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
                             <TextBlock Text="{Binding SystemLoopbackStatus.NormalizedFormat}" Style="{StaticResource ValueText}"/>
                         </StackPanel>
                     </StackPanel>
@@ -257,11 +355,11 @@
             </StackPanel>
 
             <!-- events + errors -->
-            <StackPanel Grid.Column="1">
+            <StackPanel Grid.Column="1" Margin="0,0,10,0">
                 <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
                     <StackPanel>
-                        <TextBlock Text="Errors" Style="{StaticResource HeaderText}" Foreground="{StaticResource ErrorBrush}"/>
-                        <TextBlock Text="앱은 raw audio bytes 또는 stack trace를 노출하지 않습니다." Style="{StaticResource LabelText}" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                        <TextBlock Text="오류" Style="{StaticResource HeaderText}" Foreground="{StaticResource ErrorBrush}"/>
+                        <TextBlock Text="원음 데이터나 스택 트레이스는 표시하지 않습니다." Style="{StaticResource LabelText}" TextWrapping="Wrap" Margin="0,2,0,6"/>
                         <ItemsControl ItemsSource="{Binding LastErrors}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -274,8 +372,36 @@
 
                 <Border Style="{StaticResource PanelBorder}">
                     <StackPanel>
-                        <TextBlock Text="Events" Style="{StaticResource HeaderText}"/>
+                        <TextBlock Text="이벤트" Style="{StaticResource HeaderText}"/>
                         <ItemsControl ItemsSource="{Binding Events}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Style="{StaticResource ValueText}" TextWrapping="Wrap" Margin="0,1"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Phase 9 Step 5 — transcript panel -->
+            <StackPanel Grid.Column="2">
+                <Border Style="{StaticResource PanelBorder}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="실시간 자막 (partial)" Style="{StaticResource HeaderText}"/>
+                        <TextBlock Text="mock STT의 임시 자막이 source별로 갱신됩니다." Style="{StaticResource LabelText}" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                        <TextBlock Text="agent_mic" Style="{StaticResource LabelText}" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding LatestPartialAgent, FallbackValue='(없음)'}" Style="{StaticResource ValueText}" TextWrapping="Wrap"/>
+                        <TextBlock Text="system_loopback" Style="{StaticResource LabelText}" Margin="0,6,0,0"/>
+                        <TextBlock Text="{Binding LatestPartialCustomer, FallbackValue='(없음)'}" Style="{StaticResource ValueText}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource PanelBorder}">
+                    <StackPanel>
+                        <TextBlock Text="확정 자막 (final, 저장됨)" Style="{StaticResource HeaderText}"/>
+                        <TextBlock Text="audio_end 또는 end_call 시 backend가 mock STT 결과를 transcripts 테이블에 저장합니다." Style="{StaticResource LabelText}" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                        <ItemsControl ItemsSource="{Binding FinalTranscripts}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding}" Style="{StaticResource ValueText}" TextWrapping="Wrap" Margin="0,1"/>
@@ -288,17 +414,17 @@
         </Grid>
 
         <!-- ================ Smoke Checklist S1-S6 ================ -->
-        <Border Grid.Row="4" Style="{StaticResource PanelBorder}">
+        <Border Grid.Row="5" Style="{StaticResource PanelBorder}">
             <StackPanel>
-                <TextBlock Text="Step 3 manual smoke matrix (Plan §6)" Style="{StaticResource HeaderText}"/>
-                <TextBlock Text="S1-S3은 카운터로 자동 체크; S4-S6은 사용자가 직접 확인 후 체크하세요." Style="{StaticResource LabelText}" Margin="0,2,0,8" TextWrapping="Wrap"/>
+                <TextBlock Text="Step 3 수동 검증 매트릭스 (Plan §6)" Style="{StaticResource HeaderText}"/>
+                <TextBlock Text="S1·S2·S3 은 측정값으로 자동 체크되고, S4·S5·S6 은 사용자가 직접 확인 후 체크합니다." Style="{StaticResource LabelText}" Margin="0,2,0,8" TextWrapping="Wrap"/>
                 <UniformGrid Columns="3" Rows="2">
-                    <CheckBox Content="S1 — mic level 움직임" IsChecked="{Binding Smoke.S1MicLevelMoved, Mode=TwoWay}"/>
-                    <CheckBox Content="S2 — loopback level 움직임" IsChecked="{Binding Smoke.S2LoopbackLevelMoved, Mode=TwoWay}"/>
-                    <CheckBox Content="S3 — mic + loopback 동시 캡처" IsChecked="{Binding Smoke.S3SimultaneousFramesObserved, Mode=TwoWay}"/>
-                    <CheckBox Content="S4 — diagnostic WAV source separation" IsChecked="{Binding Smoke.S4DiagnosticWavWritten, Mode=TwoWay}"/>
-                    <CheckBox Content="S5 — mute/silence 동작" IsChecked="{Binding Smoke.S5MuteSilenceObserved, Mode=TwoWay}"/>
-                    <CheckBox Content="S6 — 5분 baseline" IsChecked="{Binding Smoke.S6FiveMinuteBaselineComplete, Mode=TwoWay}"/>
+                    <CheckBox Content="S1 — 마이크 레벨 움직임" IsChecked="{Binding Smoke.S1MicLevelMoved, Mode=TwoWay}"/>
+                    <CheckBox Content="S2 — 시스템 오디오 레벨 움직임" IsChecked="{Binding Smoke.S2LoopbackLevelMoved, Mode=TwoWay}"/>
+                    <CheckBox Content="S3 — 마이크 + 시스템 동시 캡처" IsChecked="{Binding Smoke.S3SimultaneousFramesObserved, Mode=TwoWay}"/>
+                    <CheckBox Content="S4 — 진단 WAV 채널 분리 확인" IsChecked="{Binding Smoke.S4DiagnosticWavWritten, Mode=TwoWay}"/>
+                    <CheckBox Content="S5 — 음소거 / 무음 처리 정상" IsChecked="{Binding Smoke.S5MuteSilenceObserved, Mode=TwoWay}"/>
+                    <CheckBox Content="S6 — 5분 안정성 (메모리·CPU)" IsChecked="{Binding Smoke.S6FiveMinuteBaselineComplete, Mode=TwoWay}"/>
                 </UniformGrid>
             </StackPanel>
         </Border>

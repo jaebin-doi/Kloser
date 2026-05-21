@@ -57,6 +57,9 @@ public sealed class CaptureSessionController : IDisposable
     private CountingFrameSink? _counter;
     private long _sessionStartMs;
     private bool _running;
+    // Phase 9 Step 5 — VM이 backend realtime sink를 등록할 수 있게 하는
+    // 외부 sink composition. 내부 counter / WAV sink와 독립적으로 동작한다.
+    private readonly List<ICapturedFrameSink> _externalSinks = new();
 
     public bool IsRunning { get { lock (_sync) return _running; } }
     public long SessionStartMs { get { lock (_sync) return _sessionStartMs; } }
@@ -187,6 +190,27 @@ public sealed class CaptureSessionController : IDisposable
     }
 
     /// <summary>
+    /// Phase 9 Step 5 — VM이 backend realtime sink(예: SocketIoAudioFrameSink)
+    /// 를 등록한다. 같은 sink instance를 두 번 추가하지 않는다. capture가
+    /// 이미 running 중일 때 호출해도 안전 — 다음 pump 부터 frame을 받는다.
+    /// </summary>
+    public void AddExternalSink(ICapturedFrameSink sink)
+    {
+        if (sink is null) throw new ArgumentNullException(nameof(sink));
+        lock (_sync)
+        {
+            if (!_externalSinks.Contains(sink)) _externalSinks.Add(sink);
+        }
+    }
+
+    /// <summary>Phase 9 Step 5 — 등록된 sink 제거 (call 종료 / 연결 끊김).</summary>
+    public bool RemoveExternalSink(ICapturedFrameSink sink)
+    {
+        if (sink is null) return false;
+        lock (_sync) return _externalSinks.Remove(sink);
+    }
+
+    /// <summary>
     /// Called by the UI status timer. Drains both sources, pushes the
     /// frames through the active sinks, and returns the latest status
     /// snapshots for the view model to apply.
@@ -197,12 +221,16 @@ public sealed class CaptureSessionController : IDisposable
         LoopbackCaptureSource? loop;
         DiagnosticWavFrameSink? wav;
         CountingFrameSink? counter;
+        ICapturedFrameSink[] externals;
         lock (_sync)
         {
             mic = _mic;
             loop = _loopback;
             wav = _wavSink;
             counter = _counter;
+            externals = _externalSinks.Count == 0
+                ? Array.Empty<ICapturedFrameSink>()
+                : _externalSinks.ToArray();
         }
 
         if (mic is not null)
@@ -211,6 +239,10 @@ public sealed class CaptureSessionController : IDisposable
             {
                 if (counter is not null) await counter.OnFrameAsync(frame, ct).ConfigureAwait(false);
                 if (wav is not null) await wav.OnFrameAsync(frame, ct).ConfigureAwait(false);
+                foreach (var ext in externals)
+                {
+                    await ext.OnFrameAsync(frame, ct).ConfigureAwait(false);
+                }
             }
         }
         if (loop is not null)
@@ -219,6 +251,10 @@ public sealed class CaptureSessionController : IDisposable
             {
                 if (counter is not null) await counter.OnFrameAsync(frame, ct).ConfigureAwait(false);
                 if (wav is not null) await wav.OnFrameAsync(frame, ct).ConfigureAwait(false);
+                foreach (var ext in externals)
+                {
+                    await ext.OnFrameAsync(frame, ct).ConfigureAwait(false);
+                }
             }
         }
     }
@@ -236,6 +272,9 @@ public sealed class CaptureSessionController : IDisposable
                 return new CaptureSessionStopResult();
             }
             _running = false;
+            // Phase 9 Step 5 — externals는 VM이 own; lifecycle은 VM이 결정.
+            // 여기서는 그냥 list만 비워둔다.
+            _externalSinks.Clear();
             mic = _mic;
             loop = _loopback;
             wav = _wavSink;

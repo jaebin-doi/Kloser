@@ -12,7 +12,7 @@ public sealed class SourceStatusViewModel : ObservableObject
 {
     private bool _isEnabled = true;
     private bool _isHealthy;
-    private string _nativeFormat = "(not started)";
+    private string _nativeFormat = "(시작 전)";
     private string _normalizedFormat = "pcm_s16le · 16000 Hz · mono";
     private double _peak;
     private double _rms;
@@ -28,8 +28,8 @@ public sealed class SourceStatusViewModel : ObservableObject
 
     /// <summary>Human label for the UI header.</summary>
     public string DisplayLabel => Source == AudioSourceId.AgentMic
-        ? "agent_mic (microphone)"
-        : "system_loopback (system audio)";
+        ? "agent_mic (마이크 입력)"
+        : "system_loopback (시스템 오디오 루프백)";
 
     public bool IsEnabled
     {
