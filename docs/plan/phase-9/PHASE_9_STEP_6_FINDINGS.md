@@ -32,6 +32,70 @@ Codex review에서 desktop upload response model mismatch 1건을 수정했다.
 - 수정: `RecordingArchiveModels.cs`의 `SignedUrl` property를 `[JsonPropertyName("upload")]`로 변경. C# 내부 이름은 `SignedUrl` 그대로 둬서 call site는 유지하고, wire shape만 Phase 8 contract에 맞췄다.
 - 검증: 수정 후 Core / Poc / Shell build, server typecheck, sync types, Step 6 focused test, full server test 모두 PASS.
 
+### 0.2 Post-E2E Diagnostic Enhancement (2026-05-19)
+
+사용자 머신 첫 manual E2E 결과:
+- realtime STT 정상 (`audio_duration_ms_sent=196360`, 파셜/최종 transcript 정상).
+- **그러나** call detail의 녹음 섹션이 "녹음 없음"이고, DB `call_recordings`에 row가 한 줄도 없으며, `recording.upload_initiated` audit도 없고, 로컬 `%LOCALAPPDATA%\Kloser\recordings\pending\<callId>\` 흔적도 없다.
+
+증상만 보면 두 가지 가능성이 남는다:
+- (A) archive sink가 frame을 0개 받아서 `skipped_empty`로 끝났다.
+- (B) `RunArchiveUploadAsync`가 아예 호출되지 못했다 (예: 사용자가 End Call을 누르지 않고 창을 닫음 → fire-and-forget Task가 프로세스 종료와 함께 사라짐).
+
+다음 E2E에서 즉시 구분하려고 진단 강화를 넣었다.
+
+1. **WPF archive 패널에 frame counter row 추가** (`MainWindow.xaml`).
+   - `mic frames / loopback frames / dropped / scratch(bytes)`를 통화 중 500 ms 마다 갱신.
+   - 통화 중에 0이면 sink 등록/Activate 단계 문제, 통화 종료 후에 0이면 `skipped_empty` 분기를 어떻게 빠져나갔는지가 명백해진다.
+2. **`RunArchiveUploadAsync`에 stage-level `PushEvent` + 명시적 `ArchiveFinalStatus` 추가** (`MainWindowViewModel.cs`).
+   - 진입 시: `녹취 archive 업로드 진입: callId=… mic_frames=… loop_frames=… dropped=…`
+   - 각 분기마다 status 문자열을 `local_finalize_failed` / `skipped_empty` / `initiate_failed` / `upload_failed` / `finalize_failed` / `available` / `unexpected` 중 하나로 박는다.
+   - 마지막에 `catch (Exception ex)` 안전망을 추가 — background `Task.Run` 안에서 throw된 예외가 첫 E2E에서 silent하게 사라졌을 가능성 차단.
+3. **창 닫기 시 archive 보호망** (`MainWindow.xaml.cs` + `MainWindowViewModel.ShutdownAsync`).
+   - `Closing` 이벤트에서 통화 중이거나 archive upload가 미완료이면 close를 한 번 취소.
+   - `EndCallAsync` → archive upload Task → `Task.WhenAny(pending, Task.Delay(30s))` 까지 await한 다음 다시 `Close()` 호출.
+   - 30 초 cap은 무한 대기 방지용 — 그 안에 안 끝나면 사용자가 다시 X 한 번 더 누르면 즉시 닫힌다.
+4. 신규 `Task? _archiveUploadTask` 필드를 잡아두고 `HasPendingArchiveUpload` getter로 노출해 UI가 강제 종료 케이스를 식별할 수 있게 했다.
+
+이 변경들은 manual E2E 결과 해석을 위한 진단용이고, 정상 동작 시 동작은 동일하다. wire contract / DB / route는 손대지 않았다.
+
+다음 E2E에서 확인할 매트릭스:
+- 통화 중: `mic frames` / `loopback frames` 가 둘 다 양수로 증가하는지.
+- 통화 종료(End Call) 또는 창 닫기 시 Events 패널에:
+  - `녹취 archive 업로드 진입`이 찍히는지 (B를 차단).
+  - 직후 `녹취 local finalize 완료: size=… duration=…`이 찍히는지 (A를 차단).
+  - 그 다음에 `initiate / PUT / finalize / 업로드 완료`가 순서대로 찍히는지.
+- DB `call_recordings` row + audit `recording.upload_initiated`, `.uploaded`, `.available` 존재 여부.
+
+### 0.3 Codex Follow-up Root-Cause Review (2026-05-21)
+
+Codex rechecked the browser/DB symptom and the actual code path. The earlier
+"X button only" diagnosis was incomplete.
+
+Observed evidence from the failed call:
+- realtime STT worked: final transcript rows existed and `llm_usage_log.metadata.audio_duration_ms_sent=196360`.
+- the call was ended: `calls.status='ended'` and `activity_log` had `call.ended`.
+- recording upload did not start: `call_recordings` had 0 rows and no `recording.upload_initiated` audit row.
+
+Important implication: server `disconnect` only calls `clearCall(socket)` in
+`server/src/ws/calls.ts`; it does not persist `end_call` or flush transcripts.
+So the failed call did reach the explicit end-call path at least far enough to
+persist final transcript/call-ended data. The missing recording is therefore
+not a calls.html playback bug and not a backend list/render issue.
+
+Root causes now covered by the desktop fix:
+- Close while active call: old `OnClosed` called `StopCapture()`/`Dispose()`
+  without `EndCallAsync()`, so archive upload could be skipped completely.
+- Close during `Ending`: `EndCallCommand` was fire-and-forget and immediately
+  changed state from `InCall` to `Ending`; the first diagnostic fix only checked
+  `IsCallActive == InCall`, so a quick window close during `Ending` could still
+  skip the archive wait. `RequiresShutdownWait` now covers `Starting/InCall/Ending`,
+  an existing `_archiveSession`, and a pending archive upload task.
+- Token race: archive upload previously read `_accessTokenMemoryOnly` inside
+  the background task. Disconnect/shutdown could clear that field before the
+  task started. `EndCallAsync` now snapshots `BackendUrl` and token before
+  cleanup and passes them into `RunArchiveUploadAsync`.
+
 ---
 
 ## 1. Archive Format — 실제 구현

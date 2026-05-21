@@ -38,6 +38,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     // ---------- Phase 9 Step 6 — recording archive ---------- //
     private readonly RecordingArchiveClient _archiveClient = new();
     private RecordingArchiveSession? _archiveSession;
+    // 마지막 EndCallAsync에서 fire-and-forget으로 띄운 archive upload task를
+    // ShutdownAsync에서 await할 수 있게 잡아둔다 (창 닫기 직전에 archive가
+    // 완료되도록 — 첫 E2E에서 사용자가 End Call 안 누르고 창을 닫아 archive가
+    // 통째로 사라졌을 가능성에 대한 보호망).
+    private Task? _archiveUploadTask;
+    private Task? _endCallTask;
     private string? _accessTokenMemoryOnly;
 
     // ---------- public bindable surface ---------- //
@@ -221,6 +227,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             if (SetField(ref _callState, value))
             {
                 OnPropertyChanged(nameof(IsCallActive));
+                OnPropertyChanged(nameof(IsCallLifecycleActive));
+                OnPropertyChanged(nameof(RequiresShutdownWait));
                 OnPropertyChanged(nameof(CallStateLabel));
                 StartCallCommand.RaiseCanExecuteChanged();
                 EndCallCommand.RaiseCanExecuteChanged();
@@ -228,6 +236,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
     public bool IsCallActive => CallStateValue == RealtimeCallState.InCall;
+    public bool IsCallLifecycleActive =>
+        _callSession is not null
+        && CallStateValue is (RealtimeCallState.Starting
+            or RealtimeCallState.InCall
+            or RealtimeCallState.Ending);
+    public bool HasPendingArchiveUpload =>
+        _archiveUploadTask is { IsCompleted: false };
+    public bool RequiresShutdownWait =>
+        IsCallLifecycleActive || _archiveSession is not null || HasPendingArchiveUpload;
     public string CallStateLabel => CallStateValue switch
     {
         RealtimeCallState.Idle => "대기 중",
@@ -373,6 +390,36 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         set => SetField(ref _archiveLastError, value);
     }
 
+    // Phase 9 Step 6 (post-E2E diagnostic) — archive sink가 실제로 frame을
+    // 받고 있는지 통화 중에 즉시 확인할 수 있게 writer counter를 노출한다.
+    // 첫 E2E에서 `audio_duration_ms_sent=196360`인데 `call_recordings` row가
+    // 없는 증상이 "archive sink가 frame을 못 받았는지 / upload가 호출되지
+    // 않았는지" 둘 다 가능했는데 이 카운터로 즉시 구분된다.
+    private long _archiveAgentMicFrames;
+    public long ArchiveAgentMicFrames
+    {
+        get => _archiveAgentMicFrames;
+        set => SetField(ref _archiveAgentMicFrames, value);
+    }
+    private long _archiveSystemLoopbackFrames;
+    public long ArchiveSystemLoopbackFrames
+    {
+        get => _archiveSystemLoopbackFrames;
+        set => SetField(ref _archiveSystemLoopbackFrames, value);
+    }
+    private long _archiveDroppedFrames;
+    public long ArchiveDroppedFrames
+    {
+        get => _archiveDroppedFrames;
+        set => SetField(ref _archiveDroppedFrames, value);
+    }
+    private long _archiveScratchBytes;
+    public long ArchiveScratchBytes
+    {
+        get => _archiveScratchBytes;
+        set => SetField(ref _archiveScratchBytes, value);
+    }
+
     public RelayCommand LoginAndConnectCommand { get; }
     public RelayCommand ConnectWithTokenCommand { get; }
     public RelayCommand DisconnectCommand { get; }
@@ -403,7 +450,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             () => _ = StartCallAsync(),
             () => IsConnected && CallStateValue is RealtimeCallState.Idle or RealtimeCallState.Ended);
         EndCallCommand = new RelayCommand(
-            () => _ = EndCallAsync(),
+            () => _endCallTask = EndCallAsync(),
             () => IsCallActive);
 
         // dev fallback: KLOSER_DESKTOP_ACCESS_TOKEN env 자동 채우기.
@@ -582,6 +629,20 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             MemoryMb = Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0, 1);
 
             Smoke.AutoSuggest(AgentMicStatus, SystemLoopbackStatus, elapsed);
+
+            // Phase 9 Step 6 — archive sink counters를 통화 중 실시간으로
+            // 노출. archive가 실제로 frame을 받고 있는지 (또는 0인지) UI로
+            // 즉시 확인 가능.
+            var archive = _archiveSession;
+            if (archive is not null)
+            {
+                var w = archive.Writer;
+                ArchiveAgentMicFrames = w.AgentMicFrames;
+                ArchiveSystemLoopbackFrames = w.SystemLoopbackFrames;
+                ArchiveDroppedFrames = w.DroppedFrames;
+                ArchiveScratchBytes = w.CurrentScratchBytes;
+                ArchiveDurationSeconds = (int)Math.Floor(w.CurrentDuration.TotalSeconds);
+            }
         }
         catch (Exception ex)
         {
@@ -694,7 +755,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     {
         try
         {
-            if (IsCallActive) await EndCallAsync().ConfigureAwait(true);
+            if (IsCallLifecycleActive) await EnsureEndCallAsync().ConfigureAwait(true);
             await _socket.DisconnectAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
@@ -831,6 +892,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             PushEvent("통화 종료");
         }
         string? callIdForArchive = ActiveCallId;
+        string baseUrlForArchive = BackendUrl;
+        string? tokenForArchive = _accessTokenMemoryOnly;
         CleanupCallSession();
         if (IsRunning) StopCapture();
 
@@ -838,20 +901,70 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         {
             // archive upload는 call lifecycle과 독립적으로 백그라운드 진행
             // (Plan §5.3 — audio_end/end_call이 object upload를 기다리지 않는다).
-            _ = Task.Run(() => RunArchiveUploadAsync(archiveSession, callIdForArchive!));
+            _archiveUploadTask = Task.Run(() => RunArchiveUploadAsync(
+                archiveSession,
+                callIdForArchive!,
+                baseUrlForArchive,
+                tokenForArchive));
+            OnPropertyChanged(nameof(HasPendingArchiveUpload));
+            OnPropertyChanged(nameof(RequiresShutdownWait));
+        }
+    }
+
+    private Task EnsureEndCallAsync()
+    {
+        if (_endCallTask is { IsCompleted: false }) return _endCallTask;
+        if (_callSession is null || CallStateValue is RealtimeCallState.Idle or RealtimeCallState.Ended)
+        {
+            return Task.CompletedTask;
+        }
+        _endCallTask = EndCallAsync();
+        return _endCallTask;
+    }
+
+    /// <summary>
+    /// 창 닫기 시 호출. IsCallActive면 EndCallAsync를 돌리고,
+    /// 진행 중인 archive upload를 (최대 30초까지) 기다린다. 첫 E2E에서
+    /// 사용자가 End Call을 누르지 않고 그대로 X를 누르면 archive가 통째로
+    /// 사라지는 문제를 막기 위한 보호망.
+    /// </summary>
+    public async Task ShutdownAsync()
+    {
+        if (IsCallLifecycleActive)
+        {
+            try { await EnsureEndCallAsync().ConfigureAwait(true); }
+            catch { /* swallow — shutdown은 best-effort */ }
+        }
+        var pending = _archiveUploadTask;
+        if (pending is not null && !pending.IsCompleted)
+        {
+            try
+            {
+                // 짧은 통화 + remote finalize까지 합쳐 보통 수초. 30초 cap.
+                await Task.WhenAny(pending, Task.Delay(TimeSpan.FromSeconds(30))).ConfigureAwait(true);
+            }
+            catch { /* swallow */ }
         }
     }
 
     /// <summary>Plan §5.3 normal stop sequence.</summary>
-    private async Task RunArchiveUploadAsync(RecordingArchiveSession archive, string callId)
+    private async Task RunArchiveUploadAsync(
+        RecordingArchiveSession archive,
+        string callId,
+        string baseUrl,
+        string? token)
     {
-        string baseUrl = BackendUrl;
-        string? token = _accessTokenMemoryOnly;
+        // Diagnostic: 모든 단계 진입을 Events 패널에 남겨서 어디서 끊겼는지
+        // 한눈에 확인. 첫 E2E에서 "archive 시작 / upload 흔적 0건" 사이가
+        // 비어 있어 어느 분기에서 빠져나갔는지 알 수 없었던 게 원인.
+        PushEvent($"녹취 archive 업로드 진입: callId={callId} mic_frames={archive.Writer.AgentMicFrames} loop_frames={archive.Writer.SystemLoopbackFrames} dropped={archive.Writer.DroppedFrames}");
         try
         {
             if (string.IsNullOrEmpty(token))
             {
                 archive.MarkFailed("missing_access_token");
+                ArchiveFinalStatus = "missing_access_token";
+                PushError("녹취 archive 실패: access token 없음 (재로그인 필요)");
                 return;
             }
 
@@ -864,12 +977,14 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             catch (Exception ex)
             {
                 archive.MarkFailed("local_finalize_failed");
-                PushError($"녹취 로컬 마무리 실패 — {ex.GetType().Name}");
+                ArchiveFinalStatus = "local_finalize_failed";
+                PushError($"녹취 로컬 마무리 실패 — {ex.GetType().Name}: {ex.Message}");
                 await archive.DeleteLocalAsync().ConfigureAwait(false);
                 return;
             }
             ArchiveDurationSeconds = local.DurationSeconds;
             ArchiveSizeBytes = local.SizeBytes;
+            PushEvent($"녹취 local finalize 완료: size={local.SizeBytes} duration={local.DurationSeconds}s mic_frames={archive.Writer.AgentMicFrames} loop_frames={archive.Writer.SystemLoopbackFrames} dropped={archive.Writer.DroppedFrames}");
 
             if (local.SizeBytes <= 44 || local.DurationSeconds <= 0)
             {
@@ -877,13 +992,14 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
                 // entirely; do not create an upload_pending row.
                 archive.MarkAvailable();
                 ArchiveFinalStatus = "skipped_empty";
-                PushEvent("녹취 archive: 캡처된 오디오 없음 — 업로드 생략");
+                PushEvent($"녹취 archive: 캡처된 오디오 없음 — 업로드 생략 (size={local.SizeBytes} duration={local.DurationSeconds}s)");
                 await archive.DeleteLocalAsync().ConfigureAwait(false);
                 return;
             }
 
             // 2. upload initiate
             archive.MarkUploadInitiating();
+            PushEvent($"녹취 upload initiate 호출: codec={local.Codec} size={local.SizeBytes}");
             RecordingUploadInitiateResponse initiate;
             try
             {
@@ -902,6 +1018,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             catch (RecordingArchiveHttpError ex)
             {
                 archive.MarkFailed(ex.ShortError);
+                ArchiveFinalStatus = "initiate_failed";
                 PushError($"녹취 업로드 시작 실패 — {ex.ShortError}");
                 await archive.DeleteLocalAsync().ConfigureAwait(false);
                 return;
@@ -910,9 +1027,11 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             archive.SetRecordingId(recordingId);
             archive.SetRecordingStatus(initiate.Recording.Status);
             ArchiveRecordingId = recordingId;
+            PushEvent($"녹취 initiate 응답 수신: recordingId={recordingId} status={initiate.Recording.Status}");
 
             // 3. PUT signed URL
             archive.MarkUploadingBytes();
+            PushEvent($"녹취 PUT signed URL 시작: total={local.SizeBytes} bytes");
             try
             {
                 using var src = new FileStream(
@@ -926,14 +1045,17 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             {
                 string code = ex is RecordingArchiveHttpError he ? he.ShortError : "upload_failed";
                 archive.MarkFailed(code);
-                PushError($"녹취 업로드 실패 — {code}");
+                ArchiveFinalStatus = code;
+                PushError($"녹취 업로드 실패 — {code}: {ex.GetType().Name}");
                 await _archiveClient.TryCleanupAsync(baseUrl, token, callId, recordingId).ConfigureAwait(false);
                 await archive.DeleteLocalAsync().ConfigureAwait(false);
                 return;
             }
+            PushEvent($"녹취 PUT 완료: uploaded={archive.UploadedBytes} bytes");
 
             // 4. remote finalize
             archive.MarkFinalizingRemote();
+            PushEvent("녹취 remote finalize 호출");
             try
             {
                 await _archiveClient.FinalizeAsync(
@@ -948,6 +1070,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             catch (RecordingArchiveHttpError ex)
             {
                 archive.MarkFailed(ex.ShortError);
+                ArchiveFinalStatus = "finalize_failed";
                 PushError($"녹취 finalize 실패 — {ex.ShortError}");
                 await _archiveClient.TryCleanupAsync(baseUrl, token, callId, recordingId).ConfigureAwait(false);
                 await archive.DeleteLocalAsync().ConfigureAwait(false);
@@ -957,12 +1080,22 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             archive.SetRecordingStatus("available");
             archive.MarkAvailable();
             ArchiveFinalStatus = "available";
-            PushEvent($"녹취 업로드 완료: callId={callId}");
+            PushEvent($"녹취 업로드 완료: callId={callId} recordingId={recordingId}");
             await archive.DeleteLocalAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Diagnostic catch-all. Background Task.Run에 던져진 예외는
+            // 첫 E2E에서 silent하게 사라졌을 가능성이 있어서 마지막 안전망.
+            archive.MarkFailed("unexpected");
+            ArchiveFinalStatus = "unexpected";
+            PushError($"녹취 archive 예기치 못한 오류 — {ex.GetType().Name}: {ex.Message}");
         }
         finally
         {
             await DisposeArchiveSessionAsync(archive).ConfigureAwait(false);
+            OnPropertyChanged(nameof(HasPendingArchiveUpload));
+            OnPropertyChanged(nameof(RequiresShutdownWait));
         }
     }
 
@@ -975,6 +1108,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         try { _controller.RemoveExternalSink(session.Sink); } catch { /* swallow */ }
         try { await session.DisposeAsync().ConfigureAwait(false); } catch { /* swallow */ }
         if (ReferenceEquals(_archiveSession, session)) _archiveSession = null;
+        OnPropertyChanged(nameof(RequiresShutdownWait));
     }
 
     private void OnArchiveStateChanged(object? sender, RecordingArchiveState state)

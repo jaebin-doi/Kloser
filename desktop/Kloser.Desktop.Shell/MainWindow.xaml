@@ -265,6 +265,20 @@
                             <TextBlock Text="{Binding ArchiveFinalStatus, FallbackValue='(대기)'}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
                         </StackPanel>
 
+                        <!-- Phase 9 Step 6 (post-E2E diagnostic) — archive sink frame counters.
+                             통화 중 0이면 sink가 frame을 못 받는 것, 통화 종료 후에도 0이면
+                             skipped_empty 분기 발동 원인. -->
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="mic frames:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveAgentMicFrames}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Text="loopback frames:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveSystemLoopbackFrames}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Text="dropped:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveDroppedFrames}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Text="scratch(bytes):" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveScratchBytes}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
                         <TextBlock Text="{Binding ArchiveLastError, FallbackValue=''}"
                                    Style="{StaticResource ValueText}"
                                    Foreground="{StaticResource ErrorBrush}"
