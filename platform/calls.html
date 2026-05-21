@@ -99,7 +99,7 @@
                   <th>고객</th>
                   <th class="hidden sm:table-cell">유형</th>
                   <th class="hidden md:table-cell">길이</th>
-                  <th>일시</th>
+                  <th>종료 시각</th>
                   <th class="hidden lg:table-cell">요약</th>
                 </tr>
               </thead>
@@ -432,7 +432,7 @@
           '<td class="hidden md:table-cell text-slate-700 tnum text-[.78rem]">' +
             escapeHtml(formatDuration(c.duration_seconds)) + '</td>' +
           '<td class="text-slate-600 text-[.78rem] tnum">' +
-            escapeHtml(formatDateShort(c.started_at)) + '</td>' +
+            escapeHtml(formatDateShort(c.ended_at || c.started_at)) + '</td>' +
           '<td class="hidden lg:table-cell text-slate-600 text-[.78rem] max-w-[260px] truncate">' +
             escapeHtml(c.summary || c.notes || '') + '</td>';
 

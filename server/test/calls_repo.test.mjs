@@ -103,6 +103,50 @@ test("Acme: insert + list + get round-trip", async () => {
     }
 });
 
+test("Acme: ended calls list by most recent ended_at first", async () => {
+    const titlePrefix = `phase9-ended-order-${Date.now()}`;
+    const created = await app.withOrgContext(ORG_ACME, async (client) => {
+        const r = await client.query(
+            `INSERT INTO calls (
+                org_id, direction, status, title, started_at, ended_at, duration_seconds
+             ) VALUES
+                ($1, 'inbound', 'ended', $2, $3, $4, 300),
+                ($1, 'inbound', 'ended', $5, $6, $7, 300)
+             RETURNING id, title`,
+            [
+                ORG_ACME,
+                `${titlePrefix}/started-newer-ended-older`,
+                new Date("2026-01-02T00:00:00.000Z"),
+                new Date("2026-01-02T00:05:00.000Z"),
+                `${titlePrefix}/started-older-ended-newer`,
+                new Date("2026-01-01T00:00:00.000Z"),
+                new Date("2026-01-03T00:00:00.000Z"),
+            ],
+        );
+        return r.rows;
+    });
+
+    try {
+        const list = await app.withOrgContext(ORG_ACME, (client) =>
+            calls.listForCurrentOrg(client, {
+                ...DEFAULT_LIST,
+                q: titlePrefix,
+                status: "ended",
+            }),
+        );
+
+        assert.deepEqual(
+            list.map((c) => c.title),
+            [
+                `${titlePrefix}/started-older-ended-newer`,
+                `${titlePrefix}/started-newer-ended-older`,
+            ],
+        );
+    } finally {
+        await Promise.all(created.map((row) => hardDeleteCall(ORG_ACME, row.id)));
+    }
+});
+
 // ---------- 3. Cross-org read isolation ---------- //
 
 test("Beta cannot see / update / soft-delete an Acme call", async () => {

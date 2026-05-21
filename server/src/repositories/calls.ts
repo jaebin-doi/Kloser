@@ -153,13 +153,12 @@ export async function listForCurrentOrg(
   const { clauses, values } = buildFilterClauses(opts, 1);
   const limitParam = `$${values.length + 1}`;
   const offsetParam = `$${values.length + 2}`;
-  // started_at DESC + id DESC keeps pagination stable when two rows share
-  // started_at (e.g. seed data created in a single transaction). Matches
-  // the partial indexes in the migration.
+  // Completed calls should appear by most recent end time. In-progress rows
+  // fall back to started_at so the mixed list remains deterministic.
   const sql =
     `SELECT ${CALL_COLUMNS} FROM calls` +
     ` WHERE ${clauses.join(" AND ")}` +
-    ` ORDER BY started_at DESC, id DESC` +
+    ` ORDER BY COALESCE(ended_at, started_at) DESC, id DESC` +
     ` LIMIT ${limitParam} OFFSET ${offsetParam}`;
   const r = await client.query<Call>(sql, [...values, opts.limit, opts.offset]);
   return r.rows;
