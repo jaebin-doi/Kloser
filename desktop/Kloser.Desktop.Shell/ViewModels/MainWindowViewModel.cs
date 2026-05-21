@@ -566,14 +566,21 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             PushError("access token을 붙여 넣은 뒤 다시 시도하세요.");
             return;
         }
+        var normalized = DesktopAuthClient.NormalizeAccessTokenInput(PastedToken);
+        if (!normalized.Success)
+        {
+            LastRealtimeError = normalized.FriendlyMessage;
+            PushError($"토큰 확인 실패: {normalized.FriendlyMessage}");
+            return;
+        }
         ConnectionState = RealtimeConnectionState.Connecting;
         LastRealtimeError = null;
-        _accessTokenMemoryOnly = PastedToken.Trim();
-        // UI에서는 token을 평문으로 두지 않는다 — 한 번 메모리로 옮기면 비움.
-        PastedToken = "";
+        _accessTokenMemoryOnly = normalized.AccessToken;
         try
         {
             await ConnectSocketAsync().ConfigureAwait(true);
+            // 연결 성공 후 UI에서는 token을 평문으로 두지 않는다.
+            PastedToken = "";
         }
         catch (Exception ex)
         {

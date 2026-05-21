@@ -1930,8 +1930,7 @@
 
       function maskToken(token) {
         if (!token) return '토큰 없음';
-        if (token.length <= 24) return '•'.repeat(token.length);
-        return token.slice(0, 12) + '…' + token.slice(-8);
+        return '토큰 숨김 상태입니다. 전체 값이 필요하면 [표시] 또는 [복사] 버튼을 사용하세요.';
       }
 
       function setStatus(text) {

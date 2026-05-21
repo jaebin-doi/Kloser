@@ -127,7 +127,67 @@ public sealed class DesktopAuthClient : IDisposable
     {
         var raw = Environment.GetEnvironmentVariable("KLOSER_DESKTOP_ACCESS_TOKEN");
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        return raw.Trim();
+        var normalized = NormalizeAccessTokenInput(raw);
+        return normalized.Success ? normalized.AccessToken : null;
+    }
+
+    /// <summary>
+    /// Normalizes the dev pasted-token path. Users often paste a
+    /// `Bearer ...` header value, a JSON `{ "accessToken": "..." }`
+    /// response, surrounding quotes, or line-wrapped text. Accept those
+    /// safe wrappers, but reject masked/truncated text before it reaches
+    /// the Socket.IO handshake as a misleading `invalid_token`.
+    /// </summary>
+    public static DesktopTokenInputResult NormalizeAccessTokenInput(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return DesktopTokenInputResult.Failure("access token이 비어 있습니다.");
+        }
+
+        var token = raw.Trim();
+        if (token.Contains('…') || token.Contains("..."))
+        {
+            return DesktopTokenInputResult.Failure(
+                "숨김/축약 표시된 토큰입니다. 설정 페이지의 [복사] 버튼으로 전체 토큰을 복사하세요.");
+        }
+
+        if (token.StartsWith("{"))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(token);
+                if (doc.RootElement.TryGetProperty("accessToken", out var accessToken))
+                {
+                    token = accessToken.GetString() ?? "";
+                }
+            }
+            catch (JsonException)
+            {
+                return DesktopTokenInputResult.Failure(
+                    "JSON 형식 토큰을 해석할 수 없습니다. accessToken 값만 복사하세요.");
+            }
+        }
+
+        token = token.Trim().Trim('"', '\'');
+        if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            token = token["Bearer ".Length..].Trim();
+        }
+        token = new string(token.Where(ch => !char.IsWhiteSpace(ch)).ToArray());
+
+        if (token.Contains('…') || token.Contains("..."))
+        {
+            return DesktopTokenInputResult.Failure(
+                "숨김/축약 표시된 토큰입니다. 설정 페이지의 [복사] 버튼으로 전체 토큰을 복사하세요.");
+        }
+        if (token.Split('.').Length != 3)
+        {
+            return DesktopTokenInputResult.Failure(
+                "JWT access token 형식이 아닙니다. 설정 페이지에서 [토큰 새로고침] 후 [복사] 버튼을 사용하세요.");
+        }
+
+        return DesktopTokenInputResult.Ok(token);
     }
 
     private static string CombineUrl(string baseUrl, string relativePath)
@@ -177,6 +237,25 @@ public sealed class DesktopAuthResult
     {
         Success = false,
         MfaChallenge = true,
+        FriendlyMessage = message,
+    };
+}
+
+public sealed class DesktopTokenInputResult
+{
+    public bool Success { get; private init; }
+    public string? AccessToken { get; private init; }
+    public string? FriendlyMessage { get; private init; }
+
+    public static DesktopTokenInputResult Ok(string token) => new()
+    {
+        Success = true,
+        AccessToken = token,
+    };
+
+    public static DesktopTokenInputResult Failure(string message) => new()
+    {
+        Success = false,
         FriendlyMessage = message,
     };
 }
