@@ -12,17 +12,16 @@
 
 ## 0. Status
 
-**Implementation complete; automatic gates PASS; manual E2E deferred to user machine (마이크 부재).**
+**Step 6 PASS — implementation, automatic gates, manual E2E 모두 통과 (2026-05-21).**
 
 - 신규 `desktop/Kloser.Capture.Core/Recording/CallArchiveWavWriter.cs` — per-source PCM 스크래치 → stereo PCM16 WAV 합성 + SHA-256 스트리밍.
 - 신규 `desktop/Kloser.Desktop.Shell/Services/RecordingArchive/` 4 파일 — wire models / sink / HttpClient / lifecycle FSM.
 - 신규 `server/src/routes/devRecordingStorage.ts` — dev-only local PUT/GET handler. `NODE_ENV !== production` AND local provider 자기-게이트.
 - 신규 `server/test/phase9_step6_dev_recording_storage.test.mjs` — 9 case (PUT/GET happy path, expired, traversal multi-shape, non-audio content-type, GET 404, production disabled, s3 provider disabled, leakage check).
 - 수정: `server/src/adapters/recordingStorage.ts` 에 `readObject` public 메소드 추가 (`_readForTest`를 동일 구현으로 위임), `server/src/server.ts` 에 dev plugin 등록 + import.
-- 수정: `desktop/Kloser.Desktop.Shell/ViewModels/MainWindowViewModel.cs` + `MainWindow.xaml` 에 archive lifecycle + status UI.
+- 수정: `desktop/Kloser.Desktop.Shell/ViewModels/MainWindowViewModel.cs` + `MainWindow.xaml` + `MainWindow.xaml.cs` 에 archive lifecycle + status UI + close-gated shutdown.
 - 자동 게이트 (3 builds / server typecheck / sync_shared_types / `npm --prefix server test` **881 total / 878 PASS / 3 skipped / 0 fail** / `git diff --check`) 모두 통과.
-- **Manual E2E (실 마이크 + 시스템 오디오 + 통화 + 업로드 + calls.html 재생)** 은 본 dev 세션 마이크 부재로 미수행. 사용자 머신에서 §9 매트릭스 통과 시 master 체크박스 갱신.
-- `PHASE_9_MASTER.md` Step 6 체크박스는 본 라운드에서 **변경하지 않는다** (manual E2E 후 별도 commit).
+- **Manual E2E (실 마이크 + 시스템 오디오 + 통화 + 업로드 + calls.html 재생)** — §0.4 증거대로 PASS. `PHASE_9_MASTER.md` Step 6 체크박스를 본 closeout에서 [x] 로 갱신.
 
 ### 0.1 Codex Review Fix
 
@@ -106,6 +105,25 @@ Root causes now covered by the desktop fix:
   The desktop sent `recorded_at` as a `DateTimeOffset` ISO string with
   `+00:00`; backend `z.string().datetime()` accepts the project contract's
   UTC `Z` timestamp shape. Desktop now sends `DateTime.UtcNow.ToString("O")`.
+
+### 0.4 Manual E2E PASS (2026-05-21)
+
+사용자 머신에서 §0.3 root cause 4건을 반영한 desktop 빌드로 재시도, 전 매트릭스 PASS.
+
+증거:
+- `POST /calls/:id/recordings/upload` → **201**, response `{ recording, upload }` 정상 수신.
+- `PUT /dev-recordings/<object_key>` → **200** (signed PUT, `Content-Type: audio/wav`).
+- `POST /calls/:id/recordings/:rid/finalize` → **200**.
+- DB `call_recordings.status` = **`available`**, `duration_seconds` / `size_bytes` / `checksum_sha256` 정상 기록.
+- `calls.html` call detail의 녹음 섹션에서 **재생 가능** (Phase 8 playback URL 정상 서명, 브라우저 `<audio>` element가 stereo WAV decode 후 재생).
+- 진단 카운터: `mic frames` / `loopback frames` 둘 다 통화 중 단조 증가, `dropped` = 0.
+- 보안 sentinel: signed URL · object key · checksum · 로컬 경로 · 원음 byte 어느 것도 UI / Events / 오류 메시지 / 서버 로그에 노출 안 됨.
+
+§0.3에서 식별된 4건 (close path / Ending state / token race / ActiveCallId race / recorded_at shape) 모두 본 E2E에서 회귀 없음. 진단용 frame counter row + stage-level PushEvent는 그대로 유지 — 정상 동작 시 비용 거의 없고, 향후 회귀 발생 시 1차 트라이아지에 그대로 재사용 가능.
+
+남은 후속:
+- `PHASE_9_MASTER.md` Step 6 체크박스 [x] 처리 (본 closeout 동시 반영).
+- Step 7 (pilot hardening: device matrix / reconnect / 5분+ baseline / consent placeholder)로 진행.
 
 ---
 

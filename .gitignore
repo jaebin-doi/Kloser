@@ -30,6 +30,9 @@ build/
 # Logs
 *.log
 
+# Local dev recording storage
+server/.data/
+
 # Playwright MCP session artifacts
 .playwright-mcp/
 
