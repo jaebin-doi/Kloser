@@ -16,7 +16,7 @@
 - [x] **Step 2 - backend audio ingest contract**: `/calls` Socket.io namespace에 `audio_start` / binary `audio_chunk` / `audio_end` 추가. `wsAudio` shared types 3-way sync, mock streaming STT boundary, partial emit/final persist, aggregate mock `llm_usage_log` row, 128 KiB chunk cap + 1 MiB backpressure, raw audio sentinel 테스트까지 닫았다. 정본 계획은 `PHASE_9_STEP_2_PLAN.md`, 결과는 `PHASE_9_STEP_2_FINDINGS.md`.
 - [ ] **Step 3 - Windows capture engine PoC**: C#/.NET으로 WASAPI loopback + microphone capture, resampling, channel policy, local VAD/buffering, test harness.
 - [ ] **Step 4 - desktop app shell**: 로그인, org/session 선택, start/end call, device selection, capture status, reconnect/error UI. Flutter Windows 또는 C# UI 결정 후 구현.
-- [ ] **Step 5 - realtime backend integration**: desktop app -> backend audio stream -> STT -> transcript/suggestion/call update 흐름 연결.
+- [ ] **Step 5 - realtime backend integration**: desktop app -> backend audio stream -> mock STT -> transcript/call update 흐름 연결. 계획 문서: `PHASE_9_STEP_5_PLAN.md`.
 - [ ] **Step 6 - recording archive bridge**: 실시간 통화 후 녹취 파일을 Phase 8 call recording upload/finalize 표면으로 보관.
 - [ ] **Step 7 - pilot hardening + closeout**: Windows device matrix, network resilience, logs, consent placeholder, user guide, final validation.
 
@@ -438,19 +438,24 @@ Rule:
 
 ### Step 5 - End-To-End Realtime Integration
 
+Plan: see `PHASE_9_STEP_5_PLAN.md`.
+
 Implementation:
 
 - desktop app opens WebSocket.
 - sends `start_call`.
-- sends audio chunks.
-- backend emits transcript updates.
-- web live/calls surface can observe result.
-- end call stamps duration.
+- sends `audio_start`.
+- sends `audio_chunk(meta, binary)` from WPF `CapturedAudioFrame`.
+- backend mock streaming STT emits partial/final transcript updates.
+- desktop app displays partial/final transcript and backend runtime errors.
+- sends `audio_end` and `end_call`.
 
 Validation:
 
 - local Windows manual e2e.
-- backend tests for event validation and transcript writes.
+- WPF chunk counters prove mic/system_loopback transport.
+- backend transcript + mock STT usage row verification.
+- raw audio leakage check.
 - no provider/import tests.
 
 ### Step 6 - Recording Archive Bridge
@@ -572,43 +577,46 @@ Phase 9 closeout requires:
 
 ## 14. Next Work Instruction
 
-Next task should be **Phase 9 Step 4 - Desktop App Shell**.
+Next task should be **Phase 9 Step 5 - Realtime Backend Integration**.
 
-Detailed implementation plan: `docs/plan/phase-9/PHASE_9_STEP_4_PLAN.md`.
+Detailed implementation plan: `docs/plan/phase-9/PHASE_9_STEP_5_PLAN.md`.
 
 Recommended handoff:
 
 ```text
-Phase 9 Step 4 Desktop App Shell을 구현한다.
+Phase 9 Step 5 Realtime Backend Integration을 구현한다.
 
-반드시 먼저 `docs/plan/phase-9/PHASE_9_STEP_4_PLAN.md`를 읽고 따른다.
+반드시 먼저 아래 문서를 읽고 따른다.
 
-결정:
-- Step 4 shell은 C# WPF.
-- Step 3 capture code는 `Kloser.Capture.Core` class library로 분리.
-- 기존 console PoC는 유지하고 core library를 참조.
-- 신규 WPF app은 `Kloser.Desktop.Shell`.
+- docs/plan/phase-9/PHASE_9_MASTER.md
+- docs/plan/phase-9/PHASE_9_STEP_5_PLAN.md
+- docs/plan/phase-9/PHASE_9_STEP_4_FINDINGS.md
+- docs/plan/phase-9/PHASE_9_STEP_2_FINDINGS.md
 
 범위:
-- device picker.
-- start/stop capture.
-- mic/system_loopback level meter.
-- frames/dropped/native format/status 표시.
-- diagnostic WAV toggle.
-- friendly error panel.
-- Step 3 manual smoke S1-S6 checklist UI.
+- WPF desktop app에서 /calls Socket.io namespace에 인증 연결.
+- start_call -> audio_start -> audio_chunk(meta,binary) -> audio_end -> end_call lifecycle 연결.
+- Step 2 mock streaming STT partial/final transcript를 WPF UI에 표시.
+- raw PCM은 binary payload로만 전송하고 로그/DB/UI 이벤트 텍스트에 노출 금지.
+- 필요한 만큼 CaptureSessionController sink composition 리팩터링.
 
 하지 말 것:
-- backend Socket.io 전송.
-- Azure Speech 호출.
-- 로그인/token 저장.
+- Azure Speech 실호출.
 - Phase 8 recording upload/finalize.
-- installer/auto-update.
-- validation 전 `PHASE_9_MASTER.md` checkbox 갱신.
+- Flutter 전환.
+- 새 desktop-only auth endpoint.
+- raw audio local retry buffer.
+- Socket.IO binary가 막힌다고 JSON/base64 우회.
+
+검증:
+- dotnet build 3개 project.
+- server typecheck.
+- shared type sync.
+- server tests.
+- WPF manual e2e: connect, start call, mic+loopback chunk 전송, partial transcript, final transcript, end_call.
+- raw audio leakage check.
 
 산출물:
-- `desktop/Kloser.Capture.Core/...`
-- `desktop/Kloser.Desktop.Shell/...`
-- updated `desktop/Kloser.Capture.Poc/...`
-- `docs/plan/phase-9/PHASE_9_STEP_4_FINDINGS.md`
+- desktop realtime client / auth client / SocketIoAudioFrameSink changes.
+- `docs/plan/phase-9/PHASE_9_STEP_5_FINDINGS.md`
 ```
