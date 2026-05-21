@@ -236,6 +236,46 @@
                            Foreground="{StaticResource ErrorBrush}"
                            TextWrapping="Wrap"
                            Margin="0,8,0,0"/>
+
+                <!-- Phase 9 Step 6 — recording archive status -->
+                <Border BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="0,1,0,0" Margin="0,12,0,0" Padding="0,12,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="녹취 archive (Phase 9 Step 6)" Style="{StaticResource HeaderText}" VerticalAlignment="Center"/>
+                            <CheckBox Content="archive 켜기 (통화 종료 시 자동 업로드)"
+                                      IsChecked="{Binding ArchiveEnabled, Mode=TwoWay}"
+                                      Margin="20,0,0,0"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="상태:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveStateLabel}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Text="길이:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock VerticalAlignment="Center" Style="{StaticResource ValueText}" Margin="0,0,16,0">
+                                <Run Text="{Binding ArchiveDurationSeconds}"/><Run Text="초"/>
+                            </TextBlock>
+                            <TextBlock Text="용량(bytes):" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveSizeBytes}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Text="업로드(bytes):" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveUploadedBytes}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Text="recording id:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveRecordingId, FallbackValue='(없음)'}" Style="{StaticResource ValueText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Text="server status:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding ArchiveFinalStatus, FallbackValue='(대기)'}" Style="{StaticResource ValueText}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding ArchiveLastError, FallbackValue=''}"
+                                   Style="{StaticResource ValueText}"
+                                   Foreground="{StaticResource ErrorBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0"/>
+                        <TextBlock Text="signed URL · object key · checksum · 로컬 임시 경로 · 원음 바이트는 UI / 이벤트 / 오류 메시지에 노출되지 않습니다."
+                                   Style="{StaticResource LabelText}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
 

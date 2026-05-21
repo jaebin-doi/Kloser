@@ -8,10 +8,13 @@
 // Raw PCM byte[]은 sink 안에서만 살아 있고 UI string / 이벤트 / 오류에 절대 노출되지 않는다.
 
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Threading;
 using Kloser.Capture.Core.Audio;
+using Kloser.Capture.Core.Recording;
 using Kloser.Desktop.Shell.Services;
 using Kloser.Desktop.Shell.Services.Realtime;
+using Kloser.Desktop.Shell.Services.RecordingArchive;
 using NAudio.CoreAudioApi;
 
 namespace Kloser.Desktop.Shell.ViewModels;
@@ -31,6 +34,10 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly CallsSocketClient _socket = new();
     private RealtimeCallSession? _callSession;
     private SocketIoAudioFrameSink? _audioSink;
+
+    // ---------- Phase 9 Step 6 — recording archive ---------- //
+    private readonly RecordingArchiveClient _archiveClient = new();
+    private RecordingArchiveSession? _archiveSession;
     private string? _accessTokenMemoryOnly;
 
     // ---------- public bindable surface ---------- //
@@ -284,6 +291,87 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     public ObservableCollection<string> FinalTranscripts { get; } = new();
+
+    // ---------- Phase 9 Step 6 — recording archive bindable surface ---------- //
+
+    private bool _archiveEnabled = true;
+    /// <summary>Default ON for Step 6 manual E2E (Plan §7).</summary>
+    public bool ArchiveEnabled
+    {
+        get => _archiveEnabled;
+        set => SetField(ref _archiveEnabled, value);
+    }
+
+    private RecordingArchiveState _archiveState = RecordingArchiveState.Idle;
+    public RecordingArchiveState ArchiveStateValue
+    {
+        get => _archiveState;
+        set
+        {
+            if (SetField(ref _archiveState, value))
+            {
+                OnPropertyChanged(nameof(ArchiveStateLabel));
+            }
+        }
+    }
+    public string ArchiveStateLabel => ArchiveStateValue switch
+    {
+        RecordingArchiveState.Idle => "대기 중",
+        RecordingArchiveState.Recording => "녹취 중",
+        RecordingArchiveState.FinalizingLocalFile => "로컬 WAV 마무리 중…",
+        RecordingArchiveState.UploadInitiating => "업로드 준비 중…",
+        RecordingArchiveState.UploadingBytes => "업로드 중…",
+        RecordingArchiveState.FinalizingRemote => "서버 마무리 중…",
+        RecordingArchiveState.Available => "녹취 업로드 완료: available",
+        RecordingArchiveState.Failed => "녹취 업로드 실패",
+        _ => ArchiveStateValue.ToString(),
+    };
+
+    private int _archiveDurationSeconds;
+    public int ArchiveDurationSeconds
+    {
+        get => _archiveDurationSeconds;
+        set => SetField(ref _archiveDurationSeconds, value);
+    }
+
+    private long _archiveSizeBytes;
+    public long ArchiveSizeBytes
+    {
+        get => _archiveSizeBytes;
+        set => SetField(ref _archiveSizeBytes, value);
+    }
+
+    private long _archiveUploadedBytes;
+    public long ArchiveUploadedBytes
+    {
+        get => _archiveUploadedBytes;
+        set => SetField(ref _archiveUploadedBytes, value);
+    }
+
+    private string? _archiveRecordingId;
+    public string? ArchiveRecordingId
+    {
+        get => _archiveRecordingId;
+        set => SetField(ref _archiveRecordingId, value);
+    }
+
+    private string? _archiveFinalStatus;
+    public string? ArchiveFinalStatus
+    {
+        get => _archiveFinalStatus;
+        set => SetField(ref _archiveFinalStatus, value);
+    }
+
+    private string? _archiveLastError;
+    /// <summary>
+    /// Sanitized short error label (e.g. `recording_storage_failed`).
+    /// Never holds stack trace / signed URL / object key / temp path.
+    /// </summary>
+    public string? ArchiveLastError
+    {
+        get => _archiveLastError;
+        set => SetField(ref _archiveLastError, value);
+    }
 
     public RelayCommand LoginAndConnectCommand { get; }
     public RelayCommand ConnectWithTokenCommand { get; }
@@ -687,6 +775,34 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
         ActiveCallId = startResult.CallId;
         PushEvent($"통화 시작: callId={startResult.CallId}");
+
+        // Phase 9 Step 6 — archive sink 등록. 기본 ON, 토글이 꺼져 있으면 skip.
+        if (ArchiveEnabled)
+        {
+            try
+            {
+                ArchiveStateValue = RecordingArchiveState.Idle;
+                ArchiveDurationSeconds = 0;
+                ArchiveSizeBytes = 0;
+                ArchiveUploadedBytes = 0;
+                ArchiveRecordingId = null;
+                ArchiveFinalStatus = null;
+                ArchiveLastError = null;
+                _archiveSession = new RecordingArchiveSession(
+                    startResult.CallId!, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                _archiveSession.StateChanged += OnArchiveStateChanged;
+                _archiveSession.StatsChanged += OnArchiveStatsChanged;
+                _controller.AddExternalSink(_archiveSession.Sink);
+                _archiveSession.BeginRecording();
+                PushEvent("녹취 archive 시작");
+            }
+            catch (Exception ex)
+            {
+                ArchiveLastError = $"{ex.GetType().Name}";
+                PushError($"녹취 archive 시작 실패 — {ex.GetType().Name}: {ex.Message}");
+                await DisposeArchiveSessionAsync().ConfigureAwait(true);
+            }
+        }
     }
 
     private async Task EndCallAsync()
@@ -694,6 +810,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         if (_callSession is null) return;
         if (CallStateValue is RealtimeCallState.Idle or RealtimeCallState.Ended) return;
         CallStateValue = RealtimeCallState.Ending;
+
+        // Phase 9 Step 6 — capture archive sink을 먼저 deactivate해서
+        // audio_end / end_call 후에 들어올 frame을 archive에 적지 않는다.
+        RecordingArchiveSession? archiveSession = _archiveSession;
+        if (archiveSession is not null)
+        {
+            _controller.RemoveExternalSink(archiveSession.Sink);
+            archiveSession.Sink.Deactivate();
+        }
+
         var stopResult = await _callSession.StopAsync().ConfigureAwait(true);
         if (!stopResult.Success)
         {
@@ -704,8 +830,179 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         {
             PushEvent("통화 종료");
         }
+        string? callIdForArchive = ActiveCallId;
         CleanupCallSession();
         if (IsRunning) StopCapture();
+
+        if (archiveSession is not null && !string.IsNullOrEmpty(callIdForArchive))
+        {
+            // archive upload는 call lifecycle과 독립적으로 백그라운드 진행
+            // (Plan §5.3 — audio_end/end_call이 object upload를 기다리지 않는다).
+            _ = Task.Run(() => RunArchiveUploadAsync(archiveSession, callIdForArchive!));
+        }
+    }
+
+    /// <summary>Plan §5.3 normal stop sequence.</summary>
+    private async Task RunArchiveUploadAsync(RecordingArchiveSession archive, string callId)
+    {
+        string baseUrl = BackendUrl;
+        string? token = _accessTokenMemoryOnly;
+        try
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                archive.MarkFailed("missing_access_token");
+                return;
+            }
+
+            // 1. local WAV finalize
+            CallArchiveResult local;
+            try
+            {
+                local = await archive.FinalizeLocalAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                archive.MarkFailed("local_finalize_failed");
+                PushError($"녹취 로컬 마무리 실패 — {ex.GetType().Name}");
+                await archive.DeleteLocalAsync().ConfigureAwait(false);
+                return;
+            }
+            ArchiveDurationSeconds = local.DurationSeconds;
+            ArchiveSizeBytes = local.SizeBytes;
+
+            if (local.SizeBytes <= 44 || local.DurationSeconds <= 0)
+            {
+                // No real audio was captured (header-only WAV). Skip upload
+                // entirely; do not create an upload_pending row.
+                archive.MarkAvailable();
+                ArchiveFinalStatus = "skipped_empty";
+                PushEvent("녹취 archive: 캡처된 오디오 없음 — 업로드 생략");
+                await archive.DeleteLocalAsync().ConfigureAwait(false);
+                return;
+            }
+
+            // 2. upload initiate
+            archive.MarkUploadInitiating();
+            RecordingUploadInitiateResponse initiate;
+            try
+            {
+                initiate = await _archiveClient.InitiateUploadAsync(
+                    baseUrl, token, callId,
+                    new RecordingUploadInitiateRequest
+                    {
+                        ContentType = local.ContentType,
+                        Codec = local.Codec,
+                        RecordedAtIso = DateTimeOffset.UtcNow.ToString("o"),
+                        DurationSeconds = local.DurationSeconds,
+                        SizeBytes = local.SizeBytes,
+                        ChecksumSha256 = local.ChecksumSha256,
+                    }).ConfigureAwait(false);
+            }
+            catch (RecordingArchiveHttpError ex)
+            {
+                archive.MarkFailed(ex.ShortError);
+                PushError($"녹취 업로드 시작 실패 — {ex.ShortError}");
+                await archive.DeleteLocalAsync().ConfigureAwait(false);
+                return;
+            }
+            string recordingId = initiate.Recording!.Id!;
+            archive.SetRecordingId(recordingId);
+            archive.SetRecordingStatus(initiate.Recording.Status);
+            ArchiveRecordingId = recordingId;
+
+            // 3. PUT signed URL
+            archive.MarkUploadingBytes();
+            try
+            {
+                using var src = new FileStream(
+                    archive.OutputWavPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    bufferSize: 64 * 1024);
+                var progress = new Progress<long>(b => archive.ReportUploadProgress(b));
+                await _archiveClient.UploadBytesAsync(
+                    initiate.SignedUrl!, src, src.Length, progress).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                string code = ex is RecordingArchiveHttpError he ? he.ShortError : "upload_failed";
+                archive.MarkFailed(code);
+                PushError($"녹취 업로드 실패 — {code}");
+                await _archiveClient.TryCleanupAsync(baseUrl, token, callId, recordingId).ConfigureAwait(false);
+                await archive.DeleteLocalAsync().ConfigureAwait(false);
+                return;
+            }
+
+            // 4. remote finalize
+            archive.MarkFinalizingRemote();
+            try
+            {
+                await _archiveClient.FinalizeAsync(
+                    baseUrl, token, callId, recordingId,
+                    new RecordingFinalizeRequest
+                    {
+                        DurationSeconds = local.DurationSeconds,
+                        SizeBytes = local.SizeBytes,
+                        ChecksumSha256 = local.ChecksumSha256,
+                    }).ConfigureAwait(false);
+            }
+            catch (RecordingArchiveHttpError ex)
+            {
+                archive.MarkFailed(ex.ShortError);
+                PushError($"녹취 finalize 실패 — {ex.ShortError}");
+                await _archiveClient.TryCleanupAsync(baseUrl, token, callId, recordingId).ConfigureAwait(false);
+                await archive.DeleteLocalAsync().ConfigureAwait(false);
+                return;
+            }
+
+            archive.SetRecordingStatus("available");
+            archive.MarkAvailable();
+            ArchiveFinalStatus = "available";
+            PushEvent($"녹취 업로드 완료: callId={callId}");
+            await archive.DeleteLocalAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await DisposeArchiveSessionAsync(archive).ConfigureAwait(false);
+        }
+    }
+
+    private async ValueTask DisposeArchiveSessionAsync(RecordingArchiveSession? session = null)
+    {
+        session ??= _archiveSession;
+        if (session is null) return;
+        try { session.StateChanged -= OnArchiveStateChanged; } catch { /* swallow */ }
+        try { session.StatsChanged -= OnArchiveStatsChanged; } catch { /* swallow */ }
+        try { _controller.RemoveExternalSink(session.Sink); } catch { /* swallow */ }
+        try { await session.DisposeAsync().ConfigureAwait(false); } catch { /* swallow */ }
+        if (ReferenceEquals(_archiveSession, session)) _archiveSession = null;
+    }
+
+    private void OnArchiveStateChanged(object? sender, RecordingArchiveState state)
+    {
+        _ui.Post(() =>
+        {
+            ArchiveStateValue = state;
+            if (sender is RecordingArchiveSession s)
+            {
+                ArchiveLastError = s.LastError;
+            }
+        });
+    }
+
+    private void OnArchiveStatsChanged(object? sender, EventArgs e)
+    {
+        if (sender is not RecordingArchiveSession s) return;
+        _ui.Post(() =>
+        {
+            ArchiveRecordingId = s.RecordingId;
+            ArchiveUploadedBytes = s.UploadedBytes;
+            if (s.RecordingStatus is not null) ArchiveFinalStatus = s.RecordingStatus;
+            if (s.Result is { } r)
+            {
+                ArchiveDurationSeconds = r.DurationSeconds;
+                ArchiveSizeBytes = r.SizeBytes;
+            }
+        });
     }
 
     private void CleanupCallSession()
@@ -836,6 +1133,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     {
         StopPumpTimer();
         try { CleanupCallSession(); } catch { /* swallow */ }
+        try { DisposeArchiveSessionAsync().GetAwaiter().GetResult(); } catch { /* swallow */ }
+        try { _archiveClient.Dispose(); } catch { /* swallow */ }
         try { _socket.Dispose(); } catch { /* swallow */ }
         try { _auth.Dispose(); } catch { /* swallow */ }
         _controller.Dispose();

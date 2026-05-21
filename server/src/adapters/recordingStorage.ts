@@ -439,6 +439,17 @@ class LocalRecordingStorageAdapter implements RecordingStorageAdapter {
   // Internal helper used by put/delete tests; not part of the public
   // adapter interface (production reads happen through signed URLs).
   async _readForTest(objectKey: string): Promise<Buffer> {
+    return this.readObject(objectKey);
+  }
+
+  /**
+   * Phase 9 Step 6 — dev-only local storage URL handler가 signed GET
+   * 응답으로 객체 바이트를 돌려줄 때 사용한다. 본 메소드는 production
+   * 경로에서는 호출되지 않는다 (운영에서는 signed URL이 S3가 직접 서빙).
+   * `assertSafeObjectKey` + `resolveAbsolutePath` 두 단계 traversal 보호는
+   * 그대로 적용된다.
+   */
+  async readObject(objectKey: string): Promise<Buffer> {
     const absolute = this.resolveAbsolutePath(objectKey);
     try {
       return await readFile(absolute);

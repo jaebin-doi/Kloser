@@ -19,6 +19,7 @@ import billingRoutes from "./routes/billing.js";
 import callsRoutes from "./routes/calls.js";
 import callsPhase5Routes from "./routes/callsPhase5.js";
 import callRecordingsRoutes from "./routes/callRecordings.js";
+import devRecordingStorageRoutes from "./routes/devRecordingStorage.js";
 import checklistTemplatesRoutes from "./routes/checklistTemplates.js";
 import customersRoutes from "./routes/customers.js";
 import dashboardRoutes from "./routes/dashboard.js";
@@ -70,6 +71,11 @@ await app.register(invitationsRoutes);
 await app.register(callsRoutes);
 await app.register(callsPhase5Routes);
 await app.register(callRecordingsRoutes);
+// Phase 9 Step 6 — dev-only local recording PUT/GET handler. Self-gates
+// off in production AND for non-local storage providers (see route file
+// shouldActivate). Safe to register unconditionally; runs as no-op when
+// not applicable.
+await app.register(devRecordingStorageRoutes);
 await app.register(checklistTemplatesRoutes);
 await app.register(knowledgeBasesRoutes);
 await app.register(dashboardRoutes);
