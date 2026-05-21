@@ -395,6 +395,18 @@ test("11. monthly_llm_cost_usd_micros = null when only unknown rows; sum otherwi
     const before = await withTx(ORG_ACME, (c) =>
         getCurrentBillingUsage(c, now),
     );
+    const beforeLlmCounts = await withTx(ORG_ACME, async (client) => {
+        const r = await client.query(
+            `SELECT
+                count(*) FILTER (WHERE cost_usd_micros IS NOT NULL)::int AS known_count,
+                count(*) FILTER (WHERE cost_usd_micros IS NULL)::int     AS unknown_count
+               FROM llm_usage_log
+              WHERE created_at >= $1
+                AND created_at <  $2`,
+            [startOfUtcMonth(now), startOfNextUtcMonth(now)],
+        );
+        return r.rows[0];
+    });
 
     // Insert one unknown row only.
     const unknownId = randomUUID();
@@ -419,8 +431,11 @@ test("11. monthly_llm_cost_usd_micros = null when only unknown rows; sum otherwi
     const priced = await withTx(ORG_ACME, (c) =>
         getCurrentBillingUsage(c, now),
     );
-    // If baseline was only-unknowns, the result is still null.
-    if (before.monthly_llm_cost_usd_micros === null) {
+    // If baseline had no priced rows, adding an unknown row means every
+    // visible row is still unknown, so the billing usage value is null.
+    // A numeric baseline of 0 can mean "no rows yet", not just "priced
+    // rows sum to zero", so key this branch off the row counts.
+    if (beforeLlmCounts.known_count === 0) {
         assert.equal(priced.monthly_llm_cost_usd_micros, null);
     } else {
         assert.equal(
